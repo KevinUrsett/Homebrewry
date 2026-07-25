@@ -78,12 +78,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .markdown-editor .cm-content { min-height: 100%; padding: 20px; }
 .markdown-editor .cm-focused { outline: none; }
 .markdown-editor .cm-catalogue-reference { background: #f1dfb3; border-bottom: 1px dashed #8b642f; color: #6b382e; font-weight: 700; }
-.cm-tooltip.cm-tooltip-hover { border: 0; box-shadow: 0 12px 28px rgb(45 28 16 / 28%); }
-.cm-catalogue-tooltip { background: #fffaf0; border: 1px solid #a57a42; color: #39291f; display: grid; font-family: Inter, sans-serif; font-size: .77rem; gap: 5px; max-width: 310px; padding: 11px; }
-.cm-catalogue-tooltip strong { color: #6d2f25; font-family: Georgia, serif; font-size: .98rem; }
-.cm-catalogue-tooltip span { color: #685446; }
-.cm-catalogue-tooltip p { line-height: 1.38; margin: 2px 0; }
-.cm-catalogue-tooltip button { background: #5d2f26; border: 0; border-radius: 4px; color: #fffaf0; font-size: .72rem; justify-self: start; padding: 5px 7px; }
 
 .preview-pane { background: #d9d0c1; min-width: 0; overflow: auto; padding: 25px; }
 .preview-canvas { margin: 0 auto; max-width: 800px; }
@@ -198,7 +192,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .catalogue-table { border-collapse: collapse; font-family: "Scaly Sans", Inter, sans-serif; font-size: .85rem; min-width: 420px; width: 100%; }
 .catalogue-table th { border-bottom: 2px solid #7a2f27; color: #6a2f26; text-align: left; }
 .catalogue-table th, .catalogue-table td { border-bottom: 1px solid #d7c5a6; padding: 7px; vertical-align: top; }
-.catalogue-detail-actions { border-top: 1px solid #d8c9ae; margin-top: 28px; padding-top: 15px; }
+.catalogue-entry-actions { border-block: 1px solid #d8c9ae; margin: 16px 0; padding: 11px 0; }
 .primary-button { background: #5d2f26; border: 1px solid #5d2f26; border-radius: 5px; color: #fffaf0; padding: 8px 10px; }
 .reference-backdrop { align-items: center; background: rgb(30 20 15 / 58%); display: flex; inset: 0; justify-content: center; padding: 20px; position: fixed; z-index: 12; }
 .reference-dialog { background: #fffaf0; border: 1px solid #b99464; border-radius: 10px; box-shadow: 0 20px 60px rgb(20 12 8 / 40%); max-height: calc(100vh - 40px); max-width: 780px; overflow: auto; padding: 24px; width: 100%; }

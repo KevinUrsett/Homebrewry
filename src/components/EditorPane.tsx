@@ -1,12 +1,10 @@
 import { type RefObject, useRef } from 'react';
-import type { CatalogueEntry } from '../catalogue/types';
 import { MarkdownEditor, type MarkdownEditorHandle } from './MarkdownEditor';
 
 type EditorPaneProps = {
   title: string;
   content: string;
   editorRef: RefObject<MarkdownEditorHandle | null>;
-  catalogue: ReadonlyMap<string, CatalogueEntry>;
   findVisible: boolean;
   findValue: string;
   replaceValue: string;
@@ -14,7 +12,6 @@ type EditorPaneProps = {
   onContentChange: (value: string) => void;
   onInsert: (before: string, after?: string) => void;
   onOpenCatalogue: () => void;
-  onReferenceOpen: (entry: CatalogueEntry) => void;
   onSelectionChange: (selection: { start: number; end: number }) => void;
   onImageUpload: (file: File) => void;
   onUndo: () => void;
@@ -30,7 +27,6 @@ export function EditorPane({
   title,
   content,
   editorRef,
-  catalogue,
   findVisible,
   findValue,
   replaceValue,
@@ -38,7 +34,6 @@ export function EditorPane({
   onContentChange,
   onInsert,
   onOpenCatalogue,
-  onReferenceOpen,
   onSelectionChange,
   onImageUpload,
   onUndo,
@@ -97,11 +92,9 @@ export function EditorPane({
         value={title}
       />
       <MarkdownEditor
-        catalogue={catalogue}
         content={content}
         onChange={onContentChange}
         onKeyDown={onKeyDown}
-        onReferenceOpen={onReferenceOpen}
         onSelectionChange={onSelectionChange}
         ref={editorRef}
       />

@@ -6,17 +6,9 @@ import {
   EditorView,
   MatchDecorator,
   type DecorationSet,
-  hoverTooltip,
   ViewPlugin,
-  type Tooltip,
   type ViewUpdate
 } from '@codemirror/view';
-import {
-  catalogueReferenceAt,
-  entryFromReference
-} from '../catalogue/references';
-import { catalogueCategoryLabels, type CatalogueEntry } from '../catalogue/types';
-import { cataloguePlainText, entrySummary } from '../catalogue/presentation';
 
 export type MarkdownEditorHandle = {
   getSelection: () => { start: number; end: number };
@@ -25,10 +17,8 @@ export type MarkdownEditorHandle = {
 
 type MarkdownEditorProps = {
   content: string;
-  catalogue: ReadonlyMap<string, CatalogueEntry>;
   onChange: (content: string) => void;
   onSelectionChange: (selection: { start: number; end: number }) => void;
-  onReferenceOpen: (entry: CatalogueEntry) => void;
   onKeyDown: (event: KeyboardEvent) => void;
 };
 
@@ -51,55 +41,21 @@ const referenceDecorations = ViewPlugin.fromClass(class {
   decorations: (value) => value.decorations
 });
 
-function tooltipDom(entry: CatalogueEntry, onOpen: (entry: CatalogueEntry) => void): HTMLElement {
-  const dom = document.createElement('div');
-  dom.className = 'cm-catalogue-tooltip';
-
-  const title = document.createElement('strong');
-  title.textContent = entry.name;
-  dom.append(title);
-
-  const category = document.createElement('span');
-  category.textContent = catalogueCategoryLabels[entry.category];
-  dom.append(category);
-
-  for (const summary of entrySummary(entry)) {
-    const line = document.createElement('span');
-    line.textContent = summary;
-    dom.append(line);
-  }
-
-  if (entry.description) {
-    const description = document.createElement('p');
-    description.textContent = cataloguePlainText(entry.description, 230);
-    dom.append(description);
-  }
-
-  const open = document.createElement('button');
-  open.type = 'button';
-  open.textContent = 'Open reference';
-  open.addEventListener('click', () => onOpen(entry));
-  dom.append(open);
-  return dom;
-}
-
 export function MarkdownEditor({
   content,
-  catalogue,
   onChange,
   onSelectionChange,
-  onReferenceOpen,
   onKeyDown,
   ref
 }: MarkdownEditorProps & { ref: Ref<MarkdownEditorHandle> }) {
   const parentRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const initialContentRef = useRef(content);
-  const latestRef = useRef({ catalogue, onChange, onReferenceOpen, onSelectionChange, onKeyDown });
+  const latestRef = useRef({ onChange, onSelectionChange, onKeyDown });
 
   useEffect(() => {
-    latestRef.current = { catalogue, onChange, onReferenceOpen, onSelectionChange, onKeyDown };
-  }, [catalogue, onChange, onKeyDown, onReferenceOpen, onSelectionChange]);
+    latestRef.current = { onChange, onSelectionChange, onKeyDown };
+  }, [onChange, onKeyDown, onSelectionChange]);
 
   useImperativeHandle(ref, () => ({
     getSelection: () => {
@@ -136,20 +92,7 @@ export function MarkdownEditor({
               latestRef.current.onKeyDown(event);
               return event.defaultPrevented;
             }
-          }),
-          hoverTooltip((editor, position): Tooltip | null => {
-            const reference = catalogueReferenceAt(editor.state.doc.toString(), position);
-            if (!reference) return null;
-            const entry = entryFromReference(latestRef.current.catalogue, reference);
-            if (!entry) return null;
-            return {
-              pos: reference.from,
-              end: reference.to,
-              above: true,
-              arrow: true,
-              create: () => ({ dom: tooltipDom(entry, latestRef.current.onReferenceOpen) })
-            };
-          }, { hoverTime: 180, hideOnChange: true })
+          })
         ]
       }),
       parent: parentRef.current

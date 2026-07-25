@@ -4,7 +4,9 @@
 
 ### Fixed
 
-- Preview and editor reference inspection now opens a detail dialog that can navigate directly to the referenced catalogue entry without inserting another token or changing tabs.
+- Preview reference names now retain their validated internal link, so tapping one opens the reference detail dialog; Edit remains source-only.
+- The catalogue insert action now appears directly below the selected entry heading instead of after its full stat block.
+- Reference detail dialogs can navigate directly to the referenced catalogue entry without inserting another token or changing tabs.
 - The mobile catalogue category selector now uses a full-width, vertically centred control so its selected label remains readable.
 
 ### Added

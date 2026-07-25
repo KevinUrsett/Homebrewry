@@ -93,10 +93,10 @@ export function CataloguePanel({ entries, loading, error, onInsertReference, sel
         <section className="catalogue-details" aria-live="polite">
           {selected ? (
             <>
-              <CatalogueEntryDetails entry={selected} />
-              <div className="catalogue-detail-actions">
-                <button className="primary-button" onClick={() => onInsertReference(selected)} type="button">Insert reference into brew</button>
-              </div>
+              <CatalogueEntryDetails
+                actions={<button className="primary-button" onClick={() => onInsertReference(selected)} type="button">Insert reference into brew</button>}
+                entry={selected}
+              />
             </>
           ) : (
             <p className="empty-panel">Choose an entry to inspect its details.</p>

@@ -417,7 +417,6 @@ export default function App() {
 
           <div className="main-panes">
             <EditorPane
-              catalogue={catalogueMap}
               content={activeBrew.content}
               editorRef={editorRef}
               findValue={findValue}
@@ -439,7 +438,6 @@ export default function App() {
               }}
               onOpenCatalogue={openCatalogue}
               onRedo={redo}
-              onReferenceOpen={setReferenceEntry}
               onReplaceAll={replaceAll}
               onReplaceChange={setReplaceValue}
               onSelectionChange={(selection) => { selectionRef.current = selection; }}

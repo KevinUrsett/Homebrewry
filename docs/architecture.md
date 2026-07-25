@@ -13,4 +13,10 @@ Phase 1 is a local-first, browser-only application. It creates and edits brew do
 | `components` | Library, editor, outline, preview UI | React components |
 | PWA layer | Install metadata and offline shell cache | `vite-plugin-pwa` |
 
-The renderer reads only the active brew content. It does not import from IndexedDB or any future cloud provider. Phase 2 will add a Google Drive adapter behind the storage boundary, with conflict checks before remote writes.
+The renderer reads only the active brew content. It does not import from IndexedDB or any cloud provider.
+
+## Phase 2 cloud boundary
+
+`lib/googleIdentity` obtains a short-lived Google access token through Google Identity Services. The token remains in memory only. `lib/googleDrive` is the sole module that calls the Drive API, while `lib/sync` compares the stored Drive revision with the current remote revision before writing. A changed local and remote copy is marked as a conflict; it is not overwritten automatically.
+
+Google Drive integration is disabled until `VITE_GOOGLE_CLIENT_ID` is supplied by the hosting environment. The renderer remains independent from authentication, Drive, and IndexedDB.

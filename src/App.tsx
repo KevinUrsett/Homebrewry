@@ -3,8 +3,10 @@ import { BrewPreview } from './components/BrewPreview';
 import { EditorPane } from './components/EditorPane';
 import { LibraryPanel } from './components/LibraryPanel';
 import { OutlinePanel } from './components/OutlinePanel';
-import { createBrew, deleteBrew, saveBrew, seedBrews } from './lib/brewStore';
+import { createBrew, deleteBrew, replaceBrews, saveBrew, seedBrews } from './lib/brewStore';
+import { isGoogleConfigured, requestDriveAccess } from './lib/googleIdentity';
 import { getOutline } from './lib/outline';
+import { syncBrews } from './lib/sync';
 import type { Brew, MobileSection, ViewMode } from './types';
 
 const mobileLabels: Record<MobileSection, string> = {
@@ -22,6 +24,8 @@ export default function App() {
   const [mobileSection, setMobileSection] = useState<MobileSection>('editor');
   const [query, setQuery] = useState('');
   const [saveState, setSaveState] = useState('Loading local drafts…');
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
   const [findVisible, setFindVisible] = useState(false);
   const [findValue, setFindValue] = useState('');
   const [replaceValue, setReplaceValue] = useState('');
@@ -64,7 +68,12 @@ export default function App() {
     setBrews((currentBrews) =>
       currentBrews.map((brew) =>
         brew.id === activeId
-          ? { ...updater(brew), updatedAt: new Date().toISOString(), version: brew.version + 1 }
+          ? {
+              ...updater(brew),
+              updatedAt: new Date().toISOString(),
+              version: brew.version + 1,
+              syncState: brew.drive ? 'pending' : 'local'
+            }
           : brew
       )
     );
@@ -157,6 +166,33 @@ export default function App() {
     updateContent(activeBrew.content.split(findValue).join(replaceValue));
   };
 
+  const connectDrive = async () => {
+    try {
+      setSaveState('Connecting to Google Drive…');
+      const token = await requestDriveAccess();
+      setAccessToken(token);
+      setSaveState('Google Drive connected for this session');
+    } catch (error) {
+      setSaveState(error instanceof Error ? error.message : 'Google Drive connection failed');
+    }
+  };
+
+  const syncToDrive = async () => {
+    if (!accessToken || syncing) return;
+    try {
+      setSyncing(true);
+      setSaveState('Syncing with Google Drive…');
+      const result = await syncBrews(accessToken, brews);
+      await replaceBrews(result.brews);
+      setBrews(result.brews);
+      setSaveState(result.detail);
+    } catch (error) {
+      setSaveState(error instanceof Error ? error.message : 'Google Drive sync failed');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   if (loading || !activeBrew) {
     return <main className="loading-screen">Opening your local brew library…</main>;
   }
@@ -182,6 +218,17 @@ export default function App() {
               {mode === 'editor' ? 'Editor' : mode === 'preview' ? 'Preview' : 'Split'}
             </button>
           ))}
+        </div>
+        <div className="cloud-controls">
+          {accessToken ? (
+            <button onClick={() => void syncToDrive()} type="button" disabled={syncing}>
+              {syncing ? 'Syncing…' : 'Sync Drive'}
+            </button>
+          ) : (
+            <button onClick={() => void connectDrive()} type="button" disabled={!isGoogleConfigured()}>
+              Connect Drive
+            </button>
+          )}
         </div>
         <div className="save-indicator" aria-live="polite">{saveState}</div>
       </header>

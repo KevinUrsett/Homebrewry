@@ -11,6 +11,9 @@
 
 ### Added
 
+- Local-first combat encounters with a reusable party roster, offline SRD monster search, initiative ordering, turn progression, and independent HP/AC tracking.
+- Stable `[[encounter:id|label]]` source references, toolbar insertion, and Preview combat cards that open the associated encounter.
+
 - Offline SRD 5.2.1 catalogue with 2,232 source-verified records across monsters, spells, items, rules, tables, and character options.
 - Stable Markdown catalogue references, detail dialogs, desktop hover cards, and a mobile tap/click fallback.
 - CodeMirror source editor with highlighted reference tokens and accessible hover inspection.
@@ -32,3 +35,7 @@
 - D&D-inspired safe Markdown preview and generated document outline.
 - IndexedDB persistence, autosave state, undo/redo, find/replace, duplication, and confirmed deletion.
 - Vite PWA manifest, service worker, offline shell caching, tests, and CI.
+
+### Notes
+
+- Encounter and current-party records are initially local IndexedDB data. They do not yet sync to Google Drive, so the existing Drive brew-file format remains backward compatible.

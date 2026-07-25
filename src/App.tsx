@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CataloguePanel } from './components/CataloguePanel';
 import { BrewPreview } from './components/BrewPreview';
+import { EncounterPanel } from './components/EncounterPanel';
 import { EditorPane } from './components/EditorPane';
 import { ImportDialog } from './components/ImportDialog';
 import { LibraryPanel } from './components/LibraryPanel';
@@ -15,17 +16,21 @@ import { isGoogleConfigured, requestDriveAccess } from './lib/googleIdentity';
 import { getOutline } from './lib/outline';
 import { importHomebrewerySource, titleFromImportedSource } from './lib/importer';
 import { overwriteDriveBrew, syncBrews } from './lib/sync';
+import { createEncounter as createCombatEncounter, createPartyMember } from './lib/encounters';
+import { deleteEncounter as deleteStoredEncounter, deletePartyMember as deleteStoredPartyMember, listEncounters, listPartyMembers, saveEncounter, savePartyMember } from './lib/encounterStore';
+import { formatEncounterReference } from './lib/encounterReferences';
 import { loadCatalogue, toCatalogueMap } from './catalogue/catalogueData';
 import { formatCatalogueReference } from './catalogue/references';
 import type { CatalogueEntry } from './catalogue/types';
-import type { Brew, BrewAsset, MobileSection, ViewMode } from './types';
+import type { Brew, BrewAsset, Encounter, MobileSection, PartyMember, ViewMode } from './types';
 
 const mobileLabels: Record<MobileSection, string> = {
   library: 'Brews',
   editor: 'Edit',
   preview: 'Preview',
   outline: 'Outline',
-  catalogue: 'Catalogue'
+  catalogue: 'Catalogue',
+  encounters: 'Encounters'
 };
 
 export default function App() {
@@ -48,6 +53,10 @@ export default function App() {
   const [catalogueError, setCatalogueError] = useState<string | null>(null);
   const [catalogueOpen, setCatalogueOpen] = useState(false);
   const [catalogueSelection, setCatalogueSelection] = useState<CatalogueEntry | null>(null);
+  const [encounters, setEncounters] = useState<Encounter[]>([]);
+  const [partyMembers, setPartyMembers] = useState<PartyMember[]>([]);
+  const [encountersOpen, setEncountersOpen] = useState(false);
+  const [encounterSelectedId, setEncounterSelectedId] = useState<string | null>(null);
   const [referenceEntry, setReferenceEntry] = useState<CatalogueEntry | null>(null);
   const editorRef = useRef<MarkdownEditorHandle>(null);
   const selectionRef = useRef({ start: 0, end: 0 });
@@ -55,11 +64,14 @@ export default function App() {
   const redoRef = useRef<string[]>([]);
 
   useEffect(() => {
-    Promise.all([seedBrews(), listAssets()])
-      .then(([storedBrews, storedAssets]) => {
+    Promise.all([seedBrews(), listAssets(), listEncounters(), listPartyMembers()])
+      .then(([storedBrews, storedAssets, storedEncounters, storedPartyMembers]) => {
         setBrews(storedBrews);
         setAssets(storedAssets);
+        setEncounters(storedEncounters);
+        setPartyMembers(storedPartyMembers);
         setActiveId(storedBrews[0]?.id ?? null);
+        setEncounterSelectedId(storedEncounters[0]?.id ?? null);
         setSaveState('Saved locally');
       })
       .catch(() => setSaveState('Local storage is unavailable'))
@@ -89,6 +101,7 @@ export default function App() {
   );
   const assetMap = useMemo(() => new Map(assets.map((asset) => [asset.id, asset])), [assets]);
   const catalogueMap = useMemo(() => toCatalogueMap(catalogueEntries), [catalogueEntries]);
+  const encounterMap = useMemo(() => new Map(encounters.map((encounter) => [encounter.id, encounter])), [encounters]);
 
   useEffect(() => {
     if (!activeBrew || loading) return;
@@ -147,7 +160,15 @@ export default function App() {
   const openCatalogue = (entry?: CatalogueEntry) => {
     setCatalogueSelection(entry ?? null);
     setCatalogueOpen(true);
+    setEncountersOpen(false);
     setMobileSection('catalogue');
+  };
+
+  const openEncounters = (encounter?: Encounter) => {
+    if (encounter) setEncounterSelectedId(encounter.id);
+    setCatalogueOpen(false);
+    setEncountersOpen(true);
+    setMobileSection('encounters');
   };
 
   const openReferenceInCatalogue = () => {
@@ -161,6 +182,58 @@ export default function App() {
     setReferenceEntry(null);
     setCatalogueOpen(false);
     setMobileSection('editor');
+  };
+
+  const insertEncounterReference = (encounter: Encounter) => {
+    insertText(formatEncounterReference(encounter));
+    setEncountersOpen(false);
+    setMobileSection('editor');
+  };
+
+  const persistEncounter = (encounter: Encounter) => {
+    setEncounters((current) => [encounter, ...current.filter((item) => item.id !== encounter.id)]);
+    void saveEncounter(encounter)
+      .then(() => setSaveState('Encounter saved locally'))
+      .catch(() => setSaveState('Encounter save failed'));
+  };
+
+  const createNewEncounter = () => {
+    const encounter = createCombatEncounter('New encounter', partyMembers);
+    persistEncounter(encounter);
+    setEncounterSelectedId(encounter.id);
+  };
+
+  const deleteEncounter = (encounter: Encounter) => {
+    if (!window.confirm(`Delete “${encounter.name || 'Untitled encounter'}”? This cannot be undone.`)) return;
+    setEncounters((current) => current.filter((item) => item.id !== encounter.id));
+    setEncounterSelectedId((currentId) => currentId === encounter.id ? null : currentId);
+    void deleteStoredEncounter(encounter.id)
+      .then(() => setSaveState('Encounter deleted locally'))
+      .catch(() => setSaveState('Encounter deletion failed'));
+  };
+
+  const persistPartyMember = (member: PartyMember) => {
+    const next = {
+      ...member,
+      name: member.name.replace(/[\r\n]/g, ' '),
+      updatedAt: new Date().toISOString()
+    };
+    setPartyMembers((current) => [...current.filter((item) => item.id !== next.id), next].sort((left, right) => left.createdAt.localeCompare(right.createdAt)));
+    void savePartyMember(next)
+      .then(() => setSaveState('Party roster saved locally'))
+      .catch(() => setSaveState('Party roster save failed'));
+  };
+
+  const addPartyMember = (name: string, armorClass: number | null, maxHitPoints: number | null) => {
+    persistPartyMember(createPartyMember(name, armorClass, maxHitPoints));
+  };
+
+  const deletePartyMember = (member: PartyMember) => {
+    if (!window.confirm(`Remove “${member.name}” from the current party roster? Existing encounters will be unchanged.`)) return;
+    setPartyMembers((current) => current.filter((item) => item.id !== member.id));
+    void deleteStoredPartyMember(member.id)
+      .then(() => setSaveState('Party member removed locally'))
+      .catch(() => setSaveState('Party roster deletion failed'));
   };
 
   const undo = () => {
@@ -336,7 +409,7 @@ export default function App() {
         <div className="brand-lockup">
           <span className="brand-mark" aria-hidden>✦</span>
           <span>Homebrewry</span>
-          <span className="phase-badge">Phase 5 beta</span>
+          <span className="phase-badge">Phase 6 beta</span>
         </div>
         <div className="desktop-view-controls" aria-label="Preview layout">
           {(['editor', 'split', 'preview'] as ViewMode[]).map((mode) => (
@@ -346,6 +419,7 @@ export default function App() {
               onClick={() => {
                 setViewMode(mode);
                 setCatalogueOpen(false);
+                setEncountersOpen(false);
               }}
               type="button"
             >
@@ -353,6 +427,7 @@ export default function App() {
             </button>
           ))}
           <button className={catalogueOpen ? 'is-selected' : ''} onClick={() => catalogueOpen ? setCatalogueOpen(false) : openCatalogue()} type="button">Catalogue</button>
+          <button className={encountersOpen ? 'is-selected' : ''} onClick={() => encountersOpen ? setEncountersOpen(false) : openEncounters()} type="button">Encounters</button>
           <button onClick={() => window.print()} type="button">Print</button>
         </div>
         <div className="cloud-controls">
@@ -379,8 +454,13 @@ export default function App() {
                 openCatalogue();
                 return;
               }
+              if (section === 'encounters') {
+                openEncounters();
+                return;
+              }
               setMobileSection(section);
               setCatalogueOpen(false);
+              setEncountersOpen(false);
             }}
             type="button"
           >
@@ -397,6 +477,22 @@ export default function App() {
           loading={catalogueLoading}
           onInsertReference={insertCatalogueReference}
           selectedEntry={catalogueSelection}
+        />
+      ) : encountersOpen ? (
+        <EncounterPanel
+          encounters={encounters}
+          loading={catalogueLoading}
+          monsters={catalogueEntries.filter((entry) => entry.category === 'monster')}
+          onCreateEncounter={createNewEncounter}
+          onCreatePartyMember={addPartyMember}
+          onDeleteEncounter={deleteEncounter}
+          onDeletePartyMember={deletePartyMember}
+          onInsertReference={insertEncounterReference}
+          onSelectEncounter={setEncounterSelectedId}
+          onUpdateEncounter={persistEncounter}
+          onUpdatePartyMember={persistPartyMember}
+          partyMembers={partyMembers}
+          selectedId={encounterSelectedId}
         />
       ) : (
         <div className={`workspace view-${viewMode}`}>
@@ -437,6 +533,7 @@ export default function App() {
                 }
               }}
               onOpenCatalogue={openCatalogue}
+              onOpenEncounters={openEncounters}
               onRedo={redo}
               onReplaceAll={replaceAll}
               onReplaceChange={setReplaceValue}
@@ -449,7 +546,7 @@ export default function App() {
             />
             <section className="preview-pane" aria-label="Live preview">
               <div className="preview-canvas">
-                <BrewPreview assets={assetMap} brew={activeBrew} catalogue={catalogueMap} onReferenceOpen={setReferenceEntry} />
+                <BrewPreview assets={assetMap} brew={activeBrew} catalogue={catalogueMap} encounters={encounterMap} onEncounterOpen={openEncounters} onReferenceOpen={setReferenceEntry} />
               </div>
             </section>
           </div>

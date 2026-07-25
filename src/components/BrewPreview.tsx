@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { catalogueReferenceFromUrl, entryFromReference, remarkCatalogueReferences } from '../catalogue/references';
+import { encounterReferenceFromUrl, remarkEncounterReferences } from '../lib/encounterReferences';
 import { getHeadingId } from '../lib/outline';
 import { parseRendererBlocks, splitRendererPages, type RendererBlock } from '../renderer/blocks';
 import type { CatalogueEntry } from '../catalogue/types';
-import type { Brew, BrewAsset } from '../types';
+import type { Brew, BrewAsset, Encounter } from '../types';
 import { CatalogueEntryDetails } from './CatalogueEntryDetails';
 
 type BrewPreviewProps = {
@@ -13,6 +14,8 @@ type BrewPreviewProps = {
   assets?: ReadonlyMap<string, BrewAsset>;
   catalogue?: ReadonlyMap<string, CatalogueEntry>;
   onReferenceOpen?: (entry: CatalogueEntry) => void;
+  encounters?: ReadonlyMap<string, Encounter>;
+  onEncounterOpen?: (encounter: Encounter) => void;
 };
 
 type MarkdownRendererProps = {
@@ -21,6 +24,8 @@ type MarkdownRendererProps = {
   assets?: ReadonlyMap<string, BrewAsset>;
   catalogue?: ReadonlyMap<string, CatalogueEntry>;
   onReferenceOpen?: (entry: CatalogueEntry) => void;
+  encounters?: ReadonlyMap<string, Encounter>;
+  onEncounterOpen?: (encounter: Encounter) => void;
 };
 
 function LocalAssetImage({ asset, alt }: { asset: BrewAsset; alt: string }) {
@@ -30,7 +35,7 @@ function LocalAssetImage({ asset, alt }: { asset: BrewAsset; alt: string }) {
 }
 
 function previewUrlTransform(url: string): string {
-  return catalogueReferenceFromUrl(url) ? url : defaultUrlTransform(url);
+  return catalogueReferenceFromUrl(url) || encounterReferenceFromUrl(url) ? url : defaultUrlTransform(url);
 }
 
 function CatalogueReferenceLink({
@@ -60,10 +65,28 @@ function CatalogueReferenceLink({
   );
 }
 
-function MarkdownRenderer({ content, getId, assets, catalogue, onReferenceOpen }: MarkdownRendererProps) {
+function EncounterReferenceLink({
+  children,
+  encounter,
+  onOpen
+}: {
+  children: ReactNode;
+  encounter: Encounter;
+  onOpen?: (encounter: Encounter) => void;
+}) {
+  return (
+    <button className="brew-encounter-reference" onClick={() => onOpen?.(encounter)} type="button">
+      <span>Combat encounter</span>
+      <strong>{children}</strong>
+      <small>{encounter.participants.length} combatant{encounter.participants.length === 1 ? '' : 's'} · {encounter.status}</small>
+    </button>
+  );
+}
+
+function MarkdownRenderer({ content, getId, assets, catalogue, onReferenceOpen, encounters, onEncounterOpen }: MarkdownRendererProps) {
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm, remarkCatalogueReferences]}
+      remarkPlugins={[remarkGfm, remarkCatalogueReferences, remarkEncounterReferences]}
       urlTransform={previewUrlTransform}
       components={{
         h1: ({ children }) => <h1 id={getId(children)}>{children}</h1>,
@@ -80,6 +103,13 @@ function MarkdownRenderer({ content, getId, assets, catalogue, onReferenceOpen }
           return <figure className="brew-image"><img alt={alt ?? ''} loading="lazy" src={src} /><figcaption>{alt}</figcaption></figure>;
         },
         a: ({ href, children }) => {
+          const encounterReference = encounterReferenceFromUrl(href);
+          if (encounterReference) {
+            const encounter = encounters?.get(encounterReference.id);
+            return encounter
+              ? <EncounterReferenceLink encounter={encounter} onOpen={onEncounterOpen}>{children}</EncounterReferenceLink>
+              : <span className="missing-reference">{children}</span>;
+          }
           const reference = catalogueReferenceFromUrl(href);
           if (!reference) return <a href={href}>{children}</a>;
           const entry = catalogue && entryFromReference(catalogue, reference);
@@ -111,15 +141,17 @@ function renderBlock(
   assets: ReadonlyMap<string, BrewAsset> | undefined,
   catalogue: ReadonlyMap<string, CatalogueEntry> | undefined,
   onReferenceOpen: ((entry: CatalogueEntry) => void) | undefined,
+  encounters: ReadonlyMap<string, Encounter> | undefined,
+  onEncounterOpen: ((encounter: Encounter) => void) | undefined,
   key: string
 ) {
-  if (block.type === 'markdown') return <MarkdownRenderer assets={assets} catalogue={catalogue} content={block.content} getId={getId} key={key} onReferenceOpen={onReferenceOpen} />;
-  if (block.type === 'columns') return <section className="brew-columns" key={key}><MarkdownRenderer assets={assets} catalogue={catalogue} content={block.content} getId={getId} onReferenceOpen={onReferenceOpen} /></section>;
+  if (block.type === 'markdown') return <MarkdownRenderer assets={assets} catalogue={catalogue} content={block.content} encounters={encounters} getId={getId} key={key} onEncounterOpen={onEncounterOpen} onReferenceOpen={onReferenceOpen} />;
+  if (block.type === 'columns') return <section className="brew-columns" key={key}><MarkdownRenderer assets={assets} catalogue={catalogue} content={block.content} encounters={encounters} getId={getId} onEncounterOpen={onEncounterOpen} onReferenceOpen={onReferenceOpen} /></section>;
   if (block.type === 'callout') {
     return (
       <aside className={`brew-callout callout-${block.variant}`} key={key}>
         {block.title && <h4>{block.title}</h4>}
-        <MarkdownRenderer assets={assets} catalogue={catalogue} content={block.content} getId={getId} onReferenceOpen={onReferenceOpen} />
+        <MarkdownRenderer assets={assets} catalogue={catalogue} content={block.content} encounters={encounters} getId={getId} onEncounterOpen={onEncounterOpen} onReferenceOpen={onReferenceOpen} />
       </aside>
     );
   }
@@ -127,7 +159,7 @@ function renderBlock(
   return <CharacterBlock content={block.content} key={key} type={block.type} />;
 }
 
-export function BrewPreview({ brew, assets, catalogue, onReferenceOpen }: BrewPreviewProps) {
+export function BrewPreview({ brew, assets, catalogue, onReferenceOpen, encounters, onEncounterOpen }: BrewPreviewProps) {
   const headingOccurrences = new Map<string, number>();
   const getId = (children: ReactNode) => {
     const text = String(children);
@@ -145,7 +177,7 @@ export function BrewPreview({ brew, assets, catalogue, onReferenceOpen }: BrewPr
       {pages.map((page, pageIndex) => (
         <article className="brew-preview" key={`page-${pageIndex}`}>
           <div className="brew-page-number" aria-hidden>{pageIndex + 1}</div>
-          {page.map((block, blockIndex) => renderBlock(block, getId, assets, catalogue, onReferenceOpen, `${pageIndex}-${blockIndex}`))}
+          {page.map((block, blockIndex) => renderBlock(block, getId, assets, catalogue, onReferenceOpen, encounters, onEncounterOpen, `${pageIndex}-${blockIndex}`))}
         </article>
       ))}
     </div>

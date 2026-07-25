@@ -44,8 +44,11 @@ export function EditorPane({
         <button onClick={() => onInsert('**', '**')} type="button"><strong>B</strong></button>
         <button onClick={() => onInsert('_', '_')} type="button"><em>I</em></button>
         <button onClick={() => onInsert('[', '](https://)')} type="button">Link</button>
-        <button onClick={() => onInsert('\n> ##### Note\n> ', '\n')} type="button">Note</button>
+        <button onClick={() => onInsert('\n:::note Note\n', '\n:::\n')} type="button">Note</button>
         <button onClick={() => onInsert('\n```statblock\n', '\n```\n')} type="button">Stat block</button>
+        <button onClick={() => onInsert('\n```item\n', '\n```\n')} type="button">Item</button>
+        <button onClick={() => onInsert('\n```spell\n', '\n```\n')} type="button">Spell</button>
+        <button onClick={() => onInsert('\n:::pagebreak\n')} type="button">Page</button>
         <span className="toolbar-spacer" />
         <button onClick={onUndo} type="button">Undo</button>
         <button onClick={onRedo} type="button">Redo</button>

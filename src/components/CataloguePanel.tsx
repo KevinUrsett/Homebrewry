@@ -14,14 +14,15 @@ type CataloguePanelProps = {
   loading: boolean;
   error: string | null;
   onInsertReference: (entry: CatalogueEntry) => void;
+  selectedEntry?: CatalogueEntry | null;
 };
 
 const MAX_VISIBLE_RESULTS = 250;
 
-export function CataloguePanel({ entries, loading, error, onInsertReference }: CataloguePanelProps) {
+export function CataloguePanel({ entries, loading, error, onInsertReference, selectedEntry }: CataloguePanelProps) {
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<CatalogueCategory | 'all'>('monster');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [category, setCategory] = useState<CatalogueCategory | 'all'>(() => selectedEntry?.category ?? 'monster');
+  const [selectedId, setSelectedId] = useState<string | null>(() => selectedEntry?.id ?? null);
 
   const filtered = useMemo(() => {
     const terms = query.trim().toLowerCase();
@@ -63,10 +64,13 @@ export function CataloguePanel({ entries, loading, error, onInsertReference }: C
             value={query}
           />
           <label className="visually-hidden" htmlFor="catalogue-category">Filter category</label>
-          <select className="catalogue-category-select" id="catalogue-category" onChange={(event) => setCategory(event.target.value as CatalogueCategory | 'all')} value={category}>
-            <option value="all">All categories</option>
-            {catalogueCategories.map((item) => <option key={item} value={item}>{catalogueCategoryLabels[item]}</option>)}
-          </select>
+          <div className="catalogue-category-control">
+            <select className="catalogue-category-select" id="catalogue-category" onChange={(event) => setCategory(event.target.value as CatalogueCategory | 'all')} value={category}>
+              <option value="all">All categories</option>
+              {catalogueCategories.map((item) => <option key={item} value={item}>{catalogueCategoryLabels[item]}</option>)}
+            </select>
+            <span aria-hidden="true" className="catalogue-category-chevron">⌄</span>
+          </div>
           <p className="catalogue-result-count">{filtered.length.toLocaleString()} matches</p>
           <div className="catalogue-results">
             {visible.map((entry) => (

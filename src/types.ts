@@ -55,4 +55,4 @@ export type OutlineItem = {
 };
 
 export type ViewMode = 'split' | 'editor' | 'preview';
-export type MobileSection = 'library' | 'editor' | 'preview' | 'outline';
+export type MobileSection = 'library' | 'editor' | 'preview' | 'outline' | 'catalogue';

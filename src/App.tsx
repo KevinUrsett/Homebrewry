@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { CataloguePanel } from './components/CataloguePanel';
 import { BrewPreview } from './components/BrewPreview';
 import { EditorPane } from './components/EditorPane';
 import { ImportDialog } from './components/ImportDialog';
 import { LibraryPanel } from './components/LibraryPanel';
 import { OutlinePanel } from './components/OutlinePanel';
+import { ReferenceDialog } from './components/ReferenceDialog';
+import type { MarkdownEditorHandle } from './components/MarkdownEditor';
 import { createBrew, deleteBrew, replaceBrews, saveBrew, seedBrews } from './lib/brewStore';
 import { createAsset, listAssets, replaceAssets, saveAsset } from './lib/assetStore';
 import { syncAssets } from './lib/assetSync';
@@ -12,13 +15,17 @@ import { isGoogleConfigured, requestDriveAccess } from './lib/googleIdentity';
 import { getOutline } from './lib/outline';
 import { importHomebrewerySource, titleFromImportedSource } from './lib/importer';
 import { overwriteDriveBrew, syncBrews } from './lib/sync';
+import { loadCatalogue, toCatalogueMap } from './catalogue/catalogueData';
+import { formatCatalogueReference } from './catalogue/references';
+import type { CatalogueEntry } from './catalogue/types';
 import type { Brew, BrewAsset, MobileSection, ViewMode } from './types';
 
 const mobileLabels: Record<MobileSection, string> = {
   library: 'Brews',
   editor: 'Edit',
   preview: 'Preview',
-  outline: 'Outline'
+  outline: 'Outline',
+  catalogue: 'Catalogue'
 };
 
 export default function App() {
@@ -36,7 +43,13 @@ export default function App() {
   const [importOpen, setImportOpen] = useState(false);
   const [findValue, setFindValue] = useState('');
   const [replaceValue, setReplaceValue] = useState('');
-  const editorRef = useRef<HTMLTextAreaElement>(null);
+  const [catalogueEntries, setCatalogueEntries] = useState<CatalogueEntry[]>([]);
+  const [catalogueLoading, setCatalogueLoading] = useState(true);
+  const [catalogueError, setCatalogueError] = useState<string | null>(null);
+  const [catalogueOpen, setCatalogueOpen] = useState(false);
+  const [referenceEntry, setReferenceEntry] = useState<CatalogueEntry | null>(null);
+  const editorRef = useRef<MarkdownEditorHandle>(null);
+  const selectionRef = useRef({ start: 0, end: 0 });
   const historyRef = useRef<string[]>([]);
   const redoRef = useRef<string[]>([]);
 
@@ -52,11 +65,29 @@ export default function App() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    loadCatalogue()
+      .then((entries) => {
+        if (!cancelled) setCatalogueEntries(entries);
+      })
+      .catch((error) => {
+        if (!cancelled) setCatalogueError(error instanceof Error ? error.message : 'Unknown catalogue error');
+      })
+      .finally(() => {
+        if (!cancelled) setCatalogueLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const activeBrew = useMemo(
     () => brews.find((brew) => brew.id === activeId) ?? null,
     [activeId, brews]
   );
   const assetMap = useMemo(() => new Map(assets.map((asset) => [asset.id, asset])), [assets]);
+  const catalogueMap = useMemo(() => toCatalogueMap(catalogueEntries), [catalogueEntries]);
 
   useEffect(() => {
     if (!activeBrew || loading) return;
@@ -98,20 +129,30 @@ export default function App() {
   };
 
   const insertText = (before: string, after = '') => {
+    if (!activeBrew) return;
     const editor = editorRef.current;
-    if (!editor || !activeBrew) return;
-
-    const start = editor.selectionStart;
-    const end = editor.selectionEnd;
+    const selection = editor?.getSelection() ?? selectionRef.current;
+    const start = selection.start;
+    const end = selection.end;
     const selected = activeBrew.content.slice(start, end);
     const next = `${activeBrew.content.slice(0, start)}${before}${selected}${after}${activeBrew.content.slice(end)}`;
     updateContent(next);
 
-    window.requestAnimationFrame(() => {
-      editor.focus();
-      const cursor = start + before.length + selected.length + after.length;
-      editor.setSelectionRange(cursor, cursor);
-    });
+    const cursor = start + before.length + selected.length + after.length;
+    selectionRef.current = { start: cursor, end: cursor };
+    window.requestAnimationFrame(() => editorRef.current?.focus(cursor));
+  };
+
+  const openCatalogue = () => {
+    setCatalogueOpen(true);
+    setMobileSection('catalogue');
+  };
+
+  const insertCatalogueReference = (entry: CatalogueEntry) => {
+    insertText(formatCatalogueReference(entry));
+    setReferenceEntry(null);
+    setCatalogueOpen(false);
+    setMobileSection('editor');
   };
 
   const undo = () => {
@@ -287,19 +328,23 @@ export default function App() {
         <div className="brand-lockup">
           <span className="brand-mark" aria-hidden>✦</span>
           <span>Homebrewry</span>
-          <span className="phase-badge">Local beta</span>
+          <span className="phase-badge">Phase 5 beta</span>
         </div>
         <div className="desktop-view-controls" aria-label="Preview layout">
           {(['editor', 'split', 'preview'] as ViewMode[]).map((mode) => (
             <button
               className={viewMode === mode ? 'is-selected' : ''}
               key={mode}
-              onClick={() => setViewMode(mode)}
+              onClick={() => {
+                setViewMode(mode);
+                setCatalogueOpen(false);
+              }}
               type="button"
             >
               {mode === 'editor' ? 'Editor' : mode === 'preview' ? 'Preview' : 'Split'}
             </button>
           ))}
+          <button className={catalogueOpen ? 'is-selected' : ''} onClick={() => catalogueOpen ? setCatalogueOpen(false) : openCatalogue()} type="button">Catalogue</button>
           <button onClick={() => window.print()} type="button">Print</button>
         </div>
         <div className="cloud-controls">
@@ -321,7 +366,10 @@ export default function App() {
           <button
             className={mobileSection === section ? 'is-selected' : ''}
             key={section}
-            onClick={() => setMobileSection(section)}
+            onClick={() => {
+              setMobileSection(section);
+              setCatalogueOpen(section === 'catalogue');
+            }}
             type="button"
           >
             {mobileLabels[section]}
@@ -329,61 +377,74 @@ export default function App() {
         ))}
       </nav>
 
-      <div className={`workspace view-${viewMode}`}>
-        <LibraryPanel
-          activeId={activeBrew.id}
-          brews={brews}
-          onDelete={() => void deleteActiveBrew()}
-          onDuplicate={duplicateActiveBrew}
-          onImport={() => setImportOpen(true)}
-          onNew={createNewBrew}
-          onQueryChange={setQuery}
-          onSelect={(id) => {
-            setActiveId(id);
-            setMobileSection('editor');
-          }}
-          query={query}
+      {catalogueOpen ? (
+        <CataloguePanel
+          entries={catalogueEntries}
+          error={catalogueError}
+          loading={catalogueLoading}
+          onInsertReference={insertCatalogueReference}
         />
-
-        <div className="main-panes">
-          <EditorPane
-            content={activeBrew.content}
-            editorRef={editorRef}
-            findValue={findValue}
-            findVisible={findVisible}
-            onContentChange={updateContent}
-            onFindChange={setFindValue}
-            onInsert={insertText}
-            onImageUpload={(file) => void uploadImage(file)}
-            onKeyDown={(event) => {
-              if (!(event.metaKey || event.ctrlKey)) return;
-              if (event.key.toLowerCase() === 'z') {
-                event.preventDefault();
-                if (event.shiftKey) redo(); else undo();
-              }
-              if (event.key.toLowerCase() === 'y') {
-                event.preventDefault();
-                redo();
-              }
+      ) : (
+        <div className={`workspace view-${viewMode}`}>
+          <LibraryPanel
+            activeId={activeBrew.id}
+            brews={brews}
+            onDelete={() => void deleteActiveBrew()}
+            onDuplicate={duplicateActiveBrew}
+            onImport={() => setImportOpen(true)}
+            onNew={createNewBrew}
+            onQueryChange={setQuery}
+            onSelect={(id) => {
+              setActiveId(id);
+              setMobileSection('editor');
             }}
-            onRedo={redo}
-            onReplaceAll={replaceAll}
-            onReplaceChange={setReplaceValue}
-            onTitleChange={(title) => updateActiveBrew((brew) => ({ ...brew, title }))}
-            onToggleFind={() => setFindVisible((visible) => !visible)}
-            onUndo={undo}
-            replaceValue={replaceValue}
-            title={activeBrew.title}
+            query={query}
           />
-          <section className="preview-pane" aria-label="Live preview">
-            <div className="preview-canvas">
-              <BrewPreview assets={assetMap} brew={activeBrew} />
-            </div>
-          </section>
-        </div>
 
-        <OutlinePanel outline={outline} />
-      </div>
+          <div className="main-panes">
+            <EditorPane
+              catalogue={catalogueMap}
+              content={activeBrew.content}
+              editorRef={editorRef}
+              findValue={findValue}
+              findVisible={findVisible}
+              onContentChange={updateContent}
+              onFindChange={setFindValue}
+              onImageUpload={(file) => void uploadImage(file)}
+              onInsert={insertText}
+              onKeyDown={(event) => {
+                if (!(event.metaKey || event.ctrlKey)) return;
+                if (event.key.toLowerCase() === 'z') {
+                  event.preventDefault();
+                  if (event.shiftKey) redo(); else undo();
+                }
+                if (event.key.toLowerCase() === 'y') {
+                  event.preventDefault();
+                  redo();
+                }
+              }}
+              onOpenCatalogue={openCatalogue}
+              onRedo={redo}
+              onReferenceOpen={setReferenceEntry}
+              onReplaceAll={replaceAll}
+              onReplaceChange={setReplaceValue}
+              onSelectionChange={(selection) => { selectionRef.current = selection; }}
+              onTitleChange={(title) => updateActiveBrew((brew) => ({ ...brew, title }))}
+              onToggleFind={() => setFindVisible((visible) => !visible)}
+              onUndo={undo}
+              replaceValue={replaceValue}
+              title={activeBrew.title}
+            />
+            <section className="preview-pane" aria-label="Live preview">
+              <div className="preview-canvas">
+                <BrewPreview assets={assetMap} brew={activeBrew} catalogue={catalogueMap} onReferenceOpen={setReferenceEntry} />
+              </div>
+            </section>
+          </div>
+
+          <OutlinePanel outline={outline} />
+        </div>
+      )}
       {activeBrew.syncState === 'conflict' && activeBrew.conflict && (
         <div className="conflict-backdrop" role="dialog" aria-modal="true" aria-labelledby="conflict-title">
           <section className="conflict-dialog">
@@ -403,6 +464,7 @@ export default function App() {
         </div>
       )}
       {importOpen && <ImportDialog onClose={() => setImportOpen(false)} onImport={importBrew} />}
+      {referenceEntry && <ReferenceDialog entry={referenceEntry} onClose={() => setReferenceEntry(null)} onInsertReference={() => insertCatalogueReference(referenceEntry)} />}
     </div>
   );
 }

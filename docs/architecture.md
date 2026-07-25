@@ -32,3 +32,9 @@ Google Drive integration is disabled until `VITE_GOOGLE_CLIENT_ID` is supplied b
 `assetStore` keeps validated image blobs in IndexedDB. `assetSync` stores a matching app-owned Drive file and a stable asset identifier; the Markdown document references that identifier instead of a temporary Drive URL. The renderer resolves only local `asset://` identifiers and HTTPS image URLs.
 
 `importer` accepts pasted or text-file source, converts only known page commands, and reports unsupported constructs. It never enables imported script, style, raw HTML, or CSS execution.
+
+## Phase 5 catalogue and reference boundary
+
+`catalogue/catalogueData` lazily loads the versioned, local SRD data files and accepts only records marked `SRD-521`. The catalogue is a read-only data provider: it has no IndexedDB, Google Drive, OAuth, or renderer dependency. The current data import intentionally excludes upstream source code, UI, themes, fonts, images, and unverified records.
+
+`catalogue/references` owns the stable `[[category:id|label]]` syntax, URL conversion, and Markdown AST transformation. It is pure and data-provider independent. The preview resolves a reference only through a supplied read-only entry map; an absent entry is visibly marked rather than guessed. The CodeMirror editor uses the same parser for hover cards, and does not execute catalogue text or imported Markdown.

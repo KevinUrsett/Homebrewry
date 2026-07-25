@@ -1,15 +1,21 @@
-import { type KeyboardEvent, type RefObject, useRef } from 'react';
+import { type RefObject, useRef } from 'react';
+import type { CatalogueEntry } from '../catalogue/types';
+import { MarkdownEditor, type MarkdownEditorHandle } from './MarkdownEditor';
 
 type EditorPaneProps = {
   title: string;
   content: string;
-  editorRef: RefObject<HTMLTextAreaElement | null>;
+  editorRef: RefObject<MarkdownEditorHandle | null>;
+  catalogue: ReadonlyMap<string, CatalogueEntry>;
   findVisible: boolean;
   findValue: string;
   replaceValue: string;
   onTitleChange: (value: string) => void;
   onContentChange: (value: string) => void;
   onInsert: (before: string, after?: string) => void;
+  onOpenCatalogue: () => void;
+  onReferenceOpen: (entry: CatalogueEntry) => void;
+  onSelectionChange: (selection: { start: number; end: number }) => void;
   onImageUpload: (file: File) => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -17,19 +23,23 @@ type EditorPaneProps = {
   onFindChange: (value: string) => void;
   onReplaceChange: (value: string) => void;
   onReplaceAll: () => void;
-  onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+  onKeyDown: (event: KeyboardEvent) => void;
 };
 
 export function EditorPane({
   title,
   content,
   editorRef,
+  catalogue,
   findVisible,
   findValue,
   replaceValue,
   onTitleChange,
   onContentChange,
   onInsert,
+  onOpenCatalogue,
+  onReferenceOpen,
+  onSelectionChange,
   onImageUpload,
   onUndo,
   onRedo,
@@ -54,6 +64,7 @@ export function EditorPane({
         <button onClick={() => onInsert('\n```spell\n', '\n```\n')} type="button">Spell</button>
         <button onClick={() => onInsert('\n:::pagebreak\n')} type="button">Page</button>
         <button onClick={() => imageInputRef.current?.click()} type="button">Image</button>
+        <button onClick={onOpenCatalogue} type="button">Reference</button>
         <span className="toolbar-spacer" />
         <button onClick={onUndo} type="button">Undo</button>
         <button onClick={onRedo} type="button">Redo</button>
@@ -85,15 +96,14 @@ export function EditorPane({
         placeholder="Untitled Brew"
         value={title}
       />
-      <label className="visually-hidden" htmlFor="brew-content">Markdown content</label>
-      <textarea
-        className="markdown-editor"
-        id="brew-content"
-        onChange={(event) => onContentChange(event.target.value)}
+      <MarkdownEditor
+        catalogue={catalogue}
+        content={content}
+        onChange={onContentChange}
         onKeyDown={onKeyDown}
+        onReferenceOpen={onReferenceOpen}
+        onSelectionChange={onSelectionChange}
         ref={editorRef}
-        spellCheck
-        value={content}
       />
     </section>
   );

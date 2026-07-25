@@ -1,0 +1,8 @@
+/* Solbera/Ners D&D5e font remakes — CC-BY-SA-4.0. See THIRD_PARTY_NOTICES.md. */
+@font-face { font-display: swap; font-family: "Bookinsanity"; font-style: normal; font-weight: 400; src: url("solbera-dnd-fonts/dist/Bookinsanity.woff2") format("woff2"); }
+@font-face { font-display: swap; font-family: "Bookinsanity"; font-style: italic; font-weight: 400; src: url("solbera-dnd-fonts/dist/Bookinsanity Italic.woff2") format("woff2"); }
+@font-face { font-display: swap; font-family: "Bookinsanity"; font-style: normal; font-weight: 700; src: url("solbera-dnd-fonts/dist/Bookinsanity Bold.woff2") format("woff2"); }
+@font-face { font-display: swap; font-family: "Bookinsanity"; font-style: italic; font-weight: 700; src: url("solbera-dnd-fonts/dist/Bookinsanity Bold Italic.woff2") format("woff2"); }
+@font-face { font-display: swap; font-family: "Nodesto Caps Condensed"; font-style: normal; font-weight: 700; src: url("solbera-dnd-fonts/dist/Nodesto Caps Condensed Bold.woff2") format("woff2"); }
+@font-face { font-display: swap; font-family: "Scaly Sans"; font-style: normal; font-weight: 400; src: url("solbera-dnd-fonts/dist/Scaly Sans.woff2") format("woff2"); }
+@font-face { font-display: swap; font-family: "Scaly Sans"; font-style: normal; font-weight: 700; src: url("solbera-dnd-fonts/dist/Scaly Sans Bold.woff2") format("woff2"); }

@@ -11,6 +11,25 @@ export type DriveMetadata = {
   lastSyncedAt: string;
 };
 
+export type AssetDriveMetadata = {
+  fileId: string;
+  revisionId: string;
+  lastSyncedAt: string;
+};
+
+export type BrewAsset = {
+  id: string;
+  name: string;
+  alt: string;
+  mimeType: string;
+  size: number;
+  blob: Blob;
+  createdAt: string;
+  updatedAt: string;
+  drive?: AssetDriveMetadata;
+  syncState?: SyncState;
+};
+
 export type ConflictSnapshot = {
   remoteBrew: Pick<Brew, 'title' | 'content' | 'createdAt' | 'updatedAt' | 'version' | 'rendererSettings'>;
   remoteRevisionId: string;

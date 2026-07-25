@@ -9,6 +9,7 @@ type LibraryPanelProps = {
   onNew: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  onImport: () => void;
 };
 
 const formatUpdatedAt = (value: string) =>
@@ -31,6 +32,7 @@ export function LibraryPanel({
   onNew,
   onDuplicate,
   onDelete
+  , onImport
 }: LibraryPanelProps) {
   const filtered = brews.filter((brew) => brew.title.toLowerCase().includes(query.trim().toLowerCase()));
 
@@ -38,7 +40,10 @@ export function LibraryPanel({
     <aside className="library-panel side-panel" aria-label="Brew library">
       <div className="panel-heading panel-heading-actions">
         <span>Brews</span>
-        <button className="icon-button" onClick={onNew} type="button" title="Create brew">+</button>
+        <span className="panel-heading-controls">
+          <button className="import-button" onClick={onImport} type="button">Import</button>
+          <button className="icon-button" onClick={onNew} type="button" title="Create brew">+</button>
+        </span>
       </div>
       <label className="visually-hidden" htmlFor="brew-search">Search brews</label>
       <input

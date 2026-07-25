@@ -43,6 +43,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .outline-panel { border-width: 0 0 0 1px; }
 .panel-heading { align-items: center; border-bottom: 1px solid #d8c9ae; color: #594132; display: flex; font-size: .76rem; font-weight: 800; justify-content: space-between; letter-spacing: .08em; padding: 15px 13px; text-transform: uppercase; }
 .panel-heading-actions { padding-right: 8px; }
+.panel-heading-controls { align-items: center; display: flex; gap: 6px; }
+.import-button { background: transparent; border: 0; color: #71553e; font-size: .7rem; font-weight: 700; padding: 4px; text-transform: uppercase; }
 .icon-button { background: #5d2f26; border: 0; border-radius: 5px; color: #fff9ed; font-size: 1.1rem; height: 27px; line-height: 1; width: 27px; }
 .search-input { background: #fffaf0; border: 1px solid #d1c0a5; border-radius: 6px; margin: 12px; padding: 8px 9px; width: calc(100% - 24px); }
 .brew-list { display: flex; flex: 1; flex-direction: column; gap: 3px; overflow: auto; padding: 0 7px 12px; }
@@ -75,22 +77,27 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .preview-pane { background: #d9d0c1; min-width: 0; overflow: auto; padding: 25px; }
 .preview-canvas { margin: 0 auto; max-width: 800px; }
 .brew-book { display: grid; gap: 24px; }
-.brew-preview { background: #f7f0df; box-shadow: 0 10px 30px rgb(43 28 19 / 18%); color: #1f1812; font-family: Georgia, "Times New Roman", serif; font-size: 1rem; line-height: 1.5; min-height: 900px; padding: clamp(30px, 5vw, 58px); position: relative; }
+.brew-preview { background: #f7f0df; box-shadow: 0 10px 30px rgb(43 28 19 / 18%); color: #1f1812; font-family: "Bookinsanity", Georgia, "Times New Roman", serif; font-size: 1.05rem; line-height: 1.5; min-height: 900px; padding: clamp(30px, 5vw, 58px); position: relative; }
 .brew-book.tone-light .brew-preview { background: #fffdf5; }
 .brew-preview h1, .brew-preview h2, .brew-preview h3, .brew-preview h4 { color: var(--brew-accent); font-weight: 700; line-height: 1.15; scroll-margin-top: 18px; }
-.brew-preview h1 { border-bottom: 3px solid var(--brew-accent); font-size: 2.45rem; letter-spacing: -.035em; margin: 0 0 .35em; }
-.brew-preview h2 { border-bottom: 1px solid color-mix(in srgb, var(--brew-accent), #fff 35%); font-size: 1.62rem; margin: 1.4em 0 .45em; }
+.brew-preview h1, .brew-preview h2 { font-family: "Nodesto Caps Condensed", Georgia, serif; letter-spacing: .025em; }
+.brew-preview h1 { border-bottom: 3px solid var(--brew-accent); font-size: 2.8rem; margin: 0 0 .35em; }
+.brew-preview h2 { border-bottom: 1px solid color-mix(in srgb, var(--brew-accent), #fff 35%); font-size: 1.9rem; margin: 1.4em 0 .45em; }
 .brew-preview h3 { font-size: 1.22rem; margin: 1.25em 0 .35em; }
 .brew-preview h4 { font-family: Inter, sans-serif; font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; }
 .brew-preview p { margin: .65em 0; }
 .brew-preview em { color: #5c4434; }
 .brew-preview blockquote { background: #ead9b8; border-left: 5px solid var(--brew-accent); margin: 1.15em 0; padding: 10px 15px; }
 .brew-preview blockquote p { margin: .25em 0; }
-.brew-preview table { border-collapse: collapse; font-size: .9rem; margin: 1em 0; width: 100%; }
+.brew-preview table { border-collapse: collapse; font-family: "Scaly Sans", Inter, sans-serif; font-size: .9rem; margin: 1em 0; width: 100%; }
 .brew-preview th { border-bottom: 2px solid var(--brew-accent); color: var(--brew-accent); text-align: left; }
 .brew-preview td { border-bottom: 1px solid #cdbb9e; }
 .brew-preview th, .brew-preview td { padding: 6px 8px; }
 .brew-preview code { background: #eadcc2; border-radius: 3px; padding: 1px 4px; }
+.brew-image { break-inside: avoid; margin: 1.2em auto; max-width: min(100%, 620px); }
+.brew-image img { border: 1px solid #bca789; display: block; height: auto; max-width: 100%; }
+.brew-image figcaption { color: #725d48; font-family: "Scaly Sans", Inter, sans-serif; font-size: .78rem; font-style: italic; margin-top: 5px; text-align: center; }
+.missing-asset { background: #f3d3cd; color: #8a2f27; display: inline-block; font-family: Inter, sans-serif; font-size: .82rem; padding: 6px 8px; }
 .brew-page-number { bottom: 18px; color: #9a856e; font-family: Inter, sans-serif; font-size: .7rem; position: absolute; right: 25px; }
 .brew-callout { border: 1px solid #bea06e; border-left: 6px solid var(--brew-accent); break-inside: avoid; margin: 1.15em 0; padding: 12px 16px; }
 .brew-callout h4 { margin: 0 0 6px; }
@@ -121,6 +128,14 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .conflict-actions { display: grid; gap: 8px; }
 .conflict-actions button { background: #f7f0df; border: 1px solid #ad9576; border-radius: 6px; color: #422f25; padding: 9px; text-align: left; }
 .conflict-actions .danger-button { border-color: #a85a4d; color: #8a2f27; }
+.import-backdrop { align-items: center; background: rgb(30 20 15 / 58%); display: flex; inset: 0; justify-content: center; padding: 20px; position: fixed; z-index: 10; }
+.import-dialog { background: #fffaf0; border: 1px solid #b99464; border-radius: 10px; box-shadow: 0 20px 60px rgb(20 12 8 / 40%); max-width: 700px; padding: 25px; width: 100%; }
+.import-dialog h2 { color: #5d2f26; font-family: Georgia, serif; margin: 0 0 8px; }
+.import-dialog p { color: #513f32; line-height: 1.5; }
+.import-dialog textarea { border: 1px solid #cbb99d; border-radius: 6px; font-family: "SFMono-Regular", Consolas, monospace; min-height: 260px; padding: 10px; resize: vertical; width: 100%; }
+.import-actions { align-items: center; display: grid; gap: 8px; grid-template-columns: auto 1fr auto auto; margin-top: 12px; }
+.import-actions button { background: #f7f0df; border: 1px solid #ad9576; border-radius: 6px; color: #422f25; padding: 8px 10px; }
+.import-actions .primary-button { background: #5d2f26; border-color: #5d2f26; color: #fffaf0; }
 .visually-hidden { height: 1px; margin: -1px; overflow: hidden; position: absolute; width: 1px; clip: rect(0, 0, 0, 0); }
 
 .workspace.view-editor .main-panes, .workspace.view-preview .main-panes { grid-template-columns: minmax(0, 1fr); }

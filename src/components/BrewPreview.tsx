@@ -1,18 +1,25 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { useEffect, useMemo, type CSSProperties, type ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { getHeadingId } from '../lib/outline';
 import { parseRendererBlocks, splitRendererPages, type RendererBlock } from '../renderer/blocks';
-import type { Brew } from '../types';
+import type { Brew, BrewAsset } from '../types';
 
-type BrewPreviewProps = { brew: Brew };
+type BrewPreviewProps = { brew: Brew; assets?: ReadonlyMap<string, BrewAsset> };
 
 type MarkdownRendererProps = {
   content: string;
   getId: (children: ReactNode) => string;
+  assets?: ReadonlyMap<string, BrewAsset>;
 };
 
-function MarkdownRenderer({ content, getId }: MarkdownRendererProps) {
+function LocalAssetImage({ asset, alt }: { asset: BrewAsset; alt: string }) {
+  const url = useMemo(() => URL.createObjectURL(asset.blob), [asset.blob]);
+  useEffect(() => () => URL.revokeObjectURL(url), [url]);
+  return <figure className="brew-image"><img alt={alt} src={url} /><figcaption>{alt}</figcaption></figure>;
+}
+
+function MarkdownRenderer({ content, getId, assets }: MarkdownRendererProps) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -21,7 +28,15 @@ function MarkdownRenderer({ content, getId }: MarkdownRendererProps) {
         h2: ({ children }) => <h2 id={getId(children)}>{children}</h2>,
         h3: ({ children }) => <h3 id={getId(children)}>{children}</h3>,
         h4: ({ children }) => <h4 id={getId(children)}>{children}</h4>,
-        blockquote: ({ children }) => <blockquote>{children}</blockquote>
+        blockquote: ({ children }) => <blockquote>{children}</blockquote>,
+        img: ({ src, alt }) => {
+          if (src?.startsWith('asset://')) {
+            const asset = assets?.get(src.slice('asset://'.length));
+            return asset ? <LocalAssetImage alt={alt ?? asset.alt} asset={asset} /> : <span className="missing-asset">Image unavailable on this device</span>;
+          }
+          if (!src?.match(/^https?:\/\//i)) return null;
+          return <figure className="brew-image"><img alt={alt ?? ''} loading="lazy" src={src} /><figcaption>{alt}</figcaption></figure>;
+        }
       }}
     >
       {content}
@@ -40,14 +55,14 @@ function CharacterBlock({ type, content }: { type: 'statblock' | 'item' | 'spell
   );
 }
 
-function renderBlock(block: RendererBlock, getId: (children: ReactNode) => string, key: string) {
-  if (block.type === 'markdown') return <MarkdownRenderer content={block.content} getId={getId} key={key} />;
-  if (block.type === 'columns') return <section className="brew-columns" key={key}><MarkdownRenderer content={block.content} getId={getId} /></section>;
+function renderBlock(block: RendererBlock, getId: (children: ReactNode) => string, assets: ReadonlyMap<string, BrewAsset> | undefined, key: string) {
+  if (block.type === 'markdown') return <MarkdownRenderer assets={assets} content={block.content} getId={getId} key={key} />;
+  if (block.type === 'columns') return <section className="brew-columns" key={key}><MarkdownRenderer assets={assets} content={block.content} getId={getId} /></section>;
   if (block.type === 'callout') {
     return (
       <aside className={`brew-callout callout-${block.variant}`} key={key}>
         {block.title && <h4>{block.title}</h4>}
-        <MarkdownRenderer content={block.content} getId={getId} />
+        <MarkdownRenderer assets={assets} content={block.content} getId={getId} />
       </aside>
     );
   }
@@ -55,7 +70,7 @@ function renderBlock(block: RendererBlock, getId: (children: ReactNode) => strin
   return <CharacterBlock content={block.content} key={key} type={block.type} />;
 }
 
-export function BrewPreview({ brew }: BrewPreviewProps) {
+export function BrewPreview({ brew, assets }: BrewPreviewProps) {
   const headingOccurrences = new Map<string, number>();
   const getId = (children: ReactNode) => {
     const text = String(children);
@@ -73,7 +88,7 @@ export function BrewPreview({ brew }: BrewPreviewProps) {
       {pages.map((page, pageIndex) => (
         <article className="brew-preview" key={`page-${pageIndex}`}>
           <div className="brew-page-number" aria-hidden>{pageIndex + 1}</div>
-          {page.map((block, blockIndex) => renderBlock(block, getId, `${pageIndex}-${blockIndex}`))}
+          {page.map((block, blockIndex) => renderBlock(block, getId, assets, `${pageIndex}-${blockIndex}`))}
         </article>
       ))}
     </div>

@@ -3,6 +3,7 @@ import type { Brew } from '../types';
 
 const DATABASE_NAME = 'homebrewry';
 const STORE_NAME = 'brews';
+export const ASSET_STORE_NAME = 'assets';
 
 const starterContent = `# The Ashen Road
 
@@ -26,11 +27,17 @@ The old imperial road disappears beneath drifts of pale ash. At dusk, a bell rin
 The scout fires from cover, then offers a bargain: carry a sealed letter to the next settlement, or leave the road before nightfall.
 `;
 
-const getDatabase = () =>
-  openDB(DATABASE_NAME, 2, {
-    upgrade(database) {
-      const store = database.createObjectStore(STORE_NAME, { keyPath: 'id' });
-      store.createIndex('updatedAt', 'updatedAt');
+export const getDatabase = () =>
+  openDB(DATABASE_NAME, 3, {
+    upgrade(database, oldVersion) {
+      if (oldVersion < 1) {
+        const store = database.createObjectStore(STORE_NAME, { keyPath: 'id' });
+        store.createIndex('updatedAt', 'updatedAt');
+      }
+      if (oldVersion < 3) {
+        const assets = database.createObjectStore(ASSET_STORE_NAME, { keyPath: 'id' });
+        assets.createIndex('updatedAt', 'updatedAt');
+      }
     }
   });
 

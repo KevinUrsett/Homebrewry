@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { catalogueReferenceFromUrl, entryFromReference, remarkCatalogueReferences } from '../catalogue/references';
 import { getHeadingId } from '../lib/outline';
@@ -27,6 +27,10 @@ function LocalAssetImage({ asset, alt }: { asset: BrewAsset; alt: string }) {
   const url = useMemo(() => URL.createObjectURL(asset.blob), [asset.blob]);
   useEffect(() => () => URL.revokeObjectURL(url), [url]);
   return <figure className="brew-image"><img alt={alt} src={url} /><figcaption>{alt}</figcaption></figure>;
+}
+
+function previewUrlTransform(url: string): string {
+  return catalogueReferenceFromUrl(url) ? url : defaultUrlTransform(url);
 }
 
 function CatalogueReferenceLink({
@@ -60,6 +64,7 @@ function MarkdownRenderer({ content, getId, assets, catalogue, onReferenceOpen }
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm, remarkCatalogueReferences]}
+      urlTransform={previewUrlTransform}
       components={{
         h1: ({ children }) => <h1 id={getId(children)}>{children}</h1>,
         h2: ({ children }) => <h2 id={getId(children)}>{children}</h2>,

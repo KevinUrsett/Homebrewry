@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import {
   cataloguePlainText,
   dataRecord,
@@ -11,6 +12,7 @@ import { catalogueCategoryLabels, type CatalogueEntry } from '../catalogue/types
 type CatalogueEntryDetailsProps = {
   entry: CatalogueEntry;
   compact?: boolean;
+  actions?: ReactNode;
 };
 
 function TextBlock({ children }: { children: string }) {
@@ -102,7 +104,7 @@ function GenericDetails({ entry }: { entry: CatalogueEntry }) {
   );
 }
 
-export function CatalogueEntryDetails({ entry, compact = false }: CatalogueEntryDetailsProps) {
+export function CatalogueEntryDetails({ entry, compact = false, actions }: CatalogueEntryDetailsProps) {
   const summary = entrySummary(entry);
   if (compact) {
     return (
@@ -122,6 +124,7 @@ export function CatalogueEntryDetails({ entry, compact = false }: CatalogueEntry
         <h2>{entry.name}</h2>
         {entry.category !== 'monster' && summary.map((line) => <p className="catalogue-summary" key={line}>{line}</p>)}
       </header>
+      {actions && <div className="catalogue-entry-actions">{actions}</div>}
       {entry.category === 'monster' ? <MonsterDetails entry={entry} /> : <GenericDetails entry={entry} />}
     </article>
   );

@@ -1,0 +1,69 @@
+/* @vitest-environment jsdom */
+
+import { act } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { catalogueEntryKey } from '../catalogue/types';
+import type { CatalogueEntry } from '../catalogue/types';
+import type { Brew } from '../types';
+import { BrewPreview } from './BrewPreview';
+
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+const entry: CatalogueEntry = {
+  id: 'c674b91f-94c8-5c80-9d1d-31bef50bc779',
+  category: 'monster',
+  name: 'Aboleth',
+  description: 'An ancient aberration.',
+  data: { type: 'aberration' },
+  source: 'SRD-521',
+  ruleset: '5.5e'
+};
+
+const brew: Brew = {
+  id: 'brew-id',
+  title: 'Reference test',
+  content: 'Meet [[monster:c674b91f-94c8-5c80-9d1d-31bef50bc779|Aboleth]].',
+  createdAt: '2026-07-25T00:00:00.000Z',
+  updatedAt: '2026-07-25T00:00:00.000Z',
+  version: 1,
+  rendererSettings: { accentColor: '#6a2f26', parchmentTone: 'warm' }
+};
+
+const mounted: Array<{ container: HTMLDivElement; root: Root }> = [];
+
+afterEach(() => {
+  mounted.splice(0).forEach(({ container, root }) => {
+    act(() => root.unmount());
+    container.remove();
+  });
+});
+
+describe('BrewPreview', () => {
+  it('opens a validated catalogue reference when its rendered name is clicked', async () => {
+    const onReferenceOpen = vi.fn();
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push({ container, root });
+
+    await act(async () => {
+      root.render(
+        <BrewPreview
+          brew={brew}
+          catalogue={new Map([[catalogueEntryKey(entry), entry]])}
+          onReferenceOpen={onReferenceOpen}
+        />
+      );
+    });
+
+    const reference = container.querySelector<HTMLButtonElement>('.catalogue-reference-link');
+    expect(reference?.textContent).toBe('Aboleth');
+
+    await act(async () => {
+      reference?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(onReferenceOpen).toHaveBeenCalledWith(entry);
+  });
+});

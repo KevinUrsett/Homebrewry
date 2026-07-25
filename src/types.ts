@@ -11,6 +11,11 @@ export type DriveMetadata = {
   lastSyncedAt: string;
 };
 
+export type ConflictSnapshot = {
+  remoteBrew: Pick<Brew, 'title' | 'content' | 'createdAt' | 'updatedAt' | 'version' | 'rendererSettings'>;
+  remoteRevisionId: string;
+};
+
 export type Brew = {
   id: string;
   title: string;
@@ -21,6 +26,7 @@ export type Brew = {
   rendererSettings: RendererSettings;
   drive?: DriveMetadata;
   syncState?: SyncState;
+  conflict?: ConflictSnapshot;
 };
 
 export type OutlineItem = {

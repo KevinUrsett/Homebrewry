@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Homebrewry">
+  <rect width="128" height="128" rx="24" fill="#2c211b"/>
+  <path d="M34 23h55v82H34z" fill="#f7f0df"/>
+  <path d="M40 34h42M40 47h42M40 60h30M40 83h42" stroke="#7a2f27" stroke-width="5" stroke-linecap="round"/>
+  <path d="M84 73l11 20-10-4-8 8 1-24z" fill="#c5963e"/>
+</svg>

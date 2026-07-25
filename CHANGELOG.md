@@ -4,6 +4,9 @@
 
 ### Added
 
+- Per-brew sync badges and an explicit conflict-resolution dialog.
+- Options to keep the Drive version, overwrite Drive intentionally, or retain both copies.
+
 - Configuration-ready Google Identity Services and Google Drive sync layer.
 - Manual Drive sync controls and revision-based conflict detection.
 - `.env.example` for the public OAuth client ID; access tokens remain in memory only.

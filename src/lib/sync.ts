@@ -14,7 +14,24 @@ const asSynced = (brew: Brew, file: { id: string; headRevisionId?: string }): Br
     revisionId: file.headRevisionId ?? '',
     lastSyncedAt: new Date().toISOString()
   },
-  syncState: 'synced'
+  syncState: 'synced',
+  conflict: undefined
+});
+
+const withConflict = (local: Brew, remote: { brew: Brew; file: { headRevisionId?: string } }): Brew => ({
+  ...local,
+  syncState: 'conflict',
+  conflict: {
+    remoteBrew: {
+      title: remote.brew.title,
+      content: remote.brew.content,
+      createdAt: remote.brew.createdAt,
+      updatedAt: remote.brew.updatedAt,
+      version: remote.brew.version,
+      rendererSettings: remote.brew.rendererSettings
+    },
+    remoteRevisionId: remote.file.headRevisionId ?? ''
+  }
 });
 
 export async function syncBrews(accessToken: string, brews: Brew[]): Promise<SyncResult> {
@@ -31,7 +48,7 @@ export async function syncBrews(accessToken: string, brews: Brew[]): Promise<Syn
     if (remote && local.drive && remote.file.headRevisionId !== local.drive.revisionId) {
       const localChanged = local.updatedAt > local.drive.lastSyncedAt;
       if (localChanged) {
-        synced.push({ ...local, syncState: 'conflict' });
+        synced.push(withConflict(local, remote));
         conflicts += 1;
         continue;
       }
@@ -46,7 +63,8 @@ export async function syncBrews(accessToken: string, brews: Brew[]): Promise<Syn
       changes += 1;
     } catch (error) {
       if (error instanceof DriveConflictError) {
-        synced.push({ ...local, syncState: 'conflict' });
+        const latest = local.drive ? remoteById.get(local.drive.fileId) : undefined;
+        synced.push(latest ? withConflict(local, latest) : { ...local, syncState: 'error' });
         conflicts += 1;
       } else {
         throw error;
@@ -71,4 +89,10 @@ export async function syncBrews(accessToken: string, brews: Brew[]): Promise<Syn
 
   if (conflicts) return { brews: synced, state: 'conflict', detail: `${conflicts} sync conflict${conflicts === 1 ? '' : 's'} need attention` };
   return { brews: synced, state: 'synced', detail: changes ? `Drive synced (${changes} updated)` : 'Drive is up to date' };
+}
+
+export async function overwriteDriveBrew(accessToken: string, brew: Brew): Promise<Brew> {
+  if (!brew.drive) throw new Error('This brew has no Drive copy to overwrite.');
+  const file = await uploadBrew(accessToken, brew);
+  return asSynced(brew, file);
 }

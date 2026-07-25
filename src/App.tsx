@@ -4,9 +4,10 @@ import { EditorPane } from './components/EditorPane';
 import { LibraryPanel } from './components/LibraryPanel';
 import { OutlinePanel } from './components/OutlinePanel';
 import { createBrew, deleteBrew, replaceBrews, saveBrew, seedBrews } from './lib/brewStore';
+import { keepBothVersions, resolveWithDriveVersion } from './lib/conflicts';
 import { isGoogleConfigured, requestDriveAccess } from './lib/googleIdentity';
 import { getOutline } from './lib/outline';
-import { syncBrews } from './lib/sync';
+import { overwriteDriveBrew, syncBrews } from './lib/sync';
 import type { Brew, MobileSection, ViewMode } from './types';
 
 const mobileLabels: Record<MobileSection, string> = {
@@ -193,6 +194,39 @@ export default function App() {
     }
   };
 
+  const replaceBrew = async (brew: Brew) => {
+    await saveBrew(brew);
+    setBrews((current) => current.map((item) => item.id === brew.id ? brew : item));
+  };
+
+  const keepDriveConflict = async () => {
+    if (!activeBrew) return;
+    await replaceBrew(resolveWithDriveVersion(activeBrew));
+    setSaveState('Kept the Drive version');
+  };
+
+  const keepBothConflict = async () => {
+    if (!activeBrew) return;
+    const resolved = keepBothVersions(activeBrew);
+    await replaceBrews(resolved);
+    setBrews((current) => current.flatMap((brew) => brew.id === activeBrew.id ? resolved : brew));
+    setSaveState('Kept both copies; sync the local copy when ready');
+  };
+
+  const overwriteDriveConflict = async () => {
+    if (!activeBrew || !accessToken) return;
+    try {
+      setSyncing(true);
+      const resolved = await overwriteDriveBrew(accessToken, activeBrew);
+      await replaceBrew(resolved);
+      setSaveState('Drive version replaced with this local copy');
+    } catch (error) {
+      setSaveState(error instanceof Error ? error.message : 'Could not replace the Drive version');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   if (loading || !activeBrew) {
     return <main className="loading-screen">Opening your local brew library…</main>;
   }
@@ -222,7 +256,7 @@ export default function App() {
         <div className="cloud-controls">
           {accessToken ? (
             <button onClick={() => void syncToDrive()} type="button" disabled={syncing}>
-              {syncing ? 'Syncing…' : 'Sync Drive'}
+              {syncing ? 'Syncing…' : 'Refresh & sync'}
             </button>
           ) : (
             <button onClick={() => void connectDrive()} type="button" disabled={!isGoogleConfigured()}>
@@ -299,6 +333,24 @@ export default function App() {
 
         <OutlinePanel outline={outline} />
       </div>
+      {activeBrew.syncState === 'conflict' && activeBrew.conflict && (
+        <div className="conflict-backdrop" role="dialog" aria-modal="true" aria-labelledby="conflict-title">
+          <section className="conflict-dialog">
+            <p className="eyebrow">Sync conflict</p>
+            <h2 id="conflict-title">Both copies changed</h2>
+            <p>Nothing has been overwritten. Choose what to keep for “{activeBrew.title || 'Untitled Brew'}”.</p>
+            <div className="conflict-times">
+              <span>This device: {new Date(activeBrew.updatedAt).toLocaleString()}</span>
+              <span>Google Drive: {new Date(activeBrew.conflict.remoteBrew.updatedAt).toLocaleString()}</span>
+            </div>
+            <div className="conflict-actions">
+              <button onClick={() => void keepDriveConflict()} type="button">Keep Drive version</button>
+              <button onClick={() => void keepBothConflict()} type="button">Keep both copies</button>
+              <button className="danger-button" disabled={!accessToken || syncing} onClick={() => void overwriteDriveConflict()} type="button">Replace Drive with this copy</button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

@@ -19,4 +19,6 @@ The renderer reads only the active brew content. It does not import from Indexed
 
 `lib/googleIdentity` obtains a short-lived Google access token through Google Identity Services. The token remains in memory only. `lib/googleDrive` is the sole module that calls the Drive API, while `lib/sync` compares the stored Drive revision with the current remote revision before writing. A changed local and remote copy is marked as a conflict; it is not overwritten automatically.
 
+`lib/conflicts` converts an explicit user decision into a safe local state. Keeping both versions preserves the Drive version and creates a separate local brew with no Drive file ID, so its next sync creates a separate remote file.
+
 Google Drive integration is disabled until `VITE_GOOGLE_CLIENT_ID` is supplied by the hosting environment. The renderer remains independent from authentication, Drive, and IndexedDB.

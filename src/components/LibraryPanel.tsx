@@ -14,6 +14,14 @@ type LibraryPanelProps = {
 const formatUpdatedAt = (value: string) =>
   new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 
+const syncLabel: Record<NonNullable<Brew['syncState']>, string> = {
+  local: 'Local only',
+  synced: 'Synced',
+  pending: 'Needs sync',
+  conflict: 'Conflict',
+  error: 'Sync error'
+};
+
 export function LibraryPanel({
   brews,
   activeId,
@@ -49,7 +57,10 @@ export function LibraryPanel({
             type="button"
           >
             <strong>{brew.title || 'Untitled Brew'}</strong>
-            <span>{formatUpdatedAt(brew.updatedAt)}</span>
+            <span className="brew-meta">
+              <span>{formatUpdatedAt(brew.updatedAt)}</span>
+              <span className={`sync-badge sync-${brew.syncState ?? 'local'}`}>{syncLabel[brew.syncState ?? 'local']}</span>
+            </span>
           </button>
         ))}
       </div>

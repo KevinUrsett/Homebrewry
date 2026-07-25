@@ -51,6 +51,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .brew-list-item.is-active { background: #ead1a3; box-shadow: inset 3px 0 #7a2f27; }
 .brew-list-item strong { font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .brew-list-item span { color: #806c5a; font-size: .72rem; }
+.brew-meta { align-items: center; display: flex; gap: 6px; justify-content: space-between; }
+.sync-badge { border-radius: 999px; font-size: .62rem !important; font-weight: 700; padding: 2px 5px; text-transform: uppercase; }
+.sync-synced { background: #d9ead6; color: #365b31 !important; }
+.sync-pending, .sync-local { background: #eee2c8; color: #6a522c !important; }
+.sync-conflict, .sync-error { background: #f3d3cd; color: #8a2f27 !important; }
 .library-actions { border-top: 1px solid #d8c9ae; display: flex; gap: 8px; padding: 10px; }
 .library-actions button { background: #f7f0df; border: 1px solid #bca789; border-radius: 5px; color: #533e31; font-size: .75rem; padding: 6px 8px; }
 .library-actions .danger-button { border-color: #a85a4d; color: #8a2f27; }
@@ -92,6 +97,15 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .outline-item:hover { background: #eddfc6; border-left-color: #7a2f27; }
 .empty-panel { color: #85715e; font-size: .82rem; line-height: 1.45; padding: 0 13px; }
 .loading-screen { align-items: center; background: #f7f0df; color: #594132; display: flex; font-family: Georgia, serif; justify-content: center; min-height: 100vh; }
+.conflict-backdrop { align-items: center; background: rgb(30 20 15 / 58%); display: flex; inset: 0; justify-content: center; padding: 20px; position: fixed; z-index: 10; }
+.conflict-dialog { background: #fffaf0; border: 1px solid #b99464; border-radius: 10px; box-shadow: 0 20px 60px rgb(20 12 8 / 40%); max-width: 510px; padding: 25px; }
+.conflict-dialog h2 { color: #5d2f26; font-family: Georgia, serif; margin: 0 0 8px; }
+.conflict-dialog p { color: #513f32; line-height: 1.5; }
+.eyebrow { color: #8b642f !important; font-size: .72rem; font-weight: 800; letter-spacing: .08em; margin: 0 0 5px; text-transform: uppercase; }
+.conflict-times { background: #f2e6d1; border-radius: 6px; color: #604b3b; display: grid; font-size: .78rem; gap: 6px; margin: 16px 0; padding: 10px; }
+.conflict-actions { display: grid; gap: 8px; }
+.conflict-actions button { background: #f7f0df; border: 1px solid #ad9576; border-radius: 6px; color: #422f25; padding: 9px; text-align: left; }
+.conflict-actions .danger-button { border-color: #a85a4d; color: #8a2f27; }
 .visually-hidden { height: 1px; margin: -1px; overflow: hidden; position: absolute; width: 1px; clip: rect(0, 0, 0, 0); }
 
 .workspace.view-editor .main-panes, .workspace.view-preview .main-panes { grid-template-columns: minmax(0, 1fr); }

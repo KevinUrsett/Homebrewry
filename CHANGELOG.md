@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Fixed
+
+- Preview and editor reference inspection now opens a detail dialog that can navigate directly to the referenced catalogue entry without inserting another token or changing tabs.
+- The mobile catalogue category selector now uses a full-width, vertically centred control so its selected label remains readable.
+
 ### Added
 
 - Offline SRD 5.2.1 catalogue with 2,232 source-verified records across monsters, spells, items, rules, tables, and character options.

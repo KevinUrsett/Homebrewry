@@ -47,6 +47,7 @@ export default function App() {
   const [catalogueLoading, setCatalogueLoading] = useState(true);
   const [catalogueError, setCatalogueError] = useState<string | null>(null);
   const [catalogueOpen, setCatalogueOpen] = useState(false);
+  const [catalogueSelection, setCatalogueSelection] = useState<CatalogueEntry | null>(null);
   const [referenceEntry, setReferenceEntry] = useState<CatalogueEntry | null>(null);
   const editorRef = useRef<MarkdownEditorHandle>(null);
   const selectionRef = useRef({ start: 0, end: 0 });
@@ -143,9 +144,16 @@ export default function App() {
     window.requestAnimationFrame(() => editorRef.current?.focus(cursor));
   };
 
-  const openCatalogue = () => {
+  const openCatalogue = (entry?: CatalogueEntry) => {
+    setCatalogueSelection(entry ?? null);
     setCatalogueOpen(true);
     setMobileSection('catalogue');
+  };
+
+  const openReferenceInCatalogue = () => {
+    if (!referenceEntry) return;
+    openCatalogue(referenceEntry);
+    setReferenceEntry(null);
   };
 
   const insertCatalogueReference = (entry: CatalogueEntry) => {
@@ -367,8 +375,12 @@ export default function App() {
             className={mobileSection === section ? 'is-selected' : ''}
             key={section}
             onClick={() => {
+              if (section === 'catalogue') {
+                openCatalogue();
+                return;
+              }
               setMobileSection(section);
-              setCatalogueOpen(section === 'catalogue');
+              setCatalogueOpen(false);
             }}
             type="button"
           >
@@ -379,10 +391,12 @@ export default function App() {
 
       {catalogueOpen ? (
         <CataloguePanel
+          key={catalogueSelection?.id ?? 'browse'}
           entries={catalogueEntries}
           error={catalogueError}
           loading={catalogueLoading}
           onInsertReference={insertCatalogueReference}
+          selectedEntry={catalogueSelection}
         />
       ) : (
         <div className={`workspace view-${viewMode}`}>
@@ -464,7 +478,7 @@ export default function App() {
         </div>
       )}
       {importOpen && <ImportDialog onClose={() => setImportOpen(false)} onImport={importBrew} />}
-      {referenceEntry && <ReferenceDialog entry={referenceEntry} onClose={() => setReferenceEntry(null)} onInsertReference={() => insertCatalogueReference(referenceEntry)} />}
+      {referenceEntry && <ReferenceDialog entry={referenceEntry} onClose={() => setReferenceEntry(null)} onOpenInCatalogue={openReferenceInCatalogue} />}
     </div>
   );
 }

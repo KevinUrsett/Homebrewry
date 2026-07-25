@@ -73,9 +73,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .markdown-editor { border: 0; color: #34271f; flex: 1; font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: .85rem; line-height: 1.65; min-height: 500px; padding: 20px; resize: none; width: 100%; }
 
 .preview-pane { background: #d9d0c1; min-width: 0; overflow: auto; padding: 25px; }
-.preview-canvas { margin: 0 auto; max-width: 780px; }
-.brew-preview { background-color: #f7f0df; box-shadow: 0 10px 30px rgb(43 28 19 / 18%); color: #1f1812; font-family: Georgia, "Times New Roman", serif; font-size: 1rem; line-height: 1.45; min-height: 900px; padding: clamp(30px, 5vw, 58px); }
-.brew-preview.tone-light { background-color: #fffdf5; }
+.preview-canvas { margin: 0 auto; max-width: 800px; }
+.brew-book { display: grid; gap: 24px; }
+.brew-preview { background: #f7f0df; box-shadow: 0 10px 30px rgb(43 28 19 / 18%); color: #1f1812; font-family: Georgia, "Times New Roman", serif; font-size: 1rem; line-height: 1.5; min-height: 900px; padding: clamp(30px, 5vw, 58px); position: relative; }
+.brew-book.tone-light .brew-preview { background: #fffdf5; }
 .brew-preview h1, .brew-preview h2, .brew-preview h3, .brew-preview h4 { color: var(--brew-accent); font-weight: 700; line-height: 1.15; scroll-margin-top: 18px; }
 .brew-preview h1 { border-bottom: 3px solid var(--brew-accent); font-size: 2.45rem; letter-spacing: -.035em; margin: 0 0 .35em; }
 .brew-preview h2 { border-bottom: 1px solid color-mix(in srgb, var(--brew-accent), #fff 35%); font-size: 1.62rem; margin: 1.4em 0 .45em; }
@@ -90,7 +91,21 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .brew-preview td { border-bottom: 1px solid #cdbb9e; }
 .brew-preview th, .brew-preview td { padding: 6px 8px; }
 .brew-preview code { background: #eadcc2; border-radius: 3px; padding: 1px 4px; }
-.statblock { background: #e9d4aa; border: 1px solid #996c45; border-radius: 4px; color: #2d1d16; font-family: Georgia, serif; padding: 15px; white-space: pre-wrap; }
+.brew-page-number { bottom: 18px; color: #9a856e; font-family: Inter, sans-serif; font-size: .7rem; position: absolute; right: 25px; }
+.brew-callout { border: 1px solid #bea06e; border-left: 6px solid var(--brew-accent); break-inside: avoid; margin: 1.15em 0; padding: 12px 16px; }
+.brew-callout h4 { margin: 0 0 6px; }
+.brew-callout p:last-child { margin-bottom: 0; }
+.callout-note { background: #eee2c7; }
+.callout-warning { background: #f1d8c5; border-left-color: #a24d38; }
+.callout-tip { background: #dae7d4; border-left-color: #4b783f; }
+.brew-statblock, .brew-item, .brew-spell { break-inside: avoid; margin: 1.25em 0; padding: 15px 17px; }
+.brew-statblock { background: #e8d3a9; border: 1px solid #996c45; border-radius: 3px; color: #2d1d16; }
+.brew-item, .brew-spell { background: #f4ead6; border: 1px solid #bca789; border-top: 4px solid var(--brew-accent); }
+.brew-statblock h3, .brew-item h3, .brew-spell h3 { margin: 0; }
+.brew-rule { background: var(--brew-accent); height: 2px; margin: 7px 0 10px; }
+.brew-block-content { font-size: .92rem; line-height: 1.55; white-space: pre-wrap; }
+.brew-columns { column-count: 2; column-gap: 28px; }
+.brew-columns > * { break-inside: avoid; }
 
 .outline-list { display: flex; flex-direction: column; padding: 8px 0; }
 .outline-item { background: transparent; border: 0; border-left: 3px solid transparent; color: #513f32; font-size: .82rem; overflow: hidden; padding-block: 7px; padding-inline-end: 10px; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
@@ -138,4 +153,18 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
   .markdown-editor { font-size: 16px; min-height: 60vh; padding: 16px; }
   .brew-preview { min-height: calc(100vh - 122px); padding: 28px 22px; }
   .brew-preview h1 { font-size: 2rem; }
+  .brew-columns { column-count: 1; }
+}
+
+@media print {
+  @page { margin: 0; size: A4; }
+  body, .app-shell, .workspace, .main-panes, .preview-pane { background: white; display: block; }
+  .app-header, .mobile-nav, .library-panel, .outline-panel, .editor-pane { display: none !important; }
+  .workspace.view-editor .preview-pane { display: block !important; }
+  .workspace { min-height: 0; }
+  .preview-pane { overflow: visible; padding: 0; }
+  .preview-canvas { max-width: none; }
+  .brew-book { gap: 0; }
+  .brew-preview { box-shadow: none; break-after: page; min-height: 297mm; padding: 18mm 17mm 18mm; width: 210mm; }
+  .brew-preview:last-child { break-after: auto; }
 }

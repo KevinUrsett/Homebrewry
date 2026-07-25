@@ -4,6 +4,8 @@
 
 ### Added
 
+- Distinct book-style renderer with callouts, stat blocks, item and spell cards, columns, page breaks, and print styling.
+
 - Per-brew sync badges and an explicit conflict-resolution dialog.
 - Options to keep the Drive version, overwrite Drive intentionally, or retain both copies.
 

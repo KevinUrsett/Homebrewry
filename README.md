@@ -2,16 +2,41 @@
 
 A responsive, local-first editor for D&D-style brew documents.
 
-## Phase 1: local editor MVP
+## Current features
 
 - Local brew library backed by IndexedDB
 - Markdown editor with autosave, manual save feedback, undo/redo, and find/replace
 - Responsive editor, preview, library, and outline layouts
-- Safe Markdown rendering with D&D-inspired book styling
+- Safe Markdown rendering with a distinct, D&D-book-inspired layout system
+- Callouts, stat blocks, item and spell cards, two-column sections, explicit page breaks, and print/PDF styling
 - Installable PWA base with offline application-shell caching
-- No account, Google Drive access, or cloud sync yet
+- Optional Google Drive backup, manual sync, and explicit conflict resolution
 
-The renderer is independent from IndexedDB. Future Google Drive sync will be added behind the storage boundary, with conflict detection before remote writes. See [architecture notes](docs/architecture.md).
+The renderer is independent from IndexedDB and Google Drive. See [architecture notes](docs/architecture.md).
+
+## Renderer syntax
+
+Use normal Markdown plus these optional blocks:
+
+````markdown
+:::note Travel warning
+The road is watched.
+:::
+
+:::columns
+Left and right columns on desktop.
+:::
+
+```statblock
+Ashbound Scout
+*Medium humanoid, neutral*
+Armor Class 14
+```
+
+:::pagebreak
+````
+
+`warning`, `tip`, `item`, and `spell` are also supported block types. The preview never renders raw HTML or scripts.
 
 ## Development
 
@@ -41,4 +66,4 @@ The app requests only the `drive.file` scope. Access tokens are kept in memory a
 
 ## Data safety
 
-Phase 1 data is stored only in the browser's IndexedDB. Clearing browser site data removes local brews; Google Drive backup and conflict resolution arrive in Phase 2. Deletion always asks for confirmation.
+Brews are always stored locally first. Google Drive copies are optional and conflicts require an explicit choice; deletion always asks for confirmation. A Drive sync is recommended before clearing browser data or changing devices.

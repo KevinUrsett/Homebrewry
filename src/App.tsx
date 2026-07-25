@@ -252,6 +252,7 @@ export default function App() {
               {mode === 'editor' ? 'Editor' : mode === 'preview' ? 'Preview' : 'Split'}
             </button>
           ))}
+          <button onClick={() => window.print()} type="button">Print</button>
         </div>
         <div className="cloud-controls">
           {accessToken ? (

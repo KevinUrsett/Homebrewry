@@ -13,6 +13,7 @@ A responsive, local-first editor for D&D-style brew documents.
 - Safe pasted or text-file import of Homebrewery-style source, with a compatibility report
 - Offline, searchable SRD 5.2.1 catalogue for monsters, spells, items, rules, and character options
 - Stable in-brew catalogue references with desktop hover cards and tap/click detail views
+- Local-first combat encounters with a reusable party roster, SRD monster search, initiative order, turn tracking, and hit-point tracking
 - Installable PWA base with offline application-shell caching
 - Optional Google Drive backup, manual sync, and explicit conflict resolution
 
@@ -59,6 +60,18 @@ Use **Reference** in the editor toolbar or **Insert reference into brew** in the
 ```
 
 The preview displays only `Aboleth`; hover it on desktop to inspect a reference card, or tap/click to open its complete entry. In the source editor, hover the highlighted reference token to inspect it. References use IDs rather than just names, so renaming or duplicate names cannot silently point at the wrong record.
+
+## Encounters (Phase 6 beta)
+
+The **Encounters** tab keeps a local current-party roster, creates independent encounter snapshots, and can add SRD monsters from the offline catalogue. Each combatant has editable initiative, current/max hit points, armor class, and a current-turn marker. Updating a party roster never changes an already prepared encounter.
+
+Use **Encounter** in the editor toolbar, then select **Insert into brew** to add a stable source reference:
+
+```markdown
+[[encounter:329dec56-7f04-49b2-98b2-5710e54f3de2|The flooded vault]]
+```
+
+In Preview, the reference becomes a combat card. Select it to open that encounter directly. Encounter and party data are currently stored only on the local device; this deliberately avoids changing the established Drive brew format until a safe cloud-sync migration is added.
 
 ## Font attribution
 

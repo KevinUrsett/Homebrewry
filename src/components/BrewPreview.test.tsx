@@ -5,7 +5,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { catalogueEntryKey } from '../catalogue/types';
 import type { CatalogueEntry } from '../catalogue/types';
-import type { Brew } from '../types';
+import type { Brew, Encounter } from '../types';
 import { BrewPreview } from './BrewPreview';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -28,6 +28,17 @@ const brew: Brew = {
   updatedAt: '2026-07-25T00:00:00.000Z',
   version: 1,
   rendererSettings: { accentColor: '#6a2f26', parchmentTone: 'warm' }
+};
+
+const encounter: Encounter = {
+  id: '329dec56-7f04-49b2-98b2-5710e54f3de2',
+  name: 'The flooded vault',
+  status: 'prepared',
+  participants: [],
+  activeCombatantId: null,
+  createdAt: '2026-07-25T00:00:00.000Z',
+  updatedAt: '2026-07-25T00:00:00.000Z',
+  version: 1
 };
 
 const mounted: Array<{ container: HTMLDivElement; root: Root }> = [];
@@ -65,5 +76,36 @@ describe('BrewPreview', () => {
     });
 
     expect(onReferenceOpen).toHaveBeenCalledWith(entry);
+  });
+
+  it('opens the matching encounter from a rendered preview card', async () => {
+    const onEncounterOpen = vi.fn();
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push({ container, root });
+    const encounterBrew = {
+      ...brew,
+      content: `Run [[encounter:${encounter.id}|The flooded vault]].`
+    };
+
+    await act(async () => {
+      root.render(
+        <BrewPreview
+          brew={encounterBrew}
+          encounters={new Map([[encounter.id, encounter]])}
+          onEncounterOpen={onEncounterOpen}
+        />
+      );
+    });
+
+    const reference = container.querySelector<HTMLButtonElement>('.brew-encounter-reference');
+    expect(reference?.textContent).toContain('The flooded vault');
+
+    await act(async () => {
+      reference?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(onEncounterOpen).toHaveBeenCalledWith(encounter);
   });
 });

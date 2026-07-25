@@ -38,3 +38,9 @@ Google Drive integration is disabled until `VITE_GOOGLE_CLIENT_ID` is supplied b
 `catalogue/catalogueData` lazily loads the versioned, local SRD data files and accepts only records marked `SRD-521`. The catalogue is a read-only data provider: it has no IndexedDB, Google Drive, OAuth, or renderer dependency. The current data import intentionally excludes upstream source code, UI, themes, fonts, images, and unverified records.
 
 `catalogue/references` owns the stable `[[category:id|label]]` syntax, URL conversion, and Markdown AST transformation. It is pure and data-provider independent. The preview resolves a reference only through a supplied read-only entry map; an absent entry is visibly marked rather than guessed. The CodeMirror editor uses the same parser for hover cards, and does not execute catalogue text or imported Markdown.
+
+## Phase 6 encounter boundary
+
+`lib/encounterStore` persists `PartyMember` and `Encounter` records in dedicated IndexedDB stores. The current party is a reusable local roster; an encounter copies its members into independent combatants so later roster edits cannot alter a prepared or active fight. `lib/encounters` contains the pure operations for adding SRD monsters, updating combatants, sorting initiative, and advancing a turn.
+
+`lib/encounterReferences` owns the `[[encounter:id|label]]` syntax. The preview receives only a read-only encounter map and a callback, so the renderer still has no storage, OAuth, or Google Drive dependency. Encounter data is intentionally local-only in this first implementation; adding Drive support will require a separate, backward-compatible storage migration rather than changing existing brew files implicitly.

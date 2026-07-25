@@ -12,6 +12,7 @@ type EditorPaneProps = {
   onContentChange: (value: string) => void;
   onInsert: (before: string, after?: string) => void;
   onOpenCatalogue: () => void;
+  onOpenEncounters: () => void;
   onSelectionChange: (selection: { start: number; end: number }) => void;
   onImageUpload: (file: File) => void;
   onUndo: () => void;
@@ -34,6 +35,7 @@ export function EditorPane({
   onContentChange,
   onInsert,
   onOpenCatalogue,
+  onOpenEncounters,
   onSelectionChange,
   onImageUpload,
   onUndo,
@@ -60,6 +62,7 @@ export function EditorPane({
         <button onClick={() => onInsert('\n:::pagebreak\n')} type="button">Page</button>
         <button onClick={() => imageInputRef.current?.click()} type="button">Image</button>
         <button onClick={onOpenCatalogue} type="button">Reference</button>
+        <button onClick={onOpenEncounters} type="button">Encounter</button>
         <span className="toolbar-spacer" />
         <button onClick={onUndo} type="button">Undo</button>
         <button onClick={onRedo} type="button">Redo</button>

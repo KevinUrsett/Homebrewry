@@ -1,4 +1,4 @@
-import { dataString } from '../catalogue/presentation';
+import { dataRecord, dataString } from '../catalogue/presentation';
 import type { CatalogueEntry } from '../catalogue/types';
 import type { Encounter, EncounterParticipant, PartyMember } from '../types';
 
@@ -11,6 +11,19 @@ function named(value: string, fallback: string): string {
 function firstNumber(value: string | undefined): number | null {
   const match = value?.match(/-?\d+/);
   return match ? Number(match[0]) : null;
+}
+
+function monsterInitiativeBonus(monster: CatalogueEntry): number {
+  const listedBonus = firstNumber(dataString(monster, 'initiativeBonus'));
+  if (listedBonus !== null) return listedBonus;
+
+  const dexterity = Number(dataRecord(monster, 'abilities').dex);
+  return Number.isFinite(dexterity) ? Math.floor((dexterity - 10) / 2) : 0;
+}
+
+export function rollMonsterInitiative(monster: CatalogueEntry, random: () => number = Math.random): number {
+  const roll = Math.floor(Math.min(Math.max(random(), 0), 0.999999) * 20) + 1;
+  return roll + monsterInitiativeBonus(monster);
 }
 
 export function createPartyMember(name = 'New character', armorClass: number | null = null, maxHitPoints: number | null = null): PartyMember {
@@ -68,7 +81,7 @@ export function addPartyMembersToEncounter(encounter: Encounter, party: PartyMem
   return touchEncounter(encounter, { participants: [...encounter.participants, ...additions] });
 }
 
-export function addMonsterToEncounter(encounter: Encounter, monster: CatalogueEntry): Encounter {
+export function addMonsterToEncounter(encounter: Encounter, monster: CatalogueEntry, random: () => number = Math.random): Encounter {
   if (monster.category !== 'monster') throw new Error('Only monster catalogue entries can be added to encounters.');
   const duplicateCount = encounter.participants.filter((participant) => participant.source?.id === monster.id).length;
   const maxHitPoints = firstNumber(dataString(monster, 'hp'));
@@ -80,7 +93,7 @@ export function addMonsterToEncounter(encounter: Encounter, monster: CatalogueEn
     armorClass: firstNumber(dataString(monster, 'ac')),
     maxHitPoints,
     currentHitPoints: maxHitPoints,
-    initiative: null
+    initiative: rollMonsterInitiative(monster, random)
   };
   return touchEncounter(encounter, { participants: [...encounter.participants, participant] });
 }
@@ -93,6 +106,22 @@ export function patchEncounterParticipant(
   return touchEncounter(encounter, {
     participants: encounter.participants.map((participant) => participant.id === participantId ? { ...participant, ...changes } : participant)
   });
+}
+
+/**
+ * Applies a signed HP change: positive values are damage and negative values
+ * are healing. Current HP stays within 0 and the known maximum.
+ */
+export function adjustEncounterParticipantHitPoints(encounter: Encounter, participantId: string, change: number): Encounter {
+  if (!Number.isFinite(change) || change === 0) return encounter;
+  const participant = encounter.participants.find((item) => item.id === participantId);
+  if (!participant) return encounter;
+
+  const currentHitPoints = participant.currentHitPoints ?? participant.maxHitPoints;
+  if (currentHitPoints === null) return encounter;
+  const maximum = participant.maxHitPoints ?? Number.POSITIVE_INFINITY;
+  const nextHitPoints = Math.max(0, Math.min(maximum, currentHitPoints - change));
+  return patchEncounterParticipant(encounter, participantId, { currentHitPoints: nextHitPoints });
 }
 
 export function removeEncounterParticipant(encounter: Encounter, participantId: string): Encounter {

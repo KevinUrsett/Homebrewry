@@ -77,7 +77,7 @@ function EncounterReferenceLink({
   return (
     <button className="brew-encounter-reference" onClick={() => onOpen?.(encounter)} type="button">
       <span>Combat encounter</span>
-      <strong>{children}</strong>
+      <strong>{encounter.name || children}</strong>
       <small>{encounter.participants.length} combatant{encounter.participants.length === 1 ? '' : 's'} · {encounter.status}</small>
     </button>
   );

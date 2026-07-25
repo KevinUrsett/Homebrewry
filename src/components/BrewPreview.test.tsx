@@ -86,7 +86,7 @@ describe('BrewPreview', () => {
     mounted.push({ container, root });
     const encounterBrew = {
       ...brew,
-      content: `Run [[encounter:${encounter.id}|The flooded vault]].`
+      content: `Run [[encounter:${encounter.id}|Old encounter name]].`
     };
 
     await act(async () => {
@@ -101,6 +101,7 @@ describe('BrewPreview', () => {
 
     const reference = container.querySelector<HTMLButtonElement>('.brew-encounter-reference');
     expect(reference?.textContent).toContain('The flooded vault');
+    expect(reference?.textContent).not.toContain('Old encounter name');
 
     await act(async () => {
       reference?.dispatchEvent(new MouseEvent('click', { bubbles: true }));

@@ -4,12 +4,18 @@
 
 ### Fixed
 
+- Encounter references in Preview now display the current saved encounter name after it is renamed.
+- Catalogue results and the document outline now scroll independently from their content panes on desktop, while retaining the selected entry in view.
+
 - Preview reference names now retain their validated internal link, so tapping one opens the reference detail dialog; Edit remains source-only.
 - The catalogue insert action now appears directly below the selected entry heading instead of after its full stat block.
 - Reference detail dialogs can navigate directly to the referenced catalogue entry without inserting another token or changing tabs.
 - The mobile catalogue category selector now uses a full-width, vertically centred control so its selected label remains readable.
 
 ### Added
+
+- Monster combatants now roll initiative automatically when added, using their SRD initiative bonus (or Dexterity modifier as a fallback).
+- Combatant cards now include a signed damage/healing field: positive values deal damage and negative values heal, with HP clamped safely between zero and the known maximum.
 
 - Local-first combat encounters with a reusable party roster, offline SRD monster search, initiative ordering, turn progression, and independent HP/AC tracking.
 - Stable `[[encounter:id|label]]` source references, toolbar insertion, and Preview combat cards that open the associated encounter.

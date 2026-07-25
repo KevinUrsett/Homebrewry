@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { catalogueDataset } from '../catalogue/catalogueData';
 import { entrySummary } from '../catalogue/presentation';
 import {
@@ -23,6 +23,7 @@ export function CataloguePanel({ entries, loading, error, onInsertReference, sel
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<CatalogueCategory | 'all'>(() => selectedEntry?.category ?? 'monster');
   const [selectedId, setSelectedId] = useState<string | null>(() => selectedEntry?.id ?? null);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(() => {
     const terms = query.trim().toLowerCase();
@@ -40,6 +41,10 @@ export function CataloguePanel({ entries, loading, error, onInsertReference, sel
   const selected = filtered.find((entry) => entry.id === selectedId)
     ?? visible[0]
     ?? null;
+
+  useEffect(() => {
+    resultsRef.current?.querySelector<HTMLButtonElement>('.catalogue-result.is-selected')?.scrollIntoView?.({ block: 'nearest' });
+  }, [selected?.id]);
 
   return (
     <main className="catalogue-page" aria-label="Rules catalogue">
@@ -72,7 +77,7 @@ export function CataloguePanel({ entries, loading, error, onInsertReference, sel
             <span aria-hidden="true" className="catalogue-category-chevron">⌄</span>
           </div>
           <p className="catalogue-result-count">{filtered.length.toLocaleString()} matches</p>
-          <div className="catalogue-results">
+          <div className="catalogue-results" ref={resultsRef}>
             {visible.map((entry) => (
               <button
                 className={`catalogue-result ${selected?.id === entry.id ? 'is-selected' : ''}`}

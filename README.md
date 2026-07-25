@@ -63,7 +63,7 @@ The preview displays only `Aboleth`; hover it on desktop to inspect a reference 
 
 ## Encounters (Phase 6 beta)
 
-The **Encounters** tab keeps a local current-party roster, creates independent encounter snapshots, and can add SRD monsters from the offline catalogue. Each combatant has editable initiative, current/max hit points, armor class, and a current-turn marker. Updating a party roster never changes an already prepared encounter.
+The **Encounters** tab keeps a local current-party roster, creates independent encounter snapshots, and can add SRD monsters from the offline catalogue. Monster initiatives roll automatically when added; player-character initiatives remain manual. Each combatant has editable initiative, current/max hit points, armor class, a signed damage/healing field (`10` deals 10 damage; `-10` heals 10), and a current-turn marker. Updating a party roster never changes an already prepared encounter.
 
 Use **Encounter** in the editor toolbar, then select **Insert into brew** to add a stable source reference:
 

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { entrySummary } from '../catalogue/presentation';
 import type { CatalogueEntry } from '../catalogue/types';
-import { addMonsterToEncounter, addPartyMembersToEncounter, advanceCombatTurn, patchEncounterParticipant, removeEncounterParticipant, sortCombatants, touchEncounter } from '../lib/encounters';
+import { addMonsterToEncounter, addPartyMembersToEncounter, adjustEncounterParticipantHitPoints, advanceCombatTurn, patchEncounterParticipant, removeEncounterParticipant, sortCombatants, touchEncounter } from '../lib/encounters';
 import type { Encounter, EncounterParticipant, PartyMember } from '../types';
 
 type EncounterPanelProps = {
@@ -54,6 +54,7 @@ export function EncounterPanel({
   const [partyName, setPartyName] = useState('');
   const [partyArmorClass, setPartyArmorClass] = useState('');
   const [partyHitPoints, setPartyHitPoints] = useState('');
+  const [hitPointChanges, setHitPointChanges] = useState<Record<string, string>>({});
   const selected = encounters.find((encounter) => encounter.id === selectedId) ?? encounters[0] ?? null;
   const orderedParticipants = selected ? sortCombatants(selected.participants) : [];
   const monsterMatches = useMemo(() => {
@@ -72,6 +73,16 @@ export function EncounterPanel({
     setPartyArmorClass('');
     setPartyHitPoints('');
   };
+
+  const applyHitPointChange = (participant: EncounterParticipant) => {
+    if (!selected) return;
+    const change = asNumber(hitPointChanges[participant.id] ?? '');
+    if (change === null || change === 0) return;
+    onUpdateEncounter(adjustEncounterParticipantHitPoints(selected, participant.id, change));
+    setHitPointChanges((current) => ({ ...current, [participant.id]: '' }));
+  };
+
+  const canAdjustHitPoints = (participant: EncounterParticipant) => participant.currentHitPoints !== null || participant.maxHitPoints !== null;
 
   return (
     <main className="encounter-page" aria-label="Combat encounters">
@@ -197,6 +208,26 @@ export function EncounterPanel({
                     <label>Max<input aria-label={`${participant.name} maximum hit points`} min="0" onChange={(event) => participantPatch(selected, participant, { maxHitPoints: asNumber(event.target.value) }, onUpdateEncounter)} type="number" value={participant.maxHitPoints ?? ''} /></label>
                     <label>AC<input aria-label={`${participant.name} armor class`} min="0" onChange={(event) => participantPatch(selected, participant, { armorClass: asNumber(event.target.value) }, onUpdateEncounter)} type="number" value={participant.armorClass ?? ''} /></label>
                     <button aria-label={`Remove ${participant.name} from encounter`} className="quiet-danger" onClick={() => onUpdateEncounter(removeEncounterParticipant(selected, participant.id))} type="button">×</button>
+                  </div>
+                  <div className="combatant-hp-change">
+                    <label>
+                      Damage + / healing −
+                      <input
+                        aria-label={`${participant.name} damage or healing`}
+                        onChange={(event) => setHitPointChanges((current) => ({ ...current, [participant.id]: event.target.value }))}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault();
+                            applyHitPointChange(participant);
+                          }
+                        }}
+                        placeholder="10 or −10"
+                        step="1"
+                        type="number"
+                        value={hitPointChanges[participant.id] ?? ''}
+                      />
+                    </label>
+                    <button disabled={!canAdjustHitPoints(participant) || asNumber(hitPointChanges[participant.id] ?? '') === null || asNumber(hitPointChanges[participant.id] ?? '') === 0} onClick={() => applyHitPointChange(participant)} type="button">Apply HP</button>
                   </div>
                 </article>
               ))}

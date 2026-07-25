@@ -3,6 +3,14 @@ export type RendererSettings = {
   parchmentTone: 'warm' | 'light';
 };
 
+export type SyncState = 'local' | 'synced' | 'pending' | 'conflict' | 'error';
+
+export type DriveMetadata = {
+  fileId: string;
+  revisionId: string;
+  lastSyncedAt: string;
+};
+
 export type Brew = {
   id: string;
   title: string;
@@ -11,6 +19,8 @@ export type Brew = {
   updatedAt: string;
   version: number;
   rendererSettings: RendererSettings;
+  drive?: DriveMetadata;
+  syncState?: SyncState;
 };
 
 export type OutlineItem = {

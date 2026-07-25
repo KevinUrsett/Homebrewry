@@ -23,6 +23,14 @@ pnpm install
 pnpm dev
 ```
 
+## Google Drive (Phase 2)
+
+The app stays usable without Google Drive. To enable the optional Drive connection, create a Google OAuth **Web application** client and add its client ID as `VITE_GOOGLE_CLIENT_ID` in Vercel. Do not add a client secret to this browser application.
+
+For local development, copy `.env.example` to `.env.local` and add the client ID. Use `http://localhost:5173` as an authorised JavaScript origin. Add the Vercel production URL before deploying.
+
+The app requests only the `drive.file` scope. Access tokens are kept in memory and are never written to IndexedDB or source control.
+
 | Command | Purpose |
 | --- | --- |
 | `pnpm dev` | Start the local app |

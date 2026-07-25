@@ -27,7 +27,7 @@ The scout fires from cover, then offers a bargain: carry a sealed letter to the 
 `;
 
 const getDatabase = () =>
-  openDB(DATABASE_NAME, 1, {
+  openDB(DATABASE_NAME, 2, {
     upgrade(database) {
       const store = database.createObjectStore(STORE_NAME, { keyPath: 'id' });
       store.createIndex('updatedAt', 'updatedAt');
@@ -70,6 +70,14 @@ export async function seedBrews(): Promise<Brew[]> {
 export async function saveBrew(brew: Brew): Promise<void> {
   const database = await getDatabase();
   await database.put(STORE_NAME, brew);
+}
+
+export async function replaceBrews(brews: Brew[]): Promise<void> {
+  const database = await getDatabase();
+  const transaction = database.transaction(STORE_NAME, 'readwrite');
+
+  await Promise.all(brews.map((brew) => transaction.store.put(brew)));
+  await transaction.done;
 }
 
 export async function deleteBrew(id: string): Promise<void> {

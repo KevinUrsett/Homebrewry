@@ -9,6 +9,8 @@ A responsive, local-first editor for D&D-style brew documents.
 - Responsive editor, preview, library, and outline layouts
 - Safe Markdown rendering with a distinct, D&D-book-inspired layout system
 - Callouts, stat blocks, item and spell cards, two-column sections, explicit page breaks, and print/PDF styling
+- Drive-backed image uploads with local offline copies and accessible alt text
+- Safe pasted or text-file import of Homebrewery-style source, with a compatibility report
 - Installable PWA base with offline application-shell caching
 - Optional Google Drive backup, manual sync, and explicit conflict resolution
 
@@ -37,6 +39,16 @@ Armor Class 14
 ````
 
 `warning`, `tip`, `item`, and `spell` are also supported block types. The preview never renders raw HTML or scripts.
+
+## Images and imports
+
+Use **Image** in the editor toolbar to insert a local image. Supported types are PNG, JPEG, WebP, and GIF, up to 8 MB. If Drive is connected, the image uploads to Drive immediately; otherwise it uploads on the next sync.
+
+Use **Import** in the brew library to paste source or select a `.md`, `.markdown`, or `.txt` file. Imports always create a new local brew and do not overwrite an existing one.
+
+## Font attribution
+
+The preview bundles Bookinsanity, Nodesto Caps Condensed, and Scaly Sans under CC-BY-SA-4.0. See [third-party notices](THIRD_PARTY_NOTICES.md).
 
 ## Development
 

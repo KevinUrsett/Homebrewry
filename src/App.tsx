@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { BrewPreview } from './components/BrewPreview';
 import { EditorPane } from './components/EditorPane';
+import { ImportDialog } from './components/ImportDialog';
 import { LibraryPanel } from './components/LibraryPanel';
 import { OutlinePanel } from './components/OutlinePanel';
 import { createBrew, deleteBrew, replaceBrews, saveBrew, seedBrews } from './lib/brewStore';
+import { createAsset, listAssets, replaceAssets, saveAsset } from './lib/assetStore';
+import { syncAssets } from './lib/assetSync';
 import { keepBothVersions, resolveWithDriveVersion } from './lib/conflicts';
 import { isGoogleConfigured, requestDriveAccess } from './lib/googleIdentity';
 import { getOutline } from './lib/outline';
+import { importHomebrewerySource, titleFromImportedSource } from './lib/importer';
 import { overwriteDriveBrew, syncBrews } from './lib/sync';
-import type { Brew, MobileSection, ViewMode } from './types';
+import type { Brew, BrewAsset, MobileSection, ViewMode } from './types';
 
 const mobileLabels: Record<MobileSection, string> = {
   library: 'Brews',
@@ -19,6 +23,7 @@ const mobileLabels: Record<MobileSection, string> = {
 
 export default function App() {
   const [brews, setBrews] = useState<Brew[]>([]);
+  const [assets, setAssets] = useState<BrewAsset[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('split');
@@ -28,6 +33,7 @@ export default function App() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [findVisible, setFindVisible] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [findValue, setFindValue] = useState('');
   const [replaceValue, setReplaceValue] = useState('');
   const editorRef = useRef<HTMLTextAreaElement>(null);
@@ -35,9 +41,10 @@ export default function App() {
   const redoRef = useRef<string[]>([]);
 
   useEffect(() => {
-    seedBrews()
-      .then((storedBrews) => {
+    Promise.all([seedBrews(), listAssets()])
+      .then(([storedBrews, storedAssets]) => {
         setBrews(storedBrews);
+        setAssets(storedAssets);
         setActiveId(storedBrews[0]?.id ?? null);
         setSaveState('Saved locally');
       })
@@ -49,6 +56,7 @@ export default function App() {
     () => brews.find((brew) => brew.id === activeId) ?? null,
     [activeId, brews]
   );
+  const assetMap = useMemo(() => new Map(assets.map((asset) => [asset.id, asset])), [assets]);
 
   useEffect(() => {
     if (!activeBrew || loading) return;
@@ -167,6 +175,20 @@ export default function App() {
     updateContent(activeBrew.content.split(findValue).join(replaceValue));
   };
 
+  const importBrew = (source: string) => {
+    const result = importHomebrewerySource(source);
+    const brew = {
+      ...createBrew(titleFromImportedSource(result.content)),
+      content: result.content,
+      syncState: 'local' as const
+    };
+    setBrews((current) => [brew, ...current]);
+    setActiveId(brew.id);
+    setImportOpen(false);
+    setMobileSection('editor');
+    setSaveState(result.notices.length ? `Imported brew. ${result.notices.join(' ')}` : 'Imported brew locally');
+  };
+
   const connectDrive = async () => {
     try {
       setSaveState('Connecting to Google Drive…');
@@ -183,14 +205,40 @@ export default function App() {
     try {
       setSyncing(true);
       setSaveState('Syncing with Google Drive…');
-      const result = await syncBrews(accessToken, brews);
-      await replaceBrews(result.brews);
-      setBrews(result.brews);
-      setSaveState(result.detail);
+      const assetResult = await syncAssets(accessToken, assets);
+      await replaceAssets(assetResult.assets);
+      setAssets(assetResult.assets);
+      const brewResult = await syncBrews(accessToken, brews);
+      await replaceBrews(brewResult.brews);
+      setBrews(brewResult.brews);
+      setSaveState(`${brewResult.detail}; ${assetResult.detail}`);
     } catch (error) {
       setSaveState(error instanceof Error ? error.message : 'Google Drive sync failed');
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const uploadImage = async (file: File) => {
+    const suggestedAlt = file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ');
+    const alt = window.prompt('Describe this image for accessibility:', suggestedAlt);
+    if (alt === null) return;
+    try {
+      const asset = createAsset(file, alt);
+      await saveAsset(asset);
+      const nextAssets = [asset, ...assets];
+      setAssets(nextAssets);
+      insertText(`\n![${asset.alt}](asset://${asset.id})\n`);
+      if (!accessToken) {
+        setSaveState('Image added locally — connect Drive, then sync to back it up');
+        return;
+      }
+      const result = await syncAssets(accessToken, nextAssets);
+      await replaceAssets(result.assets);
+      setAssets(result.assets);
+      setSaveState(`Image uploaded to Drive; ${result.detail}`);
+    } catch (error) {
+      setSaveState(error instanceof Error ? error.message : 'Image upload failed');
     }
   };
 
@@ -287,6 +335,7 @@ export default function App() {
           brews={brews}
           onDelete={() => void deleteActiveBrew()}
           onDuplicate={duplicateActiveBrew}
+          onImport={() => setImportOpen(true)}
           onNew={createNewBrew}
           onQueryChange={setQuery}
           onSelect={(id) => {
@@ -305,6 +354,7 @@ export default function App() {
             onContentChange={updateContent}
             onFindChange={setFindValue}
             onInsert={insertText}
+            onImageUpload={(file) => void uploadImage(file)}
             onKeyDown={(event) => {
               if (!(event.metaKey || event.ctrlKey)) return;
               if (event.key.toLowerCase() === 'z') {
@@ -327,7 +377,7 @@ export default function App() {
           />
           <section className="preview-pane" aria-label="Live preview">
             <div className="preview-canvas">
-              <BrewPreview brew={activeBrew} />
+              <BrewPreview assets={assetMap} brew={activeBrew} />
             </div>
           </section>
         </div>
@@ -352,6 +402,7 @@ export default function App() {
           </section>
         </div>
       )}
+      {importOpen && <ImportDialog onClose={() => setImportOpen(false)} onImport={importBrew} />}
     </div>
   );
 }

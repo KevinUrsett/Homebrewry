@@ -26,3 +26,9 @@ Google Drive integration is disabled until `VITE_GOOGLE_CLIENT_ID` is supplied b
 ## Phase 3 renderer boundary
 
 `renderer/blocks` parses a small, documented directive syntax into typed display blocks. The preview renders those blocks independently of storage and continues to use a safe Markdown renderer for prose. Raw HTML is not enabled. Explicit `:::pagebreak` directives create print pages; ordinary screen content remains responsive rather than pretending every phone screen is a sheet of paper.
+
+## Phase 4 assets and import
+
+`assetStore` keeps validated image blobs in IndexedDB. `assetSync` stores a matching app-owned Drive file and a stable asset identifier; the Markdown document references that identifier instead of a temporary Drive URL. The renderer resolves only local `asset://` identifiers and HTTPS image URLs.
+
+`importer` accepts pasted or text-file source, converts only known page commands, and reports unsupported constructs. It never enables imported script, style, raw HTML, or CSS execution.

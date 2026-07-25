@@ -4,6 +4,10 @@
 
 ### Added
 
+- Drive-backed image assets with offline IndexedDB copies, safe validation, and Image toolbar insertion.
+- Homebrewery-style source import dialog with compatibility notices and script removal.
+- Licensed Bookinsanity, Nodesto Caps Condensed, and Scaly Sans typography with attribution notice.
+
 - Distinct book-style renderer with callouts, stat blocks, item and spell cards, columns, page breaks, and print styling.
 
 - Per-brew sync badges and an explicit conflict-resolution dialog.

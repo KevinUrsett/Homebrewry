@@ -1,4 +1,4 @@
-import { type KeyboardEvent, type RefObject } from 'react';
+import { type KeyboardEvent, type RefObject, useRef } from 'react';
 
 type EditorPaneProps = {
   title: string;
@@ -10,6 +10,7 @@ type EditorPaneProps = {
   onTitleChange: (value: string) => void;
   onContentChange: (value: string) => void;
   onInsert: (before: string, after?: string) => void;
+  onImageUpload: (file: File) => void;
   onUndo: () => void;
   onRedo: () => void;
   onToggleFind: () => void;
@@ -29,6 +30,7 @@ export function EditorPane({
   onTitleChange,
   onContentChange,
   onInsert,
+  onImageUpload,
   onUndo,
   onRedo,
   onToggleFind,
@@ -37,6 +39,8 @@ export function EditorPane({
   onReplaceAll,
   onKeyDown
 }: EditorPaneProps) {
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
   return (
     <section className="editor-pane" aria-label="Brew editor">
       <div className="editor-toolbar" aria-label="Editor tools">
@@ -49,11 +53,23 @@ export function EditorPane({
         <button onClick={() => onInsert('\n```item\n', '\n```\n')} type="button">Item</button>
         <button onClick={() => onInsert('\n```spell\n', '\n```\n')} type="button">Spell</button>
         <button onClick={() => onInsert('\n:::pagebreak\n')} type="button">Page</button>
+        <button onClick={() => imageInputRef.current?.click()} type="button">Image</button>
         <span className="toolbar-spacer" />
         <button onClick={onUndo} type="button">Undo</button>
         <button onClick={onRedo} type="button">Redo</button>
         <button onClick={onToggleFind} type="button">Find</button>
       </div>
+      <input
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        className="visually-hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) onImageUpload(file);
+          event.target.value = '';
+        }}
+        ref={imageInputRef}
+        type="file"
+      />
       {findVisible && (
         <div className="find-replace" role="search">
           <input aria-label="Find text" onChange={(event) => onFindChange(event.target.value)} placeholder="Find" value={findValue} />

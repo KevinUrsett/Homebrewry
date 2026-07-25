@@ -4,6 +4,10 @@
 
 ### Added
 
+- Offline SRD 5.2.1 catalogue with 2,232 source-verified records across monsters, spells, items, rules, tables, and character options.
+- Stable Markdown catalogue references, detail dialogs, desktop hover cards, and a mobile tap/click fallback.
+- CodeMirror source editor with highlighted reference tokens and accessible hover inspection.
+
 - Drive-backed image assets with offline IndexedDB copies, safe validation, and Image toolbar insertion.
 - Homebrewery-style source import dialog with compatibility notices and script removal.
 - Licensed Bookinsanity, Nodesto Caps Condensed, and Scaly Sans typography with attribution notice.

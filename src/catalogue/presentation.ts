@@ -74,6 +74,8 @@ export function entrySummary(entry: CatalogueEntry): string[] {
 
 export function speedText(entry: CatalogueEntry): string {
   const speed = dataRecord(entry, 'speed');
+  const simpleSpeed = entry.data.speed;
+  if (typeof simpleSpeed === 'string' || typeof simpleSpeed === 'number') return String(simpleSpeed);
   const entries = Object.entries(speed).flatMap(([kind, value]) => typeof value === 'number' ? [`${kind} ${value} ft.`] : []);
   return entries.join(', ');
 }

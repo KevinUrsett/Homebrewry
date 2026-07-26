@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { catalogueDataset } from '../catalogue/catalogueData';
+import { createCustomMonster } from '../catalogue/customEntries';
 import { entrySummary } from '../catalogue/presentation';
 import {
   catalogueCategories,
   catalogueCategoryLabels,
   type CatalogueCategory,
-  type CatalogueEntry
+  type CatalogueEntry,
+  type CustomCatalogueEntry
 } from '../catalogue/types';
+import { CustomMonsterEditor } from './CustomMonsterEditor';
 import { CatalogueEntryDetails } from './CatalogueEntryDetails';
 
 type CataloguePanelProps = {
@@ -15,6 +18,8 @@ type CataloguePanelProps = {
   error: string | null;
   onInsertReference: (entry: CatalogueEntry) => void;
   onOpenPrivateMonsterImport: () => void;
+  onSaveCustomMonster: (entry: CustomCatalogueEntry) => Promise<void>;
+  onDeleteCustomMonster: (entry: CustomCatalogueEntry) => Promise<void>;
   privateMonsterCount: number;
   customEntryCount: number;
   selectedEntry?: CatalogueEntry | null;
@@ -22,12 +27,19 @@ type CataloguePanelProps = {
 
 const MAX_VISIBLE_RESULTS = 250;
 
+type MonsterEditorState = {
+  entry: CustomCatalogueEntry;
+  mode: 'create' | 'edit';
+};
+
 export function CataloguePanel({
   entries,
   loading,
   error,
   onInsertReference,
   onOpenPrivateMonsterImport,
+  onSaveCustomMonster,
+  onDeleteCustomMonster,
   privateMonsterCount,
   customEntryCount,
   selectedEntry
@@ -35,6 +47,8 @@ export function CataloguePanel({
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<CatalogueCategory | 'all'>(() => selectedEntry?.category ?? 'monster');
   const [selectedId, setSelectedId] = useState<string | null>(() => selectedEntry?.id ?? null);
+  const [monsterEditor, setMonsterEditor] = useState<MonsterEditorState | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(() => {
@@ -58,6 +72,33 @@ export function CataloguePanel({
     resultsRef.current?.querySelector<HTMLButtonElement>('.catalogue-result.is-selected')?.scrollIntoView?.({ block: 'nearest' });
   }, [selected?.id]);
 
+  const beginNewMonster = () => {
+    setActionError(null);
+    setCategory('monster');
+    setQuery('');
+    setMonsterEditor({ entry: createCustomMonster(), mode: 'create' });
+  };
+
+  const beginMonsterDuplicate = (entry: CatalogueEntry) => {
+    setActionError(null);
+    setMonsterEditor({ entry: createCustomMonster(entry), mode: 'create' });
+  };
+
+  const beginMonsterEdit = (entry: CustomCatalogueEntry) => {
+    setActionError(null);
+    setMonsterEditor({ entry, mode: 'edit' });
+  };
+
+  const deleteCustomMonster = (entry: CustomCatalogueEntry) => {
+    if (!window.confirm(`Delete custom monster “${entry.name}”? This cannot be undone.`)) return;
+    void onDeleteCustomMonster(entry)
+      .then(() => {
+        setMonsterEditor(null);
+        setSelectedId(null);
+      })
+      .catch((reason) => setActionError(reason instanceof Error ? reason.message : 'Could not delete the custom monster.'));
+  };
+
   return (
     <main className="catalogue-page" aria-label="Rules catalogue">
       <header className="catalogue-page-header">
@@ -71,6 +112,7 @@ export function CataloguePanel({
           </p>
         </div>
         <div className="catalogue-header-actions">
+          <button onClick={beginNewMonster} type="button">New custom monster</button>
           <button onClick={onOpenPrivateMonsterImport} type="button">Import monster archive</button>
           <a href="https://www.dndbeyond.com/srd/" rel="noreferrer" target="_blank">SRD attribution</a>
         </div>
@@ -115,12 +157,32 @@ export function CataloguePanel({
         </aside>
 
         <section className="catalogue-details" aria-live="polite">
-          {selected ? (
+          {monsterEditor ? (
+            <CustomMonsterEditor
+              entry={monsterEditor.entry}
+              key={`${monsterEditor.entry.id}-${monsterEditor.entry.version}`}
+              mode={monsterEditor.mode}
+              onCancel={() => setMonsterEditor(null)}
+              onSave={onSaveCustomMonster}
+            />
+          ) : selected ? (
             <>
               <CatalogueEntryDetails
-                actions={<button className="primary-button" onClick={() => onInsertReference(selected)} type="button">Insert reference into brew</button>}
+                actions={
+                  <div className="catalogue-entry-action-list">
+                    <button className="primary-button" onClick={() => onInsertReference(selected)} type="button">Insert reference into brew</button>
+                    {selected.category === 'monster' && <button onClick={() => beginMonsterDuplicate(selected)} type="button">Duplicate as custom monster</button>}
+                    {selected.category === 'monster' && selected.source === 'Custom' && (
+                      <>
+                        <button onClick={() => beginMonsterEdit(selected as CustomCatalogueEntry)} type="button">Edit custom monster</button>
+                        <button className="quiet-danger" onClick={() => deleteCustomMonster(selected as CustomCatalogueEntry)} type="button">Delete custom monster</button>
+                      </>
+                    )}
+                  </div>
+                }
                 entry={selected}
               />
+              {actionError && <p className="catalogue-error catalogue-inline-error" role="alert">{actionError}</p>}
             </>
           ) : (
             <p className="empty-panel">Choose an entry to inspect its details.</p>

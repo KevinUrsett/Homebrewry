@@ -4,10 +4,11 @@
 
 ### Fixed
 
+- Campaign data now uses schema version 3, preserving validated custom monster stat data across Drive sync while safely reading existing schema 1 and 2 campaign files.
 - Imported private monster catalogues now sync through their own private Google Drive companion file and load when Drive connects on another device. The normalized JSON is validated again on download; archive artwork and package files remain excluded, and no archive code is executed.
 - Encounter monster browsing no longer stops at the first 18 records. It shows 30 at a time and offers **Show more**, while search covers the entire catalogue.
 - Encounters, the current party, Worldbuilding, and custom catalogue entries now sync to their Drive companion file automatically after a local change when Drive is connected. Connecting Drive on another device now loads that campaign data immediately instead of leaving the campaign view at “Local only”.
-- Campaign data uploads now label their Drive metadata as schema version 2, matching the versioned payload that carries custom catalogue entries.
+- Campaign data uploads label their Drive metadata with the current schema version, matching the versioned payload that carries custom catalogue entries.
 - On mobile, the Markdown source now scrolls inside the editor pane so the title and formatting tools remain visible while editing.
 - Encounter names now use a stable editable field and are preserved when adding combatants, starting combat, or inserting the encounter into a brew.
 - **Insert into brew** no longer inserts an encounter at an old cursor position. It opens the Outline placement flow and inserts at the end of the chosen section.
@@ -22,7 +23,9 @@
 
 ### Added
 
-- Choosing a Reference category now creates a campaign-owned custom catalogue entry when the selected text has no matching entry. These entries sync with campaign data and use the same stable reference syntax. Campaign data now uses schema version 2, while safely reading existing version 1 files.
+- Preview pages now use compact D&D-book typography and flow into two columns whenever the available preview pane is wide enough; narrow split panes and phones remain readable in one column.
+- Catalogue can now create custom monsters from scratch, edit them, or duplicate any selected monster as a private campaign template. Custom monsters work in references and Encounters and sync with campaign data.
+- Choosing a Reference category now creates a campaign-owned custom catalogue entry when the selected text has no matching entry. These entries sync with campaign data and use the same stable reference syntax.
 - The Reference toolbar menu can turn selected matching text into a stable catalogue reference by category, while retaining the full catalogue browser.
 - A validated **private monster archive** import flow in Catalogue. Compatible `monsters.json` ZIP files are normalized locally; archive artwork is not copied and imported material is never bundled or committed.
 - Safe ZIP validation for private monster imports: size and record limits, allowed paths only, no encrypted or ZIP64 archives, no path traversal or symlinks, and no archive-provided executable content.

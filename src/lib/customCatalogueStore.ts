@@ -1,5 +1,6 @@
 import type { CampaignDataSyncMetadata } from '../types';
 import type { CustomCatalogueEntry } from '../catalogue/types';
+import { normaliseCustomCatalogueEntry } from '../catalogue/customEntries';
 import { CUSTOM_CATALOGUE_STORE_NAME, getDatabase, markCampaignDataChanged } from './brewStore';
 
 function isCustomCatalogueEntry(entry: CustomCatalogueEntry): boolean {
@@ -14,9 +15,16 @@ export async function listCustomCatalogueEntries(): Promise<CustomCatalogueEntry
     .sort((left, right) => left.category.localeCompare(right.category) || left.name.localeCompare(right.name));
 }
 
-export async function saveCustomCatalogueEntry(entry: CustomCatalogueEntry): Promise<CampaignDataSyncMetadata> {
+export async function saveCustomCatalogueEntry(entry: CustomCatalogueEntry): Promise<{ entry: CustomCatalogueEntry; metadata: CampaignDataSyncMetadata }> {
   if (!isCustomCatalogueEntry(entry)) throw new Error('Only custom catalogue entries can be stored here.');
+  const normalized = normaliseCustomCatalogueEntry(entry);
   const database = await getDatabase();
-  await database.put(CUSTOM_CATALOGUE_STORE_NAME, entry);
+  await database.put(CUSTOM_CATALOGUE_STORE_NAME, normalized);
+  return { entry: normalized, metadata: await markCampaignDataChanged() };
+}
+
+export async function deleteCustomCatalogueEntry(id: string): Promise<CampaignDataSyncMetadata> {
+  const database = await getDatabase();
+  await database.delete(CUSTOM_CATALOGUE_STORE_NAME, id);
   return markCampaignDataChanged();
 }

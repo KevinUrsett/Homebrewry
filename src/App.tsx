@@ -34,7 +34,7 @@ import { importHomebrewerySource, titleFromImportedSource } from './lib/importer
 import type { PrivateMonsterImportReport } from './lib/privateMonsterImport';
 import { clearPrivateMonsterEntries, listPrivateMonsterEntries, replacePrivateMonsterEntries } from './lib/privateMonsterStore';
 import { keepDrivePrivateMonsterCatalogue, overwriteDrivePrivateMonsterCatalogue, syncPrivateMonsterCatalogue, type PrivateMonsterSyncResult } from './lib/privateMonsterSync';
-import { listCustomCatalogueEntries, saveCustomCatalogueEntry } from './lib/customCatalogueStore';
+import { deleteCustomCatalogueEntry, listCustomCatalogueEntries, saveCustomCatalogueEntry } from './lib/customCatalogueStore';
 import { overwriteDriveBrew, syncBrews } from './lib/sync';
 import { createEncounter as createCombatEncounter, createPartyMember } from './lib/encounters';
 import { deleteEncounter as deleteStoredEncounter, deletePartyMember as deleteStoredPartyMember, listEncounters, listPartyMembers, saveEncounter, savePartyMember } from './lib/encounterStore';
@@ -42,7 +42,7 @@ import { formatEncounterReference } from './lib/encounterReferences';
 import { createWorldbuildingEntry } from './lib/worldbuilding';
 import { deleteWorldbuildingEntry as deleteStoredWorldbuildingEntry, listWorldbuildingEntries, saveWorldbuildingEntry } from './lib/worldbuildingStore';
 import { loadCatalogue, toCatalogueMap } from './catalogue/catalogueData';
-import { createCustomCatalogueEntry } from './catalogue/customEntries';
+import { createCustomCatalogueEntry, normaliseCustomCatalogueEntry } from './catalogue/customEntries';
 import { findCatalogueEntryByName, formatCatalogueReference } from './catalogue/references';
 import { catalogueCategoryLabels, type CatalogueCategory, type CatalogueEntry, type CustomCatalogueEntry } from './catalogue/types';
 import type { Brew, BrewAsset, CampaignDataSyncMetadata, Encounter, MobileSection, PartyMember, PrivateMonsterSyncMetadata, ViewMode, WorldbuildingEntry, WorldbuildingKind } from './types';
@@ -284,10 +284,10 @@ export default function App() {
       }
       const customEntry = createCustomCatalogueEntry(selectedText, category);
       try {
-        const metadata = await saveCustomCatalogueEntry(customEntry);
-        setCustomCatalogueEntries((current) => [...current, customEntry]);
-        noteCampaignDataSaved(metadata, 'Reference saved locally');
-        entry = customEntry;
+        const saved = await saveCustomCatalogueEntry(customEntry);
+        setCustomCatalogueEntries((current) => [...current, saved.entry]);
+        noteCampaignDataSaved(saved.metadata, 'Reference saved locally');
+        entry = saved.entry;
       } catch {
         setSaveState(`Could not save the ${catalogueCategoryLabels[category]} reference`);
         return;
@@ -819,6 +819,36 @@ export default function App() {
     scheduleCampaignSync();
   };
 
+  const saveCustomMonster = async (draft: CustomCatalogueEntry) => {
+    const existing = customCatalogueEntries.find((entry) => entry.id === draft.id);
+    const timestamp = new Date().toISOString();
+    const candidate = normaliseCustomCatalogueEntry({
+      ...draft,
+      category: 'monster',
+      source: 'Custom',
+      createdAt: existing?.createdAt ?? draft.createdAt ?? timestamp,
+      updatedAt: timestamp,
+      version: existing ? existing.version + 1 : 1
+    });
+    const saved = await saveCustomCatalogueEntry(candidate);
+    const nextEntries = existing
+      ? customCatalogueEntries.map((entry) => entry.id === saved.entry.id ? saved.entry : entry)
+      : [...customCatalogueEntries, saved.entry];
+    campaignRecordsRef.current = { ...campaignRecordsRef.current, customCatalogueEntries: nextEntries };
+    setCustomCatalogueEntries(nextEntries);
+    setCatalogueSelection(saved.entry);
+    noteCampaignDataSaved(saved.metadata, existing ? 'Custom monster updated locally' : 'Custom monster created locally');
+  };
+
+  const deleteCustomMonster = async (entry: CustomCatalogueEntry) => {
+    const metadata = await deleteCustomCatalogueEntry(entry.id);
+    const nextEntries = customCatalogueEntries.filter((item) => item.id !== entry.id);
+    campaignRecordsRef.current = { ...campaignRecordsRef.current, customCatalogueEntries: nextEntries };
+    setCustomCatalogueEntries(nextEntries);
+    setCatalogueSelection((selected) => selected?.id === entry.id ? null : selected);
+    noteCampaignDataSaved(metadata, 'Custom monster removed locally');
+  };
+
   const connectDrive = async () => {
     try {
       setSaveState('Connecting to Google Drive…');
@@ -1053,8 +1083,10 @@ export default function App() {
           error={catalogueError}
           loading={catalogueLoading}
           customEntryCount={customCatalogueEntries.length}
+          onDeleteCustomMonster={deleteCustomMonster}
           onInsertReference={insertCatalogueReference}
           onOpenPrivateMonsterImport={() => setPrivateMonsterImportOpen(true)}
+          onSaveCustomMonster={saveCustomMonster}
           privateMonsterCount={privateMonsterEntries.length}
           selectedEntry={catalogueSelection}
         />

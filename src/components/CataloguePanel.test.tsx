@@ -55,8 +55,10 @@ describe('CataloguePanel', () => {
           entries={[aboleth, dragon]}
           error={null}
           loading={false}
+          onDeleteCustomMonster={vi.fn().mockResolvedValue(undefined)}
           onInsertReference={vi.fn()}
           onOpenPrivateMonsterImport={vi.fn()}
+          onSaveCustomMonster={vi.fn().mockResolvedValue(undefined)}
           customEntryCount={0}
           privateMonsterCount={0}
           selectedEntry={dragon}
@@ -66,5 +68,49 @@ describe('CataloguePanel', () => {
 
     expect(container.querySelector('.catalogue-result.is-selected')?.textContent).toContain('Adult Blue Dragon');
     expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
+  });
+
+  it('creates a campaign-owned monster draft from the selected monster', async () => {
+    const onSaveCustomMonster = vi.fn().mockResolvedValue(undefined);
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push({ container, root });
+
+    await act(async () => {
+      root.render(
+        <CataloguePanel
+          entries={[aboleth]}
+          error={null}
+          loading={false}
+          onDeleteCustomMonster={vi.fn().mockResolvedValue(undefined)}
+          onInsertReference={vi.fn()}
+          onOpenPrivateMonsterImport={vi.fn()}
+          onSaveCustomMonster={onSaveCustomMonster}
+          customEntryCount={0}
+          privateMonsterCount={0}
+          selectedEntry={aboleth}
+        />
+      );
+    });
+
+    const duplicate = Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Duplicate as custom monster');
+    await act(async () => {
+      duplicate?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(container.querySelector<HTMLInputElement>('[aria-label="Monster name"]')?.value).toBe('Aboleth copy');
+    const save = Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Save monster');
+    await act(async () => {
+      save?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(onSaveCustomMonster).toHaveBeenCalledWith(expect.objectContaining({
+      category: 'monster',
+      name: 'Aboleth copy',
+      source: 'Custom',
+      ruleset: 'Homebrewry',
+      data: aboleth.data
+    }));
   });
 });

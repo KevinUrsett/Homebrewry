@@ -10,7 +10,7 @@ import { listRemoteCampaignData, uploadCampaignData } from './googleDrive';
 import { syncCampaignData } from './campaignSync';
 
 const snapshot: CampaignDataSnapshot = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   updatedAt: '2026-07-26T10:00:00.000Z',
   encounters: [],
   partyMembers: [],

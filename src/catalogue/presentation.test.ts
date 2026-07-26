@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cataloguePlainText, entrySummary } from './presentation';
+import { cataloguePlainText, entrySummary, speedText } from './presentation';
 import type { CatalogueEntry } from './types';
 
 describe('catalogue presentation', () => {
@@ -19,5 +19,19 @@ describe('catalogue presentation', () => {
     };
 
     expect(entrySummary(entry)).toEqual(['M humanoid NG', 'AC 14 · HP 27 · CR 1/2']);
+  });
+
+  it('supports a plain-language speed field in a custom monster', () => {
+    const entry: CatalogueEntry = {
+      id: 'custom-id',
+      category: 'monster',
+      name: 'Ash Scout',
+      description: '',
+      data: { speed: 'walk 30 ft., fly 60 ft.' },
+      source: 'Custom',
+      ruleset: 'Homebrewry'
+    };
+
+    expect(speedText(entry)).toBe('walk 30 ft., fly 60 ft.');
   });
 });

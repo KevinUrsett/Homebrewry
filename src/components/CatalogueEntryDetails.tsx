@@ -51,6 +51,7 @@ function MonsterDetails({ entry }: { entry: CatalogueEntry }) {
 
   return (
     <>
+      {entry.description && <TextBlock>{entry.description}</TextBlock>}
       {identity && <p className="catalogue-monster-identity">{identity}</p>}
       <dl className="catalogue-stats">
         {dataString(entry, 'ac') && <><dt>Armor Class</dt><dd>{dataString(entry, 'ac')}</dd></>}

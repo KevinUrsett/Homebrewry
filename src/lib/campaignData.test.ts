@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createCampaignDataSnapshot, keepBothCampaignData, parseCampaignDataSnapshot } from './campaignData';
-import { createCustomCatalogueEntry } from '../catalogue/customEntries';
+import { createCustomCatalogueEntry, createCustomMonster } from '../catalogue/customEntries';
+import type { CatalogueEntry } from '../catalogue/types';
 import { createEncounter, createPartyMember } from './encounters';
 import { createWorldbuildingEntry } from './worldbuilding';
 
@@ -19,7 +20,29 @@ describe('campaign data snapshots', () => {
     const legacySnapshot = { ...snapshot, schemaVersion: 1 } as Record<string, unknown>;
     delete legacySnapshot.customCatalogueEntries;
     expect(parseCampaignDataSnapshot(legacySnapshot).customCatalogueEntries).toEqual([]);
-    expect(() => parseCampaignDataSnapshot({ schemaVersion: 3 })).toThrow('not a supported Homebrewry backup');
+    expect(() => parseCampaignDataSnapshot({ schemaVersion: 4 })).toThrow('not a supported Homebrewry backup');
+  });
+
+  it('preserves structured custom monster data in schema v3 while safely migrating v2 entries', () => {
+    const template: CatalogueEntry = {
+      id: 'srd-monster',
+      category: 'monster',
+      name: 'Ash Scout',
+      description: 'A scout from the ash road.',
+      data: { ac: '14', hp: '27 (5d8 + 5)', speed: { walk: 30 }, actions: [{ name: 'Crossbow', text: 'Ranged Weapon Attack.' }] },
+      source: 'SRD-521',
+      ruleset: '5.5e'
+    };
+    const monster = createCustomMonster(template, '2026-07-26T12:00:00.000Z', 'custom-monster');
+    const snapshot = createCampaignDataSnapshot([], [], [], '2026-07-26T12:00:00.000Z', [monster]);
+
+    expect(parseCampaignDataSnapshot(JSON.parse(JSON.stringify(snapshot))).customCatalogueEntries[0]).toMatchObject({
+      id: 'custom-monster',
+      data: template.data
+    });
+
+    const legacy = { ...snapshot, schemaVersion: 2 } as Record<string, unknown>;
+    expect(parseCampaignDataSnapshot(legacy).customCatalogueEntries[0]?.data).toEqual({});
   });
 
   it('keeps conflicting records as separately named local copies', () => {

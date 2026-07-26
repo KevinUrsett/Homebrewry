@@ -8,7 +8,7 @@ A responsive, local-first editor for D&D-style brew documents.
 - Markdown editor with autosave, manual save feedback, undo/redo, and find/replace
 - Responsive editor, preview, library, and outline layouts
 - Safe Markdown rendering with a distinct, D&D-book-inspired layout system
-- Callouts, stat blocks, item and spell cards, two-column sections, explicit page breaks, and print/PDF styling
+- Compact D&D-book typography with responsive two-column preview pages, plus callouts, stat blocks, item and spell cards, explicit page breaks, and print/PDF styling
 - Drive-backed image uploads with local offline copies and accessible alt text
 - Safe pasted or text-file import of Homebrewery-style source, with a compatibility report
 - Offline, searchable SRD 5.2.1 catalogue for monsters, spells, items, rules, and character options
@@ -62,6 +62,10 @@ Use **Reference** in the editor toolbar, choose a category to turn selected matc
 
 The preview displays only `Aboleth`; hover it on desktop to inspect a reference card, or tap/click to open its complete entry. In the source editor, hover the highlighted reference token to inspect it. References use IDs rather than just names, so renaming or duplicate names cannot silently point at the wrong record.
 
+### Custom monsters
+
+Use **Catalogue → New custom monster** for a blank stat block, or select any monster and choose **Duplicate as custom monster**. The editor covers identity, AC, HP, speed, challenge rating, ability scores, description, traits, actions, bonus actions, reactions, and legendary actions. Custom monsters are campaign-owned: they can be referenced in brews, added to Encounters, and sync with your current party and Worldbuilding data through Google Drive.
+
 ### Private monster archives
 
 Use **Catalogue → Import monster archive** to add a compatible ZIP containing `monsters.json`. Imported monsters are validated, stored locally first, then backed up to a separate private Google Drive companion file when Drive is connected. They never enter brew files, GitHub, or the public application bundle.
@@ -88,7 +92,7 @@ In the source editor, select a word or phrase and right-click it (or right-click
 
 ## Campaign data sync
 
-Encounters, the current party roster, Worldbuilding, and custom catalogue entries sync through one separate, versioned Drive file: `Homebrewry campaign data.homebrewry.json`. Brew files remain unchanged and backward compatible.
+Encounters, the current party roster, Worldbuilding, and custom catalogue entries (including custom monster stat blocks) sync through one separate, versioned Drive file: `Homebrewry campaign data.homebrewry.json`. Brew files remain unchanged and backward compatible.
 
 After you connect Drive, campaign changes are backed up automatically shortly after they are saved locally. Connecting Drive on another device also checks for and loads the companion file, so the current party and encounters follow you without a separate refresh. **Refresh & sync** remains available to back up brews and images immediately. If both devices change campaign data before syncing, Homebrewry stops and asks whether to keep Drive, keep both record sets, or replace Drive intentionally. No campaign records are silently overwritten.
 

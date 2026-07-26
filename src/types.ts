@@ -119,7 +119,7 @@ export type WorldbuildingEntry = {
  * the established brew document schema.
  */
 export type CampaignDataSnapshot = {
-  schemaVersion: 2;
+  schemaVersion: 3;
   updatedAt: string;
   encounters: Encounter[];
   partyMembers: PartyMember[];

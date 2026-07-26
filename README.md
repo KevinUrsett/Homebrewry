@@ -16,7 +16,7 @@ A responsive, local-first editor for D&D-style brew documents.
 - Local-first combat encounters with a reusable party roster, SRD monster search, initiative order, turn tracking, and hit-point tracking
 - Local-first Worldbuilding entries for campaign places, people, history, factions, and custom reference types
 - Installable PWA base with offline application-shell caching
-- Optional Google Drive backup, manual sync, and explicit conflict resolution
+- Optional Google Drive backup, automatic campaign-data sync after connection, manual full sync, and explicit conflict resolution
 
 The renderer is independent from IndexedDB and Google Drive. See [architecture notes](docs/architecture.md).
 
@@ -90,7 +90,7 @@ In the source editor, select a word or phrase and right-click it (or right-click
 
 Encounters, the current party roster, Worldbuilding, and custom catalogue entries sync through one separate, versioned Drive file: `Homebrewry campaign data.homebrewry.json`. Brew files remain unchanged and backward compatible.
 
-The shared **Refresh & sync** action backs up this companion data alongside brews and images. If both devices change campaign data before syncing, Homebrewry stops and asks whether to keep Drive, keep both record sets, or replace Drive intentionally. No campaign records are silently overwritten.
+After you connect Drive, campaign changes are backed up automatically shortly after they are saved locally. Connecting Drive on another device also checks for and loads the companion file, so the current party and encounters follow you without a separate refresh. **Refresh & sync** remains available to back up brews and images immediately. If both devices change campaign data before syncing, Homebrewry stops and asks whether to keep Drive, keep both record sets, or replace Drive intentionally. No campaign records are silently overwritten.
 
 Private monster archives are deliberately not part of this campaign-data sync. Import the archive directly on each device that needs it.
 

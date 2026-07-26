@@ -61,7 +61,7 @@ Worldbuilding records do not rewrite Markdown, auto-link references, or expose n
 
 ## Campaign-data sync boundary
 
-`lib/campaignData` validates the versioned campaign snapshot before remote data can replace local IndexedDB records. `lib/campaignSync` compares the companion Drive file revision with local change metadata, and never merges diverging records automatically. It stores Encounters, the current party, Worldbuilding, and custom catalogue entries in one app-owned Drive file rather than modifying any brew document.
+`lib/campaignData` validates the versioned campaign snapshot before remote data can replace local IndexedDB records. `lib/campaignSync` compares the companion Drive file revision with local change metadata, and never merges diverging records automatically. It stores Encounters, the current party, Worldbuilding, and custom catalogue entries in one app-owned Drive file rather than modifying any brew document. `App` schedules a short, serialized Drive backup after a successful local campaign-data save whenever Drive is connected, and it checks this companion file immediately when a device connects.
 
 An explicit conflict choice can keep Drive, keep both record sets, or replace Drive intentionally. `brewStore.replaceCampaignData` performs a transactional local replacement only after that result is known. The renderer continues to receive only read-only encounter data, never Drive or IndexedDB access.
 

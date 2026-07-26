@@ -81,6 +81,17 @@ export default function App() {
   const selectionRef = useRef({ start: 0, end: 0 });
   const historyRef = useRef<string[]>([]);
   const redoRef = useRef<string[]>([]);
+  const campaignRecordsRef = useRef({
+    encounters: [] as Encounter[],
+    partyMembers: [] as PartyMember[],
+    worldbuildingEntries: [] as WorldbuildingEntry[],
+    customCatalogueEntries: [] as CustomCatalogueEntry[]
+  });
+  const campaignMetadataRef = useRef<CampaignDataSyncMetadata | null>(null);
+  const campaignMutationRef = useRef(0);
+  const campaignSyncInFlightRef = useRef(false);
+  const campaignSyncQueuedRef = useRef(false);
+  const campaignSyncTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     Promise.all([seedBrews(), listAssets(), listEncounters(), listPartyMembers(), listWorldbuildingEntries(), getCampaignDataSyncMetadata()])
@@ -119,6 +130,25 @@ export default function App() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    campaignRecordsRef.current = {
+      encounters,
+      partyMembers,
+      worldbuildingEntries,
+      customCatalogueEntries
+    };
+  }, [customCatalogueEntries, encounters, partyMembers, worldbuildingEntries]);
+
+  useEffect(() => {
+    campaignMetadataRef.current = campaignDataSync;
+  }, [campaignDataSync]);
+
+  useEffect(() => () => {
+    if (campaignSyncTimerRef.current !== null) {
+      window.clearTimeout(campaignSyncTimerRef.current);
+    }
   }, []);
 
   const activeBrew = useMemo(
@@ -204,7 +234,7 @@ export default function App() {
       try {
         const metadata = await saveCustomCatalogueEntry(customEntry);
         setCustomCatalogueEntries((current) => [...current, customEntry]);
-        setCampaignDataSync(metadata);
+        noteCampaignDataSaved(metadata, 'Reference saved locally');
         entry = customEntry;
       } catch {
         setSaveState(`Could not save the ${catalogueCategoryLabels[category]} reference`);
@@ -304,8 +334,7 @@ export default function App() {
     setEncounters((current) => [encounter, ...current.filter((item) => item.id !== encounter.id)]);
     void saveEncounter(encounter)
       .then((metadata) => {
-        setCampaignDataSync(metadata);
-        setSaveState('Encounter saved locally');
+        noteCampaignDataSaved(metadata, 'Encounter saved locally');
       })
       .catch(() => setSaveState('Encounter save failed'));
   };
@@ -320,8 +349,7 @@ export default function App() {
     setWorldbuildingEntries((current) => [entry, ...current.filter((item) => item.id !== entry.id)]);
     void saveWorldbuildingEntry(entry)
       .then((metadata) => {
-        setCampaignDataSync(metadata);
-        setSaveState('Worldbuilding entry saved locally');
+        noteCampaignDataSaved(metadata, 'Worldbuilding entry saved locally');
       })
       .catch(() => setSaveState('Worldbuilding save failed'));
   };
@@ -351,8 +379,7 @@ export default function App() {
     setWorldbuildingSelectedId((currentId) => currentId === entry.id ? null : currentId);
     void deleteStoredWorldbuildingEntry(entry.id)
       .then((metadata) => {
-        setCampaignDataSync(metadata);
-        setSaveState('Worldbuilding entry deleted locally');
+        noteCampaignDataSaved(metadata, 'Worldbuilding entry deleted locally');
       })
       .catch(() => setSaveState('Worldbuilding deletion failed'));
   };
@@ -363,8 +390,7 @@ export default function App() {
     setEncounterSelectedId((currentId) => currentId === encounter.id ? null : currentId);
     void deleteStoredEncounter(encounter.id)
       .then((metadata) => {
-        setCampaignDataSync(metadata);
-        setSaveState('Encounter deleted locally');
+        noteCampaignDataSaved(metadata, 'Encounter deleted locally');
       })
       .catch(() => setSaveState('Encounter deletion failed'));
   };
@@ -378,8 +404,7 @@ export default function App() {
     setPartyMembers((current) => [...current.filter((item) => item.id !== next.id), next].sort((left, right) => left.createdAt.localeCompare(right.createdAt)));
     void savePartyMember(next)
       .then((metadata) => {
-        setCampaignDataSync(metadata);
-        setSaveState('Party roster saved locally');
+        noteCampaignDataSaved(metadata, 'Party roster saved locally');
       })
       .catch(() => setSaveState('Party roster save failed'));
   };
@@ -393,8 +418,7 @@ export default function App() {
     setPartyMembers((current) => current.filter((item) => item.id !== member.id));
     void deleteStoredPartyMember(member.id)
       .then((metadata) => {
-        setCampaignDataSync(metadata);
-        setSaveState('Party member removed locally');
+        noteCampaignDataSaved(metadata, 'Party member removed locally');
       })
       .catch(() => setSaveState('Party roster deletion failed'));
   };
@@ -475,17 +499,6 @@ export default function App() {
     setSaveState(result.notices.length ? `Imported brew. ${result.notices.join(' ')}` : 'Imported brew locally');
   };
 
-  const connectDrive = async () => {
-    try {
-      setSaveState('Connecting to Google Drive…');
-      const token = await requestDriveAccess();
-      setAccessToken(token);
-      setSaveState('Google Drive connected for this session');
-    } catch (error) {
-      setSaveState(error instanceof Error ? error.message : 'Google Drive connection failed');
-    }
-  };
-
   const applyCampaignDataResult = async (
     result: CampaignDataSyncResult,
     sourceData: CampaignDataSyncResult['data']
@@ -501,7 +514,141 @@ export default function App() {
       setEncounterSelectedId((current) => result.data.encounters.some((encounter) => encounter.id === current) ? current : result.data.encounters[0]?.id ?? null);
       setWorldbuildingSelectedId((current) => result.data.worldbuildingEntries.some((entry) => entry.id === current) ? current : result.data.worldbuildingEntries[0]?.id ?? null);
     }
+    campaignRecordsRef.current = {
+      encounters: result.data.encounters,
+      partyMembers: result.data.partyMembers,
+      worldbuildingEntries: result.data.worldbuildingEntries,
+      customCatalogueEntries: result.data.customCatalogueEntries
+    };
+    campaignMetadataRef.current = result.metadata;
     setCampaignDataSync(result.metadata);
+  };
+
+  /**
+   * Keeps campaign records local-first, but uploads their companion Drive file
+   * shortly after a successful local save. A second change made during an
+   * upload stays pending and is sent by a follow-up pass instead of being lost.
+   */
+  const syncCampaignDataOnly = async (token: string, announce = false): Promise<CampaignDataSyncResult | null> => {
+    if (campaignSyncInFlightRef.current) {
+      campaignSyncQueuedRef.current = true;
+      return null;
+    }
+
+    campaignSyncInFlightRef.current = true;
+    const mutationAtStart = campaignMutationRef.current;
+
+    try {
+      if (announce) setSaveState('Syncing campaign data with Google Drive…');
+      const records = campaignRecordsRef.current;
+      const sourceData = createCampaignDataSnapshot(
+        records.encounters,
+        records.partyMembers,
+        records.worldbuildingEntries,
+        undefined,
+        records.customCatalogueEntries
+      );
+      const metadata = campaignMetadataRef.current ?? await getCampaignDataSyncMetadata();
+      campaignMetadataRef.current = metadata;
+      const result = await syncCampaignData(token, sourceData, metadata);
+      const changedDuringSync = campaignMutationRef.current !== mutationAtStart;
+
+      if (result.state === 'conflict' || !changedDuringSync) {
+        await applyCampaignDataResult(result, sourceData);
+      } else if (result.data === sourceData && result.metadata.drive) {
+        // This device wrote the previous snapshot, then changed again before
+        // Drive replied. Preserve the new local change while recording Drive's
+        // new revision so the queued pass can safely upload the latest data.
+        const latestMetadata = campaignMetadataRef.current ?? metadata;
+        const pendingMetadata: CampaignDataSyncMetadata = {
+          ...latestMetadata,
+          drive: result.metadata.drive,
+          syncState: 'pending',
+          conflict: undefined
+        };
+        await saveCampaignDataSyncMetadata(pendingMetadata);
+        campaignMetadataRef.current = pendingMetadata;
+        setCampaignDataSync(pendingMetadata);
+        campaignSyncQueuedRef.current = true;
+      } else {
+        // Avoid silently replacing a new local change with a remote download
+        // that began before the edit. Surface the existing conflict choices.
+        const latestMetadata = campaignMetadataRef.current ?? metadata;
+        const remoteDrive = result.metadata.drive;
+        const conflictMetadata: CampaignDataSyncMetadata = {
+          ...latestMetadata,
+          ...(remoteDrive ? { drive: remoteDrive } : {}),
+          syncState: 'conflict',
+          conflict: {
+            remoteData: result.data,
+            remoteRevisionId: remoteDrive?.revisionId ?? ''
+          }
+        };
+        await saveCampaignDataSyncMetadata(conflictMetadata);
+        campaignMetadataRef.current = conflictMetadata;
+        setCampaignDataSync(conflictMetadata);
+      }
+
+      if (announce) setSaveState(result.detail);
+      return result;
+    } catch (error) {
+      const metadata = campaignMetadataRef.current ?? await getCampaignDataSyncMetadata();
+      if (!metadata.conflict) {
+        const errorMetadata: CampaignDataSyncMetadata = { ...metadata, syncState: 'error' };
+        try {
+          await saveCampaignDataSyncMetadata(errorMetadata);
+        } catch {
+          // Preserve the original Drive error when local metadata persistence is unavailable.
+        }
+        campaignMetadataRef.current = errorMetadata;
+        setCampaignDataSync(errorMetadata);
+      }
+      throw error;
+    } finally {
+      campaignSyncInFlightRef.current = false;
+      if (campaignSyncQueuedRef.current) {
+        campaignSyncQueuedRef.current = false;
+        scheduleCampaignSync();
+      }
+    }
+  };
+
+  const scheduleCampaignSync = () => {
+    if (!accessToken) return;
+    if (campaignSyncTimerRef.current !== null) {
+      window.clearTimeout(campaignSyncTimerRef.current);
+    }
+    const token = accessToken;
+    campaignSyncTimerRef.current = window.setTimeout(() => {
+      campaignSyncTimerRef.current = null;
+      void syncCampaignDataOnly(token).catch((error) => {
+        setSaveState(error instanceof Error ? error.message : 'Campaign data sync failed');
+      });
+    }, 700);
+  };
+
+  const noteCampaignDataSaved = (metadata: CampaignDataSyncMetadata, localMessage: string) => {
+    campaignMutationRef.current += 1;
+    campaignMetadataRef.current = metadata;
+    setCampaignDataSync(metadata);
+    if (!accessToken) {
+      setSaveState(localMessage);
+      return;
+    }
+    setSaveState(`${localMessage} — syncing to Drive…`);
+    scheduleCampaignSync();
+  };
+
+  const connectDrive = async () => {
+    try {
+      setSaveState('Connecting to Google Drive…');
+      const token = await requestDriveAccess();
+      setAccessToken(token);
+      const campaignResult = await syncCampaignDataOnly(token, true);
+      setSaveState(campaignResult ? `Google Drive connected; ${campaignResult.detail}` : 'Google Drive connected for this session');
+    } catch (error) {
+      setSaveState(error instanceof Error ? error.message : 'Google Drive connection failed');
+    }
   };
 
   const syncToDrive = async () => {
@@ -515,10 +662,8 @@ export default function App() {
       const brewResult = await syncBrews(accessToken, brews);
       await replaceBrews(brewResult.brews);
       setBrews(brewResult.brews);
-      const campaignData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries, undefined, customCatalogueEntries);
-      const campaignResult = await syncCampaignData(accessToken, campaignData, campaignDataSync ?? await getCampaignDataSyncMetadata());
-      await applyCampaignDataResult(campaignResult, campaignData);
-      setSaveState(`${brewResult.detail}; ${assetResult.detail}; ${campaignResult.detail}`);
+      const campaignResult = await syncCampaignDataOnly(accessToken);
+      setSaveState(`${brewResult.detail}; ${assetResult.detail}; ${campaignResult?.detail ?? 'Campaign data sync already in progress'}`);
     } catch (error) {
       setSaveState(error instanceof Error ? error.message : 'Google Drive sync failed');
     } finally {

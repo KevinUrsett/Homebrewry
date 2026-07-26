@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Encounters, the current party, Worldbuilding, and custom catalogue entries now sync to their Drive companion file automatically after a local change when Drive is connected. Connecting Drive on another device now loads that campaign data immediately instead of leaving the campaign view at “Local only”.
+- Campaign data uploads now label their Drive metadata as schema version 2, matching the versioned payload that carries custom catalogue entries.
 - On mobile, the Markdown source now scrolls inside the editor pane so the title and formatting tools remain visible while editing.
 - Encounter names now use a stable editable field and are preserved when adding combatants, starting combat, or inserting the encounter into a brew.
 - **Insert into brew** no longer inserts an encounter at an old cursor position. It opens the Outline placement flow and inserts at the end of the chosen section.

@@ -170,7 +170,7 @@ export async function uploadCampaignData(
     {
       name: campaignDataName(),
       mimeType: CAMPAIGN_DATA_MIME_TYPE,
-      appProperties: { homebrewry: 'campaign-data', schemaVersion: '1' }
+      appProperties: { homebrewry: 'campaign-data', schemaVersion: '2' }
     },
     data,
     CAMPAIGN_DATA_MIME_TYPE

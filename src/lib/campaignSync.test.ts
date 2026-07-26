@@ -59,6 +59,34 @@ describe('campaign data sync', () => {
     expect(uploadCampaignData).not.toHaveBeenCalled();
   });
 
+  it('loads existing campaign data on a newly connected device with no local records', async () => {
+    const remote = {
+      ...snapshot,
+      updatedAt: '2026-07-26T11:00:00.000Z',
+      partyMembers: [{
+        id: 'party-1',
+        name: 'Rook',
+        armorClass: 16,
+        maxHitPoints: 42,
+        createdAt: '2026-07-26T10:00:00.000Z',
+        updatedAt: '2026-07-26T10:00:00.000Z'
+      }]
+    };
+    const freshMetadata: CampaignDataSyncMetadata = {
+      id: 'campaign-data',
+      lastLocalChangeAt: '2026-07-26T10:00:00.000Z',
+      syncState: 'local'
+    };
+    vi.mocked(listRemoteCampaignData).mockResolvedValue([{ file: { id: 'campaign-file', name: 'Homebrewry campaign data.homebrewry.json', modifiedTime: '2026-07-26T11:00:00.000Z', headRevisionId: 'revision-2' }, data: remote }]);
+
+    const result = await syncCampaignData('token', snapshot, freshMetadata);
+
+    expect(result.state).toBe('synced');
+    expect(result.detail).toBe('Campaign data loaded from Drive');
+    expect(result.data.partyMembers).toEqual(remote.partyMembers);
+    expect(uploadCampaignData).not.toHaveBeenCalled();
+  });
+
   it('creates a Drive companion file when local campaign data exists', async () => {
     const local = { ...snapshot, partyMembers: [{ id: 'party-1', name: 'Rook', armorClass: 16, maxHitPoints: 42, createdAt: '2026-07-26T10:00:00.000Z', updatedAt: '2026-07-26T10:00:00.000Z' }] };
     const initialMetadata: CampaignDataSyncMetadata = {

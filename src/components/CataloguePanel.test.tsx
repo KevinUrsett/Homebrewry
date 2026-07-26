@@ -57,6 +57,7 @@ describe('CataloguePanel', () => {
           loading={false}
           onInsertReference={vi.fn()}
           onOpenPrivateMonsterImport={vi.fn()}
+          customEntryCount={0}
           privateMonsterCount={0}
           selectedEntry={dragon}
         />

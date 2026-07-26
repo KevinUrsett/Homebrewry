@@ -9,6 +9,7 @@ export const PARTY_STORE_NAME = 'party-members';
 export const WORLDBUILDING_STORE_NAME = 'worldbuilding';
 export const CAMPAIGN_DATA_SYNC_STORE_NAME = 'campaign-data-sync';
 export const PRIVATE_MONSTER_STORE_NAME = 'private-monsters';
+export const CUSTOM_CATALOGUE_STORE_NAME = 'custom-catalogue';
 
 const starterContent = `# The Ashen Road
 
@@ -33,7 +34,7 @@ The scout fires from cover, then offers a bargain: carry a sealed letter to the 
 `;
 
 export const getDatabase = () =>
-  openDB(DATABASE_NAME, 7, {
+  openDB(DATABASE_NAME, 8, {
     upgrade(database, oldVersion) {
       if (oldVersion < 1) {
         const store = database.createObjectStore(STORE_NAME, { keyPath: 'id' });
@@ -58,6 +59,9 @@ export const getDatabase = () =>
       }
       if (oldVersion < 7) {
         database.createObjectStore(PRIVATE_MONSTER_STORE_NAME, { keyPath: 'id' });
+      }
+      if (oldVersion < 8) {
+        database.createObjectStore(CUSTOM_CATALOGUE_STORE_NAME, { keyPath: 'id' });
       }
     }
   });
@@ -149,19 +153,21 @@ export async function replaceCampaignData(
 ): Promise<void> {
   const database = await getDatabase();
   const transaction = database.transaction(
-    [ENCOUNTER_STORE_NAME, PARTY_STORE_NAME, WORLDBUILDING_STORE_NAME, CAMPAIGN_DATA_SYNC_STORE_NAME],
+    [ENCOUNTER_STORE_NAME, PARTY_STORE_NAME, WORLDBUILDING_STORE_NAME, CUSTOM_CATALOGUE_STORE_NAME, CAMPAIGN_DATA_SYNC_STORE_NAME],
     'readwrite'
   );
   const encounters = transaction.objectStore(ENCOUNTER_STORE_NAME);
   const partyMembers = transaction.objectStore(PARTY_STORE_NAME);
   const worldbuilding = transaction.objectStore(WORLDBUILDING_STORE_NAME);
+  const customCatalogue = transaction.objectStore(CUSTOM_CATALOGUE_STORE_NAME);
   const metadataStore = transaction.objectStore(CAMPAIGN_DATA_SYNC_STORE_NAME);
 
-  await Promise.all([encounters.clear(), partyMembers.clear(), worldbuilding.clear()]);
+  await Promise.all([encounters.clear(), partyMembers.clear(), worldbuilding.clear(), customCatalogue.clear()]);
   await Promise.all([
     ...snapshot.encounters.map((encounter: Encounter) => encounters.put(encounter)),
     ...snapshot.partyMembers.map((member: PartyMember) => partyMembers.put(member)),
     ...snapshot.worldbuildingEntries.map((entry: WorldbuildingEntry) => worldbuilding.put(entry)),
+    ...snapshot.customCatalogueEntries.map((entry) => customCatalogue.put(entry)),
     metadataStore.put(metadata)
   ]);
   await transaction.done;

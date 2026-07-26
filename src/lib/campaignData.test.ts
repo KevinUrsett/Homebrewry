@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createCampaignDataSnapshot, keepBothCampaignData, parseCampaignDataSnapshot } from './campaignData';
+import { createCustomCatalogueEntry } from '../catalogue/customEntries';
 import { createEncounter, createPartyMember } from './encounters';
 import { createWorldbuildingEntry } from './worldbuilding';
 
@@ -10,11 +11,15 @@ describe('campaign data snapshots', () => {
       [createEncounter('Bridge ambush', [partyMember])],
       [partyMember],
       [createWorldbuildingEntry('Sund', 'town')],
-      '2026-07-26T12:00:00.000Z'
+      '2026-07-26T12:00:00.000Z',
+      [createCustomCatalogueEntry('The Old Road', 'background', '2026-07-26T12:00:00.000Z', 'road-id')]
     );
 
     expect(parseCampaignDataSnapshot(JSON.parse(JSON.stringify(snapshot)))).toEqual(snapshot);
-    expect(() => parseCampaignDataSnapshot({ schemaVersion: 2 })).toThrow('not a supported Homebrewry backup');
+    const legacySnapshot = { ...snapshot, schemaVersion: 1 } as Record<string, unknown>;
+    delete legacySnapshot.customCatalogueEntries;
+    expect(parseCampaignDataSnapshot(legacySnapshot).customCatalogueEntries).toEqual([]);
+    expect(() => parseCampaignDataSnapshot({ schemaVersion: 3 })).toThrow('not a supported Homebrewry backup');
   });
 
   it('keeps conflicting records as separately named local copies', () => {

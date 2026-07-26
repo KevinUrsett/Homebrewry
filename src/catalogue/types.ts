@@ -31,6 +31,14 @@ export type CatalogueEntry = {
   rows?: string[][];
 };
 
+/** A campaign-owned entry created from the editor, never part of the bundled SRD data. */
+export type CustomCatalogueEntry = CatalogueEntry & {
+  source: 'Custom';
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+};
+
 export type CatalogueReference = {
   category: CatalogueCategory;
   id: string;

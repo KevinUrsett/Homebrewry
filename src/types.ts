@@ -1,3 +1,5 @@
+import type { CustomCatalogueEntry } from './catalogue/types';
+
 export type RendererSettings = {
   accentColor: string;
   parchmentTone: 'warm' | 'light';
@@ -117,11 +119,12 @@ export type WorldbuildingEntry = {
  * the established brew document schema.
  */
 export type CampaignDataSnapshot = {
-  schemaVersion: 1;
+  schemaVersion: 2;
   updatedAt: string;
   encounters: Encounter[];
   partyMembers: PartyMember[];
   worldbuildingEntries: WorldbuildingEntry[];
+  customCatalogueEntries: CustomCatalogueEntry[];
 };
 
 export type CampaignDataConflict = {

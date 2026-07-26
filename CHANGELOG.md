@@ -18,6 +18,7 @@
 
 ### Added
 
+- Choosing a Reference category now creates a campaign-owned custom catalogue entry when the selected text has no matching entry. These entries sync with campaign data and use the same stable reference syntax. Campaign data now uses schema version 2, while safely reading existing version 1 files.
 - The Reference toolbar menu can turn selected matching text into a stable catalogue reference by category, while retaining the full catalogue browser.
 - A validated **private monster archive** import flow in Catalogue. Compatible `monsters.json` ZIP files are stored only in local IndexedDB; archive artwork is not copied and imported material is never bundled, committed, or synced to Drive.
 - Safe ZIP validation for private monster imports: size and record limits, allowed paths only, no encrypted or ZIP64 archives, no path traversal or symlinks, and no archive-provided executable content.

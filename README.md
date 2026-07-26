@@ -54,7 +54,7 @@ Use **Import** in the brew library to paste source or select a `.md`, `.markdown
 
 The **Catalogue** tab provides a versioned offline reference for SRD 5.2.1 monsters, spells, items, rules, tables, classes, subclasses, species, backgrounds, and feats. It is part of the application bundle and does not add a Google permission or upload catalogue lookups to Drive.
 
-Use **Reference** in the editor toolbar, choose a category to turn selected matching text into a reference, or select **Browse catalogue** for the full picker. The app inserts stable source syntax such as:
+Use **Reference** in the editor toolbar, choose a category to turn selected matching text into a reference, or select **Browse catalogue** for the full picker. If there is no matching entry, Homebrewry creates a synced custom catalogue entry in that category. The app inserts stable source syntax such as:
 
 ```markdown
 [[monster:c674b91f-94c8-5c80-9d1d-31bef50bc779|Aboleth]]
@@ -88,7 +88,7 @@ In the source editor, select a word or phrase and right-click it (or right-click
 
 ## Campaign data sync
 
-Encounters, the current party roster, and Worldbuilding sync through one separate, versioned Drive file: `Homebrewry campaign data.homebrewry.json`. Brew files remain unchanged and backward compatible.
+Encounters, the current party roster, Worldbuilding, and custom catalogue entries sync through one separate, versioned Drive file: `Homebrewry campaign data.homebrewry.json`. Brew files remain unchanged and backward compatible.
 
 The shared **Refresh & sync** action backs up this companion data alongside brews and images. If both devices change campaign data before syncing, Homebrewry stops and asks whether to keep Drive, keep both record sets, or replace Drive intentionally. No campaign records are silently overwritten.
 

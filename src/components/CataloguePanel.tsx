@@ -16,6 +16,7 @@ type CataloguePanelProps = {
   onInsertReference: (entry: CatalogueEntry) => void;
   onOpenPrivateMonsterImport: () => void;
   privateMonsterCount: number;
+  customEntryCount: number;
   selectedEntry?: CatalogueEntry | null;
 };
 
@@ -28,6 +29,7 @@ export function CataloguePanel({
   onInsertReference,
   onOpenPrivateMonsterImport,
   privateMonsterCount,
+  customEntryCount,
   selectedEntry
 }: CataloguePanelProps) {
   const [query, setQuery] = useState('');
@@ -65,7 +67,7 @@ export function CataloguePanel({
           <p>
             {loading
               ? 'Loading the SRD reference data…'
-              : `${(entries.length - privateMonsterCount).toLocaleString()} ${catalogueDataset.version} entries available offline.${privateMonsterCount ? ` ${privateMonsterCount.toLocaleString()} private monster${privateMonsterCount === 1 ? '' : 's'} on this device.` : ''}`}
+              : `${(entries.length - privateMonsterCount - customEntryCount).toLocaleString()} ${catalogueDataset.version} entries available offline.${customEntryCount ? ` ${customEntryCount.toLocaleString()} custom entr${customEntryCount === 1 ? 'y' : 'ies'}.` : ''}${privateMonsterCount ? ` ${privateMonsterCount.toLocaleString()} private monster${privateMonsterCount === 1 ? '' : 's'} on this device.` : ''}`}
           </p>
         </div>
         <div className="catalogue-header-actions">

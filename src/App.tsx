@@ -21,6 +21,7 @@ import { getOutline, insertAtOutlineSectionEnd } from './lib/outline';
 import { importHomebrewerySource, titleFromImportedSource } from './lib/importer';
 import type { PrivateMonsterImportReport } from './lib/privateMonsterImport';
 import { clearPrivateMonsterEntries, listPrivateMonsterEntries, replacePrivateMonsterEntries } from './lib/privateMonsterStore';
+import { listCustomCatalogueEntries, saveCustomCatalogueEntry } from './lib/customCatalogueStore';
 import { overwriteDriveBrew, syncBrews } from './lib/sync';
 import { createEncounter as createCombatEncounter, createPartyMember } from './lib/encounters';
 import { deleteEncounter as deleteStoredEncounter, deletePartyMember as deleteStoredPartyMember, listEncounters, listPartyMembers, saveEncounter, savePartyMember } from './lib/encounterStore';
@@ -28,8 +29,9 @@ import { formatEncounterReference } from './lib/encounterReferences';
 import { createWorldbuildingEntry } from './lib/worldbuilding';
 import { deleteWorldbuildingEntry as deleteStoredWorldbuildingEntry, listWorldbuildingEntries, saveWorldbuildingEntry } from './lib/worldbuildingStore';
 import { loadCatalogue, toCatalogueMap } from './catalogue/catalogueData';
+import { createCustomCatalogueEntry } from './catalogue/customEntries';
 import { findCatalogueEntryByName, formatCatalogueReference } from './catalogue/references';
-import { catalogueCategoryLabels, type CatalogueCategory, type CatalogueEntry } from './catalogue/types';
+import { catalogueCategoryLabels, type CatalogueCategory, type CatalogueEntry, type CustomCatalogueEntry } from './catalogue/types';
 import type { Brew, BrewAsset, CampaignDataSyncMetadata, Encounter, MobileSection, PartyMember, ViewMode, WorldbuildingEntry, WorldbuildingKind } from './types';
 
 const mobileLabels: Record<MobileSection, string> = {
@@ -59,6 +61,7 @@ export default function App() {
   const [replaceValue, setReplaceValue] = useState('');
   const [baseCatalogueEntries, setBaseCatalogueEntries] = useState<CatalogueEntry[]>([]);
   const [privateMonsterEntries, setPrivateMonsterEntries] = useState<CatalogueEntry[]>([]);
+  const [customCatalogueEntries, setCustomCatalogueEntries] = useState<CustomCatalogueEntry[]>([]);
   const [catalogueLoading, setCatalogueLoading] = useState(true);
   const [catalogueError, setCatalogueError] = useState<string | null>(null);
   const [catalogueOpen, setCatalogueOpen] = useState(false);
@@ -99,11 +102,12 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([loadCatalogue(), listPrivateMonsterEntries()])
-      .then(([entries, privateEntries]) => {
+    Promise.all([loadCatalogue(), listPrivateMonsterEntries(), listCustomCatalogueEntries()])
+      .then(([entries, privateEntries, customEntries]) => {
         if (!cancelled) {
           setBaseCatalogueEntries(entries);
           setPrivateMonsterEntries(privateEntries);
+          setCustomCatalogueEntries(customEntries);
         }
       })
       .catch((error) => {
@@ -123,8 +127,8 @@ export default function App() {
   );
   const assetMap = useMemo(() => new Map(assets.map((asset) => [asset.id, asset])), [assets]);
   const catalogueEntries = useMemo(
-    () => [...baseCatalogueEntries, ...privateMonsterEntries].sort((left, right) => left.category.localeCompare(right.category) || left.name.localeCompare(right.name)),
-    [baseCatalogueEntries, privateMonsterEntries]
+    () => [...baseCatalogueEntries, ...privateMonsterEntries, ...customCatalogueEntries].sort((left, right) => left.category.localeCompare(right.category) || left.name.localeCompare(right.name)),
+    [baseCatalogueEntries, customCatalogueEntries, privateMonsterEntries]
   );
   const catalogueMap = useMemo(() => toCatalogueMap(catalogueEntries), [catalogueEntries]);
   const encounterMap = useMemo(() => new Map(encounters.map((encounter) => [encounter.id, encounter])), [encounters]);
@@ -183,19 +187,29 @@ export default function App() {
     window.requestAnimationFrame(() => editorRef.current?.focus(cursor));
   };
 
-  const insertSelectedCatalogueReference = (category: CatalogueCategory) => {
+  const insertSelectedCatalogueReference = async (category: CatalogueCategory) => {
     if (!activeBrew) return;
     const editor = editorRef.current;
     const selection = editor?.getSelection() ?? selectionRef.current;
     const selectedText = activeBrew.content.slice(selection.start, selection.end);
-    const entry = findCatalogueEntryByName(catalogueEntries, category, selectedText);
+    let entry = findCatalogueEntryByName(catalogueEntries, category, selectedText);
 
     if (!entry) {
-      setSaveState(selectedText.trim()
-        ? `No ${catalogueCategoryLabels[category]} entry matches that selection`
-        : 'Select text before adding a reference');
-      window.requestAnimationFrame(() => editorRef.current?.focus(selection.start));
-      return;
+      if (!selectedText.trim()) {
+        setSaveState('Select text before adding a reference');
+        window.requestAnimationFrame(() => editorRef.current?.focus(selection.start));
+        return;
+      }
+      const customEntry = createCustomCatalogueEntry(selectedText, category);
+      try {
+        const metadata = await saveCustomCatalogueEntry(customEntry);
+        setCustomCatalogueEntries((current) => [...current, customEntry]);
+        setCampaignDataSync(metadata);
+        entry = customEntry;
+      } catch {
+        setSaveState(`Could not save the ${catalogueCategoryLabels[category]} reference`);
+        return;
+      }
     }
 
     const reference = formatCatalogueReference(entry, selectedText);
@@ -483,6 +497,7 @@ export default function App() {
       setEncounters(result.data.encounters);
       setPartyMembers(result.data.partyMembers);
       setWorldbuildingEntries(result.data.worldbuildingEntries);
+      setCustomCatalogueEntries(result.data.customCatalogueEntries);
       setEncounterSelectedId((current) => result.data.encounters.some((encounter) => encounter.id === current) ? current : result.data.encounters[0]?.id ?? null);
       setWorldbuildingSelectedId((current) => result.data.worldbuildingEntries.some((entry) => entry.id === current) ? current : result.data.worldbuildingEntries[0]?.id ?? null);
     }
@@ -500,7 +515,7 @@ export default function App() {
       const brewResult = await syncBrews(accessToken, brews);
       await replaceBrews(brewResult.brews);
       setBrews(brewResult.brews);
-      const campaignData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries);
+      const campaignData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries, undefined, customCatalogueEntries);
       const campaignResult = await syncCampaignData(accessToken, campaignData, campaignDataSync ?? await getCampaignDataSyncMetadata());
       await applyCampaignDataResult(campaignResult, campaignData);
       setSaveState(`${brewResult.detail}; ${assetResult.detail}; ${campaignResult.detail}`);
@@ -571,14 +586,14 @@ export default function App() {
     if (!campaignDataSync) return;
     const result = keepDriveCampaignData(campaignDataSync);
     if (!result) return;
-    const sourceData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries);
+    const sourceData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries, undefined, customCatalogueEntries);
     await applyCampaignDataResult(result, sourceData);
     setSaveState(result.detail);
   };
 
   const keepBothCampaignConflict = async () => {
     if (!campaignDataSync) return;
-    const sourceData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries);
+    const sourceData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries, undefined, customCatalogueEntries);
     const result = keepBothCampaignDataVersions(sourceData, campaignDataSync);
     if (!result) return;
     await applyCampaignDataResult(result, sourceData);
@@ -589,7 +604,7 @@ export default function App() {
     if (!campaignDataSync || !accessToken) return;
     try {
       setSyncing(true);
-      const sourceData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries);
+      const sourceData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries, undefined, customCatalogueEntries);
       const result = await overwriteDriveCampaignData(accessToken, sourceData, campaignDataSync);
       await applyCampaignDataResult(result, sourceData);
       setSaveState(result.detail);
@@ -687,6 +702,7 @@ export default function App() {
           entries={catalogueEntries}
           error={catalogueError}
           loading={catalogueLoading}
+          customEntryCount={customCatalogueEntries.length}
           onInsertReference={insertCatalogueReference}
           onOpenPrivateMonsterImport={() => setPrivateMonsterImportOpen(true)}
           privateMonsterCount={privateMonsterEntries.length}
@@ -747,7 +763,7 @@ export default function App() {
               onFindChange={setFindValue}
               onImageUpload={(file) => void uploadImage(file)}
               onInsert={insertText}
-              onInsertReferenceCategory={insertSelectedCatalogueReference}
+              onInsertReferenceCategory={(category) => { void insertSelectedCatalogueReference(category); }}
               onKeyDown={(event) => {
                 if (!(event.metaKey || event.ctrlKey)) return;
                 if (event.key.toLowerCase() === 'z') {
@@ -813,7 +829,7 @@ export default function App() {
           <section className="conflict-dialog">
             <p className="eyebrow">Campaign sync conflict</p>
             <h2 id="campaign-conflict-title">Both campaign copies changed</h2>
-            <p>Encounters, the current party, and Worldbuilding records have changes on both devices. Nothing has been overwritten.</p>
+            <p>Encounters, the current party, Worldbuilding, or custom catalogue records have changes on both devices. Nothing has been overwritten.</p>
             <div className="conflict-times">
               <span>This device: {new Date(campaignDataSync.lastLocalChangeAt).toLocaleString()}</span>
               <span>Google Drive: {new Date(campaignDataSync.conflict.remoteData.updatedAt).toLocaleString()}</span>

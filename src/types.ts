@@ -85,6 +85,32 @@ export type Encounter = {
   version: number;
 };
 
+export const worldbuildingKinds = [
+  'town',
+  'road',
+  'historical-figure',
+  'character',
+  'faction',
+  'landmark',
+  'region',
+  'organization',
+  'event',
+  'custom'
+] as const;
+
+export type WorldbuildingKind = (typeof worldbuildingKinds)[number];
+
+export type WorldbuildingEntry = {
+  id: string;
+  name: string;
+  kind: WorldbuildingKind;
+  aliases: string[];
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+};
+
 export type OutlineItem = {
   id: string;
   level: number;
@@ -92,4 +118,4 @@ export type OutlineItem = {
 };
 
 export type ViewMode = 'split' | 'editor' | 'preview';
-export type MobileSection = 'library' | 'editor' | 'preview' | 'outline' | 'catalogue' | 'encounters';
+export type MobileSection = 'library' | 'editor' | 'preview' | 'outline' | 'catalogue' | 'encounters' | 'worldbuilding';

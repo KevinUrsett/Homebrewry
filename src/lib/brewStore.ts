@@ -6,6 +6,7 @@ const STORE_NAME = 'brews';
 export const ASSET_STORE_NAME = 'assets';
 export const ENCOUNTER_STORE_NAME = 'encounters';
 export const PARTY_STORE_NAME = 'party-members';
+export const WORLDBUILDING_STORE_NAME = 'worldbuilding';
 
 const starterContent = `# The Ashen Road
 
@@ -30,7 +31,7 @@ The scout fires from cover, then offers a bargain: carry a sealed letter to the 
 `;
 
 export const getDatabase = () =>
-  openDB(DATABASE_NAME, 4, {
+  openDB(DATABASE_NAME, 5, {
     upgrade(database, oldVersion) {
       if (oldVersion < 1) {
         const store = database.createObjectStore(STORE_NAME, { keyPath: 'id' });
@@ -45,6 +46,10 @@ export const getDatabase = () =>
         encounters.createIndex('updatedAt', 'updatedAt');
         const party = database.createObjectStore(PARTY_STORE_NAME, { keyPath: 'id' });
         party.createIndex('updatedAt', 'updatedAt');
+      }
+      if (oldVersion < 5) {
+        const worldbuilding = database.createObjectStore(WORLDBUILDING_STORE_NAME, { keyPath: 'id' });
+        worldbuilding.createIndex('updatedAt', 'updatedAt');
       }
     }
   });

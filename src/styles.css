@@ -130,6 +130,13 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .outline-list { display: flex; flex: 1; flex-direction: column; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 8px 0; }
 .outline-item { background: transparent; border: 0; border-left: 3px solid transparent; color: #513f32; font-size: .82rem; overflow: hidden; padding-block: 7px; padding-inline-end: 10px; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
 .outline-item:hover { background: #eddfc6; border-left-color: #7a2f27; }
+.outline-cancel { background: transparent; border: 1px solid #bca789; border-radius: 4px; color: #6a2f26; font-size: .65rem; font-weight: 700; letter-spacing: 0; padding: 3px 5px; text-transform: none; }
+.outline-insert-help { color: #725d48; font-size: .75rem; line-height: 1.4; margin: 0; padding: 10px 13px 3px; }
+.outline-item.is-insertion-target { align-items: center; display: flex; gap: 6px; justify-content: space-between; white-space: normal; }
+.outline-item.is-insertion-target:hover { background: #ead1a3; }
+.outline-item.is-insertion-target span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.outline-item.is-insertion-target small { color: #8b642f; flex: 0 0 auto; font-size: .58rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.outline-document-end { align-self: stretch; background: #fffaf0; border: 1px dashed #ad9576; border-radius: 5px; color: #5d2f26; font-size: .72rem; font-weight: 700; margin: 8px 10px; padding: 8px; text-align: left; }
 .empty-panel { color: #85715e; font-size: .82rem; line-height: 1.45; padding: 0 13px; }
 .loading-screen { align-items: center; background: #f7f0df; color: #594132; display: flex; font-family: Georgia, serif; justify-content: center; min-height: 100vh; }
 .conflict-backdrop { align-items: center; background: rgb(30 20 15 / 58%); display: flex; inset: 0; justify-content: center; padding: 20px; position: fixed; z-index: 10; }
@@ -274,6 +281,36 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .brew-encounter-reference strong { font-family: "Bookinsanity", Georgia, serif; font-size: 1.15rem; }
 .brew-encounter-reference small { color: #725d48; font-size: .68rem; }
 
+.worldbuilding-page { background: #e5ded0; display: flex; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; padding: clamp(15px, 2.5vw, 34px); }
+.worldbuilding-page-header { align-items: end; display: flex; gap: 18px; justify-content: space-between; margin: 0 auto 16px; max-width: 1280px; width: 100%; }
+.worldbuilding-page-header h1 { color: #4e2f24; font-family: "Nodesto Caps Condensed", Georgia, serif; font-size: clamp(2.2rem, 5vw, 3.35rem); letter-spacing: .03em; line-height: .9; margin: 0; }
+.worldbuilding-page-header p:not(.eyebrow) { color: #654e3b; margin: 6px 0 0; max-width: 680px; }
+.worldbuilding-workspace { background: #fffaf0; border: 1px solid #cbb99d; box-shadow: 0 10px 28px rgb(45 28 16 / 15%); display: grid; flex: 1; grid-template-columns: minmax(240px, 320px) minmax(0, 1fr); margin: 0 auto; max-width: 1280px; min-height: 0; width: 100%; }
+.worldbuilding-browser { background: #f7f0df; border-right: 1px solid #d8c9ae; display: flex; flex-direction: column; min-height: 0; }
+.worldbuilding-browser .search-input { margin-bottom: 7px; }
+.worldbuilding-kind-select { background: #fffaf0; border: 1px solid #d1c0a5; border-radius: 6px; color: #4d392d; margin: 0 12px; min-height: 42px; padding: 0 10px; width: calc(100% - 24px); }
+.worldbuilding-count { color: #806c5a; font-size: .73rem; margin: 10px 12px; }
+.worldbuilding-list { display: flex; flex: 1; flex-direction: column; gap: 3px; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 0 7px 10px; }
+.worldbuilding-list-item { background: transparent; border: 0; border-left: 3px solid transparent; color: #382b24; display: grid; gap: 3px; padding: 9px 10px; text-align: left; }
+.worldbuilding-list-item:hover { background: #ede0c9; }
+.worldbuilding-list-item.is-selected { background: #ead1a3; border-left-color: #7a2f27; }
+.worldbuilding-list-item strong { font-size: .88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.worldbuilding-list-item span, .worldbuilding-list-item small { color: #806c5a; font-size: .7rem; }
+.worldbuilding-list-item small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.worldbuilding-details { background: #fffdf7; color: #39291f; min-width: 0; overflow: auto; padding: clamp(20px, 3.5vw, 42px); }
+.worldbuilding-entry { display: grid; gap: 19px; margin: 0 auto; max-width: 780px; }
+.worldbuilding-name { background: transparent; border: 0; border-bottom: 1px solid #d8c9ae; color: #5d2f26; font-family: "Nodesto Caps Condensed", Georgia, serif; font-size: clamp(2rem, 4vw, 3rem); line-height: 1; padding: 4px 0 8px; width: 100%; }
+.worldbuilding-meta-grid { display: grid; gap: 14px; grid-template-columns: minmax(150px, .55fr) minmax(0, 1.45fr); }
+.worldbuilding-meta-grid label, .worldbuilding-notes-label { color: #71553e; display: grid; font-size: .72rem; font-weight: 800; gap: 5px; letter-spacing: .05em; text-transform: uppercase; }
+.worldbuilding-meta-grid input, .worldbuilding-meta-grid select, .worldbuilding-notes-label textarea { background: #fffaf0; border: 1px solid #cbb99d; border-radius: 5px; color: #39291f; font-size: .9rem; font-weight: 400; letter-spacing: normal; padding: 8px; text-transform: none; width: 100%; }
+.worldbuilding-notes-label textarea { line-height: 1.5; min-height: 280px; resize: vertical; }
+.worldbuilding-entry-footer { align-items: center; border-top: 1px solid #d8c9ae; color: #806c5a; display: flex; font-size: .72rem; gap: 12px; justify-content: space-between; padding-top: 12px; }
+.quiet-danger { background: transparent; border: 0; color: #8a2f27; font-size: .76rem; font-weight: 700; padding: 5px; }
+.worldbuilding-context-menu { background: #fffaf0; border: 1px solid #b99464; border-radius: 7px; box-shadow: 0 14px 34px rgb(35 21 12 / 28%); display: grid; gap: 2px; max-height: min(530px, calc(100dvh - 24px)); min-width: 205px; overflow: auto; padding: 7px; position: fixed; transform: translateY(4px); z-index: 20; }
+.worldbuilding-context-menu strong { color: #6a2f26; font-size: .73rem; padding: 5px 6px 7px; }
+.worldbuilding-context-menu button { background: transparent; border: 0; border-radius: 4px; color: #493329; font-size: .78rem; padding: 7px; text-align: left; }
+.worldbuilding-context-menu button:hover, .worldbuilding-context-menu button:focus-visible { background: #ead1a3; }
+
 .workspace.view-editor .main-panes, .workspace.view-preview .main-panes { grid-template-columns: minmax(0, 1fr); }
 .workspace.view-editor .preview-pane, .workspace.view-preview .editor-pane { display: none; }
 
@@ -288,7 +325,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .cloud-controls { justify-self: end; }
   .save-indicator { font-size: .72rem; }
   .mobile-nav { background: #3a2b22; display: grid; gap: 3px; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 5px 8px; }
-  .mobile-nav button { font-size: .66rem; padding: 7px 2px; }
+  .mobile-nav button { font-size: .64rem; line-height: 1.1; min-height: 30px; padding: 6px 2px; white-space: normal; }
   .workspace { display: block; flex: 1; min-height: 0; }
   .library-panel, .outline-panel, .editor-pane, .preview-pane { display: none; min-height: 0; }
   .main-panes { display: block; }
@@ -308,7 +345,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .brew-preview h1 { font-size: 2rem; }
   .brew-columns { column-count: 1; }
   .catalogue-page { display: block; flex: 1; min-height: 0; overflow: auto; padding: 12px; }
-  .encounter-page { min-height: calc(100dvh - 136px); padding: 12px; }
+  .encounter-page, .worldbuilding-page { min-height: calc(100dvh - 136px); padding: 12px; }
   .catalogue-page-header { align-items: flex-start; flex-direction: column; gap: 8px; margin-bottom: 12px; }
   .catalogue-workspace { display: block; min-height: 0; width: auto; }
   .catalogue-browser { border-bottom: 1px solid #d8c9ae; border-right: 0; max-height: 370px; }
@@ -322,6 +359,13 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .encounter-setup, .initiative-panel { min-height: 0; padding: 19px 15px; }
   .initiative-panel { border-left: 0; border-top: 1px solid #d8c9ae; }
   .combatant-fields { grid-template-columns: repeat(2, minmax(0, 1fr)) auto repeat(2, minmax(0, 1fr)) auto; }
+  .worldbuilding-page { display: block; flex: 1; overflow: auto; }
+  .worldbuilding-page-header { align-items: flex-start; flex-direction: column; gap: 9px; margin-bottom: 12px; }
+  .worldbuilding-workspace { display: block; min-height: 0; width: auto; }
+  .worldbuilding-browser { border-bottom: 1px solid #d8c9ae; border-right: 0; max-height: 370px; }
+  .worldbuilding-details { min-height: 55vh; padding: 22px 17px; }
+  .worldbuilding-meta-grid { grid-template-columns: 1fr; }
+  .worldbuilding-context-menu { bottom: 12px; left: 12px !important; max-height: min(530px, calc(100dvh - 24px)); right: 12px; top: auto !important; transform: none; }
 }
 
 @media print {

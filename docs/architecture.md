@@ -44,3 +44,11 @@ Google Drive integration is disabled until `VITE_GOOGLE_CLIENT_ID` is supplied b
 `lib/encounterStore` persists `PartyMember` and `Encounter` records in dedicated IndexedDB stores. The current party is a reusable local roster; an encounter copies its members into independent combatants so later roster edits cannot alter a prepared or active fight. `lib/encounters` contains the pure operations for adding SRD monsters, updating combatants, sorting initiative, and advancing a turn.
 
 `lib/encounterReferences` owns the `[[encounter:id|label]]` syntax. The preview receives only a read-only encounter map and a callback, so the renderer still has no storage, OAuth, or Google Drive dependency. Encounter data is intentionally local-only in this first implementation; adding Drive support will require a separate, backward-compatible storage migration rather than changing existing brew files implicitly.
+
+The Outline placement flow derives a selected heading's section boundary from pure Markdown heading locations. It inserts a reference before the next heading at the same or higher level, rather than relying on the editor's cursor position.
+
+## Phase 7 Worldbuilding boundary
+
+`lib/worldbuildingStore` persists versioned `WorldbuildingEntry` records in a dedicated IndexedDB store. `lib/worldbuilding` owns normalization, creation, and update rules for typed entries; it does not depend on a brew, the renderer, or Google Drive. The CodeMirror context menu passes only selected plain text and a user-chosen type to the Worldbuilding layer.
+
+Worldbuilding records are deliberately local-only in this first release. They do not rewrite Markdown, auto-link references, expose notes to the preview, or change the established Drive brew-file format. A future cross-reference or sync feature can extend this isolated model through an explicit, backward-compatible migration.

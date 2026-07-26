@@ -1,4 +1,4 @@
-import { useEffect, useImperativeHandle, useRef, type Ref } from 'react';
+import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { EditorState } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
 import {
@@ -9,6 +9,8 @@ import {
   ViewPlugin,
   type ViewUpdate
 } from '@codemirror/view';
+import { normalizeWorldbuildingName, worldbuildingKindLabels, worldbuildingKinds } from '../lib/worldbuilding';
+import type { WorldbuildingKind } from '../types';
 
 export type MarkdownEditorHandle = {
   getSelection: () => { start: number; end: number };
@@ -20,6 +22,13 @@ type MarkdownEditorProps = {
   onChange: (content: string) => void;
   onSelectionChange: (selection: { start: number; end: number }) => void;
   onKeyDown: (event: KeyboardEvent) => void;
+  onAddWorldbuilding: (name: string, kind: WorldbuildingKind) => void;
+};
+
+type WorldbuildingMenu = {
+  name: string;
+  x: number;
+  y: number;
 };
 
 const referenceDecorator = new MatchDecorator({
@@ -46,16 +55,18 @@ export function MarkdownEditor({
   onChange,
   onSelectionChange,
   onKeyDown,
+  onAddWorldbuilding,
   ref
 }: MarkdownEditorProps & { ref: Ref<MarkdownEditorHandle> }) {
   const parentRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const initialContentRef = useRef(content);
-  const latestRef = useRef({ onChange, onSelectionChange, onKeyDown });
+  const latestRef = useRef({ onChange, onSelectionChange, onKeyDown, onAddWorldbuilding });
+  const [worldbuildingMenu, setWorldbuildingMenu] = useState<WorldbuildingMenu | null>(null);
 
   useEffect(() => {
-    latestRef.current = { onChange, onSelectionChange, onKeyDown };
-  }, [onChange, onKeyDown, onSelectionChange]);
+    latestRef.current = { onChange, onSelectionChange, onKeyDown, onAddWorldbuilding };
+  }, [onAddWorldbuilding, onChange, onKeyDown, onSelectionChange]);
 
   useImperativeHandle(ref, () => ({
     getSelection: () => {
@@ -91,6 +102,32 @@ export function MarkdownEditor({
             keydown: (event) => {
               latestRef.current.onKeyDown(event);
               return event.defaultPrevented;
+            },
+            contextmenu: (event, editor) => {
+              if (!(event instanceof MouseEvent)) return false;
+              const selection = editor.state.selection.main;
+              let from = selection.from;
+              let to = selection.to;
+              if (from === to) {
+                const position = editor.posAtCoords({ x: event.clientX, y: event.clientY });
+                const word = position === null ? null : editor.state.wordAt(position);
+                if (!word) return false;
+                from = word.from;
+                to = word.to;
+              }
+              const name = normalizeWorldbuildingName(editor.state.sliceDoc(from, to));
+              if (!name) return false;
+              event.preventDefault();
+              setWorldbuildingMenu({
+                name,
+                x: Math.max(12, Math.min(event.clientX, window.innerWidth - 242)),
+                y: Math.max(12, Math.min(event.clientY, window.innerHeight - 430))
+              });
+              return true;
+            },
+            mousedown: () => {
+              setWorldbuildingMenu(null);
+              return false;
             }
           })
         ]
@@ -113,5 +150,27 @@ export function MarkdownEditor({
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: content } });
   }, [content]);
 
-  return <div className="markdown-editor" ref={parentRef} />;
+  return (
+    <>
+      <div className="markdown-editor" ref={parentRef} />
+      {worldbuildingMenu && (
+        <div className="worldbuilding-context-menu" role="menu" style={{ left: worldbuildingMenu.x, top: worldbuildingMenu.y }}>
+          <strong>Add “{worldbuildingMenu.name}” as</strong>
+          {worldbuildingKinds.map((kind) => (
+            <button
+              key={kind}
+              onClick={() => {
+                latestRef.current.onAddWorldbuilding(worldbuildingMenu.name, kind);
+                setWorldbuildingMenu(null);
+              }}
+              role="menuitem"
+              type="button"
+            >
+              {worldbuildingKindLabels[kind]}
+            </button>
+          ))}
+        </div>
+      )}
+    </>
+  );
 }

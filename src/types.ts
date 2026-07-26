@@ -1,4 +1,4 @@
-import type { CustomCatalogueEntry } from './catalogue/types';
+import type { CatalogueEntry, CustomCatalogueEntry } from './catalogue/types';
 
 export type RendererSettings = {
   accentColor: string;
@@ -138,6 +138,29 @@ export type CampaignDataSyncMetadata = {
   drive?: DriveMetadata;
   syncState: SyncState;
   conflict?: CampaignDataConflict;
+};
+
+/**
+ * User-imported monsters are kept in a separate companion file. This avoids
+ * re-uploading a large private catalogue whenever combat state changes.
+ */
+export type PrivateMonsterCatalogueSnapshot = {
+  schemaVersion: 1;
+  updatedAt: string;
+  entries: CatalogueEntry[];
+};
+
+export type PrivateMonsterCatalogueConflict = {
+  remoteEntries: CatalogueEntry[];
+  remoteRevisionId: string;
+};
+
+export type PrivateMonsterSyncMetadata = {
+  id: 'private-monster-catalogue';
+  lastLocalChangeAt: string;
+  drive?: DriveMetadata;
+  syncState: SyncState;
+  conflict?: PrivateMonsterCatalogueConflict;
 };
 
 export type OutlineItem = {

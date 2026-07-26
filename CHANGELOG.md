@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Imported private monster catalogues now sync through their own private Google Drive companion file and load when Drive connects on another device. The normalized JSON is validated again on download; archive artwork and package files remain excluded, and no archive code is executed.
+- Encounter monster browsing no longer stops at the first 18 records. It shows 30 at a time and offers **Show more**, while search covers the entire catalogue.
 - Encounters, the current party, Worldbuilding, and custom catalogue entries now sync to their Drive companion file automatically after a local change when Drive is connected. Connecting Drive on another device now loads that campaign data immediately instead of leaving the campaign view at “Local only”.
 - Campaign data uploads now label their Drive metadata as schema version 2, matching the versioned payload that carries custom catalogue entries.
 - On mobile, the Markdown source now scrolls inside the editor pane so the title and formatting tools remain visible while editing.
@@ -22,7 +24,7 @@
 
 - Choosing a Reference category now creates a campaign-owned custom catalogue entry when the selected text has no matching entry. These entries sync with campaign data and use the same stable reference syntax. Campaign data now uses schema version 2, while safely reading existing version 1 files.
 - The Reference toolbar menu can turn selected matching text into a stable catalogue reference by category, while retaining the full catalogue browser.
-- A validated **private monster archive** import flow in Catalogue. Compatible `monsters.json` ZIP files are stored only in local IndexedDB; archive artwork is not copied and imported material is never bundled, committed, or synced to Drive.
+- A validated **private monster archive** import flow in Catalogue. Compatible `monsters.json` ZIP files are normalized locally; archive artwork is not copied and imported material is never bundled or committed.
 - Safe ZIP validation for private monster imports: size and record limits, allowed paths only, no encrypted or ZIP64 archives, no path traversal or symlinks, and no archive-provided executable content.
 - Private monsters now work in catalogue search, stable brew references, preview reference details, and encounter monster search without overriding bundled SRD records.
 

@@ -1,5 +1,6 @@
 import { openDB } from 'idb';
-import type { Brew, CampaignDataSnapshot, CampaignDataSyncMetadata, Encounter, PartyMember, WorldbuildingEntry } from '../types';
+import type { CatalogueEntry } from '../catalogue/types';
+import type { Brew, CampaignDataSnapshot, CampaignDataSyncMetadata, Encounter, PartyMember, PrivateMonsterSyncMetadata, WorldbuildingEntry } from '../types';
 
 const DATABASE_NAME = 'homebrewry';
 const STORE_NAME = 'brews';
@@ -9,6 +10,7 @@ export const PARTY_STORE_NAME = 'party-members';
 export const WORLDBUILDING_STORE_NAME = 'worldbuilding';
 export const CAMPAIGN_DATA_SYNC_STORE_NAME = 'campaign-data-sync';
 export const PRIVATE_MONSTER_STORE_NAME = 'private-monsters';
+export const PRIVATE_MONSTER_SYNC_STORE_NAME = 'private-monster-sync';
 export const CUSTOM_CATALOGUE_STORE_NAME = 'custom-catalogue';
 
 const starterContent = `# The Ashen Road
@@ -34,7 +36,7 @@ The scout fires from cover, then offers a bargain: carry a sealed letter to the 
 `;
 
 export const getDatabase = () =>
-  openDB(DATABASE_NAME, 8, {
+  openDB(DATABASE_NAME, 9, {
     upgrade(database, oldVersion) {
       if (oldVersion < 1) {
         const store = database.createObjectStore(STORE_NAME, { keyPath: 'id' });
@@ -62,6 +64,9 @@ export const getDatabase = () =>
       }
       if (oldVersion < 8) {
         database.createObjectStore(CUSTOM_CATALOGUE_STORE_NAME, { keyPath: 'id' });
+      }
+      if (oldVersion < 9) {
+        database.createObjectStore(PRIVATE_MONSTER_SYNC_STORE_NAME, { keyPath: 'id' });
       }
     }
   });
@@ -147,6 +152,36 @@ export async function markCampaignDataChanged(): Promise<CampaignDataSyncMetadat
   return next;
 }
 
+export function createPrivateMonsterSyncMetadata(): PrivateMonsterSyncMetadata {
+  return {
+    id: 'private-monster-catalogue',
+    lastLocalChangeAt: new Date().toISOString(),
+    syncState: 'local'
+  };
+}
+
+export async function getPrivateMonsterSyncMetadata(): Promise<PrivateMonsterSyncMetadata> {
+  const database = await getDatabase();
+  const stored = await database.get(PRIVATE_MONSTER_SYNC_STORE_NAME, 'private-monster-catalogue') as PrivateMonsterSyncMetadata | undefined;
+  return stored ?? createPrivateMonsterSyncMetadata();
+}
+
+export async function savePrivateMonsterSyncMetadata(metadata: PrivateMonsterSyncMetadata): Promise<void> {
+  const database = await getDatabase();
+  await database.put(PRIVATE_MONSTER_SYNC_STORE_NAME, metadata);
+}
+
+export async function markPrivateMonsterDataChanged(): Promise<PrivateMonsterSyncMetadata> {
+  const current = await getPrivateMonsterSyncMetadata();
+  const next: PrivateMonsterSyncMetadata = {
+    ...current,
+    lastLocalChangeAt: new Date().toISOString(),
+    syncState: current.conflict ? 'conflict' : current.drive ? 'pending' : 'local'
+  };
+  await savePrivateMonsterSyncMetadata(next);
+  return next;
+}
+
 export async function replaceCampaignData(
   snapshot: CampaignDataSnapshot,
   metadata: CampaignDataSyncMetadata
@@ -168,6 +203,27 @@ export async function replaceCampaignData(
     ...snapshot.partyMembers.map((member: PartyMember) => partyMembers.put(member)),
     ...snapshot.worldbuildingEntries.map((entry: WorldbuildingEntry) => worldbuilding.put(entry)),
     ...snapshot.customCatalogueEntries.map((entry) => customCatalogue.put(entry)),
+    metadataStore.put(metadata)
+  ]);
+  await transaction.done;
+}
+
+/** Replaces the local private catalogue only after a validated Drive result. */
+export async function replacePrivateMonsterData(
+  entries: CatalogueEntry[],
+  metadata: PrivateMonsterSyncMetadata
+): Promise<void> {
+  const database = await getDatabase();
+  const transaction = database.transaction(
+    [PRIVATE_MONSTER_STORE_NAME, PRIVATE_MONSTER_SYNC_STORE_NAME],
+    'readwrite'
+  );
+  const monsters = transaction.objectStore(PRIVATE_MONSTER_STORE_NAME);
+  const metadataStore = transaction.objectStore(PRIVATE_MONSTER_SYNC_STORE_NAME);
+
+  await monsters.clear();
+  await Promise.all([
+    ...entries.map((entry) => monsters.put(entry)),
     metadataStore.put(metadata)
   ]);
   await transaction.done;

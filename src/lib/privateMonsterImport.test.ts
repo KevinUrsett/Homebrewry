@@ -1,6 +1,7 @@
 import { strToU8, zipSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import { parsePrivateMonsterArchive } from './privateMonsterImport';
+import { parsePrivateMonsterCatalogueSnapshot } from './privateMonsterData';
 
 function monster(overrides: Record<string, unknown> = {}) {
   return {
@@ -78,5 +79,25 @@ describe('private monster archive import', () => {
 
     expect(report.importedCount).toBe(1);
     expect(report.skippedInvalidCount).toBe(2);
+  });
+
+  it('revalidates Drive catalogue data and strips archived artwork fields', () => {
+    const snapshot = {
+      schemaVersion: 1,
+      updatedAt: '2026-07-26T12:00:00.000Z',
+      entries: [{
+        id: 'private-monster-id',
+        category: 'monster',
+        name: 'Private Monster',
+        description: 'A safe monster.',
+        data: { ac: '14', image: 'monsters/private-monster.jpg' },
+        source: 'Private import',
+        ruleset: '5e'
+      }]
+    };
+
+    const parsed = parsePrivateMonsterCatalogueSnapshot(snapshot);
+
+    expect(parsed.entries[0]?.data).toEqual({ ac: '14' });
   });
 });

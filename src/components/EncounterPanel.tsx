@@ -29,6 +29,8 @@ const campaignSyncLabel: Record<SyncState, string> = {
   error: 'Sync error'
 };
 
+const MONSTER_RESULTS_PAGE_SIZE = 30;
+
 const asNumber = (value: string): number | null => {
   if (!value.trim()) return null;
   const number = Number(value);
@@ -65,6 +67,7 @@ export function EncounterPanel({
   const [partyArmorClass, setPartyArmorClass] = useState('');
   const [partyHitPoints, setPartyHitPoints] = useState('');
   const [hitPointChanges, setHitPointChanges] = useState<Record<string, string>>({});
+  const [visibleMonsterCount, setVisibleMonsterCount] = useState(MONSTER_RESULTS_PAGE_SIZE);
   const selected = encounters.find((encounter) => encounter.id === selectedId) ?? encounters[0] ?? null;
   const encounterNameRef = useRef<HTMLInputElement>(null);
   const orderedParticipants = selected ? sortCombatants(selected.participants) : [];
@@ -73,8 +76,12 @@ export function EncounterPanel({
     const source = terms
       ? monsters.filter((monster) => [monster.name, ...entrySummary(monster)].join(' ').toLowerCase().includes(terms))
       : monsters;
-    return source.slice(0, 18);
+    return source;
   }, [monsterQuery, monsters]);
+  const visibleMonsterMatches = useMemo(
+    () => monsterMatches.slice(0, visibleMonsterCount),
+    [monsterMatches, visibleMonsterCount]
+  );
 
   const addPartyMember = () => {
     const name = partyName.trim();
@@ -223,11 +230,19 @@ export function EncounterPanel({
               <section className="encounter-section">
                 <div className="encounter-section-heading">
                   <div><p className="eyebrow">Monsters</p><h2>Add from catalogue</h2></div>
-                  <span>{loading ? 'Loading…' : `${monsters.length} available`}</span>
+                  <span>{loading ? 'Loading…' : `${monsterMatches.length.toLocaleString()} match${monsterMatches.length === 1 ? '' : 'es'}`}</span>
                 </div>
-                <input className="encounter-search" onChange={(event) => setMonsterQuery(event.target.value)} placeholder="Search monsters…" value={monsterQuery} />
+                <input
+                  className="encounter-search"
+                  onChange={(event) => {
+                    setMonsterQuery(event.target.value);
+                    setVisibleMonsterCount(MONSTER_RESULTS_PAGE_SIZE);
+                  }}
+                  placeholder="Search monsters…"
+                  value={monsterQuery}
+                />
                 <div className="encounter-monster-results">
-                  {monsterMatches.map((monster) => (
+                  {visibleMonsterMatches.map((monster) => (
                     <div className="encounter-monster-result" key={monster.id}>
                       <div><strong>{monster.name}</strong><span>{entrySummary(monster).join(' · ') || 'SRD monster'}</span></div>
                       <button
@@ -242,6 +257,15 @@ export function EncounterPanel({
                     </div>
                   ))}
                   {!loading && !monsterMatches.length && <p className="empty-panel">No monsters match that search.</p>}
+                  {visibleMonsterMatches.length < monsterMatches.length && (
+                    <button
+                      className="encounter-monster-more"
+                      onClick={() => setVisibleMonsterCount((count) => count + MONSTER_RESULTS_PAGE_SIZE)}
+                      type="button"
+                    >
+                      Show {Math.min(MONSTER_RESULTS_PAGE_SIZE, monsterMatches.length - visibleMonsterMatches.length)} more ({(monsterMatches.length - visibleMonsterMatches.length).toLocaleString()} remaining)
+                    </button>
+                  )}
                 </div>
               </section>
             </>

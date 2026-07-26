@@ -1,5 +1,6 @@
 import type { CatalogueEntry } from '../catalogue/types';
-import { getDatabase, PRIVATE_MONSTER_STORE_NAME } from './brewStore';
+import type { PrivateMonsterSyncMetadata } from '../types';
+import { getDatabase, markPrivateMonsterDataChanged, PRIVATE_MONSTER_STORE_NAME } from './brewStore';
 
 function isPrivateMonster(entry: CatalogueEntry): boolean {
   return entry.category === 'monster' && (entry.source === 'Private import' || entry.source === 'SRD-521 (private import)');
@@ -13,12 +14,8 @@ export async function listPrivateMonsterEntries(): Promise<CatalogueEntry[]> {
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 
-/**
- * Replaces only the device-local private catalogue. This store is never
- * included in Drive sync, which keeps user-supplied content out of the public
- * repository and separate from brew documents.
- */
-export async function replacePrivateMonsterEntries(entries: CatalogueEntry[]): Promise<void> {
+/** Replaces the local private catalogue, then marks its private Drive copy pending. */
+export async function replacePrivateMonsterEntries(entries: CatalogueEntry[]): Promise<PrivateMonsterSyncMetadata> {
   if (entries.some((entry) => !isPrivateMonster(entry))) {
     throw new Error('Only normalized private monster entries can be stored here.');
   }
@@ -27,9 +24,11 @@ export async function replacePrivateMonsterEntries(entries: CatalogueEntry[]): P
   await transaction.store.clear();
   await Promise.all(entries.map((entry) => transaction.store.put(entry)));
   await transaction.done;
+  return markPrivateMonsterDataChanged();
 }
 
-export async function clearPrivateMonsterEntries(): Promise<void> {
+export async function clearPrivateMonsterEntries(): Promise<PrivateMonsterSyncMetadata> {
   const database = await getDatabase();
   await database.clear(PRIVATE_MONSTER_STORE_NAME);
+  return markPrivateMonsterDataChanged();
 }

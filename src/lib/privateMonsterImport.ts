@@ -1,5 +1,6 @@
 import { unzipSync } from 'fflate';
 import type { CatalogueColumn, CatalogueEntry } from '../catalogue/types';
+import { MAX_PRIVATE_MONSTERS } from './privateMonsterData';
 
 const ZIP_END_OF_CENTRAL_DIRECTORY_SIGNATURE = 0x06054b50;
 const ZIP_CENTRAL_DIRECTORY_SIGNATURE = 0x02014b50;
@@ -10,7 +11,6 @@ export const MAX_MONSTER_ARCHIVE_BYTES = 32 * 1024 * 1024;
 export const MAX_MONSTER_ARCHIVE_ENTRIES = 64;
 export const MAX_MONSTER_JSON_BYTES = 8 * 1024 * 1024;
 export const MAX_MONSTER_ARCHIVE_UNCOMPRESSED_BYTES = 40 * 1024 * 1024;
-export const MAX_PRIVATE_MONSTERS = 2_500;
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -29,6 +29,7 @@ export type PrivateMonsterImportReport = {
   skippedInvalidCount: number;
   imageFileCount: number;
 };
+
 
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value);

@@ -43,7 +43,7 @@ Google Drive integration is disabled until `VITE_GOOGLE_CLIENT_ID` is supplied b
 
 `lib/privateMonsterImport` accepts only a constrained Encounter+-style ZIP layout. Before decompression it validates the central directory, entry count and size limits, allowed paths, compression types, encryption, ZIP64 flags, and Unix symlinks. It extracts only `monsters.json`, parses it as plain UTF-8 JSON, limits record complexity, strips artwork references, and normalizes records into safe `CatalogueEntry` values. No archive code, markup, image, or script is executed.
 
-`lib/privateMonsterStore` stores those normalized monster entries in a dedicated IndexedDB store. They are combined with the read-only SRD provider in `App`, but never overwrite a bundled SRD ID. This store is intentionally excluded from brew documents, asset storage, campaign-data sync, Google Drive, and the public build. References therefore resolve only on devices where the user has explicitly imported the archive.
+`lib/privateMonsterStore` stores those normalized monster entries in a dedicated IndexedDB store. They are combined with the read-only SRD provider in `App`, but never overwrite a bundled SRD ID. `lib/privateMonsterSync` stores only the normalized JSON in a separate, user-owned private Drive companion file; it is never added to brew documents, asset storage, GitHub, or the public build. The app validates the Drive JSON again before it can replace local data and surfaces an explicit choice if two devices import different catalogues.
 
 ## Phase 6 encounter boundary
 

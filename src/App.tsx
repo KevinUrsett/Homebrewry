@@ -10,7 +10,19 @@ import { PrivateMonsterImportDialog } from './components/PrivateMonsterImportDia
 import { ReferenceDialog } from './components/ReferenceDialog';
 import { WorldbuildingPanel } from './components/WorldbuildingPanel';
 import type { MarkdownEditorHandle } from './components/MarkdownEditor';
-import { createBrew, deleteBrew, getCampaignDataSyncMetadata, replaceBrews, replaceCampaignData, saveBrew, saveCampaignDataSyncMetadata, seedBrews } from './lib/brewStore';
+import {
+  createBrew,
+  deleteBrew,
+  getCampaignDataSyncMetadata,
+  getPrivateMonsterSyncMetadata,
+  replaceBrews,
+  replaceCampaignData,
+  replacePrivateMonsterData,
+  saveBrew,
+  saveCampaignDataSyncMetadata,
+  savePrivateMonsterSyncMetadata,
+  seedBrews
+} from './lib/brewStore';
 import { createAsset, listAssets, replaceAssets, saveAsset } from './lib/assetStore';
 import { syncAssets } from './lib/assetSync';
 import { createCampaignDataSnapshot } from './lib/campaignData';
@@ -21,6 +33,7 @@ import { getOutline, insertAtOutlineSectionEnd } from './lib/outline';
 import { importHomebrewerySource, titleFromImportedSource } from './lib/importer';
 import type { PrivateMonsterImportReport } from './lib/privateMonsterImport';
 import { clearPrivateMonsterEntries, listPrivateMonsterEntries, replacePrivateMonsterEntries } from './lib/privateMonsterStore';
+import { keepDrivePrivateMonsterCatalogue, overwriteDrivePrivateMonsterCatalogue, syncPrivateMonsterCatalogue, type PrivateMonsterSyncResult } from './lib/privateMonsterSync';
 import { listCustomCatalogueEntries, saveCustomCatalogueEntry } from './lib/customCatalogueStore';
 import { overwriteDriveBrew, syncBrews } from './lib/sync';
 import { createEncounter as createCombatEncounter, createPartyMember } from './lib/encounters';
@@ -32,7 +45,7 @@ import { loadCatalogue, toCatalogueMap } from './catalogue/catalogueData';
 import { createCustomCatalogueEntry } from './catalogue/customEntries';
 import { findCatalogueEntryByName, formatCatalogueReference } from './catalogue/references';
 import { catalogueCategoryLabels, type CatalogueCategory, type CatalogueEntry, type CustomCatalogueEntry } from './catalogue/types';
-import type { Brew, BrewAsset, CampaignDataSyncMetadata, Encounter, MobileSection, PartyMember, ViewMode, WorldbuildingEntry, WorldbuildingKind } from './types';
+import type { Brew, BrewAsset, CampaignDataSyncMetadata, Encounter, MobileSection, PartyMember, PrivateMonsterSyncMetadata, ViewMode, WorldbuildingEntry, WorldbuildingKind } from './types';
 
 const mobileLabels: Record<MobileSection, string> = {
   library: 'Brews',
@@ -76,6 +89,7 @@ export default function App() {
   const [worldbuildingOpen, setWorldbuildingOpen] = useState(false);
   const [worldbuildingSelectedId, setWorldbuildingSelectedId] = useState<string | null>(null);
   const [campaignDataSync, setCampaignDataSync] = useState<CampaignDataSyncMetadata | null>(null);
+  const [privateMonsterSync, setPrivateMonsterSync] = useState<PrivateMonsterSyncMetadata | null>(null);
   const [referenceEntry, setReferenceEntry] = useState<CatalogueEntry | null>(null);
   const editorRef = useRef<MarkdownEditorHandle>(null);
   const selectionRef = useRef({ start: 0, end: 0 });
@@ -92,16 +106,45 @@ export default function App() {
   const campaignSyncInFlightRef = useRef(false);
   const campaignSyncQueuedRef = useRef(false);
   const campaignSyncTimerRef = useRef<number | null>(null);
+  const privateMonsterEntriesRef = useRef<CatalogueEntry[]>([]);
+  const privateMonsterMetadataRef = useRef<PrivateMonsterSyncMetadata | null>(null);
+  const privateMonsterMutationRef = useRef(0);
+  const privateMonsterSyncInFlightRef = useRef(false);
+  const privateMonsterSyncQueuedRef = useRef(false);
+  const privateMonsterSyncTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    Promise.all([seedBrews(), listAssets(), listEncounters(), listPartyMembers(), listWorldbuildingEntries(), getCampaignDataSyncMetadata()])
-      .then(([storedBrews, storedAssets, storedEncounters, storedPartyMembers, storedWorldbuildingEntries, storedCampaignDataSync]) => {
+    Promise.all([
+      seedBrews(),
+      listAssets(),
+      listEncounters(),
+      listPartyMembers(),
+      listWorldbuildingEntries(),
+      listPrivateMonsterEntries(),
+      listCustomCatalogueEntries(),
+      getCampaignDataSyncMetadata(),
+      getPrivateMonsterSyncMetadata()
+    ])
+      .then(([
+        storedBrews,
+        storedAssets,
+        storedEncounters,
+        storedPartyMembers,
+        storedWorldbuildingEntries,
+        storedPrivateMonsterEntries,
+        storedCustomCatalogueEntries,
+        storedCampaignDataSync,
+        storedPrivateMonsterSync
+      ]) => {
         setBrews(storedBrews);
         setAssets(storedAssets);
         setEncounters(storedEncounters);
         setPartyMembers(storedPartyMembers);
         setWorldbuildingEntries(storedWorldbuildingEntries);
+        setPrivateMonsterEntries(storedPrivateMonsterEntries);
+        setCustomCatalogueEntries(storedCustomCatalogueEntries);
         setCampaignDataSync(storedCampaignDataSync);
+        setPrivateMonsterSync(storedPrivateMonsterSync);
         setActiveId(storedBrews[0]?.id ?? null);
         setEncounterSelectedId(storedEncounters[0]?.id ?? null);
         setWorldbuildingSelectedId(storedWorldbuildingEntries[0]?.id ?? null);
@@ -113,12 +156,10 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([loadCatalogue(), listPrivateMonsterEntries(), listCustomCatalogueEntries()])
-      .then(([entries, privateEntries, customEntries]) => {
+    loadCatalogue()
+      .then((entries) => {
         if (!cancelled) {
           setBaseCatalogueEntries(entries);
-          setPrivateMonsterEntries(privateEntries);
-          setCustomCatalogueEntries(customEntries);
         }
       })
       .catch((error) => {
@@ -145,9 +186,20 @@ export default function App() {
     campaignMetadataRef.current = campaignDataSync;
   }, [campaignDataSync]);
 
+  useEffect(() => {
+    privateMonsterEntriesRef.current = privateMonsterEntries;
+  }, [privateMonsterEntries]);
+
+  useEffect(() => {
+    privateMonsterMetadataRef.current = privateMonsterSync;
+  }, [privateMonsterSync]);
+
   useEffect(() => () => {
     if (campaignSyncTimerRef.current !== null) {
       window.clearTimeout(campaignSyncTimerRef.current);
+    }
+    if (privateMonsterSyncTimerRef.current !== null) {
+      window.clearTimeout(privateMonsterSyncTimerRef.current);
     }
   }, []);
 
@@ -269,19 +321,21 @@ export default function App() {
     if (!report.importedCount) {
       throw new Error('No new valid monsters were found. The existing private catalogue was left unchanged.');
     }
-    await replacePrivateMonsterEntries(report.entries);
+    const metadata = await replacePrivateMonsterEntries(report.entries);
     setPrivateMonsterEntries(report.entries);
+    privateMonsterEntriesRef.current = report.entries;
     setCatalogueSelection(report.entries[0] ?? null);
-    setSaveState(`${report.importedCount.toLocaleString()} private monsters imported on this device`);
+    notePrivateMonsterDataSaved(metadata, report.entries, `${report.importedCount.toLocaleString()} private monsters imported locally`);
     return report;
   };
 
   const clearPrivateMonsterArchive = async () => {
-    await clearPrivateMonsterEntries();
+    const metadata = await clearPrivateMonsterEntries();
     setPrivateMonsterEntries([]);
+    privateMonsterEntriesRef.current = [];
     setCatalogueSelection((current) => current?.source.toLowerCase().includes('private import') ? null : current);
     setReferenceEntry((current) => current?.source.toLowerCase().includes('private import') ? null : current);
-    setSaveState('Private monsters removed from this device');
+    notePrivateMonsterDataSaved(metadata, [], 'Private monsters removed locally');
   };
 
   const openEncounters = (encounter?: Encounter) => {
@@ -524,6 +578,132 @@ export default function App() {
     setCampaignDataSync(result.metadata);
   };
 
+  const applyPrivateMonsterSyncResult = async (
+    result: PrivateMonsterSyncResult,
+    sourceEntries: CatalogueEntry[]
+  ) => {
+    if (result.entries === sourceEntries) {
+      await savePrivateMonsterSyncMetadata(result.metadata);
+    } else {
+      await replacePrivateMonsterData(result.entries, result.metadata);
+      setPrivateMonsterEntries(result.entries);
+      setCatalogueSelection((current) => {
+        if (!current?.source.toLowerCase().includes('private import')) return current;
+        return result.entries.some((entry) => entry.id === current.id) ? current : result.entries[0] ?? null;
+      });
+      setReferenceEntry((current) => {
+        if (!current?.source.toLowerCase().includes('private import')) return current;
+        return result.entries.some((entry) => entry.id === current.id) ? current : null;
+      });
+    }
+    privateMonsterEntriesRef.current = result.entries;
+    privateMonsterMetadataRef.current = result.metadata;
+    setPrivateMonsterSync(result.metadata);
+  };
+
+  const syncPrivateMonsterCatalogueOnly = async (token: string, announce = false): Promise<PrivateMonsterSyncResult | null> => {
+    if (privateMonsterSyncInFlightRef.current) {
+      privateMonsterSyncQueuedRef.current = true;
+      return null;
+    }
+
+    privateMonsterSyncInFlightRef.current = true;
+    const mutationAtStart = privateMonsterMutationRef.current;
+
+    try {
+      if (announce) setSaveState('Syncing private monster catalogue with Google Drive…');
+      const sourceEntries = privateMonsterEntriesRef.current;
+      const metadata = privateMonsterMetadataRef.current ?? await getPrivateMonsterSyncMetadata();
+      privateMonsterMetadataRef.current = metadata;
+      const result = await syncPrivateMonsterCatalogue(token, sourceEntries, metadata);
+      const changedDuringSync = privateMonsterMutationRef.current !== mutationAtStart;
+
+      if (result.state === 'conflict' || !changedDuringSync) {
+        await applyPrivateMonsterSyncResult(result, sourceEntries);
+      } else if (result.entries === sourceEntries && result.metadata.drive) {
+        const latestMetadata = privateMonsterMetadataRef.current ?? metadata;
+        const pendingMetadata: PrivateMonsterSyncMetadata = {
+          ...latestMetadata,
+          drive: result.metadata.drive,
+          syncState: 'pending',
+          conflict: undefined
+        };
+        await savePrivateMonsterSyncMetadata(pendingMetadata);
+        privateMonsterMetadataRef.current = pendingMetadata;
+        setPrivateMonsterSync(pendingMetadata);
+        privateMonsterSyncQueuedRef.current = true;
+      } else {
+        const latestMetadata = privateMonsterMetadataRef.current ?? metadata;
+        const remoteDrive = result.metadata.drive;
+        const conflictMetadata: PrivateMonsterSyncMetadata = {
+          ...latestMetadata,
+          ...(remoteDrive ? { drive: remoteDrive } : {}),
+          syncState: 'conflict',
+          conflict: {
+            remoteEntries: result.entries,
+            remoteRevisionId: remoteDrive?.revisionId ?? ''
+          }
+        };
+        await savePrivateMonsterSyncMetadata(conflictMetadata);
+        privateMonsterMetadataRef.current = conflictMetadata;
+        setPrivateMonsterSync(conflictMetadata);
+      }
+
+      if (announce) setSaveState(result.detail);
+      return result;
+    } catch (error) {
+      const metadata = privateMonsterMetadataRef.current ?? await getPrivateMonsterSyncMetadata();
+      if (!metadata.conflict) {
+        const errorMetadata: PrivateMonsterSyncMetadata = { ...metadata, syncState: 'error' };
+        try {
+          await savePrivateMonsterSyncMetadata(errorMetadata);
+        } catch {
+          // Preserve the original Drive error when local metadata persistence is unavailable.
+        }
+        privateMonsterMetadataRef.current = errorMetadata;
+        setPrivateMonsterSync(errorMetadata);
+      }
+      throw error;
+    } finally {
+      privateMonsterSyncInFlightRef.current = false;
+      if (privateMonsterSyncQueuedRef.current) {
+        privateMonsterSyncQueuedRef.current = false;
+        schedulePrivateMonsterSync();
+      }
+    }
+  };
+
+  const schedulePrivateMonsterSync = () => {
+    if (!accessToken) return;
+    if (privateMonsterSyncTimerRef.current !== null) {
+      window.clearTimeout(privateMonsterSyncTimerRef.current);
+    }
+    const token = accessToken;
+    privateMonsterSyncTimerRef.current = window.setTimeout(() => {
+      privateMonsterSyncTimerRef.current = null;
+      void syncPrivateMonsterCatalogueOnly(token).catch((error) => {
+        setSaveState(error instanceof Error ? error.message : 'Private monster catalogue sync failed');
+      });
+    }, 500);
+  };
+
+  const notePrivateMonsterDataSaved = (
+    metadata: PrivateMonsterSyncMetadata,
+    entries: CatalogueEntry[],
+    localMessage: string
+  ) => {
+    privateMonsterMutationRef.current += 1;
+    privateMonsterEntriesRef.current = entries;
+    privateMonsterMetadataRef.current = metadata;
+    setPrivateMonsterSync(metadata);
+    if (!accessToken) {
+      setSaveState(localMessage);
+      return;
+    }
+    setSaveState(`${localMessage} — syncing to Drive…`);
+    schedulePrivateMonsterSync();
+  };
+
   /**
    * Keeps campaign records local-first, but uploads their companion Drive file
    * shortly after a successful local save. A second change made during an
@@ -645,7 +825,9 @@ export default function App() {
       const token = await requestDriveAccess();
       setAccessToken(token);
       const campaignResult = await syncCampaignDataOnly(token, true);
-      setSaveState(campaignResult ? `Google Drive connected; ${campaignResult.detail}` : 'Google Drive connected for this session');
+      const privateMonsterResult = await syncPrivateMonsterCatalogueOnly(token, true);
+      const details = [campaignResult?.detail, privateMonsterResult?.detail].filter(Boolean).join('; ');
+      setSaveState(details ? `Google Drive connected; ${details}` : 'Google Drive connected for this session');
     } catch (error) {
       setSaveState(error instanceof Error ? error.message : 'Google Drive connection failed');
     }
@@ -663,7 +845,8 @@ export default function App() {
       await replaceBrews(brewResult.brews);
       setBrews(brewResult.brews);
       const campaignResult = await syncCampaignDataOnly(accessToken);
-      setSaveState(`${brewResult.detail}; ${assetResult.detail}; ${campaignResult?.detail ?? 'Campaign data sync already in progress'}`);
+      const privateMonsterResult = await syncPrivateMonsterCatalogueOnly(accessToken);
+      setSaveState(`${brewResult.detail}; ${assetResult.detail}; ${campaignResult?.detail ?? 'Campaign data sync already in progress'}; ${privateMonsterResult?.detail ?? 'Private monster catalogue sync already in progress'}`);
     } catch (error) {
       setSaveState(error instanceof Error ? error.message : 'Google Drive sync failed');
     } finally {
@@ -755,6 +938,28 @@ export default function App() {
       setSaveState(result.detail);
     } catch (error) {
       setSaveState(error instanceof Error ? error.message : 'Could not replace Drive campaign data');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const keepDrivePrivateMonsterConflict = async () => {
+    if (!privateMonsterSync) return;
+    const result = keepDrivePrivateMonsterCatalogue(privateMonsterSync);
+    if (!result) return;
+    await applyPrivateMonsterSyncResult(result, privateMonsterEntries);
+    setSaveState(result.detail);
+  };
+
+  const overwriteDrivePrivateMonsterConflict = async () => {
+    if (!privateMonsterSync || !accessToken) return;
+    try {
+      setSyncing(true);
+      const result = await overwriteDrivePrivateMonsterCatalogue(accessToken, privateMonsterEntriesRef.current, privateMonsterSync);
+      await applyPrivateMonsterSyncResult(result, privateMonsterEntriesRef.current);
+      setSaveState(result.detail);
+    } catch (error) {
+      setSaveState(error instanceof Error ? error.message : 'Could not replace the Drive private monster catalogue');
     } finally {
       setSyncing(false);
     }
@@ -983,6 +1188,23 @@ export default function App() {
               <button onClick={() => void keepDriveCampaignConflict()} type="button">Keep Drive campaign data</button>
               <button onClick={() => void keepBothCampaignConflict()} type="button">Keep both sets of records</button>
               <button className="danger-button" disabled={!accessToken || syncing} onClick={() => void overwriteDriveCampaignConflict()} type="button">Replace Drive with this device copy</button>
+            </div>
+          </section>
+        </div>
+      )}
+      {activeBrew.syncState !== 'conflict' && campaignDataSync?.syncState !== 'conflict' && privateMonsterSync?.syncState === 'conflict' && privateMonsterSync.conflict && (
+        <div className="conflict-backdrop" role="dialog" aria-modal="true" aria-labelledby="private-monster-conflict-title">
+          <section className="conflict-dialog">
+            <p className="eyebrow">Private monster sync conflict</p>
+            <h2 id="private-monster-conflict-title">Both catalogues changed</h2>
+            <p>Nothing has been overwritten. Choose whether to keep the imported monsters from this device or from Drive.</p>
+            <div className="conflict-times">
+              <span>This device: {new Date(privateMonsterSync.lastLocalChangeAt).toLocaleString()}</span>
+              <span>Google Drive: {privateMonsterSync.conflict.remoteEntries.length.toLocaleString()} imported monster{privateMonsterSync.conflict.remoteEntries.length === 1 ? '' : 's'}</span>
+            </div>
+            <div className="conflict-actions">
+              <button onClick={() => void keepDrivePrivateMonsterConflict()} type="button">Keep Drive catalogue</button>
+              <button className="danger-button" disabled={!accessToken || syncing} onClick={() => void overwriteDrivePrivateMonsterConflict()} type="button">Replace Drive catalogue</button>
             </div>
           </section>
         </div>

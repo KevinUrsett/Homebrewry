@@ -275,6 +275,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .encounter-monster-result div { display: grid; gap: 2px; min-width: 0; }
 .encounter-monster-result strong { color: #453129; font-size: .86rem; }
 .encounter-monster-result span { color: #806c5a; font-size: .68rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.encounter-monster-more { background: #fffaf0; border: 1px dashed #ad9576; border-radius: 5px; color: #5d4533; font-size: .76rem; padding: 9px; width: 100%; }
 .initiative-panel { background: #f7f0df; border-left: 1px solid #d8c9ae; min-width: 0; overflow: auto; padding: clamp(17px, 2.2vw, 27px); }
 .initiative-current { background: #d9ead6; border-radius: 999px; color: #365b31 !important; font-size: .64rem !important; font-weight: 800; padding: 4px 7px; text-transform: uppercase; }
 .initiative-list { display: grid; gap: 8px; margin-top: 14px; }

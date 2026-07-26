@@ -1,9 +1,10 @@
-import type { Brew, BrewAsset, CampaignDataSnapshot, DriveMetadata } from '../types';
+import type { Brew, BrewAsset, CampaignDataSnapshot, DriveMetadata, PrivateMonsterCatalogueSnapshot } from '../types';
 
 const DRIVE_API = 'https://www.googleapis.com/drive/v3';
 const DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
 const BREW_MIME_TYPE = 'application/vnd.homebrewry.brew+json';
 const CAMPAIGN_DATA_MIME_TYPE = 'application/vnd.homebrewry.campaign-data+json';
+const PRIVATE_MONSTER_CATALOGUE_MIME_TYPE = 'application/vnd.homebrewry.private-monster-catalogue+json';
 
 type DriveFile = {
   id: string;
@@ -25,6 +26,11 @@ export type RemoteAsset = {
 };
 
 export type RemoteCampaignData = {
+  file: DriveFile;
+  data: unknown;
+};
+
+export type RemotePrivateMonsterCatalogue = {
   file: DriveFile;
   data: unknown;
 };
@@ -87,6 +93,10 @@ function documentName(title: string) {
 
 function campaignDataName() {
   return 'Homebrewry campaign data.homebrewry.json';
+}
+
+function privateMonsterCatalogueName() {
+  return 'Homebrewry private monster catalogue.homebrewry.json';
 }
 
 export async function listRemoteBrews(accessToken: string): Promise<RemoteBrew[]> {
@@ -174,6 +184,57 @@ export async function uploadCampaignData(
     },
     data,
     CAMPAIGN_DATA_MIME_TYPE
+  );
+  const url = drive
+    ? `${DRIVE_UPLOAD_API}/files/${drive.fileId}?uploadType=multipart&fields=id,name,modifiedTime,headRevisionId`
+    : `${DRIVE_UPLOAD_API}/files?uploadType=multipart&fields=id,name,modifiedTime,headRevisionId`;
+
+  return driveRequest<DriveFile>(accessToken, url, {
+    method: drive ? 'PATCH' : 'POST',
+    headers: { 'Content-Type': contentType },
+    body
+  });
+}
+
+export async function listRemotePrivateMonsterCatalogues(accessToken: string): Promise<RemotePrivateMonsterCatalogue[]> {
+  const query = encodeURIComponent("appProperties has { key='homebrewry' and value='private-monster-catalogue' } and trashed = false");
+  const fields = encodeURIComponent('files(id,name,modifiedTime,headRevisionId)');
+  const result = await driveRequest<{ files?: DriveFile[] }>(
+    accessToken,
+    `${DRIVE_API}/files?q=${query}&fields=${fields}&orderBy=modifiedTime desc&pageSize=10`
+  );
+
+  const files = result.files ?? [];
+  return Promise.all(files.map(async (file) => ({
+    file,
+    data: await driveRequest<unknown>(accessToken, `${DRIVE_API}/files/${file.id}?alt=media`)
+  })));
+}
+
+export async function uploadPrivateMonsterCatalogue(
+  accessToken: string,
+  data: PrivateMonsterCatalogueSnapshot,
+  drive?: DriveMetadata,
+  expectedRevisionId?: string
+): Promise<DriveFile> {
+  if (drive && expectedRevisionId) {
+    const current = await driveRequest<DriveFile>(
+      accessToken,
+      `${DRIVE_API}/files/${drive.fileId}?fields=id,name,modifiedTime,headRevisionId`
+    );
+    if (current.headRevisionId !== expectedRevisionId) {
+      throw new DriveConflictError('The Drive private monster catalogue changed since the last sync.');
+    }
+  }
+
+  const { body, contentType } = createMultipartBody(
+    {
+      name: privateMonsterCatalogueName(),
+      mimeType: PRIVATE_MONSTER_CATALOGUE_MIME_TYPE,
+      appProperties: { homebrewry: 'private-monster-catalogue', schemaVersion: '1' }
+    },
+    data,
+    PRIVATE_MONSTER_CATALOGUE_MIME_TYPE
   );
   const url = drive
     ? `${DRIVE_UPLOAD_API}/files/${drive.fileId}?uploadType=multipart&fields=id,name,modifiedTime,headRevisionId`

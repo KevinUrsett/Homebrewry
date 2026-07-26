@@ -21,7 +21,7 @@ export function PrivateMonsterImportDialog({ existingCount, onClear, onClose, on
 
   const importArchive = async () => {
     if (!file) return;
-    if (existingCount > 0 && !window.confirm(`Replace the ${pluralize(existingCount, 'private monster')} currently stored on this device? This cannot be undone.`)) {
+    if (existingCount > 0 && !window.confirm(`Replace the ${pluralize(existingCount, 'private monster')} in this catalogue? This cannot be undone.`)) {
       return;
     }
 
@@ -39,7 +39,7 @@ export function PrivateMonsterImportDialog({ existingCount, onClear, onClose, on
   };
 
   const clearArchive = async () => {
-    if (!existingCount || !window.confirm(`Remove the ${pluralize(existingCount, 'private monster')} from this device? This cannot be undone.`)) {
+    if (!existingCount || !window.confirm(`Remove the ${pluralize(existingCount, 'private monster')} from this catalogue? This cannot be undone.`)) {
       return;
     }
     setBusy(true);
@@ -60,10 +60,10 @@ export function PrivateMonsterImportDialog({ existingCount, onClear, onClose, on
         <p className="eyebrow">Private catalogue</p>
         <h2 id="private-monster-import-title">Import a monster archive</h2>
         <p>
-          This imports <strong>monsters.json</strong> from a compatible ZIP into this browser only. It never goes to Google Drive, your brew files, GitHub, or the public app bundle.
+          This imports <strong>monsters.json</strong> from a compatible ZIP into your private catalogue. When Drive is connected, it is backed up to a separate private Drive file for your other devices.
         </p>
         <p className="private-import-note">
-          Artwork inside the archive is not copied. References to these monsters work only on devices where you import this same archive.
+          Artwork inside the archive is not copied. Imported data never enters brew files, GitHub, or the public app bundle.
         </p>
 
         <input

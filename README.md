@@ -64,9 +64,9 @@ The preview displays only `Aboleth`; hover it on desktop to inspect a reference 
 
 ### Private monster archives
 
-Use **Catalogue → Import monster archive** to add a compatible ZIP containing `monsters.json`. Imported monsters are validated, stored only in this browser's IndexedDB, and are intentionally excluded from Google Drive sync, brew files, GitHub, and the public application bundle. This protects user-supplied or unprovenanced material from accidental redistribution.
+Use **Catalogue → Import monster archive** to add a compatible ZIP containing `monsters.json`. Imported monsters are validated, stored locally first, then backed up to a separate private Google Drive companion file when Drive is connected. They never enter brew files, GitHub, or the public application bundle.
 
-The importer accepts only a small, safe ZIP layout; it limits archive size, rejects encrypted, ZIP64, path-traversal, or unsupported files, and reads only the JSON data. Artwork files in the archive are never copied. Existing bundled monster IDs remain authoritative, so matching SRD records are skipped rather than overwritten. A private monster reference resolves only on devices where that archive has been imported. Replacing or removing the private catalogue always asks for confirmation.
+The importer accepts only a small, safe ZIP layout; it limits archive size, rejects encrypted, ZIP64, path-traversal, or unsupported files, and reads only the JSON data. Artwork files in the archive are never copied. Existing bundled monster IDs remain authoritative, so matching SRD records are skipped rather than overwritten. Connecting Drive on another device loads the private catalogue automatically. Replacing or removing the private catalogue always asks for confirmation.
 
 ## Encounters (Phase 6 beta)
 
@@ -92,7 +92,7 @@ Encounters, the current party roster, Worldbuilding, and custom catalogue entrie
 
 After you connect Drive, campaign changes are backed up automatically shortly after they are saved locally. Connecting Drive on another device also checks for and loads the companion file, so the current party and encounters follow you without a separate refresh. **Refresh & sync** remains available to back up brews and images immediately. If both devices change campaign data before syncing, Homebrewry stops and asks whether to keep Drive, keep both record sets, or replace Drive intentionally. No campaign records are silently overwritten.
 
-Private monster archives are deliberately not part of this campaign-data sync. Import the archive directly on each device that needs it.
+Private monster archives use their own private Drive companion file, so a large imported catalogue is not re-uploaded with every combat update. The same revision checks prevent one device from silently replacing another device's imported catalogue.
 
 ## Font attribution
 

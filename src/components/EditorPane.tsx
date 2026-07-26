@@ -1,5 +1,7 @@
 import { type RefObject, useRef } from 'react';
 import { MarkdownEditor, type MarkdownEditorHandle } from './MarkdownEditor';
+import { ReferenceMenu } from './ReferenceMenu';
+import type { CatalogueCategory } from '../catalogue/types';
 import type { WorldbuildingKind } from '../types';
 
 type EditorPaneProps = {
@@ -12,6 +14,7 @@ type EditorPaneProps = {
   onTitleChange: (value: string) => void;
   onContentChange: (value: string) => void;
   onInsert: (before: string, after?: string) => void;
+  onInsertReferenceCategory: (category: CatalogueCategory) => void;
   onOpenCatalogue: () => void;
   onOpenEncounters: () => void;
   onAddWorldbuilding: (name: string, kind: WorldbuildingKind) => void;
@@ -36,6 +39,7 @@ export function EditorPane({
   onTitleChange,
   onContentChange,
   onInsert,
+  onInsertReferenceCategory,
   onOpenCatalogue,
   onOpenEncounters,
   onAddWorldbuilding,
@@ -64,7 +68,7 @@ export function EditorPane({
         <button onClick={() => onInsert('\n```spell\n', '\n```\n')} type="button">Spell</button>
         <button onClick={() => onInsert('\n:::pagebreak\n')} type="button">Page</button>
         <button onClick={() => imageInputRef.current?.click()} type="button">Image</button>
-        <button onClick={onOpenCatalogue} type="button">Reference</button>
+        <ReferenceMenu onBrowseCatalogue={onOpenCatalogue} onSelectCategory={onInsertReferenceCategory} />
         <button onClick={onOpenEncounters} type="button">Encounter</button>
         <span className="toolbar-spacer" />
         <button onClick={onUndo} type="button">Undo</button>

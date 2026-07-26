@@ -28,8 +28,8 @@ import { formatEncounterReference } from './lib/encounterReferences';
 import { createWorldbuildingEntry } from './lib/worldbuilding';
 import { deleteWorldbuildingEntry as deleteStoredWorldbuildingEntry, listWorldbuildingEntries, saveWorldbuildingEntry } from './lib/worldbuildingStore';
 import { loadCatalogue, toCatalogueMap } from './catalogue/catalogueData';
-import { formatCatalogueReference } from './catalogue/references';
-import type { CatalogueEntry } from './catalogue/types';
+import { findCatalogueEntryByName, formatCatalogueReference } from './catalogue/references';
+import { catalogueCategoryLabels, type CatalogueCategory, type CatalogueEntry } from './catalogue/types';
 import type { Brew, BrewAsset, CampaignDataSyncMetadata, Encounter, MobileSection, PartyMember, ViewMode, WorldbuildingEntry, WorldbuildingKind } from './types';
 
 const mobileLabels: Record<MobileSection, string> = {
@@ -179,6 +179,30 @@ export default function App() {
     updateContent(next);
 
     const cursor = start + before.length + selected.length + after.length;
+    selectionRef.current = { start: cursor, end: cursor };
+    window.requestAnimationFrame(() => editorRef.current?.focus(cursor));
+  };
+
+  const insertSelectedCatalogueReference = (category: CatalogueCategory) => {
+    if (!activeBrew) return;
+    const editor = editorRef.current;
+    const selection = editor?.getSelection() ?? selectionRef.current;
+    const selectedText = activeBrew.content.slice(selection.start, selection.end);
+    const entry = findCatalogueEntryByName(catalogueEntries, category, selectedText);
+
+    if (!entry) {
+      setSaveState(selectedText.trim()
+        ? `No ${catalogueCategoryLabels[category]} entry matches that selection`
+        : 'Select text before adding a reference');
+      window.requestAnimationFrame(() => editorRef.current?.focus(selection.start));
+      return;
+    }
+
+    const reference = formatCatalogueReference(entry, selectedText);
+    const next = `${activeBrew.content.slice(0, selection.start)}${reference}${activeBrew.content.slice(selection.end)}`;
+    updateContent(next);
+
+    const cursor = selection.start + reference.length;
     selectionRef.current = { start: cursor, end: cursor };
     window.requestAnimationFrame(() => editorRef.current?.focus(cursor));
   };
@@ -723,6 +747,7 @@ export default function App() {
               onFindChange={setFindValue}
               onImageUpload={(file) => void uploadImage(file)}
               onInsert={insertText}
+              onInsertReferenceCategory={insertSelectedCatalogueReference}
               onKeyDown={(event) => {
                 if (!(event.metaKey || event.ctrlKey)) return;
                 if (event.key.toLowerCase() === 'z') {

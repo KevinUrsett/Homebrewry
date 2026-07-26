@@ -68,6 +68,13 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .editor-toolbar button { background: #fffaf0; border: 1px solid #d1c0a5; border-radius: 5px; color: #4d392d; font-size: .76rem; min-height: 27px; padding: 4px 7px; }
 .editor-toolbar button:hover { background: #eadbbf; }
 .toolbar-spacer { flex: 1; }
+.toolbar-reference-menu { position: relative; }
+.reference-menu { background: #fffaf0; border: 1px solid #b99464; border-radius: 7px; box-shadow: 0 12px 28px rgb(45 28 16 / 24%); display: grid; gap: 2px; left: 0; max-height: min(430px, 62dvh); min-width: 185px; overflow: auto; padding: 6px; position: absolute; top: calc(100% + 5px); z-index: 15; }
+.reference-menu button { background: transparent; border: 0; border-radius: 4px; color: #493329; font-size: .78rem; min-height: 0; padding: 7px; text-align: left; width: 100%; }
+.reference-menu button:hover, .reference-menu button:focus-visible { background: #ead1a3; }
+.reference-menu-browse { color: #6a2f26 !important; font-weight: 800; }
+.reference-menu-divider { background: #d8c9ae; height: 1px; margin: 3px 1px; }
+.reference-menu-label { color: #71553e; font-size: .65rem; font-weight: 800; letter-spacing: .07em; margin: 4px 7px 2px; text-transform: uppercase; }
 .find-replace { background: #f8efde; border-bottom: 1px solid #d8c9ae; display: grid; gap: 6px; grid-template-columns: 1fr 1fr auto; padding: 8px; }
 .find-replace input { background: #fffaf0; border: 1px solid #cbb99d; border-radius: 5px; min-width: 0; padding: 6px; }
 .find-replace button { background: #5d2f26; border: 0; border-radius: 5px; color: white; font-size: .76rem; padding: 6px 8px; }
@@ -345,14 +352,17 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .app-shell.mobile-library .library-panel, .app-shell.mobile-outline .outline-panel, .app-shell.mobile-editor .editor-pane, .app-shell.mobile-preview .preview-pane { display: flex; }
   .app-shell.mobile-preview .preview-pane { padding: 10px; }
   .app-shell.mobile-outline .outline-panel { min-height: 0; }
-  .app-shell.mobile-editor .editor-pane { min-height: 0; }
+  .app-shell.mobile-editor .workspace { display: flex; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; }
+  .app-shell.mobile-editor .main-panes { display: flex; flex: 1; min-height: 0; }
+  .app-shell.mobile-editor .editor-pane { flex: 1; min-height: 0; overflow: hidden; }
   .editor-toolbar { gap: 5px; padding: 6px; }
   .editor-toolbar button { font-size: .72rem; padding: 4px 6px; }
   .toolbar-spacer { display: none; }
   .find-replace { grid-template-columns: 1fr 1fr; }
   .find-replace button { grid-column: 1 / -1; }
-  .markdown-editor { min-height: 60vh; }
-  .markdown-editor .cm-scroller { font-size: 16px; }
+  .app-shell.mobile-editor .markdown-editor { flex: 1; min-height: 0; overflow: hidden; }
+  .app-shell.mobile-editor .markdown-editor .cm-editor { height: 100%; }
+  .app-shell.mobile-editor .markdown-editor .cm-scroller { font-size: 16px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
   .markdown-editor .cm-content { padding: 16px; }
   .brew-preview { min-height: calc(100vh - 156px); padding: 28px 22px; }
   .brew-preview h1 { font-size: 2rem; }

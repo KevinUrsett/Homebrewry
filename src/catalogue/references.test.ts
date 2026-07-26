@@ -4,6 +4,7 @@ import {
   catalogueReferenceFromUrl,
   catalogueReferenceMatches,
   catalogueUrl,
+  findCatalogueEntryByName,
   formatCatalogueReference,
   remarkCatalogueReferences
 } from './references';
@@ -35,6 +36,15 @@ describe('catalogue references', () => {
     expect(catalogueReferenceAt(source, match.from + 4)).toEqual(match);
     expect(catalogueUrl(match)).toBe(`catalogue://monster/${aboleth.id}`);
     expect(catalogueReferenceFromUrl(catalogueUrl(match))).toMatchObject({ category: 'monster', id: aboleth.id });
+  });
+
+  it('resolves selected text only when it identifies one entry in the chosen category', () => {
+    const spell: CatalogueEntry = { ...aboleth, id: 'spell-id', category: 'spell', name: 'Aboleth' };
+    const duplicate: CatalogueEntry = { ...aboleth, id: 'duplicate-id' };
+
+    expect(findCatalogueEntryByName([aboleth, spell], 'monster', '  aboleth  ')).toEqual(aboleth);
+    expect(findCatalogueEntryByName([aboleth, spell], 'spell', 'Aboleth')).toEqual(spell);
+    expect(findCatalogueEntryByName([aboleth, duplicate], 'monster', 'Aboleth')).toBeUndefined();
   });
 
   it('converts references in prose but leaves code untouched', () => {

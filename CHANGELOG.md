@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- On mobile, the Markdown source now scrolls inside the editor pane so the title and formatting tools remain visible while editing.
 - Encounter names now use a stable editable field and are preserved when adding combatants, starting combat, or inserting the encounter into a brew.
 - **Insert into brew** no longer inserts an encounter at an old cursor position. It opens the Outline placement flow and inserts at the end of the chosen section.
 
@@ -17,6 +18,7 @@
 
 ### Added
 
+- The Reference toolbar menu can turn selected matching text into a stable catalogue reference by category, while retaining the full catalogue browser.
 - A validated **private monster archive** import flow in Catalogue. Compatible `monsters.json` ZIP files are stored only in local IndexedDB; archive artwork is not copied and imported material is never bundled, committed, or synced to Drive.
 - Safe ZIP validation for private monster imports: size and record limits, allowed paths only, no encrypted or ZIP64 archives, no path traversal or symlinks, and no archive-provided executable content.
 - Private monsters now work in catalogue search, stable brew references, preview reference details, and encounter monster search without overriding bundled SRD records.

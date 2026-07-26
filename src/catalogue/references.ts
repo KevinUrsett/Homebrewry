@@ -1,6 +1,7 @@
 import {
   catalogueEntryKey,
   isCatalogueCategory,
+  type CatalogueCategory,
   type CatalogueEntry,
   type CatalogueReference
 } from './types';
@@ -17,6 +18,26 @@ export type CatalogueReferenceMatch = CatalogueReference & {
 export function formatCatalogueReference(entry: CatalogueEntry, label = entry.name): string {
   const display = label.replace(/[\]|\r\n]/g, ' ').trim() || entry.name;
   return `[[${entry.category}:${entry.id}|${display}]]`;
+}
+
+function normaliseCatalogueName(value: string): string {
+  return value.replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+/**
+ * Resolves a selected editor label to one stable entry in the chosen category.
+ * Ambiguous names deliberately require the catalogue browser instead of
+ * silently linking to an arbitrary record.
+ */
+export function findCatalogueEntryByName(
+  entries: readonly CatalogueEntry[],
+  category: CatalogueCategory,
+  selectedText: string
+): CatalogueEntry | undefined {
+  const name = normaliseCatalogueName(selectedText);
+  if (!name) return undefined;
+  const matches = entries.filter((entry) => entry.category === category && normaliseCatalogueName(entry.name) === name);
+  return matches.length === 1 ? matches[0] : undefined;
 }
 
 export function catalogueReferenceMatches(source: string): CatalogueReferenceMatch[] {

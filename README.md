@@ -54,7 +54,7 @@ Use **Import** in the brew library to paste source or select a `.md`, `.markdown
 
 The **Catalogue** tab provides a versioned offline reference for SRD 5.2.1 monsters, spells, items, rules, tables, classes, subclasses, species, backgrounds, and feats. It is part of the application bundle and does not add a Google permission or upload catalogue lookups to Drive.
 
-Use **Reference** in the editor toolbar or **Insert reference into brew** in the catalogue. The app inserts stable source syntax such as:
+Use **Reference** in the editor toolbar, choose a category to turn selected matching text into a reference, or select **Browse catalogue** for the full picker. The app inserts stable source syntax such as:
 
 ```markdown
 [[monster:c674b91f-94c8-5c80-9d1d-31bef50bc779|Aboleth]]

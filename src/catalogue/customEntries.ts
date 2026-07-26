@@ -1,4 +1,11 @@
-import { isCatalogueCategory, type CatalogueCategory, type CatalogueColumn, type CatalogueEntry, type CustomCatalogueEntry } from './types';
+import {
+  isCatalogueCategory,
+  type CatalogueCategory,
+  type CatalogueColumn,
+  type CatalogueEntry,
+  type CustomCatalogueCategory,
+  type CustomCatalogueEntry
+} from './types';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -144,6 +151,27 @@ export function createCustomCatalogueEntry(
     updatedAt: timestamp,
     version: 1
   });
+}
+
+export function createCustomCatalogueCategory(
+  name: string,
+  timestamp = new Date().toISOString(),
+  id: string = `category-${crypto.randomUUID()}`
+): CustomCatalogueCategory {
+  const normalized = normaliseCustomName(name);
+  if (!normalized || normalized.length > 80 || !isCatalogueCategory(id)) {
+    throw new Error('Enter a valid catalogue category name.');
+  }
+  if (id === 'encounter' || id === 'world') {
+    throw new Error('That catalogue category identifier is reserved by Homebrewry.');
+  }
+  return {
+    id,
+    name: normalized,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    version: 1
+  };
 }
 
 /** Starts a custom monster, optionally copying a selected catalogue monster as its template. */

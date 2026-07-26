@@ -2,7 +2,19 @@
 
 ## Unreleased
 
+### Added
+
+- Phase 8 beta: portrait, A4-proportioned preview pages with compact responsive book columns, including matching portrait print output.
+- Homebrewery import support for complete line-based `{{descriptive}}` and `{{note}}` blocks, rendered as safe, distinct callouts; existing brews can use the reversible **Convert HB** action.
+- Campaign-owned custom catalogue categories and generic catalogue entries, with stable references and Drive sync.
+- Campaign-owned Worldbuilding types; Worldbuilding now defaults to a preview view with explicit **Edit**, **Save**, and **Cancel** controls.
+- Stable `[[world:id|label]]` Worldbuilding links from the editor context menu, compact source-editor chips, desktop hover cards, and a Preview detail dialog that can open the matching Worldbuilding entry.
+
 ### Fixed
+
+- Long document outlines keep every row at its readable height and scroll independently on mobile instead of shrinking/cropping their labels.
+- The generic catalogue-reference parser now reserves encounter and Worldbuilding namespaces so those reference cards continue to render through their dedicated safe transforms.
+- Campaign-data schema version 4 stores custom catalogue categories and Worldbuilding type definitions while safely reading schema versions 1–3.
 
 - Campaign data now uses schema version 3, preserving validated custom monster stat data across Drive sync while safely reading existing schema 1 and 2 campaign files.
 - Imported private monster catalogues now sync through their own private Google Drive companion file and load when Drive connects on another device. The normalized JSON is validated again on download; archive artwork and package files remain excluded, and no archive code is executed.
@@ -68,4 +80,4 @@
 ### Notes
 
 - Campaign data sync is separate from brew documents, so existing Drive brew files remain backward compatible.
-- Worldbuilding records do not yet create automatic brew links or render reference notes in Preview.
+- Worldbuilding links render only the selected label in a brew; notes remain available through the hover card or reference dialog instead of appearing inline.

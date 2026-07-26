@@ -3,19 +3,25 @@ import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { catalogueReferenceFromUrl, entryFromReference, remarkCatalogueReferences } from '../catalogue/references';
 import { encounterReferenceFromUrl, remarkEncounterReferences } from '../lib/encounterReferences';
+import { worldbuildingReferenceFromUrl, remarkWorldbuildingReferences } from '../lib/worldbuildingReferences';
 import { getHeadingId } from '../lib/outline';
 import { parseRendererBlocks, splitRendererPages, type RendererBlock } from '../renderer/blocks';
-import type { CatalogueEntry } from '../catalogue/types';
-import type { Brew, BrewAsset, Encounter } from '../types';
+import { catalogueCategoryLabel, type CatalogueEntry, type CustomCatalogueCategory } from '../catalogue/types';
+import type { Brew, BrewAsset, Encounter, WorldbuildingEntry, WorldbuildingType } from '../types';
 import { CatalogueEntryDetails } from './CatalogueEntryDetails';
+import { WorldbuildingReferenceDetails } from './WorldbuildingReferenceDetails';
 
 type BrewPreviewProps = {
   brew: Brew;
   assets?: ReadonlyMap<string, BrewAsset>;
   catalogue?: ReadonlyMap<string, CatalogueEntry>;
+  catalogueCategories?: readonly CustomCatalogueCategory[];
   onReferenceOpen?: (entry: CatalogueEntry) => void;
   encounters?: ReadonlyMap<string, Encounter>;
   onEncounterOpen?: (encounter: Encounter) => void;
+  worldbuilding?: ReadonlyMap<string, WorldbuildingEntry>;
+  worldbuildingTypes?: readonly WorldbuildingType[];
+  onWorldbuildingOpen?: (entry: WorldbuildingEntry) => void;
 };
 
 type MarkdownRendererProps = {
@@ -23,9 +29,13 @@ type MarkdownRendererProps = {
   getId: (children: ReactNode) => string;
   assets?: ReadonlyMap<string, BrewAsset>;
   catalogue?: ReadonlyMap<string, CatalogueEntry>;
+  catalogueCategories?: readonly CustomCatalogueCategory[];
   onReferenceOpen?: (entry: CatalogueEntry) => void;
   encounters?: ReadonlyMap<string, Encounter>;
   onEncounterOpen?: (encounter: Encounter) => void;
+  worldbuilding?: ReadonlyMap<string, WorldbuildingEntry>;
+  worldbuildingTypes?: readonly WorldbuildingType[];
+  onWorldbuildingOpen?: (entry: WorldbuildingEntry) => void;
 };
 
 function LocalAssetImage({ asset, alt }: { asset: BrewAsset; alt: string }) {
@@ -35,16 +45,18 @@ function LocalAssetImage({ asset, alt }: { asset: BrewAsset; alt: string }) {
 }
 
 function previewUrlTransform(url: string): string {
-  return catalogueReferenceFromUrl(url) || encounterReferenceFromUrl(url) ? url : defaultUrlTransform(url);
+  return catalogueReferenceFromUrl(url) || encounterReferenceFromUrl(url) || worldbuildingReferenceFromUrl(url) ? url : defaultUrlTransform(url);
 }
 
 function CatalogueReferenceLink({
   children,
   entry,
+  categories,
   onOpen
 }: {
   children: ReactNode;
   entry: CatalogueEntry;
+  categories?: readonly CustomCatalogueCategory[];
   onOpen?: (entry: CatalogueEntry) => void;
 }) {
   const [visible, setVisible] = useState(false);
@@ -60,7 +72,7 @@ function CatalogueReferenceLink({
       >
         {children}
       </button>
-      {visible && <span className="catalogue-reference-tooltip" role="tooltip"><CatalogueEntryDetails compact entry={entry} /></span>}
+      {visible && <span className="catalogue-reference-tooltip" role="tooltip"><CatalogueEntryDetails categoryLabel={catalogueCategoryLabel(entry.category, categories)} compact entry={entry} /></span>}
     </span>
   );
 }
@@ -83,10 +95,39 @@ function EncounterReferenceLink({
   );
 }
 
-function MarkdownRenderer({ content, getId, assets, catalogue, onReferenceOpen, encounters, onEncounterOpen }: MarkdownRendererProps) {
+function WorldbuildingReferenceLink({
+  children,
+  entry,
+  types,
+  onOpen
+}: {
+  children: ReactNode;
+  entry: WorldbuildingEntry;
+  types?: readonly WorldbuildingType[];
+  onOpen?: (entry: WorldbuildingEntry) => void;
+}) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <span className="worldbuilding-reference-wrap" onMouseEnter={() => setVisible(true)} onMouseLeave={() => setVisible(false)}>
+      <button
+        aria-haspopup="dialog"
+        className="worldbuilding-reference-link"
+        onBlur={() => setVisible(false)}
+        onClick={() => onOpen?.(entry)}
+        onFocus={() => setVisible(true)}
+        type="button"
+      >
+        {children}
+      </button>
+      {visible && <span className="worldbuilding-reference-tooltip" role="tooltip"><WorldbuildingReferenceDetails compact entry={entry} types={types} /></span>}
+    </span>
+  );
+}
+
+function MarkdownRenderer({ content, getId, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen }: MarkdownRendererProps) {
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm, remarkCatalogueReferences, remarkEncounterReferences]}
+      remarkPlugins={[remarkGfm, remarkCatalogueReferences, remarkEncounterReferences, remarkWorldbuildingReferences]}
       urlTransform={previewUrlTransform}
       components={{
         h1: ({ children }) => <h1 id={getId(children)}>{children}</h1>,
@@ -110,11 +151,18 @@ function MarkdownRenderer({ content, getId, assets, catalogue, onReferenceOpen, 
               ? <EncounterReferenceLink encounter={encounter} onOpen={onEncounterOpen}>{children}</EncounterReferenceLink>
               : <span className="missing-reference">{children}</span>;
           }
+          const worldbuildingReference = worldbuildingReferenceFromUrl(href);
+          if (worldbuildingReference) {
+            const entry = worldbuilding?.get(worldbuildingReference.id);
+            return entry
+              ? <WorldbuildingReferenceLink entry={entry} onOpen={onWorldbuildingOpen} types={worldbuildingTypes}>{children}</WorldbuildingReferenceLink>
+              : <span className="missing-reference">{children}</span>;
+          }
           const reference = catalogueReferenceFromUrl(href);
           if (!reference) return <a href={href}>{children}</a>;
           const entry = catalogue && entryFromReference(catalogue, reference);
           return entry
-            ? <CatalogueReferenceLink entry={entry} onOpen={onReferenceOpen}>{children}</CatalogueReferenceLink>
+            ? <CatalogueReferenceLink categories={catalogueCategories} entry={entry} onOpen={onReferenceOpen}>{children}</CatalogueReferenceLink>
             : <span className="missing-reference">{children}</span>;
         }
       }}
@@ -140,18 +188,22 @@ function renderBlock(
   getId: (children: ReactNode) => string,
   assets: ReadonlyMap<string, BrewAsset> | undefined,
   catalogue: ReadonlyMap<string, CatalogueEntry> | undefined,
+  catalogueCategories: readonly CustomCatalogueCategory[] | undefined,
   onReferenceOpen: ((entry: CatalogueEntry) => void) | undefined,
   encounters: ReadonlyMap<string, Encounter> | undefined,
   onEncounterOpen: ((encounter: Encounter) => void) | undefined,
+  worldbuilding: ReadonlyMap<string, WorldbuildingEntry> | undefined,
+  worldbuildingTypes: readonly WorldbuildingType[] | undefined,
+  onWorldbuildingOpen: ((entry: WorldbuildingEntry) => void) | undefined,
   key: string
 ) {
-  if (block.type === 'markdown') return <MarkdownRenderer assets={assets} catalogue={catalogue} content={block.content} encounters={encounters} getId={getId} key={key} onEncounterOpen={onEncounterOpen} onReferenceOpen={onReferenceOpen} />;
-  if (block.type === 'columns') return <section className="brew-columns" key={key}><MarkdownRenderer assets={assets} catalogue={catalogue} content={block.content} encounters={encounters} getId={getId} onEncounterOpen={onEncounterOpen} onReferenceOpen={onReferenceOpen} /></section>;
+  if (block.type === 'markdown') return <MarkdownRenderer assets={assets} catalogue={catalogue} catalogueCategories={catalogueCategories} content={block.content} encounters={encounters} getId={getId} key={key} onEncounterOpen={onEncounterOpen} onReferenceOpen={onReferenceOpen} onWorldbuildingOpen={onWorldbuildingOpen} worldbuilding={worldbuilding} worldbuildingTypes={worldbuildingTypes} />;
+  if (block.type === 'columns') return <section className="brew-columns" key={key}><MarkdownRenderer assets={assets} catalogue={catalogue} catalogueCategories={catalogueCategories} content={block.content} encounters={encounters} getId={getId} onEncounterOpen={onEncounterOpen} onReferenceOpen={onReferenceOpen} onWorldbuildingOpen={onWorldbuildingOpen} worldbuilding={worldbuilding} worldbuildingTypes={worldbuildingTypes} /></section>;
   if (block.type === 'callout') {
     return (
       <aside className={`brew-callout callout-${block.variant}`} key={key}>
         {block.title && <h4>{block.title}</h4>}
-        <MarkdownRenderer assets={assets} catalogue={catalogue} content={block.content} encounters={encounters} getId={getId} onEncounterOpen={onEncounterOpen} onReferenceOpen={onReferenceOpen} />
+        <MarkdownRenderer assets={assets} catalogue={catalogue} catalogueCategories={catalogueCategories} content={block.content} encounters={encounters} getId={getId} onEncounterOpen={onEncounterOpen} onReferenceOpen={onReferenceOpen} onWorldbuildingOpen={onWorldbuildingOpen} worldbuilding={worldbuilding} worldbuildingTypes={worldbuildingTypes} />
       </aside>
     );
   }
@@ -159,7 +211,7 @@ function renderBlock(
   return <CharacterBlock content={block.content} key={key} type={block.type} />;
 }
 
-export function BrewPreview({ brew, assets, catalogue, onReferenceOpen, encounters, onEncounterOpen }: BrewPreviewProps) {
+export function BrewPreview({ brew, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen }: BrewPreviewProps) {
   const headingOccurrences = new Map<string, number>();
   const getId = (children: ReactNode) => {
     const text = String(children);
@@ -177,7 +229,7 @@ export function BrewPreview({ brew, assets, catalogue, onReferenceOpen, encounte
       {pages.map((page, pageIndex) => (
         <article className="brew-preview" key={`page-${pageIndex}`}>
           <div className="brew-page-number" aria-hidden>{pageIndex + 1}</div>
-          {page.map((block, blockIndex) => renderBlock(block, getId, assets, catalogue, onReferenceOpen, encounters, onEncounterOpen, `${pageIndex}-${blockIndex}`))}
+          {page.map((block, blockIndex) => renderBlock(block, getId, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen, `${pageIndex}-${blockIndex}`))}
         </article>
       ))}
     </div>

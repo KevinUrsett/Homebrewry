@@ -1,4 +1,4 @@
-import type { CatalogueEntry, CustomCatalogueEntry } from './catalogue/types';
+import type { CatalogueEntry, CustomCatalogueCategory, CustomCatalogueEntry } from './catalogue/types';
 
 export type RendererSettings = {
   accentColor: string;
@@ -100,7 +100,18 @@ export const worldbuildingKinds = [
   'custom'
 ] as const;
 
-export type WorldbuildingKind = (typeof worldbuildingKinds)[number];
+export type BuiltInWorldbuildingKind = (typeof worldbuildingKinds)[number];
+
+/** Built-in kinds remain stable; campaigns may add safe custom type IDs. */
+export type WorldbuildingKind = string;
+
+export type WorldbuildingType = {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+};
 
 export type WorldbuildingEntry = {
   id: string;
@@ -119,12 +130,14 @@ export type WorldbuildingEntry = {
  * the established brew document schema.
  */
 export type CampaignDataSnapshot = {
-  schemaVersion: 3;
+  schemaVersion: 4;
   updatedAt: string;
   encounters: Encounter[];
   partyMembers: PartyMember[];
   worldbuildingEntries: WorldbuildingEntry[];
   customCatalogueEntries: CustomCatalogueEntry[];
+  customCatalogueCategories: CustomCatalogueCategory[];
+  worldbuildingTypes: WorldbuildingType[];
 };
 
 export type CampaignDataConflict = {

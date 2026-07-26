@@ -9,6 +9,7 @@ import { OutlinePanel } from './components/OutlinePanel';
 import { PrivateMonsterImportDialog } from './components/PrivateMonsterImportDialog';
 import { ReferenceDialog } from './components/ReferenceDialog';
 import { WorldbuildingPanel } from './components/WorldbuildingPanel';
+import { WorldbuildingReferenceDialog } from './components/WorldbuildingReferenceDialog';
 import type { MarkdownEditorHandle } from './components/MarkdownEditor';
 import {
   createBrew,
@@ -34,18 +35,31 @@ import { importHomebrewerySource, titleFromImportedSource } from './lib/importer
 import type { PrivateMonsterImportReport } from './lib/privateMonsterImport';
 import { clearPrivateMonsterEntries, listPrivateMonsterEntries, replacePrivateMonsterEntries } from './lib/privateMonsterStore';
 import { keepDrivePrivateMonsterCatalogue, overwriteDrivePrivateMonsterCatalogue, syncPrivateMonsterCatalogue, type PrivateMonsterSyncResult } from './lib/privateMonsterSync';
-import { deleteCustomCatalogueEntry, listCustomCatalogueEntries, saveCustomCatalogueEntry } from './lib/customCatalogueStore';
+import {
+  deleteCustomCatalogueEntry,
+  listCustomCatalogueCategories,
+  listCustomCatalogueEntries,
+  saveCustomCatalogueCategory,
+  saveCustomCatalogueEntry
+} from './lib/customCatalogueStore';
 import { overwriteDriveBrew, syncBrews } from './lib/sync';
 import { createEncounter as createCombatEncounter, createPartyMember } from './lib/encounters';
 import { deleteEncounter as deleteStoredEncounter, deletePartyMember as deleteStoredPartyMember, listEncounters, listPartyMembers, saveEncounter, savePartyMember } from './lib/encounterStore';
 import { formatEncounterReference } from './lib/encounterReferences';
-import { createWorldbuildingEntry } from './lib/worldbuilding';
-import { deleteWorldbuildingEntry as deleteStoredWorldbuildingEntry, listWorldbuildingEntries, saveWorldbuildingEntry } from './lib/worldbuildingStore';
+import { createWorldbuildingEntry, createWorldbuildingType, findWorldbuildingEntryByName, worldbuildingKindLabels } from './lib/worldbuilding';
+import {
+  deleteWorldbuildingEntry as deleteStoredWorldbuildingEntry,
+  listWorldbuildingEntries,
+  listWorldbuildingTypes,
+  saveWorldbuildingEntry,
+  saveWorldbuildingType
+} from './lib/worldbuildingStore';
 import { loadCatalogue, toCatalogueMap } from './catalogue/catalogueData';
-import { createCustomCatalogueEntry, normaliseCustomCatalogueEntry } from './catalogue/customEntries';
+import { createCustomCatalogueCategory, createCustomCatalogueEntry, normaliseCustomCatalogueEntry } from './catalogue/customEntries';
 import { findCatalogueEntryByName, formatCatalogueReference } from './catalogue/references';
-import { catalogueCategoryLabels, type CatalogueCategory, type CatalogueEntry, type CustomCatalogueEntry } from './catalogue/types';
-import type { Brew, BrewAsset, CampaignDataSyncMetadata, Encounter, MobileSection, PartyMember, PrivateMonsterSyncMetadata, ViewMode, WorldbuildingEntry, WorldbuildingKind } from './types';
+import { formatWorldbuildingReference } from './lib/worldbuildingReferences';
+import { catalogueCategoryLabel, catalogueCategoryLabels, type CatalogueCategory, type CatalogueEntry, type CustomCatalogueCategory, type CustomCatalogueEntry } from './catalogue/types';
+import type { Brew, BrewAsset, CampaignDataSyncMetadata, Encounter, MobileSection, PartyMember, PrivateMonsterSyncMetadata, ViewMode, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from './types';
 
 const mobileLabels: Record<MobileSection, string> = {
   library: 'Brews',
@@ -75,6 +89,7 @@ export default function App() {
   const [baseCatalogueEntries, setBaseCatalogueEntries] = useState<CatalogueEntry[]>([]);
   const [privateMonsterEntries, setPrivateMonsterEntries] = useState<CatalogueEntry[]>([]);
   const [customCatalogueEntries, setCustomCatalogueEntries] = useState<CustomCatalogueEntry[]>([]);
+  const [customCatalogueCategories, setCustomCatalogueCategories] = useState<CustomCatalogueCategory[]>([]);
   const [catalogueLoading, setCatalogueLoading] = useState(true);
   const [catalogueError, setCatalogueError] = useState<string | null>(null);
   const [catalogueOpen, setCatalogueOpen] = useState(false);
@@ -86,11 +101,13 @@ export default function App() {
   const [encounterSelectedId, setEncounterSelectedId] = useState<string | null>(null);
   const [pendingEncounterInsertion, setPendingEncounterInsertion] = useState<Encounter | null>(null);
   const [worldbuildingEntries, setWorldbuildingEntries] = useState<WorldbuildingEntry[]>([]);
+  const [worldbuildingTypes, setWorldbuildingTypes] = useState<WorldbuildingType[]>([]);
   const [worldbuildingOpen, setWorldbuildingOpen] = useState(false);
   const [worldbuildingSelectedId, setWorldbuildingSelectedId] = useState<string | null>(null);
   const [campaignDataSync, setCampaignDataSync] = useState<CampaignDataSyncMetadata | null>(null);
   const [privateMonsterSync, setPrivateMonsterSync] = useState<PrivateMonsterSyncMetadata | null>(null);
   const [referenceEntry, setReferenceEntry] = useState<CatalogueEntry | null>(null);
+  const [worldbuildingReferenceEntry, setWorldbuildingReferenceEntry] = useState<WorldbuildingEntry | null>(null);
   const editorRef = useRef<MarkdownEditorHandle>(null);
   const selectionRef = useRef({ start: 0, end: 0 });
   const historyRef = useRef<string[]>([]);
@@ -99,7 +116,9 @@ export default function App() {
     encounters: [] as Encounter[],
     partyMembers: [] as PartyMember[],
     worldbuildingEntries: [] as WorldbuildingEntry[],
-    customCatalogueEntries: [] as CustomCatalogueEntry[]
+    customCatalogueEntries: [] as CustomCatalogueEntry[],
+    customCatalogueCategories: [] as CustomCatalogueCategory[],
+    worldbuildingTypes: [] as WorldbuildingType[]
   });
   const campaignMetadataRef = useRef<CampaignDataSyncMetadata | null>(null);
   const campaignMutationRef = useRef(0);
@@ -120,8 +139,10 @@ export default function App() {
       listEncounters(),
       listPartyMembers(),
       listWorldbuildingEntries(),
+      listWorldbuildingTypes(),
       listPrivateMonsterEntries(),
       listCustomCatalogueEntries(),
+      listCustomCatalogueCategories(),
       getCampaignDataSyncMetadata(),
       getPrivateMonsterSyncMetadata()
     ])
@@ -131,8 +152,10 @@ export default function App() {
         storedEncounters,
         storedPartyMembers,
         storedWorldbuildingEntries,
+        storedWorldbuildingTypes,
         storedPrivateMonsterEntries,
         storedCustomCatalogueEntries,
+        storedCustomCatalogueCategories,
         storedCampaignDataSync,
         storedPrivateMonsterSync
       ]) => {
@@ -141,8 +164,10 @@ export default function App() {
         setEncounters(storedEncounters);
         setPartyMembers(storedPartyMembers);
         setWorldbuildingEntries(storedWorldbuildingEntries);
+        setWorldbuildingTypes(storedWorldbuildingTypes);
         setPrivateMonsterEntries(storedPrivateMonsterEntries);
         setCustomCatalogueEntries(storedCustomCatalogueEntries);
+        setCustomCatalogueCategories(storedCustomCatalogueCategories);
         setCampaignDataSync(storedCampaignDataSync);
         setPrivateMonsterSync(storedPrivateMonsterSync);
         setActiveId(storedBrews[0]?.id ?? null);
@@ -178,9 +203,11 @@ export default function App() {
       encounters,
       partyMembers,
       worldbuildingEntries,
-      customCatalogueEntries
+      customCatalogueEntries,
+      customCatalogueCategories,
+      worldbuildingTypes
     };
-  }, [customCatalogueEntries, encounters, partyMembers, worldbuildingEntries]);
+  }, [customCatalogueCategories, customCatalogueEntries, encounters, partyMembers, worldbuildingEntries, worldbuildingTypes]);
 
   useEffect(() => {
     campaignMetadataRef.current = campaignDataSync;
@@ -214,6 +241,7 @@ export default function App() {
   );
   const catalogueMap = useMemo(() => toCatalogueMap(catalogueEntries), [catalogueEntries]);
   const encounterMap = useMemo(() => new Map(encounters.map((encounter) => [encounter.id, encounter])), [encounters]);
+  const worldbuildingMap = useMemo(() => new Map(worldbuildingEntries.map((entry) => [entry.id, entry])), [worldbuildingEntries]);
 
   useEffect(() => {
     if (!activeBrew || loading) return;
@@ -289,7 +317,7 @@ export default function App() {
         noteCampaignDataSaved(saved.metadata, 'Reference saved locally');
         entry = saved.entry;
       } catch {
-        setSaveState(`Could not save the ${catalogueCategoryLabels[category]} reference`);
+        setSaveState(`Could not save the ${catalogueCategoryLabel(category, customCatalogueCategories)} reference`);
         return;
       }
     }
@@ -362,6 +390,12 @@ export default function App() {
     setReferenceEntry(null);
   };
 
+  const openReferenceInWorldbuilding = () => {
+    if (!worldbuildingReferenceEntry) return;
+    openWorldbuilding(worldbuildingReferenceEntry);
+    setWorldbuildingReferenceEntry(null);
+  };
+
   const insertCatalogueReference = (entry: CatalogueEntry) => {
     insertText(formatCatalogueReference(entry));
     setReferenceEntry(null);
@@ -415,16 +449,55 @@ export default function App() {
   };
 
   const addWorldbuildingFromEditor = (name: string, kind: WorldbuildingKind) => {
-    const entry = createWorldbuildingEntry(name, kind);
-    const existing = worldbuildingEntries.find((item) => item.kind === entry.kind && item.name.toLocaleLowerCase() === entry.name.toLocaleLowerCase());
-    if (existing) {
-      setWorldbuildingSelectedId(existing.id);
-      setSaveState(`“${existing.name}” is already in Worldbuilding`);
-      return;
-    }
-    persistWorldbuildingEntry(entry);
+    if (!activeBrew) return;
+    const editor = editorRef.current;
+    const selection = editor?.getSelection() ?? selectionRef.current;
+    const selectedText = activeBrew.content.slice(selection.start, selection.end);
+    const entry = findWorldbuildingEntryByName(worldbuildingEntries, name) ?? createWorldbuildingEntry(name, kind);
+    const isNew = !worldbuildingEntries.some((item) => item.id === entry.id);
+    if (isNew) persistWorldbuildingEntry(entry);
     setWorldbuildingSelectedId(entry.id);
-    setSaveState(`Added “${entry.name}” to Worldbuilding`);
+
+    const reference = formatWorldbuildingReference(entry, selectedText || entry.name);
+    const next = `${activeBrew.content.slice(0, selection.start)}${reference}${activeBrew.content.slice(selection.end)}`;
+    updateContent(next);
+    const cursor = selection.start + reference.length;
+    selectionRef.current = { start: cursor, end: cursor };
+    window.requestAnimationFrame(() => editorRef.current?.focus(cursor));
+    setSaveState(isNew ? `Added “${entry.name}” and linked it in this brew` : `Linked existing Worldbuilding entry “${entry.name}”`);
+  };
+
+  const createNewWorldbuildingType = (name: string): string | null => {
+    try {
+      const candidate = createWorldbuildingType(name);
+      const existing = [...worldbuildingTypes, ...Object.entries(worldbuildingKindLabels).map(([id, label]) => ({ id, name: label }))]
+        .some((type) => type.name.toLocaleLowerCase() === candidate.name.toLocaleLowerCase());
+      if (existing) return null;
+      setWorldbuildingTypes((current) => [...current, candidate].sort((left, right) => left.name.localeCompare(right.name)));
+      void saveWorldbuildingType(candidate)
+        .then((metadata) => noteCampaignDataSaved(metadata, 'Worldbuilding type saved locally'))
+        .catch(() => setSaveState('Worldbuilding type save failed'));
+      return candidate.id;
+    } catch {
+      return null;
+    }
+  };
+
+  const createNewCustomCatalogueCategory = (name: string): CustomCatalogueCategory | null => {
+    try {
+      const candidate = createCustomCatalogueCategory(name);
+      const builtInNames = Object.values(catalogueCategoryLabels).map((label) => label.toLocaleLowerCase());
+      const exists = builtInNames.includes(candidate.name.toLocaleLowerCase())
+        || customCatalogueCategories.some((category) => category.name.toLocaleLowerCase() === candidate.name.toLocaleLowerCase());
+      if (exists) return null;
+      setCustomCatalogueCategories((current) => [...current, candidate].sort((left, right) => left.name.localeCompare(right.name)));
+      void saveCustomCatalogueCategory(candidate)
+        .then((metadata) => noteCampaignDataSaved(metadata, 'Catalogue category saved locally'))
+        .catch(() => setSaveState('Catalogue category save failed'));
+      return candidate;
+    } catch {
+      return null;
+    }
   };
 
   const deleteWorldbuilding = (entry: WorldbuildingEntry) => {
@@ -553,6 +626,19 @@ export default function App() {
     setSaveState(result.notices.length ? `Imported brew. ${result.notices.join(' ')}` : 'Imported brew locally');
   };
 
+  const convertHomebreweryFormatting = () => {
+    if (!activeBrew) return;
+    const result = importHomebrewerySource(activeBrew.content);
+    if (result.content === activeBrew.content) {
+      setSaveState('No supported Homebrewery blocks needed conversion');
+      return;
+    }
+    const detail = result.notices.join(' ') || 'Known Homebrewery formatting will be converted.';
+    if (!window.confirm(`${detail}\n\nApply this reversible conversion to the current brew?`)) return;
+    updateContent(result.content);
+    setSaveState(`Converted current brew. ${detail}`);
+  };
+
   const applyCampaignDataResult = async (
     result: CampaignDataSyncResult,
     sourceData: CampaignDataSyncResult['data']
@@ -565,6 +651,8 @@ export default function App() {
       setPartyMembers(result.data.partyMembers);
       setWorldbuildingEntries(result.data.worldbuildingEntries);
       setCustomCatalogueEntries(result.data.customCatalogueEntries);
+      setCustomCatalogueCategories(result.data.customCatalogueCategories);
+      setWorldbuildingTypes(result.data.worldbuildingTypes);
       setEncounterSelectedId((current) => result.data.encounters.some((encounter) => encounter.id === current) ? current : result.data.encounters[0]?.id ?? null);
       setWorldbuildingSelectedId((current) => result.data.worldbuildingEntries.some((entry) => entry.id === current) ? current : result.data.worldbuildingEntries[0]?.id ?? null);
     }
@@ -572,7 +660,9 @@ export default function App() {
       encounters: result.data.encounters,
       partyMembers: result.data.partyMembers,
       worldbuildingEntries: result.data.worldbuildingEntries,
-      customCatalogueEntries: result.data.customCatalogueEntries
+      customCatalogueEntries: result.data.customCatalogueEntries,
+      customCatalogueCategories: result.data.customCatalogueCategories,
+      worldbuildingTypes: result.data.worldbuildingTypes
     };
     campaignMetadataRef.current = result.metadata;
     setCampaignDataSync(result.metadata);
@@ -726,7 +816,9 @@ export default function App() {
         records.partyMembers,
         records.worldbuildingEntries,
         undefined,
-        records.customCatalogueEntries
+        records.customCatalogueEntries,
+        records.customCatalogueCategories,
+        records.worldbuildingTypes
       );
       const metadata = campaignMetadataRef.current ?? await getCampaignDataSyncMetadata();
       campaignMetadataRef.current = metadata;
@@ -849,6 +941,35 @@ export default function App() {
     noteCampaignDataSaved(metadata, 'Custom monster removed locally');
   };
 
+  const saveGenericCustomEntry = async (draft: CustomCatalogueEntry) => {
+    const existing = customCatalogueEntries.find((entry) => entry.id === draft.id);
+    const timestamp = new Date().toISOString();
+    const candidate = normaliseCustomCatalogueEntry({
+      ...draft,
+      source: 'Custom',
+      createdAt: existing?.createdAt ?? draft.createdAt ?? timestamp,
+      updatedAt: timestamp,
+      version: existing ? existing.version + 1 : 1
+    });
+    const saved = await saveCustomCatalogueEntry(candidate);
+    const nextEntries = existing
+      ? customCatalogueEntries.map((entry) => entry.id === saved.entry.id ? saved.entry : entry)
+      : [...customCatalogueEntries, saved.entry];
+    campaignRecordsRef.current = { ...campaignRecordsRef.current, customCatalogueEntries: nextEntries };
+    setCustomCatalogueEntries(nextEntries);
+    setCatalogueSelection(saved.entry);
+    noteCampaignDataSaved(saved.metadata, existing ? 'Custom catalogue entry updated locally' : 'Custom catalogue entry created locally');
+  };
+
+  const deleteGenericCustomEntry = async (entry: CustomCatalogueEntry) => {
+    const metadata = await deleteCustomCatalogueEntry(entry.id);
+    const nextEntries = customCatalogueEntries.filter((item) => item.id !== entry.id);
+    campaignRecordsRef.current = { ...campaignRecordsRef.current, customCatalogueEntries: nextEntries };
+    setCustomCatalogueEntries(nextEntries);
+    setCatalogueSelection((selected) => selected?.id === entry.id ? null : selected);
+    noteCampaignDataSaved(metadata, 'Custom catalogue entry removed locally');
+  };
+
   const connectDrive = async () => {
     try {
       setSaveState('Connecting to Google Drive…');
@@ -944,14 +1065,14 @@ export default function App() {
     if (!campaignDataSync) return;
     const result = keepDriveCampaignData(campaignDataSync);
     if (!result) return;
-    const sourceData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries, undefined, customCatalogueEntries);
+    const sourceData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries, undefined, customCatalogueEntries, customCatalogueCategories, worldbuildingTypes);
     await applyCampaignDataResult(result, sourceData);
     setSaveState(result.detail);
   };
 
   const keepBothCampaignConflict = async () => {
     if (!campaignDataSync) return;
-    const sourceData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries, undefined, customCatalogueEntries);
+    const sourceData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries, undefined, customCatalogueEntries, customCatalogueCategories, worldbuildingTypes);
     const result = keepBothCampaignDataVersions(sourceData, campaignDataSync);
     if (!result) return;
     await applyCampaignDataResult(result, sourceData);
@@ -962,7 +1083,7 @@ export default function App() {
     if (!campaignDataSync || !accessToken) return;
     try {
       setSyncing(true);
-      const sourceData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries, undefined, customCatalogueEntries);
+      const sourceData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries, undefined, customCatalogueEntries, customCatalogueCategories, worldbuildingTypes);
       const result = await overwriteDriveCampaignData(accessToken, sourceData, campaignDataSync);
       await applyCampaignDataResult(result, sourceData);
       setSaveState(result.detail);
@@ -1083,9 +1204,13 @@ export default function App() {
           error={catalogueError}
           loading={catalogueLoading}
           customEntryCount={customCatalogueEntries.length}
+          customCategories={customCatalogueCategories}
+          onCreateCustomCategory={createNewCustomCatalogueCategory}
+          onDeleteCustomEntry={deleteGenericCustomEntry}
           onDeleteCustomMonster={deleteCustomMonster}
           onInsertReference={insertCatalogueReference}
           onOpenPrivateMonsterImport={() => setPrivateMonsterImportOpen(true)}
+          onSaveCustomEntry={saveGenericCustomEntry}
           onSaveCustomMonster={saveCustomMonster}
           privateMonsterCount={privateMonsterEntries.length}
           selectedEntry={catalogueSelection}
@@ -1112,10 +1237,12 @@ export default function App() {
           entries={worldbuildingEntries}
           syncState={campaignDataSync?.syncState ?? 'local'}
           onCreate={createNewWorldbuildingEntry}
+          onCreateType={createNewWorldbuildingType}
           onDelete={deleteWorldbuilding}
           onSelect={setWorldbuildingSelectedId}
           onUpdate={persistWorldbuildingEntry}
           selectedId={worldbuildingSelectedId}
+          types={worldbuildingTypes}
         />
       ) : (
         <div className={`workspace view-${viewMode}`}>
@@ -1146,6 +1273,7 @@ export default function App() {
               onImageUpload={(file) => void uploadImage(file)}
               onInsert={insertText}
               onInsertReferenceCategory={(category) => { void insertSelectedCatalogueReference(category); }}
+              customCatalogueCategories={customCatalogueCategories}
               onKeyDown={(event) => {
                 if (!(event.metaKey || event.ctrlKey)) return;
                 if (event.key.toLowerCase() === 'z') {
@@ -1160,6 +1288,8 @@ export default function App() {
               onOpenCatalogue={openCatalogue}
               onOpenEncounters={openEncounters}
               onAddWorldbuilding={addWorldbuildingFromEditor}
+              worldbuildingTypes={worldbuildingTypes}
+              onConvertHomebrewery={convertHomebreweryFormatting}
               onRedo={redo}
               onReplaceAll={replaceAll}
               onReplaceChange={setReplaceValue}
@@ -1172,7 +1302,18 @@ export default function App() {
             />
             <section className="preview-pane" aria-label="Live preview">
               <div className="preview-canvas">
-                <BrewPreview assets={assetMap} brew={activeBrew} catalogue={catalogueMap} encounters={encounterMap} onEncounterOpen={openEncounters} onReferenceOpen={setReferenceEntry} />
+                <BrewPreview
+                  assets={assetMap}
+                  brew={activeBrew}
+                  catalogue={catalogueMap}
+                  catalogueCategories={customCatalogueCategories}
+                  encounters={encounterMap}
+                  onEncounterOpen={openEncounters}
+                  onReferenceOpen={setReferenceEntry}
+                  onWorldbuildingOpen={setWorldbuildingReferenceEntry}
+                  worldbuilding={worldbuildingMap}
+                  worldbuildingTypes={worldbuildingTypes}
+                />
               </div>
             </section>
           </div>
@@ -1250,7 +1391,15 @@ export default function App() {
           onImport={importMonsterArchive}
         />
       )}
-      {referenceEntry && <ReferenceDialog entry={referenceEntry} onClose={() => setReferenceEntry(null)} onOpenInCatalogue={openReferenceInCatalogue} />}
+      {referenceEntry && <ReferenceDialog categoryLabel={catalogueCategoryLabel(referenceEntry.category, customCatalogueCategories)} entry={referenceEntry} onClose={() => setReferenceEntry(null)} onOpenInCatalogue={openReferenceInCatalogue} />}
+      {worldbuildingReferenceEntry && (
+        <WorldbuildingReferenceDialog
+          entry={worldbuildingReferenceEntry}
+          onClose={() => setWorldbuildingReferenceEntry(null)}
+          onOpenInWorldbuilding={openReferenceInWorldbuilding}
+          types={worldbuildingTypes}
+        />
+      )}
     </div>
   );
 }

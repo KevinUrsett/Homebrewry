@@ -5,7 +5,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { catalogueEntryKey } from '../catalogue/types';
 import type { CatalogueEntry } from '../catalogue/types';
-import type { Brew, Encounter } from '../types';
+import type { Brew, Encounter, WorldbuildingEntry } from '../types';
 import { BrewPreview } from './BrewPreview';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -36,6 +36,17 @@ const encounter: Encounter = {
   status: 'prepared',
   participants: [],
   activeCombatantId: null,
+  createdAt: '2026-07-25T00:00:00.000Z',
+  updatedAt: '2026-07-25T00:00:00.000Z',
+  version: 1
+};
+
+const worldbuildingEntry: WorldbuildingEntry = {
+  id: 'be2e31f0-52b4-46d9-8cb6-45e95b6cb5d9',
+  name: 'Sund',
+  kind: 'town',
+  aliases: [],
+  notes: 'A city built around the old road.',
   createdAt: '2026-07-25T00:00:00.000Z',
   updatedAt: '2026-07-25T00:00:00.000Z',
   version: 1
@@ -108,5 +119,36 @@ describe('BrewPreview', () => {
     });
 
     expect(onEncounterOpen).toHaveBeenCalledWith(encounter);
+  });
+
+  it('opens a matching Worldbuilding entry without changing the preview tab', async () => {
+    const onWorldbuildingOpen = vi.fn();
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push({ container, root });
+    const worldBrew = {
+      ...brew,
+      content: `The road ends at [[world:${worldbuildingEntry.id}|Sund]].`
+    };
+
+    await act(async () => {
+      root.render(
+        <BrewPreview
+          brew={worldBrew}
+          onWorldbuildingOpen={onWorldbuildingOpen}
+          worldbuilding={new Map([[worldbuildingEntry.id, worldbuildingEntry]])}
+        />
+      );
+    });
+
+    const reference = container.querySelector<HTMLButtonElement>('.worldbuilding-reference-link');
+    expect(reference?.textContent).toBe('Sund');
+
+    await act(async () => {
+      reference?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(onWorldbuildingOpen).toHaveBeenCalledWith(worldbuildingEntry);
   });
 });

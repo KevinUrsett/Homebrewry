@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { createCampaignDataSnapshot, keepBothCampaignData, parseCampaignDataSnapshot } from './campaignData';
-import { createCustomCatalogueEntry, createCustomMonster } from '../catalogue/customEntries';
+import { createCustomCatalogueCategory, createCustomCatalogueEntry, createCustomMonster } from '../catalogue/customEntries';
 import type { CatalogueEntry } from '../catalogue/types';
 import { createEncounter, createPartyMember } from './encounters';
-import { createWorldbuildingEntry } from './worldbuilding';
+import { createWorldbuildingEntry, createWorldbuildingType } from './worldbuilding';
 
 describe('campaign data snapshots', () => {
   it('validates a versioned Drive snapshot before it is used locally', () => {
@@ -43,6 +43,21 @@ describe('campaign data snapshots', () => {
 
     const legacy = { ...snapshot, schemaVersion: 2 } as Record<string, unknown>;
     expect(parseCampaignDataSnapshot(legacy).customCatalogueEntries[0]?.data).toEqual({});
+  });
+
+  it('preserves custom categories and Worldbuilding types in schema v4 while reading v3 safely', () => {
+    const category = createCustomCatalogueCategory('Deities', '2026-07-26T12:00:00.000Z', 'deity');
+    const type = createWorldbuildingType('Ship', '2026-07-26T12:00:00.000Z', 'ship');
+    const snapshot = createCampaignDataSnapshot([], [], [], '2026-07-26T12:00:00.000Z', [], [category], [type]);
+
+    expect(parseCampaignDataSnapshot(JSON.parse(JSON.stringify(snapshot)))).toEqual(snapshot);
+
+    const v3 = { ...snapshot, schemaVersion: 3 } as Record<string, unknown>;
+    expect(parseCampaignDataSnapshot(v3)).toMatchObject({
+      schemaVersion: 4,
+      customCatalogueCategories: [],
+      worldbuildingTypes: []
+    });
   });
 
   it('keeps conflicting records as separately named local copies', () => {

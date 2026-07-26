@@ -59,7 +59,11 @@ describe('CataloguePanel', () => {
           onInsertReference={vi.fn()}
           onOpenPrivateMonsterImport={vi.fn()}
           onSaveCustomMonster={vi.fn().mockResolvedValue(undefined)}
+          onSaveCustomEntry={vi.fn().mockResolvedValue(undefined)}
+          onDeleteCustomEntry={vi.fn().mockResolvedValue(undefined)}
+          onCreateCustomCategory={vi.fn()}
           customEntryCount={0}
+          customCategories={[]}
           privateMonsterCount={0}
           selectedEntry={dragon}
         />
@@ -87,7 +91,11 @@ describe('CataloguePanel', () => {
           onInsertReference={vi.fn()}
           onOpenPrivateMonsterImport={vi.fn()}
           onSaveCustomMonster={onSaveCustomMonster}
+          onSaveCustomEntry={vi.fn().mockResolvedValue(undefined)}
+          onDeleteCustomEntry={vi.fn().mockResolvedValue(undefined)}
+          onCreateCustomCategory={vi.fn()}
           customEntryCount={0}
+          customCategories={[]}
           privateMonsterCount={0}
           selectedEntry={aboleth}
         />

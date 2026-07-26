@@ -5,12 +5,13 @@ import {
   Decoration,
   EditorView,
   MatchDecorator,
+  WidgetType,
   type DecorationSet,
   ViewPlugin,
   type ViewUpdate
 } from '@codemirror/view';
 import { normalizeWorldbuildingName, worldbuildingKindLabels, worldbuildingKinds } from '../lib/worldbuilding';
-import type { WorldbuildingKind } from '../types';
+import type { WorldbuildingKind, WorldbuildingType } from '../types';
 
 export type MarkdownEditorHandle = {
   getSelection: () => { start: number; end: number };
@@ -23,6 +24,7 @@ type MarkdownEditorProps = {
   onSelectionChange: (selection: { start: number; end: number }) => void;
   onKeyDown: (event: KeyboardEvent) => void;
   onAddWorldbuilding: (name: string, kind: WorldbuildingKind) => void;
+  worldbuildingTypes: readonly WorldbuildingType[];
 };
 
 type WorldbuildingMenu = {
@@ -31,9 +33,35 @@ type WorldbuildingMenu = {
   y: number;
 };
 
+class ReferenceChip extends WidgetType {
+  constructor(private readonly label: string, private readonly kind: string) {
+    super();
+  }
+
+  eq(other: ReferenceChip) {
+    return other.label === this.label && other.kind === this.kind;
+  }
+
+  toDOM() {
+    const element = document.createElement('span');
+    element.className = 'cm-reference-chip';
+    element.setAttribute('aria-label', `${this.kind} reference: ${this.label}`);
+    element.title = `${this.kind} reference`;
+    element.textContent = this.label;
+    return element;
+  }
+
+  ignoreEvent() {
+    return false;
+  }
+}
+
 const referenceDecorator = new MatchDecorator({
-  regexp: /\[\[[a-z]+:[0-9a-f-]+(?:\|[^\]\r\n]+)?\]\]/gi,
-  decoration: Decoration.mark({ class: 'cm-catalogue-reference' })
+  regexp: /\[\[([a-z][a-z0-9-]*):([0-9a-f-]+)(?:\|([^\]\r\n]+))?\]\]/gi,
+  decoration: (match) => Decoration.replace({
+    widget: new ReferenceChip(match[3]?.trim() || 'Reference', match[1]),
+    inclusive: false
+  })
 });
 
 const referenceDecorations = ViewPlugin.fromClass(class {
@@ -56,6 +84,7 @@ export function MarkdownEditor({
   onSelectionChange,
   onKeyDown,
   onAddWorldbuilding,
+  worldbuildingTypes,
   ref
 }: MarkdownEditorProps & { ref: Ref<MarkdownEditorHandle> }) {
   const parentRef = useRef<HTMLDivElement>(null);
@@ -114,6 +143,10 @@ export function MarkdownEditor({
                 if (!word) return false;
                 from = word.from;
                 to = word.to;
+                // A right-clicked word is a selection too. This keeps the
+                // reference replacement anchored to the word rather than
+                // inserting a token at the old cursor position.
+                editor.dispatch({ selection: { anchor: from, head: to } });
               }
               const name = normalizeWorldbuildingName(editor.state.sliceDoc(from, to));
               if (!name) return false;
@@ -156,17 +189,17 @@ export function MarkdownEditor({
       {worldbuildingMenu && (
         <div className="worldbuilding-context-menu" role="menu" style={{ left: worldbuildingMenu.x, top: worldbuildingMenu.y }}>
           <strong>Add “{worldbuildingMenu.name}” as</strong>
-          {worldbuildingKinds.map((kind) => (
+          {[...worldbuildingKinds.map((kind) => ({ id: kind, name: worldbuildingKindLabels[kind] })), ...worldbuildingTypes].map((kind) => (
             <button
-              key={kind}
+              key={kind.id}
               onClick={() => {
-                latestRef.current.onAddWorldbuilding(worldbuildingMenu.name, kind);
+                latestRef.current.onAddWorldbuilding(worldbuildingMenu.name, kind.id);
                 setWorldbuildingMenu(null);
               }}
               role="menuitem"
               type="button"
             >
-              {worldbuildingKindLabels[kind]}
+              {kind.name}
             </button>
           ))}
         </div>

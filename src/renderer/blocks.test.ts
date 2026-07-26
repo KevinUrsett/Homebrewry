@@ -17,4 +17,14 @@ describe('renderer block parser', () => {
     expect(pages).toHaveLength(2);
     expect(pages[1][0]).toMatchObject({ content: 'Second' });
   });
+
+  it('parses descriptive callouts as a separate rendered box', () => {
+    const blocks = parseRendererBlocks('Before\n\n:::descriptive\nRead this aloud.\n:::\n\nAfter');
+
+    expect(blocks).toEqual([
+      { type: 'markdown', content: 'Before' },
+      { type: 'callout', variant: 'descriptive', content: 'Read this aloud.' },
+      { type: 'markdown', content: 'After' }
+    ]);
+  });
 });

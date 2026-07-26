@@ -1,12 +1,14 @@
-import { useMemo, useState } from 'react';
-import { worldbuildingKindLabels, worldbuildingKinds, touchWorldbuildingEntry } from '../lib/worldbuilding';
-import type { SyncState, WorldbuildingEntry, WorldbuildingKind } from '../types';
+import { useMemo, useState, type FormEvent } from 'react';
+import { worldbuildingKindLabel, worldbuildingKindLabels, worldbuildingKinds, touchWorldbuildingEntry } from '../lib/worldbuilding';
+import type { SyncState, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from '../types';
 
 type WorldbuildingPanelProps = {
   entries: WorldbuildingEntry[];
   selectedId: string | null;
   syncState: SyncState;
+  types: WorldbuildingType[];
   onCreate: () => void;
+  onCreateType: (name: string) => string | null;
   onDelete: (entry: WorldbuildingEntry) => void;
   onSelect: (id: string) => void;
   onUpdate: (entry: WorldbuildingEntry) => void;
@@ -26,61 +28,51 @@ function aliasesFromInput(value: string): string[] {
 
 type EntryDraft = Pick<WorldbuildingEntry, 'name' | 'kind' | 'aliases' | 'notes'>;
 
-function toDraft(entry: WorldbuildingEntry | null): EntryDraft {
+function toDraft(entry: WorldbuildingEntry): EntryDraft {
   return {
-    name: entry?.name ?? '',
-    kind: entry?.kind ?? 'custom',
-    aliases: entry?.aliases ?? [],
-    notes: entry?.notes ?? ''
+    name: entry.name,
+    kind: entry.kind,
+    aliases: entry.aliases,
+    notes: entry.notes
   };
 }
 
-type WorldbuildingEntryEditorProps = {
+type EntryEditorProps = {
   entry: WorldbuildingEntry;
-  onDelete: (entry: WorldbuildingEntry) => void;
-  onUpdate: (entry: WorldbuildingEntry) => void;
+  types: readonly WorldbuildingType[];
+  onCancel: () => void;
+  onSave: (entry: WorldbuildingEntry) => void;
 };
 
-function WorldbuildingEntryEditor({ entry, onDelete, onUpdate }: WorldbuildingEntryEditorProps) {
+function WorldbuildingEntryEditor({ entry, types, onCancel, onSave }: EntryEditorProps) {
   const [draft, setDraft] = useState<EntryDraft>(() => toDraft(entry));
-
-  const saveDraft = (nextDraft = draft) => {
-    onUpdate(touchWorldbuildingEntry(entry, nextDraft));
-  };
-
-  const updateAndSave = (changes: Partial<EntryDraft>) => {
-    const nextDraft = { ...draft, ...changes };
-    setDraft(nextDraft);
-    saveDraft(nextDraft);
-  };
+  const options = useMemo(
+    () => [
+      ...worldbuildingKinds.map((kind) => ({ id: kind, name: worldbuildingKindLabels[kind] })),
+      ...types
+    ],
+    [types]
+  );
 
   return (
-    <article className="worldbuilding-entry">
+    <article className="worldbuilding-entry" aria-label={`Edit ${entry.name}`}>
       <label className="visually-hidden" htmlFor="worldbuilding-name">Entry name</label>
       <input
         className="worldbuilding-name"
         id="worldbuilding-name"
-        onBlur={() => saveDraft()}
         onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault();
-            event.currentTarget.blur();
-          }
-        }}
         value={draft.name}
       />
       <div className="worldbuilding-meta-grid">
         <label>
           Type
-          <select onChange={(event) => updateAndSave({ kind: event.target.value as WorldbuildingKind })} value={draft.kind}>
-            {worldbuildingKinds.map((item) => <option key={item} value={item}>{worldbuildingKindLabels[item]}</option>)}
+          <select onChange={(event) => setDraft((current) => ({ ...current, kind: event.target.value as WorldbuildingKind }))} value={draft.kind}>
+            {options.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
         </label>
         <label>
           Aliases
           <input
-            onBlur={() => saveDraft()}
             onChange={(event) => setDraft((current) => ({ ...current, aliases: aliasesFromInput(event.target.value) }))}
             placeholder="Other names, comma-separated"
             value={draft.aliases.join(', ')}
@@ -90,12 +82,44 @@ function WorldbuildingEntryEditor({ entry, onDelete, onUpdate }: WorldbuildingEn
       <label className="worldbuilding-notes-label">
         Notes
         <textarea
-          onBlur={() => saveDraft()}
           onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))}
           placeholder="Lore, secrets, relationships, adventure hooks…"
           value={draft.notes}
         />
       </label>
+      <div className="worldbuilding-entry-footer">
+        <span>Changes are saved only when you choose Save.</span>
+        <div className="worldbuilding-edit-actions">
+          <button onClick={onCancel} type="button">Cancel</button>
+          <button className="primary-button" onClick={() => onSave(touchWorldbuildingEntry(entry, draft))} type="button">Save</button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+type EntryPreviewProps = {
+  entry: WorldbuildingEntry;
+  types: readonly WorldbuildingType[];
+  onDelete: (entry: WorldbuildingEntry) => void;
+  onEdit: () => void;
+};
+
+function WorldbuildingEntryPreview({ entry, types, onDelete, onEdit }: EntryPreviewProps) {
+  return (
+    <article className="worldbuilding-entry worldbuilding-entry-preview" aria-label={entry.name}>
+      <header className="worldbuilding-preview-header">
+        <div>
+          <p className="eyebrow">{worldbuildingKindLabel(entry.kind, types)}</p>
+          <h2>{entry.name}</h2>
+          {entry.aliases.length > 0 && <p className="worldbuilding-preview-aliases">Also known as {entry.aliases.join(' · ')}</p>}
+        </div>
+        <button className="primary-button" onClick={onEdit} type="button">Edit</button>
+      </header>
+      <section className="worldbuilding-preview-notes">
+        <h3>Notes</h3>
+        {entry.notes.trim() ? <div>{entry.notes}</div> : <p>No notes yet.</p>}
+      </section>
       <div className="worldbuilding-entry-footer">
         <span>Last updated {new Date(entry.updatedAt).toLocaleString()}</span>
         <button className="quiet-danger" onClick={() => onDelete(entry)} type="button">Delete entry</button>
@@ -104,21 +128,53 @@ function WorldbuildingEntryEditor({ entry, onDelete, onUpdate }: WorldbuildingEn
   );
 }
 
-export function WorldbuildingPanel({ entries, selectedId, syncState, onCreate, onDelete, onSelect, onUpdate }: WorldbuildingPanelProps) {
+export function WorldbuildingPanel({ entries, selectedId, syncState, types, onCreate, onCreateType, onDelete, onSelect, onUpdate }: WorldbuildingPanelProps) {
   const [query, setQuery] = useState('');
   const [kind, setKind] = useState<WorldbuildingKind | 'all'>('all');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [addingType, setAddingType] = useState(false);
+  const [typeName, setTypeName] = useState('');
+  const [typeError, setTypeError] = useState<string | null>(null);
   const filtered = useMemo(() => {
     const terms = query.trim().toLocaleLowerCase();
     return entries.filter((entry) => {
       if (kind !== 'all' && entry.kind !== kind) return false;
       if (!terms) return true;
-      return [entry.name, worldbuildingKindLabels[entry.kind], ...entry.aliases, entry.notes]
+      return [entry.name, worldbuildingKindLabel(entry.kind, types), ...entry.aliases, entry.notes]
         .join(' ')
         .toLocaleLowerCase()
         .includes(terms);
     });
-  }, [entries, kind, query]);
+  }, [entries, kind, query, types]);
   const selected = entries.find((entry) => entry.id === selectedId) ?? filtered[0] ?? entries[0] ?? null;
+  const typeOptions = useMemo(
+    () => [
+      ...worldbuildingKinds.map((item) => ({ id: item, name: worldbuildingKindLabels[item] })),
+      ...types
+    ],
+    [types]
+  );
+
+  const editing = editingId === selected?.id;
+
+  const selectEntry = (id: string) => {
+    if (editing && id !== selected?.id && !window.confirm('Discard unsaved Worldbuilding changes?')) return;
+    setEditingId(null);
+    onSelect(id);
+  };
+
+  const submitType = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const id = onCreateType(typeName);
+    if (!id) {
+      setTypeError('That type already exists, or its name is invalid.');
+      return;
+    }
+    setKind(id);
+    setTypeName('');
+    setTypeError(null);
+    setAddingType(false);
+  };
 
   return (
     <main className="worldbuilding-page" aria-label="Worldbuilding">
@@ -130,9 +186,19 @@ export function WorldbuildingPanel({ entries, selectedId, syncState, onCreate, o
         </div>
         <div className="page-header-actions">
           <span className={`sync-badge sync-${syncState}`}>{campaignSyncLabel[syncState]}</span>
+          <button onClick={() => setAddingType((open) => !open)} type="button">New type</button>
           <button className="primary-button" onClick={onCreate} type="button">New entry</button>
         </div>
       </header>
+
+      {addingType && (
+        <form className="worldbuilding-new-type" onSubmit={submitType}>
+          <label>New Worldbuilding type<input autoFocus onChange={(event) => setTypeName(event.target.value)} placeholder="Tavern, deity, ship…" value={typeName} /></label>
+          <button type="button" onClick={() => { setAddingType(false); setTypeError(null); }}>Cancel</button>
+          <button className="primary-button" type="submit">Add type</button>
+          {typeError && <p role="alert">{typeError}</p>}
+        </form>
+      )}
 
       <section className="worldbuilding-workspace">
         <aside className="worldbuilding-browser" aria-label="Worldbuilding entries">
@@ -140,14 +206,14 @@ export function WorldbuildingPanel({ entries, selectedId, syncState, onCreate, o
           <label className="visually-hidden" htmlFor="worldbuilding-kind">Filter type</label>
           <select className="worldbuilding-kind-select" id="worldbuilding-kind" onChange={(event) => setKind(event.target.value as WorldbuildingKind | 'all')} value={kind}>
             <option value="all">All types</option>
-            {worldbuildingKinds.map((item) => <option key={item} value={item}>{worldbuildingKindLabels[item]}</option>)}
+            {typeOptions.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
           <p className="worldbuilding-count">{filtered.length} entr{filtered.length === 1 ? 'y' : 'ies'}</p>
           <div className="worldbuilding-list">
             {filtered.map((entry) => (
-              <button className={`worldbuilding-list-item ${selected?.id === entry.id ? 'is-selected' : ''}`} key={entry.id} onClick={() => onSelect(entry.id)} type="button">
+              <button className={`worldbuilding-list-item ${selected?.id === entry.id ? 'is-selected' : ''}`} key={entry.id} onClick={() => selectEntry(entry.id)} type="button">
                 <strong>{entry.name}</strong>
-                <span>{worldbuildingKindLabels[entry.kind]}</span>
+                <span>{worldbuildingKindLabel(entry.kind, types)}</span>
                 {entry.aliases.length > 0 && <small>{entry.aliases.join(' · ')}</small>}
               </button>
             ))}
@@ -157,7 +223,9 @@ export function WorldbuildingPanel({ entries, selectedId, syncState, onCreate, o
 
         <section className="worldbuilding-details" aria-live="polite">
           {selected ? (
-            <WorldbuildingEntryEditor entry={selected} key={selected.id} onDelete={onDelete} onUpdate={onUpdate} />
+            editing
+              ? <WorldbuildingEntryEditor entry={selected} key={selected.id} onCancel={() => setEditingId(null)} onSave={(entry) => { onUpdate(entry); setEditingId(null); }} types={types} />
+              : <WorldbuildingEntryPreview entry={selected} onDelete={onDelete} onEdit={() => setEditingId(selected.id)} types={types} />
           ) : (
             <p className="empty-panel">Create an entry, or right-click selected text in the editor to add it directly.</p>
           )}

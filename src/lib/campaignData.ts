@@ -4,10 +4,11 @@ import type {
   Encounter,
   EncounterParticipant,
   PartyMember,
-  WorldbuildingEntry
+  WorldbuildingEntry,
+  WorldbuildingType
 } from '../types';
 import { worldbuildingKinds } from '../types';
-import type { CustomCatalogueEntry } from '../catalogue/types';
+import { isCatalogueCategory, type CustomCatalogueCategory, type CustomCatalogueEntry } from '../catalogue/types';
 import { normaliseCustomCatalogueEntry } from '../catalogue/customEntries';
 
 type UnknownRecord = Record<string, unknown>;
@@ -36,6 +37,10 @@ function requiredStringArray(value: unknown, field: string): string[] {
     throw new Error(`Campaign data has an invalid ${field}.`);
   }
   return value;
+}
+
+function isSafeTaxonomyId(value: string): boolean {
+  return /^[a-z][a-z0-9-]{0,179}$/.test(value);
 }
 
 function parseParticipant(value: unknown): EncounterParticipant {
@@ -98,7 +103,9 @@ function parsePartyMember(value: unknown): PartyMember {
 function parseWorldbuildingEntry(value: unknown): WorldbuildingEntry {
   if (!isRecord(value)) throw new Error('Campaign data has an invalid Worldbuilding entry.');
   const kind = requiredString(value.kind, 'Worldbuilding type');
-  if (!worldbuildingKindSet.has(kind)) throw new Error('Campaign data has an unsupported Worldbuilding type.');
+  if (!worldbuildingKindSet.has(kind) && !isSafeTaxonomyId(kind)) {
+    throw new Error('Campaign data has an unsupported Worldbuilding type.');
+  }
 
   return {
     id: requiredString(value.id, 'Worldbuilding entry ID'),
@@ -112,6 +119,32 @@ function parseWorldbuildingEntry(value: unknown): WorldbuildingEntry {
   };
 }
 
+function parseWorldbuildingType(value: unknown): WorldbuildingType {
+  if (!isRecord(value)) throw new Error('Campaign data has an invalid Worldbuilding type.');
+  const id = requiredString(value.id, 'Worldbuilding type ID');
+  const name = requiredString(value.name, 'Worldbuilding type name').trim();
+  const createdAt = requiredString(value.createdAt, 'Worldbuilding type creation time');
+  const updatedAt = requiredString(value.updatedAt, 'Worldbuilding type update time');
+  const version = value.version;
+  if (!isSafeTaxonomyId(id) || !name || name.length > 180 || typeof version !== 'number' || !Number.isInteger(version) || version < 1) {
+    throw new Error('Campaign data has an invalid Worldbuilding type.');
+  }
+  return { id, name, createdAt, updatedAt, version };
+}
+
+function parseCustomCatalogueCategory(value: unknown): CustomCatalogueCategory {
+  if (!isRecord(value)) throw new Error('Campaign data has an invalid catalogue category.');
+  const id = requiredString(value.id, 'catalogue category ID');
+  const name = requiredString(value.name, 'catalogue category name').trim();
+  const createdAt = requiredString(value.createdAt, 'catalogue category creation time');
+  const updatedAt = requiredString(value.updatedAt, 'catalogue category update time');
+  const version = value.version;
+  if (!isCatalogueCategory(id) || !name || name.length > 80 || typeof version !== 'number' || !Number.isInteger(version) || version < 1) {
+    throw new Error('Campaign data has an invalid catalogue category.');
+  }
+  return { id, name, createdAt, updatedAt, version };
+}
+
 function parseCustomCatalogueEntry(value: unknown, preserveStructuredData: boolean): CustomCatalogueEntry {
   try {
     return normaliseCustomCatalogueEntry(value, { preserveStructuredData });
@@ -122,25 +155,38 @@ function parseCustomCatalogueEntry(value: unknown, preserveStructuredData: boole
 
 /** Validates untrusted Drive JSON before it can replace any local campaign records. */
 export function parseCampaignDataSnapshot(value: unknown): CampaignDataSnapshot {
-  if (!isRecord(value) || (value.schemaVersion !== 1 && value.schemaVersion !== 2 && value.schemaVersion !== 3)) {
+  if (!isRecord(value)) {
+    throw new Error('This Drive campaign data file is not a supported Homebrewry backup.');
+  }
+  const schemaVersion = value.schemaVersion;
+  if (schemaVersion !== 1 && schemaVersion !== 2 && schemaVersion !== 3 && schemaVersion !== 4) {
     throw new Error('This Drive campaign data file is not a supported Homebrewry backup.');
   }
   if (!Array.isArray(value.encounters) || !Array.isArray(value.partyMembers) || !Array.isArray(value.worldbuildingEntries)) {
-    throw new Error('This Drive campaign data file is missing a required collection.');
+    throw new Error('This Drive campaign data file is not a supported Homebrewry backup: missing a required collection.');
   }
-  if ((value.schemaVersion === 2 || value.schemaVersion === 3) && !Array.isArray(value.customCatalogueEntries)) {
+  if ((schemaVersion === 2 || schemaVersion === 3) && !Array.isArray(value.customCatalogueEntries)) {
     throw new Error('This Drive campaign data file has an invalid custom catalogue collection.');
+  }
+  if (schemaVersion === 4 && (!Array.isArray(value.customCatalogueEntries) || !Array.isArray(value.customCatalogueCategories) || !Array.isArray(value.worldbuildingTypes))) {
+    throw new Error('This Drive campaign data file has an invalid campaign taxonomy collection.');
   }
 
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     updatedAt: requiredString(value.updatedAt, 'campaign update time'),
     encounters: value.encounters.map(parseEncounter),
     partyMembers: value.partyMembers.map(parsePartyMember),
     worldbuildingEntries: value.worldbuildingEntries.map(parseWorldbuildingEntry),
-    customCatalogueEntries: value.schemaVersion === 1
+    customCatalogueEntries: schemaVersion === 1
       ? []
-      : (value.customCatalogueEntries as unknown[]).map((entry) => parseCustomCatalogueEntry(entry, value.schemaVersion === 3))
+      : (value.customCatalogueEntries as unknown[]).map((entry) => parseCustomCatalogueEntry(entry, schemaVersion >= 3)),
+    customCatalogueCategories: schemaVersion === 4
+      ? (value.customCatalogueCategories as unknown[]).map(parseCustomCatalogueCategory)
+      : [],
+    worldbuildingTypes: schemaVersion === 4
+      ? (value.worldbuildingTypes as unknown[]).map(parseWorldbuildingType)
+      : []
   };
 }
 
@@ -149,15 +195,19 @@ export function createCampaignDataSnapshot(
   partyMembers: PartyMember[],
   worldbuildingEntries: WorldbuildingEntry[],
   timestamp = new Date().toISOString(),
-  customCatalogueEntries: CustomCatalogueEntry[] = []
+  customCatalogueEntries: CustomCatalogueEntry[] = [],
+  customCatalogueCategories: CustomCatalogueCategory[] = [],
+  worldbuildingTypes: WorldbuildingType[] = []
 ): CampaignDataSnapshot {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     updatedAt: timestamp,
     encounters: [...encounters],
     partyMembers: [...partyMembers],
     worldbuildingEntries: [...worldbuildingEntries],
-    customCatalogueEntries: [...customCatalogueEntries]
+    customCatalogueEntries: [...customCatalogueEntries],
+    customCatalogueCategories: [...customCatalogueCategories],
+    worldbuildingTypes: [...worldbuildingTypes]
   };
 }
 
@@ -165,7 +215,9 @@ export function hasCampaignData(snapshot: CampaignDataSnapshot): boolean {
   return snapshot.encounters.length > 0
     || snapshot.partyMembers.length > 0
     || snapshot.worldbuildingEntries.length > 0
-    || snapshot.customCatalogueEntries.length > 0;
+    || snapshot.customCatalogueEntries.length > 0
+    || snapshot.customCatalogueCategories.length > 0
+    || snapshot.worldbuildingTypes.length > 0;
 }
 
 export function campaignDataChangedLocally(metadata: CampaignDataSyncMetadata): boolean {
@@ -210,11 +262,13 @@ export function keepBothCampaignData(
   createId: () => string = () => crypto.randomUUID()
 ): CampaignDataSnapshot {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     updatedAt: timestamp,
     encounters: preserveBothRecords(local.encounters, remote.encounters, timestamp, createId),
     partyMembers: preserveBothRecords(local.partyMembers, remote.partyMembers, timestamp, createId),
     worldbuildingEntries: preserveBothRecords(local.worldbuildingEntries, remote.worldbuildingEntries, timestamp, createId),
-    customCatalogueEntries: preserveBothRecords(local.customCatalogueEntries, remote.customCatalogueEntries, timestamp, createId)
+    customCatalogueEntries: preserveBothRecords(local.customCatalogueEntries, remote.customCatalogueEntries, timestamp, createId),
+    customCatalogueCategories: preserveBothRecords(local.customCatalogueCategories, remote.customCatalogueCategories, timestamp, createId),
+    worldbuildingTypes: preserveBothRecords(local.worldbuildingTypes, remote.worldbuildingTypes, timestamp, createId)
   };
 }

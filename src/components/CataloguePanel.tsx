@@ -1,14 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { catalogueDataset } from '../catalogue/catalogueData';
-import { createCustomMonster } from '../catalogue/customEntries';
+import { createCustomCatalogueEntry, createCustomMonster } from '../catalogue/customEntries';
 import { entrySummary } from '../catalogue/presentation';
 import {
   catalogueCategories,
-  catalogueCategoryLabels,
+  catalogueCategoryLabel,
   type CatalogueCategory,
   type CatalogueEntry,
+  type CustomCatalogueCategory,
   type CustomCatalogueEntry
 } from '../catalogue/types';
+import { CustomCatalogueEntryEditor } from './CustomCatalogueEntryEditor';
 import { CustomMonsterEditor } from './CustomMonsterEditor';
 import { CatalogueEntryDetails } from './CatalogueEntryDetails';
 
@@ -20,6 +22,10 @@ type CataloguePanelProps = {
   onOpenPrivateMonsterImport: () => void;
   onSaveCustomMonster: (entry: CustomCatalogueEntry) => Promise<void>;
   onDeleteCustomMonster: (entry: CustomCatalogueEntry) => Promise<void>;
+  onSaveCustomEntry: (entry: CustomCatalogueEntry) => Promise<void>;
+  onDeleteCustomEntry: (entry: CustomCatalogueEntry) => Promise<void>;
+  onCreateCustomCategory: (name: string) => CustomCatalogueCategory | null;
+  customCategories: CustomCatalogueCategory[];
   privateMonsterCount: number;
   customEntryCount: number;
   selectedEntry?: CatalogueEntry | null;
@@ -32,6 +38,11 @@ type MonsterEditorState = {
   mode: 'create' | 'edit';
 };
 
+type CatalogueEntryEditorState = {
+  entry: CustomCatalogueEntry;
+  mode: 'create' | 'edit';
+};
+
 export function CataloguePanel({
   entries,
   loading,
@@ -40,6 +51,10 @@ export function CataloguePanel({
   onOpenPrivateMonsterImport,
   onSaveCustomMonster,
   onDeleteCustomMonster,
+  onSaveCustomEntry,
+  onDeleteCustomEntry,
+  onCreateCustomCategory,
+  customCategories,
   privateMonsterCount,
   customEntryCount,
   selectedEntry
@@ -48,6 +63,9 @@ export function CataloguePanel({
   const [category, setCategory] = useState<CatalogueCategory | 'all'>(() => selectedEntry?.category ?? 'monster');
   const [selectedId, setSelectedId] = useState<string | null>(() => selectedEntry?.id ?? null);
   const [monsterEditor, setMonsterEditor] = useState<MonsterEditorState | null>(null);
+  const [entryEditor, setEntryEditor] = useState<CatalogueEntryEditorState | null>(null);
+  const [categoryCreatorOpen, setCategoryCreatorOpen] = useState(false);
+  const [categoryName, setCategoryName] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -79,6 +97,16 @@ export function CataloguePanel({
     setMonsterEditor({ entry: createCustomMonster(), mode: 'create' });
   };
 
+  const beginNewEntry = () => {
+    const selectedCategory = category === 'all' ? (customCategories[0]?.id ?? 'rule') : category;
+    if (selectedCategory === 'monster') {
+      beginNewMonster();
+      return;
+    }
+    setActionError(null);
+    setEntryEditor({ entry: createCustomCatalogueEntry('Untitled entry', selectedCategory), mode: 'create' });
+  };
+
   const beginMonsterDuplicate = (entry: CatalogueEntry) => {
     setActionError(null);
     setMonsterEditor({ entry: createCustomMonster(entry), mode: 'create' });
@@ -89,6 +117,11 @@ export function CataloguePanel({
     setMonsterEditor({ entry, mode: 'edit' });
   };
 
+  const beginEntryEdit = (entry: CustomCatalogueEntry) => {
+    setActionError(null);
+    setEntryEditor({ entry, mode: 'edit' });
+  };
+
   const deleteCustomMonster = (entry: CustomCatalogueEntry) => {
     if (!window.confirm(`Delete custom monster “${entry.name}”? This cannot be undone.`)) return;
     void onDeleteCustomMonster(entry)
@@ -97,6 +130,29 @@ export function CataloguePanel({
         setSelectedId(null);
       })
       .catch((reason) => setActionError(reason instanceof Error ? reason.message : 'Could not delete the custom monster.'));
+  };
+
+  const deleteCustomEntry = (entry: CustomCatalogueEntry) => {
+    if (!window.confirm(`Delete custom entry “${entry.name}”? This cannot be undone.`)) return;
+    void onDeleteCustomEntry(entry)
+      .then(() => {
+        setEntryEditor(null);
+        setSelectedId(null);
+      })
+      .catch((reason) => setActionError(reason instanceof Error ? reason.message : 'Could not delete the custom entry.'));
+  };
+
+  const createCategory = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const nextCategory = onCreateCustomCategory(categoryName);
+    if (!nextCategory) {
+      setActionError('Enter a new category name that is not already in use.');
+      return;
+    }
+    setCategory(nextCategory.id);
+    setCategoryName('');
+    setCategoryCreatorOpen(false);
+    setActionError(null);
   };
 
   return (
@@ -112,13 +168,22 @@ export function CataloguePanel({
           </p>
         </div>
         <div className="catalogue-header-actions">
+          <button onClick={beginNewEntry} type="button">New entry</button>
           <button onClick={beginNewMonster} type="button">New custom monster</button>
+          <button onClick={() => setCategoryCreatorOpen((open) => !open)} type="button">New category</button>
           <button onClick={onOpenPrivateMonsterImport} type="button">Import monster archive</button>
           <a href="https://www.dndbeyond.com/srd/" rel="noreferrer" target="_blank">SRD attribution</a>
         </div>
       </header>
 
       {error && <p className="catalogue-error">The catalogue could not load: {error}</p>}
+      {categoryCreatorOpen && (
+        <form className="catalogue-new-category" onSubmit={createCategory}>
+          <label>New catalogue category<input autoFocus onChange={(event) => setCategoryName(event.target.value)} placeholder="Deities, locations, factions…" value={categoryName} /></label>
+          <button onClick={() => setCategoryCreatorOpen(false)} type="button">Cancel</button>
+          <button className="primary-button" type="submit">Add category</button>
+        </form>
+      )}
       <section className="catalogue-workspace">
         <aside className="catalogue-browser">
           <label className="visually-hidden" htmlFor="catalogue-search">Search catalogue</label>
@@ -133,7 +198,7 @@ export function CataloguePanel({
           <div className="catalogue-category-control">
             <select className="catalogue-category-select" id="catalogue-category" onChange={(event) => setCategory(event.target.value as CatalogueCategory | 'all')} value={category}>
               <option value="all">All categories</option>
-              {catalogueCategories.map((item) => <option key={item} value={item}>{catalogueCategoryLabels[item]}</option>)}
+              {[...catalogueCategories, ...customCategories.map((item) => item.id)].map((item) => <option key={item} value={item}>{catalogueCategoryLabel(item, customCategories)}</option>)}
             </select>
             <span aria-hidden="true" className="catalogue-category-chevron">⌄</span>
           </div>
@@ -147,7 +212,7 @@ export function CataloguePanel({
                 type="button"
               >
                 <strong>{entry.name}</strong>
-                <span>{catalogueCategoryLabels[entry.category]}</span>
+                <span>{catalogueCategoryLabel(entry.category, customCategories)}</span>
                 {entrySummary(entry).slice(0, 1).map((summary) => <small key={summary}>{summary}</small>)}
               </button>
             ))}
@@ -165,6 +230,15 @@ export function CataloguePanel({
               onCancel={() => setMonsterEditor(null)}
               onSave={onSaveCustomMonster}
             />
+          ) : entryEditor ? (
+            <CustomCatalogueEntryEditor
+              categoryLabel={catalogueCategoryLabel(entryEditor.entry.category, customCategories)}
+              entry={entryEditor.entry}
+              key={`${entryEditor.entry.id}-${entryEditor.entry.version}`}
+              mode={entryEditor.mode}
+              onCancel={() => setEntryEditor(null)}
+              onSave={onSaveCustomEntry}
+            />
           ) : selected ? (
             <>
               <CatalogueEntryDetails
@@ -178,8 +252,15 @@ export function CataloguePanel({
                         <button className="quiet-danger" onClick={() => deleteCustomMonster(selected as CustomCatalogueEntry)} type="button">Delete custom monster</button>
                       </>
                     )}
+                    {selected.category !== 'monster' && selected.source === 'Custom' && (
+                      <>
+                        <button onClick={() => beginEntryEdit(selected as CustomCatalogueEntry)} type="button">Edit custom entry</button>
+                        <button className="quiet-danger" onClick={() => deleteCustomEntry(selected as CustomCatalogueEntry)} type="button">Delete custom entry</button>
+                      </>
+                    )}
                   </div>
                 }
+                categoryLabel={catalogueCategoryLabel(selected.category, customCategories)}
                 entry={selected}
               />
               {actionError && <p className="catalogue-error catalogue-inline-error" role="alert">{actionError}</p>}

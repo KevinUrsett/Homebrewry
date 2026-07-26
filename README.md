@@ -8,13 +8,13 @@ A responsive, local-first editor for D&D-style brew documents.
 - Markdown editor with autosave, manual save feedback, undo/redo, and find/replace
 - Responsive editor, preview, library, and outline layouts
 - Safe Markdown rendering with a distinct, D&D-book-inspired layout system
-- Compact D&D-book typography with responsive two-column preview pages, plus callouts, stat blocks, item and spell cards, explicit page breaks, and print/PDF styling
+- Portrait, A4-proportioned D&D-book preview pages with compact responsive two-column typography, plus callouts, stat blocks, item and spell cards, explicit page breaks, and print/PDF styling
 - Drive-backed image uploads with local offline copies and accessible alt text
 - Safe pasted or text-file import of Homebrewery-style source, with a compatibility report
 - Offline, searchable SRD 5.2.1 catalogue for monsters, spells, items, rules, and character options
 - Stable in-brew catalogue references with desktop hover cards and tap/click detail views
 - Local-first combat encounters with a reusable party roster, SRD monster search, initiative order, turn tracking, and hit-point tracking
-- Local-first Worldbuilding entries for campaign places, people, history, factions, and custom reference types
+- Local-first Worldbuilding entries with custom types, stable in-brew links, hover cards, and preview/detail views
 - Installable PWA base with offline application-shell caching
 - Optional Google Drive backup, automatic campaign-data sync after connection, manual full sync, and explicit conflict resolution
 
@@ -27,6 +27,10 @@ Use normal Markdown plus these optional blocks:
 ````markdown
 :::note Travel warning
 The road is watched.
+:::
+
+:::descriptive
+Read this aloud to the table.
 :::
 
 :::columns
@@ -42,13 +46,13 @@ Armor Class 14
 :::pagebreak
 ````
 
-`warning`, `tip`, `item`, and `spell` are also supported block types. The preview never renders raw HTML or scripts.
+`warning`, `tip`, `item`, and `spell` are also supported block types. `descriptive` is a visually distinct read-aloud callout but does not add a label or expose a secret to players. The preview never renders raw HTML or scripts.
 
 ## Images and imports
 
 Use **Image** in the editor toolbar to insert a local image. Supported types are PNG, JPEG, WebP, and GIF, up to 8 MB. If Drive is connected, the image uploads to Drive immediately; otherwise it uploads on the next sync.
 
-Use **Import** in the brew library to paste source or select a `.md`, `.markdown`, or `.txt` file. Imports always create a new local brew and do not overwrite an existing one.
+Use **Import** in the brew library to paste source or select a `.md`, `.markdown`, or `.txt` file. Imports always create a new local brew and do not overwrite an existing one. Complete line-based Homebrewery `{{descriptive ... }}` and `{{note ... }}` wrappers are converted into safe callouts; incomplete wrappers are deliberately retained with a notice. Use **Convert HB** in the editor to apply the same reversible conversion to an already imported brew.
 
 ## Catalogue and references
 
@@ -60,7 +64,11 @@ Use **Reference** in the editor toolbar, choose a category to turn selected matc
 [[monster:c674b91f-94c8-5c80-9d1d-31bef50bc779|Aboleth]]
 ```
 
-The preview displays only `Aboleth`; hover it on desktop to inspect a reference card, or tap/click to open its complete entry. In the source editor, hover the highlighted reference token to inspect it. References use IDs rather than just names, so renaming or duplicate names cannot silently point at the wrong record.
+The preview displays only `Aboleth`; hover it on desktop to inspect a reference card, or tap/click to open its complete entry. In the source editor, the underlying stable token is shown as a compact reference chip. References use IDs rather than just names, so renaming or duplicate names cannot silently point at the wrong record.
+
+### Custom catalogue categories and entries
+
+Use **Catalogue → New category** to add campaign-owned categories such as deities, locations, or factions, then use **New entry** to add an entry in the selected category. Custom categories and entries sync with campaign data and use the same stable reference format as SRD entries. Category identifiers remain stable even if their display names later change, so existing brew references keep working.
 
 ### Custom monsters
 
@@ -84,15 +92,21 @@ Use **Encounter** in the editor toolbar, then select **Insert into brew**. The O
 
 In Preview, the reference becomes a combat card. Select it to open that encounter directly.
 
-## Worldbuilding (Phase 7 beta)
+## Worldbuilding (Phase 8 beta)
 
-The **Worldbuilding** tab is a local campaign reference notebook, separate from individual brews. Create entries for towns, roads, historical figures, characters, factions, landmarks, regions, organisations, events, or a custom type. Entries support aliases and private notes, and can be searched or filtered by type.
+The **Worldbuilding** tab is a local campaign reference notebook, separate from individual brews. Create entries for towns, roads, historical figures, characters, factions, landmarks, regions, organisations, events, or campaign-created types. Entries support aliases and private notes, and can be searched or filtered by type. Entries open in a read-friendly preview by default; choose **Edit** and then **Save** to change them, or **Cancel** to discard a draft.
 
-In the source editor, select a word or phrase and right-click it (or right-click a single word). Choose **Add “…” as** and an entry type to create a Worldbuilding record without interrupting your writing flow. The first version intentionally does not alter source text, create automatic links, or render notes in Preview.
+In the source editor, select a word or phrase and right-click it (or right-click a single word). Choose **Add “…” as** and an entry type to create or reuse a Worldbuilding record and replace the selection with a stable reference:
+
+```markdown
+[[world:c674b91f-94c8-5c80-9d1d-31bef50bc779|Sund]]
+```
+
+The editor presents that source as a compact bold reference chip. Preview displays the readable label, shows the entry’s notes on desktop hover, and opens a detail dialog on click/tap with **Open in Worldbuilding**.
 
 ## Campaign data sync
 
-Encounters, the current party roster, Worldbuilding, and custom catalogue entries (including custom monster stat blocks) sync through one separate, versioned Drive file: `Homebrewry campaign data.homebrewry.json`. Brew files remain unchanged and backward compatible.
+Encounters, the current party roster, Worldbuilding, Worldbuilding type definitions, custom catalogue categories, and custom catalogue entries (including custom monster stat blocks) sync through one separate, versioned Drive file: `Homebrewry campaign data.homebrewry.json`. Brew files remain unchanged and backward compatible.
 
 After you connect Drive, campaign changes are backed up automatically shortly after they are saved locally. Connecting Drive on another device also checks for and loads the companion file, so the current party and encounters follow you without a separate refresh. **Refresh & sync** remains available to back up brews and images immediately. If both devices change campaign data before syncing, Homebrewry stops and asks whether to keep Drive, keep both record sets, or replace Drive intentionally. No campaign records are silently overwritten.
 
@@ -132,4 +146,4 @@ The app requests only the `drive.file` scope. Access tokens are kept in memory a
 
 ## Data safety
 
-Brews are always stored locally first. Google Drive copies are optional and conflicts require an explicit choice; deletion always asks for confirmation. A Drive sync is recommended before clearing browser data or changing devices.
+Brews are always stored locally first. Google Drive copies are optional and conflicts require an explicit choice; deletion always asks for confirmation. Campaign-data schema 4 is backward-readable for schema 1–3 Drive files; older files gain empty custom taxonomy collections until a later campaign save. A Drive sync is recommended before clearing browser data or changing devices.

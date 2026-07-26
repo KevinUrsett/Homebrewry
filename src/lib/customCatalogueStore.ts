@@ -1,7 +1,12 @@
 import type { CampaignDataSyncMetadata } from '../types';
-import type { CustomCatalogueEntry } from '../catalogue/types';
+import type { CustomCatalogueCategory, CustomCatalogueEntry } from '../catalogue/types';
 import { normaliseCustomCatalogueEntry } from '../catalogue/customEntries';
-import { CUSTOM_CATALOGUE_STORE_NAME, getDatabase, markCampaignDataChanged } from './brewStore';
+import {
+  CUSTOM_CATALOGUE_CATEGORY_STORE_NAME,
+  CUSTOM_CATALOGUE_STORE_NAME,
+  getDatabase,
+  markCampaignDataChanged
+} from './brewStore';
 
 function isCustomCatalogueEntry(entry: CustomCatalogueEntry): boolean {
   return entry.source === 'Custom';
@@ -26,5 +31,17 @@ export async function saveCustomCatalogueEntry(entry: CustomCatalogueEntry): Pro
 export async function deleteCustomCatalogueEntry(id: string): Promise<CampaignDataSyncMetadata> {
   const database = await getDatabase();
   await database.delete(CUSTOM_CATALOGUE_STORE_NAME, id);
+  return markCampaignDataChanged();
+}
+
+export async function listCustomCatalogueCategories(): Promise<CustomCatalogueCategory[]> {
+  const database = await getDatabase();
+  const categories = await database.getAll(CUSTOM_CATALOGUE_CATEGORY_STORE_NAME) as CustomCatalogueCategory[];
+  return categories.sort((left, right) => left.name.localeCompare(right.name));
+}
+
+export async function saveCustomCatalogueCategory(category: CustomCatalogueCategory): Promise<CampaignDataSyncMetadata> {
+  const database = await getDatabase();
+  await database.put(CUSTOM_CATALOGUE_CATEGORY_STORE_NAME, category);
   return markCampaignDataChanged();
 }

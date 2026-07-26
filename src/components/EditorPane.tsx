@@ -1,8 +1,8 @@
 import { type RefObject, useRef } from 'react';
 import { MarkdownEditor, type MarkdownEditorHandle } from './MarkdownEditor';
 import { ReferenceMenu } from './ReferenceMenu';
-import type { CatalogueCategory } from '../catalogue/types';
-import type { WorldbuildingKind } from '../types';
+import type { CatalogueCategory, CustomCatalogueCategory } from '../catalogue/types';
+import type { WorldbuildingKind, WorldbuildingType } from '../types';
 
 type EditorPaneProps = {
   title: string;
@@ -15,9 +15,12 @@ type EditorPaneProps = {
   onContentChange: (value: string) => void;
   onInsert: (before: string, after?: string) => void;
   onInsertReferenceCategory: (category: CatalogueCategory) => void;
+  customCatalogueCategories: readonly CustomCatalogueCategory[];
   onOpenCatalogue: () => void;
   onOpenEncounters: () => void;
   onAddWorldbuilding: (name: string, kind: WorldbuildingKind) => void;
+  worldbuildingTypes: readonly WorldbuildingType[];
+  onConvertHomebrewery: () => void;
   onSelectionChange: (selection: { start: number; end: number }) => void;
   onImageUpload: (file: File) => void;
   onUndo: () => void;
@@ -40,9 +43,12 @@ export function EditorPane({
   onContentChange,
   onInsert,
   onInsertReferenceCategory,
+  customCatalogueCategories,
   onOpenCatalogue,
   onOpenEncounters,
   onAddWorldbuilding,
+  worldbuildingTypes,
+  onConvertHomebrewery,
   onSelectionChange,
   onImageUpload,
   onUndo,
@@ -68,8 +74,9 @@ export function EditorPane({
         <button onClick={() => onInsert('\n```spell\n', '\n```\n')} type="button">Spell</button>
         <button onClick={() => onInsert('\n:::pagebreak\n')} type="button">Page</button>
         <button onClick={() => imageInputRef.current?.click()} type="button">Image</button>
-        <ReferenceMenu onBrowseCatalogue={onOpenCatalogue} onSelectCategory={onInsertReferenceCategory} />
+        <ReferenceMenu customCategories={customCatalogueCategories} onBrowseCatalogue={onOpenCatalogue} onSelectCategory={onInsertReferenceCategory} />
         <button onClick={onOpenEncounters} type="button">Encounter</button>
+        <button onClick={onConvertHomebrewery} type="button">Convert HB</button>
         <span className="toolbar-spacer" />
         <button onClick={onUndo} type="button">Undo</button>
         <button onClick={onRedo} type="button">Redo</button>
@@ -107,6 +114,7 @@ export function EditorPane({
         onAddWorldbuilding={onAddWorldbuilding}
         onKeyDown={onKeyDown}
         onSelectionChange={onSelectionChange}
+        worldbuildingTypes={worldbuildingTypes}
         ref={editorRef}
       />
     </section>

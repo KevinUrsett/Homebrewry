@@ -1,12 +1,13 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { catalogueCategories, catalogueCategoryLabels, type CatalogueCategory } from '../catalogue/types';
+import { catalogueCategories, catalogueCategoryLabel, type CatalogueCategory, type CustomCatalogueCategory } from '../catalogue/types';
 
 type ReferenceMenuProps = {
+  customCategories?: readonly CustomCatalogueCategory[];
   onBrowseCatalogue: () => void;
   onSelectCategory: (category: CatalogueCategory) => void;
 };
 
-export function ReferenceMenu({ onBrowseCatalogue, onSelectCategory }: ReferenceMenuProps) {
+export function ReferenceMenu({ customCategories = [], onBrowseCatalogue, onSelectCategory }: ReferenceMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
@@ -55,7 +56,7 @@ export function ReferenceMenu({ onBrowseCatalogue, onSelectCategory }: Reference
           </button>
           <div aria-hidden="true" className="reference-menu-divider" role="separator" />
           <p className="reference-menu-label">Add selected text as</p>
-          {catalogueCategories.map((category) => (
+          {[...catalogueCategories, ...customCategories.map((category) => category.id)].map((category) => (
             <button
               key={category}
               onClick={() => {
@@ -65,7 +66,7 @@ export function ReferenceMenu({ onBrowseCatalogue, onSelectCategory }: Reference
               role="menuitem"
               type="button"
             >
-              {catalogueCategoryLabels[category]}
+              {catalogueCategoryLabel(category, customCategories)}
             </button>
           ))}
         </div>

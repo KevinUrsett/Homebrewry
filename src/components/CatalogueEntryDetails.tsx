@@ -7,12 +7,13 @@ import {
   entrySummary,
   speedText
 } from '../catalogue/presentation';
-import { catalogueCategoryLabels, type CatalogueEntry } from '../catalogue/types';
+import { catalogueCategoryLabel, type CatalogueEntry } from '../catalogue/types';
 
 type CatalogueEntryDetailsProps = {
   entry: CatalogueEntry;
   compact?: boolean;
   actions?: ReactNode;
+  categoryLabel?: string;
 };
 
 function TextBlock({ children }: { children: string }) {
@@ -105,13 +106,14 @@ function GenericDetails({ entry }: { entry: CatalogueEntry }) {
   );
 }
 
-export function CatalogueEntryDetails({ entry, compact = false, actions }: CatalogueEntryDetailsProps) {
+export function CatalogueEntryDetails({ entry, compact = false, actions, categoryLabel }: CatalogueEntryDetailsProps) {
   const summary = entrySummary(entry);
+  const label = categoryLabel ?? catalogueCategoryLabel(entry.category);
   if (compact) {
     return (
       <span className="catalogue-tooltip-content">
         <strong>{entry.name}</strong>
-        <span>{catalogueCategoryLabels[entry.category]}</span>
+        <span>{label}</span>
         {summary.map((line) => <span key={line}>{line}</span>)}
         {entry.description && <span>{cataloguePlainText(entry.description, 210)}</span>}
       </span>
@@ -121,7 +123,7 @@ export function CatalogueEntryDetails({ entry, compact = false, actions }: Catal
   return (
     <article className={`catalogue-entry-detail catalogue-entry-${entry.category}`}>
       <header>
-        <p className="eyebrow">{catalogueCategoryLabels[entry.category]} · {entry.ruleset} · {entry.source}</p>
+        <p className="eyebrow">{label} · {entry.ruleset} · {entry.source}</p>
         <h2>{entry.name}</h2>
         {entry.category !== 'monster' && summary.map((line) => <p className="catalogue-summary" key={line}>{line}</p>)}
       </header>

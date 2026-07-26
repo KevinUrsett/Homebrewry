@@ -1,5 +1,6 @@
 import { type RefObject, useRef } from 'react';
 import { MarkdownEditor, type MarkdownEditorHandle } from './MarkdownEditor';
+import type { WorldbuildingKind } from '../types';
 
 type EditorPaneProps = {
   title: string;
@@ -13,6 +14,7 @@ type EditorPaneProps = {
   onInsert: (before: string, after?: string) => void;
   onOpenCatalogue: () => void;
   onOpenEncounters: () => void;
+  onAddWorldbuilding: (name: string, kind: WorldbuildingKind) => void;
   onSelectionChange: (selection: { start: number; end: number }) => void;
   onImageUpload: (file: File) => void;
   onUndo: () => void;
@@ -36,6 +38,7 @@ export function EditorPane({
   onInsert,
   onOpenCatalogue,
   onOpenEncounters,
+  onAddWorldbuilding,
   onSelectionChange,
   onImageUpload,
   onUndo,
@@ -97,6 +100,7 @@ export function EditorPane({
       <MarkdownEditor
         content={content}
         onChange={onContentChange}
+        onAddWorldbuilding={onAddWorldbuilding}
         onKeyDown={onKeyDown}
         onSelectionChange={onSelectionChange}
         ref={editorRef}

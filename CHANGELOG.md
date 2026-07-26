@@ -4,6 +4,9 @@
 
 ### Fixed
 
+- Encounter names now use a stable editable field and are preserved when adding combatants, starting combat, or inserting the encounter into a brew.
+- **Insert into brew** no longer inserts an encounter at an old cursor position. It opens the Outline placement flow and inserts at the end of the chosen section.
+
 - Encounter references in Preview now display the current saved encounter name after it is renamed.
 - Catalogue results and the document outline now scroll independently from their content panes on desktop, while retaining the selected entry in view.
 
@@ -13,6 +16,9 @@
 - The mobile catalogue category selector now uses a full-width, vertically centred control so its selected label remains readable.
 
 ### Added
+
+- A local-first **Worldbuilding** tab with typed, searchable entries for towns, roads, historical figures, characters, factions, landmarks, regions, organisations, events, and custom records.
+- A source-editor right-click menu for turning selected text or a word under the cursor into a typed Worldbuilding entry.
 
 - Monster combatants now roll initiative automatically when added, using their SRD initiative bonus (or Dexterity modifier as a fallback).
 - Combatant cards now include a signed damage/healing field: positive values deal damage and negative values heal, with HP clamped safely between zero and the known maximum.
@@ -45,3 +51,4 @@
 ### Notes
 
 - Encounter and current-party records are initially local IndexedDB data. They do not yet sync to Google Drive, so the existing Drive brew-file format remains backward compatible.
+- Worldbuilding records are initially local IndexedDB data. They do not yet create automatic brew links or sync to Google Drive.

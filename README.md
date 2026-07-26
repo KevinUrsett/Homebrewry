@@ -14,6 +14,7 @@ A responsive, local-first editor for D&D-style brew documents.
 - Offline, searchable SRD 5.2.1 catalogue for monsters, spells, items, rules, and character options
 - Stable in-brew catalogue references with desktop hover cards and tap/click detail views
 - Local-first combat encounters with a reusable party roster, SRD monster search, initiative order, turn tracking, and hit-point tracking
+- Local-first Worldbuilding entries for campaign places, people, history, factions, and custom reference types
 - Installable PWA base with offline application-shell caching
 - Optional Google Drive backup, manual sync, and explicit conflict resolution
 
@@ -65,13 +66,19 @@ The preview displays only `Aboleth`; hover it on desktop to inspect a reference 
 
 The **Encounters** tab keeps a local current-party roster, creates independent encounter snapshots, and can add SRD monsters from the offline catalogue. Monster initiatives roll automatically when added; player-character initiatives remain manual. Each combatant has editable initiative, current/max hit points, armor class, a signed damage/healing field (`10` deals 10 damage; `-10` heals 10), and a current-turn marker. Updating a party roster never changes an already prepared encounter.
 
-Use **Encounter** in the editor toolbar, then select **Insert into brew** to add a stable source reference:
+Use **Encounter** in the editor toolbar, then select **Insert into brew**. The Outline opens in placement mode; select a heading and the stable source reference is added at the end of that section, before its next peer heading:
 
 ```markdown
 [[encounter:329dec56-7f04-49b2-98b2-5710e54f3de2|The flooded vault]]
 ```
 
 In Preview, the reference becomes a combat card. Select it to open that encounter directly. Encounter and party data are currently stored only on the local device; this deliberately avoids changing the established Drive brew format until a safe cloud-sync migration is added.
+
+## Worldbuilding (Phase 7 beta)
+
+The **Worldbuilding** tab is a local campaign reference notebook, separate from individual brews. Create entries for towns, roads, historical figures, characters, factions, landmarks, regions, organisations, events, or a custom type. Entries support aliases and private notes, and can be searched or filtered by type.
+
+In the source editor, select a word or phrase and right-click it (or right-click a single word). Choose **Add “…” as** and an entry type to create a Worldbuilding record without interrupting your writing flow. The first version intentionally does not alter source text, create automatic links, render notes in Preview, or sync Worldbuilding data to Drive. Those additions can build on the stable local record format in a later, backward-compatible phase.
 
 ## Font attribution
 

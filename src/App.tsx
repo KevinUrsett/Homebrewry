@@ -7,22 +7,25 @@ import { ImportDialog } from './components/ImportDialog';
 import { LibraryPanel } from './components/LibraryPanel';
 import { OutlinePanel } from './components/OutlinePanel';
 import { ReferenceDialog } from './components/ReferenceDialog';
+import { WorldbuildingPanel } from './components/WorldbuildingPanel';
 import type { MarkdownEditorHandle } from './components/MarkdownEditor';
 import { createBrew, deleteBrew, replaceBrews, saveBrew, seedBrews } from './lib/brewStore';
 import { createAsset, listAssets, replaceAssets, saveAsset } from './lib/assetStore';
 import { syncAssets } from './lib/assetSync';
 import { keepBothVersions, resolveWithDriveVersion } from './lib/conflicts';
 import { isGoogleConfigured, requestDriveAccess } from './lib/googleIdentity';
-import { getOutline } from './lib/outline';
+import { getOutline, insertAtOutlineSectionEnd } from './lib/outline';
 import { importHomebrewerySource, titleFromImportedSource } from './lib/importer';
 import { overwriteDriveBrew, syncBrews } from './lib/sync';
 import { createEncounter as createCombatEncounter, createPartyMember } from './lib/encounters';
 import { deleteEncounter as deleteStoredEncounter, deletePartyMember as deleteStoredPartyMember, listEncounters, listPartyMembers, saveEncounter, savePartyMember } from './lib/encounterStore';
 import { formatEncounterReference } from './lib/encounterReferences';
+import { createWorldbuildingEntry } from './lib/worldbuilding';
+import { deleteWorldbuildingEntry as deleteStoredWorldbuildingEntry, listWorldbuildingEntries, saveWorldbuildingEntry } from './lib/worldbuildingStore';
 import { loadCatalogue, toCatalogueMap } from './catalogue/catalogueData';
 import { formatCatalogueReference } from './catalogue/references';
 import type { CatalogueEntry } from './catalogue/types';
-import type { Brew, BrewAsset, Encounter, MobileSection, PartyMember, ViewMode } from './types';
+import type { Brew, BrewAsset, Encounter, MobileSection, PartyMember, ViewMode, WorldbuildingEntry, WorldbuildingKind } from './types';
 
 const mobileLabels: Record<MobileSection, string> = {
   library: 'Brews',
@@ -30,7 +33,8 @@ const mobileLabels: Record<MobileSection, string> = {
   preview: 'Preview',
   outline: 'Outline',
   catalogue: 'Catalogue',
-  encounters: 'Encounters'
+  encounters: 'Encounters',
+  worldbuilding: 'Worldbuilding'
 };
 
 export default function App() {
@@ -57,6 +61,10 @@ export default function App() {
   const [partyMembers, setPartyMembers] = useState<PartyMember[]>([]);
   const [encountersOpen, setEncountersOpen] = useState(false);
   const [encounterSelectedId, setEncounterSelectedId] = useState<string | null>(null);
+  const [pendingEncounterInsertion, setPendingEncounterInsertion] = useState<Encounter | null>(null);
+  const [worldbuildingEntries, setWorldbuildingEntries] = useState<WorldbuildingEntry[]>([]);
+  const [worldbuildingOpen, setWorldbuildingOpen] = useState(false);
+  const [worldbuildingSelectedId, setWorldbuildingSelectedId] = useState<string | null>(null);
   const [referenceEntry, setReferenceEntry] = useState<CatalogueEntry | null>(null);
   const editorRef = useRef<MarkdownEditorHandle>(null);
   const selectionRef = useRef({ start: 0, end: 0 });
@@ -64,14 +72,16 @@ export default function App() {
   const redoRef = useRef<string[]>([]);
 
   useEffect(() => {
-    Promise.all([seedBrews(), listAssets(), listEncounters(), listPartyMembers()])
-      .then(([storedBrews, storedAssets, storedEncounters, storedPartyMembers]) => {
+    Promise.all([seedBrews(), listAssets(), listEncounters(), listPartyMembers(), listWorldbuildingEntries()])
+      .then(([storedBrews, storedAssets, storedEncounters, storedPartyMembers, storedWorldbuildingEntries]) => {
         setBrews(storedBrews);
         setAssets(storedAssets);
         setEncounters(storedEncounters);
         setPartyMembers(storedPartyMembers);
+        setWorldbuildingEntries(storedWorldbuildingEntries);
         setActiveId(storedBrews[0]?.id ?? null);
         setEncounterSelectedId(storedEncounters[0]?.id ?? null);
+        setWorldbuildingSelectedId(storedWorldbuildingEntries[0]?.id ?? null);
         setSaveState('Saved locally');
       })
       .catch(() => setSaveState('Local storage is unavailable'))
@@ -161,6 +171,8 @@ export default function App() {
     setCatalogueSelection(entry ?? null);
     setCatalogueOpen(true);
     setEncountersOpen(false);
+    setWorldbuildingOpen(false);
+    setPendingEncounterInsertion(null);
     setMobileSection('catalogue');
   };
 
@@ -168,7 +180,18 @@ export default function App() {
     if (encounter) setEncounterSelectedId(encounter.id);
     setCatalogueOpen(false);
     setEncountersOpen(true);
+    setWorldbuildingOpen(false);
+    setPendingEncounterInsertion(null);
     setMobileSection('encounters');
+  };
+
+  const openWorldbuilding = (entry?: WorldbuildingEntry) => {
+    if (entry) setWorldbuildingSelectedId(entry.id);
+    setCatalogueOpen(false);
+    setEncountersOpen(false);
+    setWorldbuildingOpen(true);
+    setPendingEncounterInsertion(null);
+    setMobileSection('worldbuilding');
   };
 
   const openReferenceInCatalogue = () => {
@@ -184,9 +207,18 @@ export default function App() {
     setMobileSection('editor');
   };
 
-  const insertEncounterReference = (encounter: Encounter) => {
-    insertText(formatEncounterReference(encounter));
+  const beginEncounterInsertion = (encounter: Encounter) => {
+    setPendingEncounterInsertion(encounter);
     setEncountersOpen(false);
+    setWorldbuildingOpen(false);
+    setMobileSection('outline');
+    setSaveState('Choose an outline section for this encounter');
+  };
+
+  const insertEncounterAtSection = (item: { id: string } | null) => {
+    if (!activeBrew || !pendingEncounterInsertion) return;
+    updateContent(insertAtOutlineSectionEnd(activeBrew.content, item?.id ?? null, formatEncounterReference(pendingEncounterInsertion)));
+    setPendingEncounterInsertion(null);
     setMobileSection('editor');
   };
 
@@ -201,6 +233,41 @@ export default function App() {
     const encounter = createCombatEncounter('New encounter', partyMembers);
     persistEncounter(encounter);
     setEncounterSelectedId(encounter.id);
+  };
+
+  const persistWorldbuildingEntry = (entry: WorldbuildingEntry) => {
+    setWorldbuildingEntries((current) => [entry, ...current.filter((item) => item.id !== entry.id)]);
+    void saveWorldbuildingEntry(entry)
+      .then(() => setSaveState('Worldbuilding entry saved locally'))
+      .catch(() => setSaveState('Worldbuilding save failed'));
+  };
+
+  const createNewWorldbuildingEntry = () => {
+    const entry = createWorldbuildingEntry();
+    persistWorldbuildingEntry(entry);
+    setWorldbuildingSelectedId(entry.id);
+  };
+
+  const addWorldbuildingFromEditor = (name: string, kind: WorldbuildingKind) => {
+    const entry = createWorldbuildingEntry(name, kind);
+    const existing = worldbuildingEntries.find((item) => item.kind === entry.kind && item.name.toLocaleLowerCase() === entry.name.toLocaleLowerCase());
+    if (existing) {
+      setWorldbuildingSelectedId(existing.id);
+      setSaveState(`“${existing.name}” is already in Worldbuilding`);
+      return;
+    }
+    persistWorldbuildingEntry(entry);
+    setWorldbuildingSelectedId(entry.id);
+    setSaveState(`Added “${entry.name}” to Worldbuilding`);
+  };
+
+  const deleteWorldbuilding = (entry: WorldbuildingEntry) => {
+    if (!window.confirm(`Delete “${entry.name}” from Worldbuilding? This cannot be undone.`)) return;
+    setWorldbuildingEntries((current) => current.filter((item) => item.id !== entry.id));
+    setWorldbuildingSelectedId((currentId) => currentId === entry.id ? null : currentId);
+    void deleteStoredWorldbuildingEntry(entry.id)
+      .then(() => setSaveState('Worldbuilding entry deleted locally'))
+      .catch(() => setSaveState('Worldbuilding deletion failed'));
   };
 
   const deleteEncounter = (encounter: Encounter) => {
@@ -256,6 +323,7 @@ export default function App() {
     const brew = createBrew();
     setBrews((currentBrews) => [brew, ...currentBrews]);
     setActiveId(brew.id);
+    setPendingEncounterInsertion(null);
     historyRef.current = [];
     redoRef.current = [];
     setMobileSection('editor');
@@ -409,7 +477,7 @@ export default function App() {
         <div className="brand-lockup">
           <span className="brand-mark" aria-hidden>✦</span>
           <span>Homebrewry</span>
-          <span className="phase-badge">Phase 6 beta</span>
+          <span className="phase-badge">Phase 7 beta</span>
         </div>
         <div className="desktop-view-controls" aria-label="Preview layout">
           {(['editor', 'split', 'preview'] as ViewMode[]).map((mode) => (
@@ -420,6 +488,8 @@ export default function App() {
                 setViewMode(mode);
                 setCatalogueOpen(false);
                 setEncountersOpen(false);
+                setWorldbuildingOpen(false);
+                setPendingEncounterInsertion(null);
               }}
               type="button"
             >
@@ -428,6 +498,7 @@ export default function App() {
           ))}
           <button className={catalogueOpen ? 'is-selected' : ''} onClick={() => catalogueOpen ? setCatalogueOpen(false) : openCatalogue()} type="button">Catalogue</button>
           <button className={encountersOpen ? 'is-selected' : ''} onClick={() => encountersOpen ? setEncountersOpen(false) : openEncounters()} type="button">Encounters</button>
+          <button className={worldbuildingOpen ? 'is-selected' : ''} onClick={() => worldbuildingOpen ? setWorldbuildingOpen(false) : openWorldbuilding()} type="button">Worldbuilding</button>
           <button onClick={() => window.print()} type="button">Print</button>
         </div>
         <div className="cloud-controls">
@@ -458,9 +529,15 @@ export default function App() {
                 openEncounters();
                 return;
               }
+              if (section === 'worldbuilding') {
+                openWorldbuilding();
+                return;
+              }
               setMobileSection(section);
               setCatalogueOpen(false);
               setEncountersOpen(false);
+              setWorldbuildingOpen(false);
+              if (section !== 'outline') setPendingEncounterInsertion(null);
             }}
             type="button"
           >
@@ -487,12 +564,21 @@ export default function App() {
           onCreatePartyMember={addPartyMember}
           onDeleteEncounter={deleteEncounter}
           onDeletePartyMember={deletePartyMember}
-          onInsertReference={insertEncounterReference}
+          onInsertReference={beginEncounterInsertion}
           onSelectEncounter={setEncounterSelectedId}
           onUpdateEncounter={persistEncounter}
           onUpdatePartyMember={persistPartyMember}
           partyMembers={partyMembers}
           selectedId={encounterSelectedId}
+        />
+      ) : worldbuildingOpen ? (
+        <WorldbuildingPanel
+          entries={worldbuildingEntries}
+          onCreate={createNewWorldbuildingEntry}
+          onDelete={deleteWorldbuilding}
+          onSelect={setWorldbuildingSelectedId}
+          onUpdate={persistWorldbuildingEntry}
+          selectedId={worldbuildingSelectedId}
         />
       ) : (
         <div className={`workspace view-${viewMode}`}>
@@ -506,6 +592,7 @@ export default function App() {
             onQueryChange={setQuery}
             onSelect={(id) => {
               setActiveId(id);
+              setPendingEncounterInsertion(null);
               setMobileSection('editor');
             }}
             query={query}
@@ -534,6 +621,7 @@ export default function App() {
               }}
               onOpenCatalogue={openCatalogue}
               onOpenEncounters={openEncounters}
+              onAddWorldbuilding={addWorldbuildingFromEditor}
               onRedo={redo}
               onReplaceAll={replaceAll}
               onReplaceChange={setReplaceValue}
@@ -551,7 +639,15 @@ export default function App() {
             </section>
           </div>
 
-          <OutlinePanel outline={outline} />
+          <OutlinePanel
+            insertionLabel={pendingEncounterInsertion?.name ?? null}
+            onCancelInsertion={() => {
+              setPendingEncounterInsertion(null);
+              setSaveState('Encounter placement cancelled');
+            }}
+            onInsertAtSection={insertEncounterAtSection}
+            outline={outline}
+          />
         </div>
       )}
       {activeBrew.syncState === 'conflict' && activeBrew.conflict && (

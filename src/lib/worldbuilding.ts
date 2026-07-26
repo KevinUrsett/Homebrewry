@@ -1,6 +1,12 @@
-import { worldbuildingKinds, type WorldbuildingEntry, type WorldbuildingKind } from '../types';
+import {
+  worldbuildingKinds,
+  type BuiltInWorldbuildingKind,
+  type WorldbuildingEntry,
+  type WorldbuildingKind,
+  type WorldbuildingType
+} from '../types';
 
-export const worldbuildingKindLabels: Record<WorldbuildingKind, string> = {
+export const worldbuildingKindLabels: Record<BuiltInWorldbuildingKind, string> = {
   town: 'Town',
   road: 'Road',
   'historical-figure': 'Historical figure',
@@ -14,6 +20,15 @@ export const worldbuildingKindLabels: Record<WorldbuildingKind, string> = {
 };
 
 export { worldbuildingKinds };
+
+export function isBuiltInWorldbuildingKind(value: string): value is BuiltInWorldbuildingKind {
+  return (worldbuildingKinds as readonly string[]).includes(value);
+}
+
+export function worldbuildingKindLabel(kind: WorldbuildingKind, customTypes: readonly WorldbuildingType[] = []): string {
+  if (isBuiltInWorldbuildingKind(kind)) return worldbuildingKindLabels[kind];
+  return customTypes.find((type) => type.id === kind)?.name ?? 'Custom type';
+}
 
 export function normalizeWorldbuildingName(value: string): string {
   return value
@@ -38,6 +53,34 @@ export function createWorldbuildingEntry(name = 'Untitled entry', kind: Worldbui
     updatedAt: timestamp,
     version: 1
   };
+}
+
+export function createWorldbuildingType(
+  name: string,
+  timestamp = new Date().toISOString(),
+  id: string = `world-type-${crypto.randomUUID()}`
+): WorldbuildingType {
+  const normalized = normalizeWorldbuildingName(name);
+  if (!normalized) throw new Error('Enter a Worldbuilding type name.');
+  return {
+    id,
+    name: normalized,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    version: 1
+  };
+}
+
+export function findWorldbuildingEntryByName(
+  entries: readonly WorldbuildingEntry[],
+  name: string
+): WorldbuildingEntry | undefined {
+  const normalized = normalizeWorldbuildingName(name).toLocaleLowerCase();
+  if (!normalized) return undefined;
+  return entries.find((entry) => (
+    entry.name.toLocaleLowerCase() === normalized
+    || entry.aliases.some((alias) => alias.toLocaleLowerCase() === normalized)
+  ));
 }
 
 export function touchWorldbuildingEntry(entry: WorldbuildingEntry, changes: Partial<Omit<WorldbuildingEntry, 'id' | 'createdAt' | 'updatedAt' | 'version'>>): WorldbuildingEntry {

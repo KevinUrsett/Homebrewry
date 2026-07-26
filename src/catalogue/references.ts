@@ -6,8 +6,9 @@ import {
   type CatalogueReference
 } from './types';
 
-const referenceExpression = /\[\[([a-z]+):([0-9a-f-]+)(?:\|([^\]\r\n]+))?\]\]/gi;
-const catalogueUrlExpression = /^catalogue:\/\/([a-z]+)\/([0-9a-f-]+)$/i;
+const referenceExpression = /\[\[([a-z][a-z0-9-]*):([0-9a-f-]+)(?:\|([^\]\r\n]+))?\]\]/gi;
+const catalogueUrlExpression = /^catalogue:\/\/([a-z][a-z0-9-]*)\/([0-9a-f-]+)$/i;
+const reservedReferenceCategories = new Set(['encounter', 'world']);
 
 export type CatalogueReferenceMatch = CatalogueReference & {
   from: number;
@@ -46,7 +47,10 @@ export function catalogueReferenceMatches(source: string): CatalogueReferenceMat
   let match: RegExpExecArray | null;
   while ((match = referenceExpression.exec(source))) {
     const category = match[1].toLowerCase();
-    if (!isCatalogueCategory(category)) continue;
+    // These namespaces are handled by their own renderer plugins. Keeping
+    // them out of the generic catalogue pass lets all reference plugins run
+    // safely in sequence.
+    if (!isCatalogueCategory(category) || reservedReferenceCategories.has(category)) continue;
     matches.push({
       category,
       id: match[2].toLowerCase(),

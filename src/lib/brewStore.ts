@@ -1,6 +1,6 @@
 import { openDB } from 'idb';
-import type { CatalogueEntry } from '../catalogue/types';
-import type { Brew, CampaignDataSnapshot, CampaignDataSyncMetadata, Encounter, PartyMember, PrivateMonsterSyncMetadata, WorldbuildingEntry } from '../types';
+import type { CatalogueEntry, CustomCatalogueCategory } from '../catalogue/types';
+import type { Brew, CampaignDataSnapshot, CampaignDataSyncMetadata, Encounter, PartyMember, PrivateMonsterSyncMetadata, WorldbuildingEntry, WorldbuildingType } from '../types';
 
 const DATABASE_NAME = 'homebrewry';
 const STORE_NAME = 'brews';
@@ -12,6 +12,8 @@ export const CAMPAIGN_DATA_SYNC_STORE_NAME = 'campaign-data-sync';
 export const PRIVATE_MONSTER_STORE_NAME = 'private-monsters';
 export const PRIVATE_MONSTER_SYNC_STORE_NAME = 'private-monster-sync';
 export const CUSTOM_CATALOGUE_STORE_NAME = 'custom-catalogue';
+export const CUSTOM_CATALOGUE_CATEGORY_STORE_NAME = 'custom-catalogue-categories';
+export const WORLDBUILDING_TYPE_STORE_NAME = 'worldbuilding-types';
 
 const starterContent = `# The Ashen Road
 
@@ -36,7 +38,7 @@ The scout fires from cover, then offers a bargain: carry a sealed letter to the 
 `;
 
 export const getDatabase = () =>
-  openDB(DATABASE_NAME, 9, {
+  openDB(DATABASE_NAME, 10, {
     upgrade(database, oldVersion) {
       if (oldVersion < 1) {
         const store = database.createObjectStore(STORE_NAME, { keyPath: 'id' });
@@ -67,6 +69,10 @@ export const getDatabase = () =>
       }
       if (oldVersion < 9) {
         database.createObjectStore(PRIVATE_MONSTER_SYNC_STORE_NAME, { keyPath: 'id' });
+      }
+      if (oldVersion < 10) {
+        database.createObjectStore(CUSTOM_CATALOGUE_CATEGORY_STORE_NAME, { keyPath: 'id' });
+        database.createObjectStore(WORLDBUILDING_TYPE_STORE_NAME, { keyPath: 'id' });
       }
     }
   });
@@ -188,21 +194,40 @@ export async function replaceCampaignData(
 ): Promise<void> {
   const database = await getDatabase();
   const transaction = database.transaction(
-    [ENCOUNTER_STORE_NAME, PARTY_STORE_NAME, WORLDBUILDING_STORE_NAME, CUSTOM_CATALOGUE_STORE_NAME, CAMPAIGN_DATA_SYNC_STORE_NAME],
+    [
+      ENCOUNTER_STORE_NAME,
+      PARTY_STORE_NAME,
+      WORLDBUILDING_STORE_NAME,
+      CUSTOM_CATALOGUE_STORE_NAME,
+      CUSTOM_CATALOGUE_CATEGORY_STORE_NAME,
+      WORLDBUILDING_TYPE_STORE_NAME,
+      CAMPAIGN_DATA_SYNC_STORE_NAME
+    ],
     'readwrite'
   );
   const encounters = transaction.objectStore(ENCOUNTER_STORE_NAME);
   const partyMembers = transaction.objectStore(PARTY_STORE_NAME);
   const worldbuilding = transaction.objectStore(WORLDBUILDING_STORE_NAME);
   const customCatalogue = transaction.objectStore(CUSTOM_CATALOGUE_STORE_NAME);
+  const customCatalogueCategories = transaction.objectStore(CUSTOM_CATALOGUE_CATEGORY_STORE_NAME);
+  const worldbuildingTypes = transaction.objectStore(WORLDBUILDING_TYPE_STORE_NAME);
   const metadataStore = transaction.objectStore(CAMPAIGN_DATA_SYNC_STORE_NAME);
 
-  await Promise.all([encounters.clear(), partyMembers.clear(), worldbuilding.clear(), customCatalogue.clear()]);
+  await Promise.all([
+    encounters.clear(),
+    partyMembers.clear(),
+    worldbuilding.clear(),
+    customCatalogue.clear(),
+    customCatalogueCategories.clear(),
+    worldbuildingTypes.clear()
+  ]);
   await Promise.all([
     ...snapshot.encounters.map((encounter: Encounter) => encounters.put(encounter)),
     ...snapshot.partyMembers.map((member: PartyMember) => partyMembers.put(member)),
     ...snapshot.worldbuildingEntries.map((entry: WorldbuildingEntry) => worldbuilding.put(entry)),
     ...snapshot.customCatalogueEntries.map((entry) => customCatalogue.put(entry)),
+    ...snapshot.customCatalogueCategories.map((category: CustomCatalogueCategory) => customCatalogueCategories.put(category)),
+    ...snapshot.worldbuildingTypes.map((type: WorldbuildingType) => worldbuildingTypes.put(type)),
     metadataStore.put(metadata)
   ]);
   await transaction.done;

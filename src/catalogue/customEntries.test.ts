@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createCustomCatalogueEntry, createCustomMonster, normaliseCustomCatalogueEntry } from './customEntries';
+import { createCustomCatalogueCategory, createCustomCatalogueEntry, createCustomMonster, normaliseCustomCatalogueEntry } from './customEntries';
 import type { CatalogueEntry } from './types';
 
 describe('custom catalogue entries', () => {
@@ -44,5 +44,14 @@ describe('custom catalogue entries', () => {
     const unsafe = JSON.parse('{"id":"custom","category":"monster","name":"Unsafe","description":"","data":{"__proto__":{"polluted":true}},"source":"Custom","createdAt":"2026-07-26T12:00:00.000Z","updatedAt":"2026-07-26T12:00:00.000Z","version":1}');
 
     expect(() => normaliseCustomCatalogueEntry(unsafe)).toThrow('invalid data');
+  });
+
+  it('creates a stable campaign category and reserves renderer namespaces', () => {
+    expect(createCustomCatalogueCategory('Deities', '2026-07-26T12:00:00.000Z', 'deity')).toMatchObject({
+      id: 'deity',
+      name: 'Deities',
+      version: 1
+    });
+    expect(() => createCustomCatalogueCategory('Encounters', '2026-07-26T12:00:00.000Z', 'encounter')).toThrow('reserved');
   });
 });

@@ -7,19 +7,23 @@ import {
   entrySummary,
   speedText
 } from '../catalogue/presentation';
-import { catalogueCategoryLabels, type CatalogueEntry } from '../catalogue/types';
+import { catalogueCategoryLabel, type CatalogueEntry } from '../catalogue/types';
+import { ReferenceContent, type ReferenceContentProps } from './ReferenceContent';
 
 type CatalogueEntryDetailsProps = {
   entry: CatalogueEntry;
   compact?: boolean;
   actions?: ReactNode;
+  categoryLabel?: string;
+  references?: Omit<ReferenceContentProps, 'content' | 'className'>;
 };
 
-function TextBlock({ children }: { children: string }) {
-  return <p className="catalogue-description">{cataloguePlainText(children)}</p>;
+function TextBlock({ children, references }: { children: string; references?: Omit<ReferenceContentProps, 'content' | 'className'> }) {
+  if (!references) return <p className="catalogue-description">{cataloguePlainText(children)}</p>;
+  return <div className="catalogue-description"><ReferenceContent {...references} content={children} /></div>;
 }
 
-function FeatureList({ entries, title }: { entries: Record<string, unknown>[]; title: string }) {
+function FeatureList({ entries, title, references }: { entries: Record<string, unknown>[]; title: string; references?: Omit<ReferenceContentProps, 'content' | 'className'> }) {
   if (!entries.length) return null;
   return (
     <section className="catalogue-detail-section">
@@ -31,7 +35,7 @@ function FeatureList({ entries, title }: { entries: Record<string, unknown>[]; t
         return (
           <div className="catalogue-feature" key={`${name}-${index}`}>
             <strong>{name}{usage ? ` (${usage})` : ''}</strong>
-            {text && <TextBlock>{text}</TextBlock>}
+            {text && <TextBlock references={references}>{text}</TextBlock>}
           </div>
         );
       })}
@@ -39,7 +43,7 @@ function FeatureList({ entries, title }: { entries: Record<string, unknown>[]; t
   );
 }
 
-function MonsterDetails({ entry }: { entry: CatalogueEntry }) {
+function MonsterDetails({ entry, references }: { entry: CatalogueEntry; references?: Omit<ReferenceContentProps, 'content' | 'className'> }) {
   const abilities = dataRecord(entry, 'abilities');
   const identity = [dataString(entry, 'size'), dataString(entry, 'type'), dataString(entry, 'alignment')].filter(Boolean).join(' ');
   const speed = speedText(entry);
@@ -51,7 +55,7 @@ function MonsterDetails({ entry }: { entry: CatalogueEntry }) {
 
   return (
     <>
-      {entry.description && <TextBlock>{entry.description}</TextBlock>}
+      {entry.description && <TextBlock references={references}>{entry.description}</TextBlock>}
       {identity && <p className="catalogue-monster-identity">{identity}</p>}
       <dl className="catalogue-stats">
         {dataString(entry, 'ac') && <><dt>Armor Class</dt><dd>{dataString(entry, 'ac')}</dd></>}
@@ -69,11 +73,11 @@ function MonsterDetails({ entry }: { entry: CatalogueEntry }) {
           ))}
         </dl>
       )}
-      <FeatureList entries={traits} title="Traits" />
-      <FeatureList entries={actions} title="Actions" />
-      <FeatureList entries={bonusActions} title="Bonus actions" />
-      <FeatureList entries={reactions} title="Reactions" />
-      <FeatureList entries={legendaryActions} title="Legendary actions" />
+      <FeatureList entries={traits} references={references} title="Traits" />
+      <FeatureList entries={actions} references={references} title="Actions" />
+      <FeatureList entries={bonusActions} references={references} title="Bonus actions" />
+      <FeatureList entries={reactions} references={references} title="Reactions" />
+      <FeatureList entries={legendaryActions} references={references} title="Legendary actions" />
     </>
   );
 }
@@ -92,26 +96,27 @@ function TableDetails({ entry }: { entry: CatalogueEntry }) {
   );
 }
 
-function GenericDetails({ entry }: { entry: CatalogueEntry }) {
+function GenericDetails({ entry, references }: { entry: CatalogueEntry; references?: Omit<ReferenceContentProps, 'content' | 'className'> }) {
   const features = dataRecords(entry, 'features');
   const traits = dataRecords(entry, 'traits');
   return (
     <>
-      {entry.description && <TextBlock>{entry.description}</TextBlock>}
-      <FeatureList entries={traits} title="Traits" />
-      <FeatureList entries={features} title="Features" />
+      {entry.description && <TextBlock references={references}>{entry.description}</TextBlock>}
+      <FeatureList entries={traits} references={references} title="Traits" />
+      <FeatureList entries={features} references={references} title="Features" />
       <TableDetails entry={entry} />
     </>
   );
 }
 
-export function CatalogueEntryDetails({ entry, compact = false, actions }: CatalogueEntryDetailsProps) {
+export function CatalogueEntryDetails({ entry, compact = false, actions, categoryLabel, references }: CatalogueEntryDetailsProps) {
   const summary = entrySummary(entry);
+  const label = categoryLabel ?? catalogueCategoryLabel(entry.category);
   if (compact) {
     return (
       <span className="catalogue-tooltip-content">
         <strong>{entry.name}</strong>
-        <span>{catalogueCategoryLabels[entry.category]}</span>
+        <span>{label}</span>
         {summary.map((line) => <span key={line}>{line}</span>)}
         {entry.description && <span>{cataloguePlainText(entry.description, 210)}</span>}
       </span>
@@ -121,12 +126,12 @@ export function CatalogueEntryDetails({ entry, compact = false, actions }: Catal
   return (
     <article className={`catalogue-entry-detail catalogue-entry-${entry.category}`}>
       <header>
-        <p className="eyebrow">{catalogueCategoryLabels[entry.category]} · {entry.ruleset} · {entry.source}</p>
+        <p className="eyebrow">{label} · {entry.ruleset} · {entry.source}</p>
         <h2>{entry.name}</h2>
         {entry.category !== 'monster' && summary.map((line) => <p className="catalogue-summary" key={line}>{line}</p>)}
       </header>
       {actions && <div className="catalogue-entry-actions">{actions}</div>}
-      {entry.category === 'monster' ? <MonsterDetails entry={entry} /> : <GenericDetails entry={entry} />}
+      {entry.category === 'monster' ? <MonsterDetails entry={entry} references={references} /> : <GenericDetails entry={entry} references={references} />}
     </article>
   );
 }

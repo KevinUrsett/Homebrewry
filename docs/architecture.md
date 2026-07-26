@@ -25,13 +25,13 @@ Google Drive integration is disabled until `VITE_GOOGLE_CLIENT_ID` is supplied b
 
 ## Phase 3 renderer boundary
 
-`renderer/blocks` parses a small, documented directive syntax into typed display blocks. The preview renders those blocks independently of storage and continues to use a safe Markdown renderer for prose. Raw HTML is not enabled. Explicit `:::pagebreak` directives create print pages; ordinary screen content remains responsive rather than pretending every phone screen is a sheet of paper.
+`renderer/blocks` parses a small, documented directive syntax into typed display blocks. The preview renders those blocks independently of storage and continues to use a safe Markdown renderer for prose. Raw HTML is not enabled. Explicit `:::pagebreak` directives create print pages; desktop and wide preview panes use portrait A4-proportioned book pages with compact columns while narrow panes remain single-column.
 
 ## Phase 4 assets and import
 
 `assetStore` keeps validated image blobs in IndexedDB. `assetSync` stores a matching app-owned Drive file and a stable asset identifier; the Markdown document references that identifier instead of a temporary Drive URL. The renderer resolves only local `asset://` identifiers and HTTPS image URLs.
 
-`importer` accepts pasted or text-file source, converts only known page commands, and reports unsupported constructs. It never enables imported script, style, raw HTML, or CSS execution.
+`importer` accepts pasted or text-file source, converts only known page commands and complete line-based Homebrewery `descriptive`/`note` wrappers, and reports unsupported or incomplete constructs. It never enables imported script, style, raw HTML, or CSS execution. The conversion is source-only and can be applied to existing brews through a normal undoable editor update.
 
 ## Phase 5 catalogue and reference boundary
 
@@ -53,16 +53,18 @@ Google Drive integration is disabled until `VITE_GOOGLE_CLIENT_ID` is supplied b
 
 The Outline placement flow derives a selected heading's section boundary from pure Markdown heading locations. It inserts a reference before the next heading at the same or higher level, rather than relying on the editor's cursor position.
 
-## Phase 7 Worldbuilding boundary
+## Phase 7–8 Worldbuilding boundary
 
-`lib/worldbuildingStore` persists versioned `WorldbuildingEntry` records in a dedicated IndexedDB store. `lib/worldbuilding` owns normalization, creation, and update rules for typed entries; it does not depend on a brew, the renderer, or Google Drive. The CodeMirror context menu passes only selected plain text and a user-chosen type to the Worldbuilding layer.
+`lib/worldbuildingStore` persists versioned `WorldbuildingEntry` and `WorldbuildingType` records in dedicated IndexedDB stores. `lib/worldbuilding` owns normalization, creation, lookup, and update rules for typed entries; it does not depend on a brew, the renderer, or Google Drive. The CodeMirror context menu passes only selected plain text and a user-chosen type to the Worldbuilding layer.
 
-Worldbuilding records do not rewrite Markdown, auto-link references, or expose notes to the preview.
+`lib/worldbuildingReferences` owns the `[[world:id|label]]` syntax and Markdown AST transformation. The preview receives only a read-only entry map, type list, and open callback. It can render a desktop hover card and a click/tap detail dialog without importing from IndexedDB or Google Drive. The shared CodeMirror source editor keeps the underlying stable source syntax but renders it as a compact reference chip. The same right-click flow is available in Worldbuilding notes and campaign-owned catalogue descriptions; `ReferenceContent` resolves their safe catalogue and Worldbuilding links without coupling either view to storage.
+
+Custom catalogue categories use stable opaque IDs and are stored separately from campaign-owned catalogue entries. The generic catalogue-reference parser intentionally reserves `encounter` and `world` namespaces so dedicated reference transformers cannot be shadowed by a custom category.
 
 ## Campaign-data sync boundary
 
-`lib/campaignData` validates the versioned campaign snapshot before remote data can replace local IndexedDB records. `lib/campaignSync` compares the companion Drive file revision with local change metadata, and never merges diverging records automatically. It stores Encounters, the current party, Worldbuilding, and custom catalogue entries in one app-owned Drive file rather than modifying any brew document. `App` schedules a short, serialized Drive backup after a successful local campaign-data save whenever Drive is connected, and it checks this companion file immediately when a device connects.
+`lib/campaignData` validates the versioned campaign snapshot before remote data can replace local IndexedDB records. `lib/campaignSync` compares the companion Drive file revision with local change metadata, and never merges diverging records automatically. It stores Encounters, the current party, Worldbuilding, Worldbuilding types, custom catalogue categories, and custom catalogue entries in one app-owned Drive file rather than modifying any brew document. `App` schedules a short, serialized Drive backup after a successful local campaign-data save whenever Drive is connected, and it checks this companion file immediately when a device connects. The tab badge derives its wording from stored Drive metadata rather than the ephemeral in-memory OAuth token, so it does not mislabel an existing backup as local-only after a reload.
 
 An explicit conflict choice can keep Drive, keep both record sets, or replace Drive intentionally. `brewStore.replaceCampaignData` performs a transactional local replacement only after that result is known. The renderer continues to receive only read-only encounter data, never Drive or IndexedDB access.
 
-`catalogue/customEntries` creates the smallest safe custom record from selected editor text and validates structured custom monster data before storage or Drive sync. `customCatalogueStore` keeps campaign-owned entries separate from bundled SRD and private imports. Campaign-data schema version 3 preserves bounded JSON stat-block fields across devices; schema versions 1 and 2 remain readable and migrate safely, with v2's historical custom payloads treated as empty.
+`catalogue/customEntries` creates the smallest safe custom record from selected editor text and validates structured custom monster data before storage or Drive sync. `customCatalogueStore` keeps campaign-owned entries and category definitions separate from bundled SRD and private imports. Campaign-data schema version 4 preserves bounded JSON stat-block fields plus custom catalogue categories and Worldbuilding types across devices; schema versions 1–3 remain readable and migrate safely, with v2's historical custom payloads treated as empty.

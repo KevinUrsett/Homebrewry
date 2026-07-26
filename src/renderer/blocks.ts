@@ -1,11 +1,11 @@
 export type RendererBlock =
   | { type: 'markdown'; content: string }
-  | { type: 'callout'; variant: 'note' | 'warning' | 'tip'; title?: string; content: string }
+  | { type: 'callout'; variant: 'note' | 'warning' | 'tip' | 'descriptive'; title?: string; content: string }
   | { type: 'statblock' | 'item' | 'spell'; content: string }
   | { type: 'columns'; content: string }
   | { type: 'pagebreak' };
 
-const calloutTypes = new Set(['note', 'warning', 'tip']);
+const calloutTypes = new Set(['note', 'warning', 'tip', 'descriptive']);
 export function parseRendererBlocks(source: string): RendererBlock[] {
   const lines = source.replace(/\r\n/g, '\n').split('\n');
   const blocks: RendererBlock[] = [];
@@ -18,7 +18,7 @@ export function parseRendererBlocks(source: string): RendererBlock[] {
   };
 
   for (let index = 0; index < lines.length; index += 1) {
-    const directive = lines[index].match(/^:::(note|warning|tip|columns|pagebreak)(?:\s+(.+))?\s*$/i);
+    const directive = lines[index].match(/^:::(note|warning|tip|descriptive|columns|pagebreak)(?:\s+(.+))?\s*$/i);
     if (directive) {
       flushMarkdown();
       const kind = directive[1].toLowerCase();
@@ -38,7 +38,7 @@ export function parseRendererBlocks(source: string): RendererBlock[] {
         break;
       }
       if (kind === 'columns') blocks.push({ type: 'columns', content: content.join('\n').trim() });
-      if (calloutTypes.has(kind)) blocks.push({ type: 'callout', variant: kind as 'note' | 'warning' | 'tip', title: directive[2]?.trim(), content: content.join('\n').trim() });
+      if (calloutTypes.has(kind)) blocks.push({ type: 'callout', variant: kind as 'note' | 'warning' | 'tip' | 'descriptive', title: directive[2]?.trim(), content: content.join('\n').trim() });
       continue;
     }
 

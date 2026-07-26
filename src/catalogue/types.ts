@@ -11,7 +11,23 @@ export const catalogueCategories = [
   'table'
 ] as const;
 
-export type CatalogueCategory = typeof catalogueCategories[number];
+/** Categories bundled with the read-only SRD data set. */
+export type BuiltInCatalogueCategory = typeof catalogueCategories[number];
+
+/**
+ * Campaigns can add their own category IDs. They are deliberately opaque,
+ * stable slugs rather than display names so renaming a category never breaks
+ * a reference already written in a brew.
+ */
+export type CatalogueCategory = string;
+
+export type CustomCatalogueCategory = {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+};
 
 export type CatalogueColumn = {
   name: string;
@@ -45,7 +61,7 @@ export type CatalogueReference = {
   label: string;
 };
 
-export const catalogueCategoryLabels: Record<CatalogueCategory, string> = {
+export const catalogueCategoryLabels: Record<BuiltInCatalogueCategory, string> = {
   background: 'Backgrounds',
   class: 'Classes',
   feat: 'Feats',
@@ -60,6 +76,19 @@ export const catalogueCategoryLabels: Record<CatalogueCategory, string> = {
 
 export const catalogueEntryKey = (entry: Pick<CatalogueEntry, 'category' | 'id'>) => `${entry.category}:${entry.id}`;
 
-export function isCatalogueCategory(value: string): value is CatalogueCategory {
+export function isBuiltInCatalogueCategory(value: string): value is BuiltInCatalogueCategory {
   return (catalogueCategories as readonly string[]).includes(value);
+}
+
+/** Safe category IDs accepted in source references and campaign data. */
+export function isCatalogueCategory(value: string): value is CatalogueCategory {
+  return /^[a-z][a-z0-9-]{0,79}$/.test(value);
+}
+
+export function catalogueCategoryLabel(
+  category: CatalogueCategory,
+  customCategories: readonly CustomCatalogueCategory[] = []
+): string {
+  if (isBuiltInCatalogueCategory(category)) return catalogueCategoryLabels[category];
+  return customCategories.find((item) => item.id === category)?.name ?? 'Custom category';
 }

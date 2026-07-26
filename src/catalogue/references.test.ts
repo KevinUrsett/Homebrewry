@@ -66,4 +66,9 @@ describe('catalogue references', () => {
     ]);
     expect(tree.children?.[1].value).toBe(reference);
   });
+
+  it('leaves encounter and Worldbuilding namespaces to their dedicated renderer plugins', () => {
+    expect(catalogueReferenceMatches('[[encounter:c674b91f-94c8-5c80-9d1d-31bef50bc779|Ambush]]')).toEqual([]);
+    expect(catalogueReferenceMatches('[[world:c674b91f-94c8-5c80-9d1d-31bef50bc779|Sund]]')).toEqual([]);
+  });
 });

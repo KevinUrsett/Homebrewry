@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { entrySummary } from '../catalogue/presentation';
 import type { CatalogueEntry } from '../catalogue/types';
 import { addMonsterToEncounter, addPartyMembersToEncounter, adjustEncounterParticipantHitPoints, advanceCombatTurn, patchEncounterParticipant, removeEncounterParticipant, sortCombatants, touchEncounter } from '../lib/encounters';
-import type { Encounter, EncounterParticipant, PartyMember } from '../types';
+import type { Encounter, EncounterParticipant, PartyMember, SyncState } from '../types';
 
 type EncounterPanelProps = {
   encounters: Encounter[];
@@ -10,6 +10,7 @@ type EncounterPanelProps = {
   partyMembers: PartyMember[];
   monsters: CatalogueEntry[];
   loading: boolean;
+  syncState: SyncState;
   onCreateEncounter: () => void;
   onDeleteEncounter: (encounter: Encounter) => void;
   onInsertReference: (encounter: Encounter) => void;
@@ -18,6 +19,14 @@ type EncounterPanelProps = {
   onCreatePartyMember: (name: string, armorClass: number | null, maxHitPoints: number | null) => void;
   onDeletePartyMember: (member: PartyMember) => void;
   onUpdatePartyMember: (member: PartyMember) => void;
+};
+
+const campaignSyncLabel: Record<SyncState, string> = {
+  local: 'Local only',
+  synced: 'Drive synced',
+  pending: 'Needs sync',
+  conflict: 'Drive conflict',
+  error: 'Sync error'
 };
 
 const asNumber = (value: string): number | null => {
@@ -41,6 +50,7 @@ export function EncounterPanel({
   partyMembers,
   monsters,
   loading,
+  syncState,
   onCreateEncounter,
   onDeleteEncounter,
   onInsertReference,
@@ -106,7 +116,10 @@ export function EncounterPanel({
           <h1>Encounters</h1>
           <p>Build a fight from the offline SRD catalogue, then run initiative and hit points in one place.</p>
         </div>
-        <button className="primary-button" onClick={onCreateEncounter} type="button">New encounter</button>
+        <div className="page-header-actions">
+          <span className={`sync-badge sync-${syncState}`}>{campaignSyncLabel[syncState]}</span>
+          <button className="primary-button" onClick={onCreateEncounter} type="button">New encounter</button>
+        </div>
       </header>
 
       <section className="encounter-workspace">

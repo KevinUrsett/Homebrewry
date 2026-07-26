@@ -50,7 +50,17 @@ describe('CataloguePanel', () => {
     mounted.push({ container, root });
 
     await act(async () => {
-      root.render(<CataloguePanel entries={[aboleth, dragon]} error={null} loading={false} onInsertReference={vi.fn()} selectedEntry={dragon} />);
+      root.render(
+        <CataloguePanel
+          entries={[aboleth, dragon]}
+          error={null}
+          loading={false}
+          onInsertReference={vi.fn()}
+          onOpenPrivateMonsterImport={vi.fn()}
+          privateMonsterCount={0}
+          selectedEntry={dragon}
+        />
+      );
     });
 
     expect(container.querySelector('.catalogue-result.is-selected')?.textContent).toContain('Adult Blue Dragon');

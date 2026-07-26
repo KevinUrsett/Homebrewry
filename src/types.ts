@@ -111,6 +111,32 @@ export type WorldbuildingEntry = {
   version: number;
 };
 
+/**
+ * Campaign-preparation data is deliberately kept outside individual brew files.
+ * That lets encounters and Worldbuilding sync between devices without changing
+ * the established brew document schema.
+ */
+export type CampaignDataSnapshot = {
+  schemaVersion: 1;
+  updatedAt: string;
+  encounters: Encounter[];
+  partyMembers: PartyMember[];
+  worldbuildingEntries: WorldbuildingEntry[];
+};
+
+export type CampaignDataConflict = {
+  remoteData: CampaignDataSnapshot;
+  remoteRevisionId: string;
+};
+
+export type CampaignDataSyncMetadata = {
+  id: 'campaign-data';
+  lastLocalChangeAt: string;
+  drive?: DriveMetadata;
+  syncState: SyncState;
+  conflict?: CampaignDataConflict;
+};
+
 export type OutlineItem = {
   id: string;
   level: number;

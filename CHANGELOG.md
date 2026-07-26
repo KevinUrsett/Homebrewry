@@ -17,6 +17,13 @@
 
 ### Added
 
+- A validated **private monster archive** import flow in Catalogue. Compatible `monsters.json` ZIP files are stored only in local IndexedDB; archive artwork is not copied and imported material is never bundled, committed, or synced to Drive.
+- Safe ZIP validation for private monster imports: size and record limits, allowed paths only, no encrypted or ZIP64 archives, no path traversal or symlinks, and no archive-provided executable content.
+- Private monsters now work in catalogue search, stable brew references, preview reference details, and encounter monster search without overriding bundled SRD records.
+
+- Versioned Google Drive sync for encounters, the current party roster, and Worldbuilding in a separate campaign-data file, without changing existing brew files.
+- Campaign sync badges in Encounters and Worldbuilding, plus explicit options to keep Drive, keep both record sets, or replace Drive when two devices diverge.
+
 - A local-first **Worldbuilding** tab with typed, searchable entries for towns, roads, historical figures, characters, factions, landmarks, regions, organisations, events, and custom records.
 - A source-editor right-click menu for turning selected text or a word under the cursor into a typed Worldbuilding entry.
 
@@ -50,5 +57,5 @@
 
 ### Notes
 
-- Encounter and current-party records are initially local IndexedDB data. They do not yet sync to Google Drive, so the existing Drive brew-file format remains backward compatible.
-- Worldbuilding records are initially local IndexedDB data. They do not yet create automatic brew links or sync to Google Drive.
+- Campaign data sync is separate from brew documents, so existing Drive brew files remain backward compatible.
+- Worldbuilding records do not yet create automatic brew links or render reference notes in Preview.

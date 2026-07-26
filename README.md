@@ -62,6 +62,12 @@ Use **Reference** in the editor toolbar or **Insert reference into brew** in the
 
 The preview displays only `Aboleth`; hover it on desktop to inspect a reference card, or tap/click to open its complete entry. In the source editor, hover the highlighted reference token to inspect it. References use IDs rather than just names, so renaming or duplicate names cannot silently point at the wrong record.
 
+### Private monster archives
+
+Use **Catalogue → Import monster archive** to add a compatible ZIP containing `monsters.json`. Imported monsters are validated, stored only in this browser's IndexedDB, and are intentionally excluded from Google Drive sync, brew files, GitHub, and the public application bundle. This protects user-supplied or unprovenanced material from accidental redistribution.
+
+The importer accepts only a small, safe ZIP layout; it limits archive size, rejects encrypted, ZIP64, path-traversal, or unsupported files, and reads only the JSON data. Artwork files in the archive are never copied. Existing bundled monster IDs remain authoritative, so matching SRD records are skipped rather than overwritten. A private monster reference resolves only on devices where that archive has been imported. Replacing or removing the private catalogue always asks for confirmation.
+
 ## Encounters (Phase 6 beta)
 
 The **Encounters** tab keeps a local current-party roster, creates independent encounter snapshots, and can add SRD monsters from the offline catalogue. Monster initiatives roll automatically when added; player-character initiatives remain manual. Each combatant has editable initiative, current/max hit points, armor class, a signed damage/healing field (`10` deals 10 damage; `-10` heals 10), and a current-turn marker. Updating a party roster never changes an already prepared encounter.
@@ -72,13 +78,21 @@ Use **Encounter** in the editor toolbar, then select **Insert into brew**. The O
 [[encounter:329dec56-7f04-49b2-98b2-5710e54f3de2|The flooded vault]]
 ```
 
-In Preview, the reference becomes a combat card. Select it to open that encounter directly. Encounter and party data are currently stored only on the local device; this deliberately avoids changing the established Drive brew format until a safe cloud-sync migration is added.
+In Preview, the reference becomes a combat card. Select it to open that encounter directly.
 
 ## Worldbuilding (Phase 7 beta)
 
 The **Worldbuilding** tab is a local campaign reference notebook, separate from individual brews. Create entries for towns, roads, historical figures, characters, factions, landmarks, regions, organisations, events, or a custom type. Entries support aliases and private notes, and can be searched or filtered by type.
 
-In the source editor, select a word or phrase and right-click it (or right-click a single word). Choose **Add “…” as** and an entry type to create a Worldbuilding record without interrupting your writing flow. The first version intentionally does not alter source text, create automatic links, render notes in Preview, or sync Worldbuilding data to Drive. Those additions can build on the stable local record format in a later, backward-compatible phase.
+In the source editor, select a word or phrase and right-click it (or right-click a single word). Choose **Add “…” as** and an entry type to create a Worldbuilding record without interrupting your writing flow. The first version intentionally does not alter source text, create automatic links, or render notes in Preview.
+
+## Campaign data sync
+
+Encounters, the current party roster, and Worldbuilding sync through one separate, versioned Drive file: `Homebrewry campaign data.homebrewry.json`. Brew files remain unchanged and backward compatible.
+
+The shared **Refresh & sync** action backs up this companion data alongside brews and images. If both devices change campaign data before syncing, Homebrewry stops and asks whether to keep Drive, keep both record sets, or replace Drive intentionally. No campaign records are silently overwritten.
+
+Private monster archives are deliberately not part of this campaign-data sync. Import the archive directly on each device that needs it.
 
 ## Font attribution
 

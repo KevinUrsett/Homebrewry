@@ -14,12 +14,22 @@ type CataloguePanelProps = {
   loading: boolean;
   error: string | null;
   onInsertReference: (entry: CatalogueEntry) => void;
+  onOpenPrivateMonsterImport: () => void;
+  privateMonsterCount: number;
   selectedEntry?: CatalogueEntry | null;
 };
 
 const MAX_VISIBLE_RESULTS = 250;
 
-export function CataloguePanel({ entries, loading, error, onInsertReference, selectedEntry }: CataloguePanelProps) {
+export function CataloguePanel({
+  entries,
+  loading,
+  error,
+  onInsertReference,
+  onOpenPrivateMonsterImport,
+  privateMonsterCount,
+  selectedEntry
+}: CataloguePanelProps) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<CatalogueCategory | 'all'>(() => selectedEntry?.category ?? 'monster');
   const [selectedId, setSelectedId] = useState<string | null>(() => selectedEntry?.id ?? null);
@@ -52,9 +62,16 @@ export function CataloguePanel({ entries, loading, error, onInsertReference, sel
         <div>
           <p className="eyebrow">Offline reference</p>
           <h1>Catalogue</h1>
-          <p>{loading ? 'Loading the SRD reference data…' : `${entries.length.toLocaleString()} ${catalogueDataset.version} entries available offline.`}</p>
+          <p>
+            {loading
+              ? 'Loading the SRD reference data…'
+              : `${(entries.length - privateMonsterCount).toLocaleString()} ${catalogueDataset.version} entries available offline.${privateMonsterCount ? ` ${privateMonsterCount.toLocaleString()} private monster${privateMonsterCount === 1 ? '' : 's'} on this device.` : ''}`}
+          </p>
         </div>
-        <a href="https://www.dndbeyond.com/srd/" rel="noreferrer" target="_blank">SRD attribution</a>
+        <div className="catalogue-header-actions">
+          <button onClick={onOpenPrivateMonsterImport} type="button">Import monster archive</button>
+          <a href="https://www.dndbeyond.com/srd/" rel="noreferrer" target="_blank">SRD attribution</a>
+        </div>
       </header>
 
       {error && <p className="catalogue-error">The catalogue could not load: {error}</p>}

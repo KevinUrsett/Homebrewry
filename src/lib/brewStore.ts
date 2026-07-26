@@ -1,5 +1,5 @@
 import { openDB } from 'idb';
-import type { Brew } from '../types';
+import type { Brew, CampaignDataSnapshot, CampaignDataSyncMetadata, Encounter, PartyMember, WorldbuildingEntry } from '../types';
 
 const DATABASE_NAME = 'homebrewry';
 const STORE_NAME = 'brews';
@@ -7,6 +7,8 @@ export const ASSET_STORE_NAME = 'assets';
 export const ENCOUNTER_STORE_NAME = 'encounters';
 export const PARTY_STORE_NAME = 'party-members';
 export const WORLDBUILDING_STORE_NAME = 'worldbuilding';
+export const CAMPAIGN_DATA_SYNC_STORE_NAME = 'campaign-data-sync';
+export const PRIVATE_MONSTER_STORE_NAME = 'private-monsters';
 
 const starterContent = `# The Ashen Road
 
@@ -31,7 +33,7 @@ The scout fires from cover, then offers a bargain: carry a sealed letter to the 
 `;
 
 export const getDatabase = () =>
-  openDB(DATABASE_NAME, 5, {
+  openDB(DATABASE_NAME, 7, {
     upgrade(database, oldVersion) {
       if (oldVersion < 1) {
         const store = database.createObjectStore(STORE_NAME, { keyPath: 'id' });
@@ -50,6 +52,12 @@ export const getDatabase = () =>
       if (oldVersion < 5) {
         const worldbuilding = database.createObjectStore(WORLDBUILDING_STORE_NAME, { keyPath: 'id' });
         worldbuilding.createIndex('updatedAt', 'updatedAt');
+      }
+      if (oldVersion < 6) {
+        database.createObjectStore(CAMPAIGN_DATA_SYNC_STORE_NAME, { keyPath: 'id' });
+      }
+      if (oldVersion < 7) {
+        database.createObjectStore(PRIVATE_MONSTER_STORE_NAME, { keyPath: 'id' });
       }
     }
   });
@@ -103,4 +111,58 @@ export async function replaceBrews(brews: Brew[]): Promise<void> {
 export async function deleteBrew(id: string): Promise<void> {
   const database = await getDatabase();
   await database.delete(STORE_NAME, id);
+}
+
+export function createCampaignDataSyncMetadata(): CampaignDataSyncMetadata {
+  return {
+    id: 'campaign-data',
+    lastLocalChangeAt: new Date().toISOString(),
+    syncState: 'local'
+  };
+}
+
+export async function getCampaignDataSyncMetadata(): Promise<CampaignDataSyncMetadata> {
+  const database = await getDatabase();
+  const stored = await database.get(CAMPAIGN_DATA_SYNC_STORE_NAME, 'campaign-data') as CampaignDataSyncMetadata | undefined;
+  return stored ?? createCampaignDataSyncMetadata();
+}
+
+export async function saveCampaignDataSyncMetadata(metadata: CampaignDataSyncMetadata): Promise<void> {
+  const database = await getDatabase();
+  await database.put(CAMPAIGN_DATA_SYNC_STORE_NAME, metadata);
+}
+
+export async function markCampaignDataChanged(): Promise<CampaignDataSyncMetadata> {
+  const current = await getCampaignDataSyncMetadata();
+  const next: CampaignDataSyncMetadata = {
+    ...current,
+    lastLocalChangeAt: new Date().toISOString(),
+    syncState: current.conflict ? 'conflict' : current.drive ? 'pending' : 'local'
+  };
+  await saveCampaignDataSyncMetadata(next);
+  return next;
+}
+
+export async function replaceCampaignData(
+  snapshot: CampaignDataSnapshot,
+  metadata: CampaignDataSyncMetadata
+): Promise<void> {
+  const database = await getDatabase();
+  const transaction = database.transaction(
+    [ENCOUNTER_STORE_NAME, PARTY_STORE_NAME, WORLDBUILDING_STORE_NAME, CAMPAIGN_DATA_SYNC_STORE_NAME],
+    'readwrite'
+  );
+  const encounters = transaction.objectStore(ENCOUNTER_STORE_NAME);
+  const partyMembers = transaction.objectStore(PARTY_STORE_NAME);
+  const worldbuilding = transaction.objectStore(WORLDBUILDING_STORE_NAME);
+  const metadataStore = transaction.objectStore(CAMPAIGN_DATA_SYNC_STORE_NAME);
+
+  await Promise.all([encounters.clear(), partyMembers.clear(), worldbuilding.clear()]);
+  await Promise.all([
+    ...snapshot.encounters.map((encounter: Encounter) => encounters.put(encounter)),
+    ...snapshot.partyMembers.map((member: PartyMember) => partyMembers.put(member)),
+    ...snapshot.worldbuildingEntries.map((entry: WorldbuildingEntry) => worldbuilding.put(entry)),
+    metadataStore.put(metadata)
+  ]);
+  await transaction.done;
 }

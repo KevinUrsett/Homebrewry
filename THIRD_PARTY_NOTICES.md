@@ -11,3 +11,7 @@ The font assets are used unchanged. Homebrewry's source code and renderer implem
 The catalogue includes records derived from *System Reference Document 5.2.1* © 2025 Wizards of the Coast LLC, available under the [Creative Commons Attribution 4.0 International license](https://creativecommons.org/licenses/by/4.0/). Source: [D&D System Reference Document v5.2.1](https://www.dndbeyond.com/srd/).
 
 The data import was sourced from the [`encounterplus/dnd5e`](https://github.com/encounterplus/dnd5e) data package at commit `03d67ee7c13c114bc4a9e907438bf3fd9b7cea00`, restricted to records carrying the `SRD-521` source marker. This project does not copy that repository's application code, UI, themes, fonts, images, or other app assets.
+
+## User-imported private monster archives
+
+Homebrewry can store validated user-supplied monster archives in the current browser only. Those records and any accompanying artwork are not included in this repository, deployment, Drive sync, or distributed application bundle. Importing a file does not establish a licence to redistribute its content; users remain responsible for having the necessary rights to the material they choose to import.

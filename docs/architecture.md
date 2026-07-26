@@ -39,11 +39,17 @@ Google Drive integration is disabled until `VITE_GOOGLE_CLIENT_ID` is supplied b
 
 `catalogue/references` owns the stable `[[category:id|label]]` syntax, URL conversion, and Markdown AST transformation. It is pure and data-provider independent. The preview resolves a reference only through a supplied read-only entry map; an absent entry is visibly marked rather than guessed. The CodeMirror editor uses the same parser for hover cards, and does not execute catalogue text or imported Markdown.
 
+## Private monster import boundary
+
+`lib/privateMonsterImport` accepts only a constrained Encounter+-style ZIP layout. Before decompression it validates the central directory, entry count and size limits, allowed paths, compression types, encryption, ZIP64 flags, and Unix symlinks. It extracts only `monsters.json`, parses it as plain UTF-8 JSON, limits record complexity, strips artwork references, and normalizes records into safe `CatalogueEntry` values. No archive code, markup, image, or script is executed.
+
+`lib/privateMonsterStore` stores those normalized monster entries in a dedicated IndexedDB store. They are combined with the read-only SRD provider in `App`, but never overwrite a bundled SRD ID. This store is intentionally excluded from brew documents, asset storage, campaign-data sync, Google Drive, and the public build. References therefore resolve only on devices where the user has explicitly imported the archive.
+
 ## Phase 6 encounter boundary
 
 `lib/encounterStore` persists `PartyMember` and `Encounter` records in dedicated IndexedDB stores. The current party is a reusable local roster; an encounter copies its members into independent combatants so later roster edits cannot alter a prepared or active fight. `lib/encounters` contains the pure operations for adding SRD monsters, updating combatants, sorting initiative, and advancing a turn.
 
-`lib/encounterReferences` owns the `[[encounter:id|label]]` syntax. The preview receives only a read-only encounter map and a callback, so the renderer still has no storage, OAuth, or Google Drive dependency. Encounter data is intentionally local-only in this first implementation; adding Drive support will require a separate, backward-compatible storage migration rather than changing existing brew files implicitly.
+`lib/encounterReferences` owns the `[[encounter:id|label]]` syntax. The preview receives only a read-only encounter map and a callback, so the renderer still has no storage, OAuth, or Google Drive dependency.
 
 The Outline placement flow derives a selected heading's section boundary from pure Markdown heading locations. It inserts a reference before the next heading at the same or higher level, rather than relying on the editor's cursor position.
 
@@ -51,4 +57,10 @@ The Outline placement flow derives a selected heading's section boundary from pu
 
 `lib/worldbuildingStore` persists versioned `WorldbuildingEntry` records in a dedicated IndexedDB store. `lib/worldbuilding` owns normalization, creation, and update rules for typed entries; it does not depend on a brew, the renderer, or Google Drive. The CodeMirror context menu passes only selected plain text and a user-chosen type to the Worldbuilding layer.
 
-Worldbuilding records are deliberately local-only in this first release. They do not rewrite Markdown, auto-link references, expose notes to the preview, or change the established Drive brew-file format. A future cross-reference or sync feature can extend this isolated model through an explicit, backward-compatible migration.
+Worldbuilding records do not rewrite Markdown, auto-link references, or expose notes to the preview.
+
+## Campaign-data sync boundary
+
+`lib/campaignData` validates the versioned campaign snapshot before remote data can replace local IndexedDB records. `lib/campaignSync` compares the companion Drive file revision with local change metadata, and never merges diverging records automatically. It stores Encounters, the current party, and Worldbuilding in one app-owned Drive file rather than modifying any brew document.
+
+An explicit conflict choice can keep Drive, keep both record sets, or replace Drive intentionally. `brewStore.replaceCampaignData` performs a transactional local replacement only after that result is known. The renderer continues to receive only read-only encounter data, never Drive or IndexedDB access.

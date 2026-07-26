@@ -1,14 +1,23 @@
 import { useMemo, useState } from 'react';
 import { worldbuildingKindLabels, worldbuildingKinds, touchWorldbuildingEntry } from '../lib/worldbuilding';
-import type { WorldbuildingEntry, WorldbuildingKind } from '../types';
+import type { SyncState, WorldbuildingEntry, WorldbuildingKind } from '../types';
 
 type WorldbuildingPanelProps = {
   entries: WorldbuildingEntry[];
   selectedId: string | null;
+  syncState: SyncState;
   onCreate: () => void;
   onDelete: (entry: WorldbuildingEntry) => void;
   onSelect: (id: string) => void;
   onUpdate: (entry: WorldbuildingEntry) => void;
+};
+
+const campaignSyncLabel: Record<SyncState, string> = {
+  local: 'Local only',
+  synced: 'Drive synced',
+  pending: 'Needs sync',
+  conflict: 'Drive conflict',
+  error: 'Sync error'
 };
 
 function aliasesFromInput(value: string): string[] {
@@ -95,7 +104,7 @@ function WorldbuildingEntryEditor({ entry, onDelete, onUpdate }: WorldbuildingEn
   );
 }
 
-export function WorldbuildingPanel({ entries, selectedId, onCreate, onDelete, onSelect, onUpdate }: WorldbuildingPanelProps) {
+export function WorldbuildingPanel({ entries, selectedId, syncState, onCreate, onDelete, onSelect, onUpdate }: WorldbuildingPanelProps) {
   const [query, setQuery] = useState('');
   const [kind, setKind] = useState<WorldbuildingKind | 'all'>('all');
   const filtered = useMemo(() => {
@@ -119,7 +128,10 @@ export function WorldbuildingPanel({ entries, selectedId, onCreate, onDelete, on
           <h1>Worldbuilding</h1>
           <p>Capture campaign places, people, history, and factions independently from each brew.</p>
         </div>
-        <button className="primary-button" onClick={onCreate} type="button">New entry</button>
+        <div className="page-header-actions">
+          <span className={`sync-badge sync-${syncState}`}>{campaignSyncLabel[syncState]}</span>
+          <button className="primary-button" onClick={onCreate} type="button">New entry</button>
+        </div>
       </header>
 
       <section className="worldbuilding-workspace">

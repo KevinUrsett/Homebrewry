@@ -8,7 +8,10 @@ type WorldbuildingReferenceDetailsProps = {
 };
 
 function excerpt(notes: string, compact: boolean): string {
-  const value = notes.trim().replace(/\s+/g, ' ');
+  const value = notes
+    .replace(/\[\[[a-z][a-z0-9-]*:[0-9a-f-]+\|([^\]\r\n]+)\]\]/gi, '$1')
+    .trim()
+    .replace(/\s+/g, ' ');
   if (!compact || value.length <= 360) return value;
   return `${value.slice(0, 357).trimEnd()}…`;
 }

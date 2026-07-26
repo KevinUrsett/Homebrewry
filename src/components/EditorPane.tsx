@@ -18,7 +18,8 @@ type EditorPaneProps = {
   customCatalogueCategories: readonly CustomCatalogueCategory[];
   onOpenCatalogue: () => void;
   onOpenEncounters: () => void;
-  onAddWorldbuilding: (name: string, kind: WorldbuildingKind) => void;
+  onCreateWorldbuildingReference: (name: string, kind: WorldbuildingKind) => Promise<string | null> | string | null;
+  onCreateCatalogueReference: (name: string, category: CatalogueCategory) => Promise<string | null> | string | null;
   worldbuildingTypes: readonly WorldbuildingType[];
   onConvertHomebrewery: () => void;
   onSelectionChange: (selection: { start: number; end: number }) => void;
@@ -46,7 +47,8 @@ export function EditorPane({
   customCatalogueCategories,
   onOpenCatalogue,
   onOpenEncounters,
-  onAddWorldbuilding,
+  onCreateWorldbuildingReference,
+  onCreateCatalogueReference,
   worldbuildingTypes,
   onConvertHomebrewery,
   onSelectionChange,
@@ -111,7 +113,9 @@ export function EditorPane({
       <MarkdownEditor
         content={content}
         onChange={onContentChange}
-        onAddWorldbuilding={onAddWorldbuilding}
+        customCatalogueCategories={customCatalogueCategories}
+        onCreateCatalogueReference={onCreateCatalogueReference}
+        onCreateWorldbuildingReference={onCreateWorldbuildingReference}
         onKeyDown={onKeyDown}
         onSelectionChange={onSelectionChange}
         worldbuildingTypes={worldbuildingTypes}

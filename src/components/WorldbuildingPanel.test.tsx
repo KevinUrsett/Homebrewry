@@ -39,15 +39,22 @@ describe('WorldbuildingPanel', () => {
     await act(async () => {
       root.render(
         <WorldbuildingPanel
+          catalogue={new Map()}
+          catalogueCategories={[]}
           entries={[entry]}
           onCreate={vi.fn()}
           onCreateType={vi.fn()}
+          onCreateCatalogueReference={vi.fn()}
+          onCreateWorldbuildingReference={vi.fn()}
           onDelete={vi.fn()}
+          onReferenceOpen={vi.fn()}
           onSelect={vi.fn()}
           onUpdate={onUpdate}
+          onWorldbuildingOpen={vi.fn()}
           selectedId={entry.id}
           syncState="synced"
           types={[]}
+          worldbuilding={new Map([[entry.id, entry]])}
         />
       );
     });

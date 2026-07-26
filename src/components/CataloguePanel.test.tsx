@@ -56,8 +56,11 @@ describe('CataloguePanel', () => {
           error={null}
           loading={false}
           onDeleteCustomMonster={vi.fn().mockResolvedValue(undefined)}
+          onCreateCatalogueReference={vi.fn()}
+          onCreateWorldbuildingReference={vi.fn()}
           onInsertReference={vi.fn()}
           onOpenPrivateMonsterImport={vi.fn()}
+          onReferenceOpen={vi.fn()}
           onSaveCustomMonster={vi.fn().mockResolvedValue(undefined)}
           onSaveCustomEntry={vi.fn().mockResolvedValue(undefined)}
           onDeleteCustomEntry={vi.fn().mockResolvedValue(undefined)}
@@ -66,6 +69,9 @@ describe('CataloguePanel', () => {
           customCategories={[]}
           privateMonsterCount={0}
           selectedEntry={dragon}
+          onWorldbuildingOpen={vi.fn()}
+          worldbuilding={new Map()}
+          worldbuildingTypes={[]}
         />
       );
     });
@@ -88,8 +94,11 @@ describe('CataloguePanel', () => {
           error={null}
           loading={false}
           onDeleteCustomMonster={vi.fn().mockResolvedValue(undefined)}
+          onCreateCatalogueReference={vi.fn()}
+          onCreateWorldbuildingReference={vi.fn()}
           onInsertReference={vi.fn()}
           onOpenPrivateMonsterImport={vi.fn()}
+          onReferenceOpen={vi.fn()}
           onSaveCustomMonster={onSaveCustomMonster}
           onSaveCustomEntry={vi.fn().mockResolvedValue(undefined)}
           onDeleteCustomEntry={vi.fn().mockResolvedValue(undefined)}
@@ -98,6 +107,9 @@ describe('CataloguePanel', () => {
           customCategories={[]}
           privateMonsterCount={0}
           selectedEntry={aboleth}
+          onWorldbuildingOpen={vi.fn()}
+          worldbuilding={new Map()}
+          worldbuildingTypes={[]}
         />
       );
     });

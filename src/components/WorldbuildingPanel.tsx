@@ -1,25 +1,30 @@
 import { useMemo, useState, type FormEvent } from 'react';
+import type { CatalogueCategory, CustomCatalogueCategory } from '../catalogue/types';
+import { MarkdownEditor } from './MarkdownEditor';
+import { ReferenceContent } from './ReferenceContent';
+import { campaignStoragePresentation } from '../lib/campaignStorageStatus';
 import { worldbuildingKindLabel, worldbuildingKindLabels, worldbuildingKinds, touchWorldbuildingEntry } from '../lib/worldbuilding';
+import type { CatalogueEntry } from '../catalogue/types';
 import type { SyncState, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from '../types';
 
 type WorldbuildingPanelProps = {
   entries: WorldbuildingEntry[];
   selectedId: string | null;
   syncState: SyncState;
+  hasDriveBackup?: boolean;
   types: WorldbuildingType[];
+  catalogue: ReadonlyMap<string, CatalogueEntry>;
+  worldbuilding: ReadonlyMap<string, WorldbuildingEntry>;
+  catalogueCategories: readonly CustomCatalogueCategory[];
   onCreate: () => void;
   onCreateType: (name: string) => string | null;
+  onCreateWorldbuildingReference: (name: string, kind: WorldbuildingKind) => Promise<string | null> | string | null;
+  onCreateCatalogueReference: (name: string, category: CatalogueCategory) => Promise<string | null> | string | null;
   onDelete: (entry: WorldbuildingEntry) => void;
   onSelect: (id: string) => void;
   onUpdate: (entry: WorldbuildingEntry) => void;
-};
-
-const campaignSyncLabel: Record<SyncState, string> = {
-  local: 'Local only',
-  synced: 'Drive synced',
-  pending: 'Needs sync',
-  conflict: 'Drive conflict',
-  error: 'Sync error'
+  onReferenceOpen: (entry: CatalogueEntry) => void;
+  onWorldbuildingOpen: (entry: WorldbuildingEntry) => void;
 };
 
 function aliasesFromInput(value: string): string[] {
@@ -40,11 +45,14 @@ function toDraft(entry: WorldbuildingEntry): EntryDraft {
 type EntryEditorProps = {
   entry: WorldbuildingEntry;
   types: readonly WorldbuildingType[];
+  catalogueCategories: readonly CustomCatalogueCategory[];
   onCancel: () => void;
   onSave: (entry: WorldbuildingEntry) => void;
+  onCreateWorldbuildingReference: (name: string, kind: WorldbuildingKind) => Promise<string | null> | string | null;
+  onCreateCatalogueReference: (name: string, category: CatalogueCategory) => Promise<string | null> | string | null;
 };
 
-function WorldbuildingEntryEditor({ entry, types, onCancel, onSave }: EntryEditorProps) {
+function WorldbuildingEntryEditor({ entry, types, catalogueCategories, onCancel, onSave, onCreateWorldbuildingReference, onCreateCatalogueReference }: EntryEditorProps) {
   const [draft, setDraft] = useState<EntryDraft>(() => toDraft(entry));
   const options = useMemo(
     () => [
@@ -79,14 +87,20 @@ function WorldbuildingEntryEditor({ entry, types, onCancel, onSave }: EntryEdito
           />
         </label>
       </div>
-      <label className="worldbuilding-notes-label">
-        Notes
-        <textarea
-          onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))}
-          placeholder="Lore, secrets, relationships, adventure hooks…"
-          value={draft.notes}
+      <div className="worldbuilding-notes-label">
+        <span>Notes</span>
+        <MarkdownEditor
+          ariaLabel="Worldbuilding notes"
+          compact
+          content={draft.notes}
+          customCatalogueCategories={catalogueCategories}
+          onChange={(notes) => setDraft((current) => ({ ...current, notes }))}
+          onCreateCatalogueReference={onCreateCatalogueReference}
+          onCreateWorldbuildingReference={onCreateWorldbuildingReference}
+          worldbuildingTypes={types}
         />
-      </label>
+        <small>Right-click selected text to link it to Worldbuilding or the catalogue.</small>
+      </div>
       <div className="worldbuilding-entry-footer">
         <span>Changes are saved only when you choose Save.</span>
         <div className="worldbuilding-edit-actions">
@@ -101,11 +115,16 @@ function WorldbuildingEntryEditor({ entry, types, onCancel, onSave }: EntryEdito
 type EntryPreviewProps = {
   entry: WorldbuildingEntry;
   types: readonly WorldbuildingType[];
+  catalogue: ReadonlyMap<string, CatalogueEntry>;
+  worldbuilding: ReadonlyMap<string, WorldbuildingEntry>;
+  catalogueCategories: readonly CustomCatalogueCategory[];
   onDelete: (entry: WorldbuildingEntry) => void;
   onEdit: () => void;
+  onReferenceOpen: (entry: CatalogueEntry) => void;
+  onWorldbuildingOpen: (entry: WorldbuildingEntry) => void;
 };
 
-function WorldbuildingEntryPreview({ entry, types, onDelete, onEdit }: EntryPreviewProps) {
+function WorldbuildingEntryPreview({ entry, types, catalogue, worldbuilding, catalogueCategories, onDelete, onEdit, onReferenceOpen, onWorldbuildingOpen }: EntryPreviewProps) {
   return (
     <article className="worldbuilding-entry worldbuilding-entry-preview" aria-label={entry.name}>
       <header className="worldbuilding-preview-header">
@@ -118,7 +137,17 @@ function WorldbuildingEntryPreview({ entry, types, onDelete, onEdit }: EntryPrev
       </header>
       <section className="worldbuilding-preview-notes">
         <h3>Notes</h3>
-        {entry.notes.trim() ? <div>{entry.notes}</div> : <p>No notes yet.</p>}
+        {entry.notes.trim() ? (
+          <ReferenceContent
+            catalogue={catalogue}
+            catalogueCategories={catalogueCategories}
+            content={entry.notes}
+            onReferenceOpen={onReferenceOpen}
+            onWorldbuildingOpen={onWorldbuildingOpen}
+            worldbuilding={worldbuilding}
+            worldbuildingTypes={types}
+          />
+        ) : <p>No notes yet.</p>}
       </section>
       <div className="worldbuilding-entry-footer">
         <span>Last updated {new Date(entry.updatedAt).toLocaleString()}</span>
@@ -128,7 +157,7 @@ function WorldbuildingEntryPreview({ entry, types, onDelete, onEdit }: EntryPrev
   );
 }
 
-export function WorldbuildingPanel({ entries, selectedId, syncState, types, onCreate, onCreateType, onDelete, onSelect, onUpdate }: WorldbuildingPanelProps) {
+export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBackup = false, types, catalogue, worldbuilding, catalogueCategories, onCreate, onCreateType, onCreateWorldbuildingReference, onCreateCatalogueReference, onDelete, onSelect, onUpdate, onReferenceOpen, onWorldbuildingOpen }: WorldbuildingPanelProps) {
   const [query, setQuery] = useState('');
   const [kind, setKind] = useState<WorldbuildingKind | 'all'>('all');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -156,6 +185,7 @@ export function WorldbuildingPanel({ entries, selectedId, syncState, types, onCr
   );
 
   const editing = editingId === selected?.id;
+  const storage = campaignStoragePresentation(syncState, hasDriveBackup);
 
   const selectEntry = (id: string) => {
     if (editing && id !== selected?.id && !window.confirm('Discard unsaved Worldbuilding changes?')) return;
@@ -185,7 +215,7 @@ export function WorldbuildingPanel({ entries, selectedId, syncState, types, onCr
           <p>Capture campaign places, people, history, and factions independently from each brew.</p>
         </div>
         <div className="page-header-actions">
-          <span className={`sync-badge sync-${syncState}`}>{campaignSyncLabel[syncState]}</span>
+          <span className={`sync-badge sync-${storage.tone}`} title={storage.title}>{storage.label}</span>
           <button onClick={() => setAddingType((open) => !open)} type="button">New type</button>
           <button className="primary-button" onClick={onCreate} type="button">New entry</button>
         </div>
@@ -224,8 +254,8 @@ export function WorldbuildingPanel({ entries, selectedId, syncState, types, onCr
         <section className="worldbuilding-details" aria-live="polite">
           {selected ? (
             editing
-              ? <WorldbuildingEntryEditor entry={selected} key={selected.id} onCancel={() => setEditingId(null)} onSave={(entry) => { onUpdate(entry); setEditingId(null); }} types={types} />
-              : <WorldbuildingEntryPreview entry={selected} onDelete={onDelete} onEdit={() => setEditingId(selected.id)} types={types} />
+              ? <WorldbuildingEntryEditor catalogueCategories={catalogueCategories} entry={selected} key={selected.id} onCancel={() => setEditingId(null)} onCreateCatalogueReference={onCreateCatalogueReference} onCreateWorldbuildingReference={onCreateWorldbuildingReference} onSave={(entry) => { onUpdate(entry); setEditingId(null); }} types={types} />
+              : <WorldbuildingEntryPreview catalogue={catalogue} catalogueCategories={catalogueCategories} entry={selected} onDelete={onDelete} onEdit={() => setEditingId(selected.id)} onReferenceOpen={onReferenceOpen} onWorldbuildingOpen={onWorldbuildingOpen} types={types} worldbuilding={worldbuilding} />
           ) : (
             <p className="empty-panel">Create an entry, or right-click selected text in the editor to add it directly.</p>
           )}

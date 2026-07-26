@@ -68,7 +68,7 @@ The preview displays only `Aboleth`; hover it on desktop to inspect a reference 
 
 ### Custom catalogue categories and entries
 
-Use **Catalogue → New category** to add campaign-owned categories such as deities, locations, or factions, then use **New entry** to add an entry in the selected category. Custom categories and entries sync with campaign data and use the same stable reference format as SRD entries. Category identifiers remain stable even if their display names later change, so existing brew references keep working.
+Use **Catalogue → New category** to add campaign-owned categories such as deities, locations, or factions, then use **New entry** to add an entry in the selected category. Custom categories and entries sync with campaign data and use the same stable reference format as SRD entries. Category identifiers remain stable even if their display names later change, so existing brew references keep working. In a campaign-owned entry or custom monster description, right-click selected text to link it to another Worldbuilding record or catalogue entry; its preview resolves the link safely just like a brew preview.
 
 ### Custom monsters
 
@@ -96,19 +96,19 @@ In Preview, the reference becomes a combat card. Select it to open that encounte
 
 The **Worldbuilding** tab is a local campaign reference notebook, separate from individual brews. Create entries for towns, roads, historical figures, characters, factions, landmarks, regions, organisations, events, or campaign-created types. Entries support aliases and private notes, and can be searched or filtered by type. Entries open in a read-friendly preview by default; choose **Edit** and then **Save** to change them, or **Cancel** to discard a draft.
 
-In the source editor, select a word or phrase and right-click it (or right-click a single word). Choose **Add “…” as** and an entry type to create or reuse a Worldbuilding record and replace the selection with a stable reference:
+In the source editor, select a word or phrase and right-click it (or right-click a single word). Choose **Link “…” as** and an entry type to create or reuse a Worldbuilding record and replace the selection with a stable reference:
 
 ```markdown
 [[world:c674b91f-94c8-5c80-9d1d-31bef50bc779|Sund]]
 ```
 
-The editor presents that source as a compact bold reference chip. Preview displays the readable label, shows the entry’s notes on desktop hover, and opens a detail dialog on click/tap with **Open in Worldbuilding**.
+The editor presents that source as a compact bold reference chip. Preview displays the readable label, shows the entry’s notes on desktop hover, and opens a detail dialog on click/tap with **Open in Worldbuilding**. The Worldbuilding **Notes** editor has the same right-click menu, so one entry can safely link to another—for example, a historical figure can link to a Region—or to a catalogue entry without putting that context in a particular brew.
 
 ## Campaign data sync
 
 Encounters, the current party roster, Worldbuilding, Worldbuilding type definitions, custom catalogue categories, and custom catalogue entries (including custom monster stat blocks) sync through one separate, versioned Drive file: `Homebrewry campaign data.homebrewry.json`. Brew files remain unchanged and backward compatible.
 
-After you connect Drive, campaign changes are backed up automatically shortly after they are saved locally. Connecting Drive on another device also checks for and loads the companion file, so the current party and encounters follow you without a separate refresh. **Refresh & sync** remains available to back up brews and images immediately. If both devices change campaign data before syncing, Homebrewry stops and asks whether to keep Drive, keep both record sets, or replace Drive intentionally. No campaign records are silently overwritten.
+After you connect Drive, campaign changes are backed up automatically shortly after they are saved locally. Connecting Drive on another device also checks for and loads the companion file, so the current party and encounters follow you without a separate refresh. **Drive backed up** means that companion file exists; **Drive sync pending** means a local change is waiting to upload; **Not yet backed up** means no cloud copy has been created. Access tokens remain memory-only, so a reload may show **Reconnect Drive** before the next refresh. **Refresh & sync** remains available to back up brews and images immediately. If both devices change campaign data before syncing, Homebrewry stops and asks whether to keep Drive, keep both record sets, or replace Drive intentionally. No campaign records are silently overwritten.
 
 Private monster archives use their own private Drive companion file, so a large imported catalogue is not re-uploaded with every combat update. The same revision checks prevent one device from silently replacing another device's imported catalogue.
 

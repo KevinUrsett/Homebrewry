@@ -5,11 +5,13 @@ import { entrySummary } from '../catalogue/presentation';
 import {
   catalogueCategories,
   catalogueCategoryLabel,
+  catalogueEntryKey,
   type CatalogueCategory,
   type CatalogueEntry,
   type CustomCatalogueCategory,
   type CustomCatalogueEntry
 } from '../catalogue/types';
+import type { WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from '../types';
 import { CustomCatalogueEntryEditor } from './CustomCatalogueEntryEditor';
 import { CustomMonsterEditor } from './CustomMonsterEditor';
 import { CatalogueEntryDetails } from './CatalogueEntryDetails';
@@ -29,6 +31,12 @@ type CataloguePanelProps = {
   privateMonsterCount: number;
   customEntryCount: number;
   selectedEntry?: CatalogueEntry | null;
+  worldbuilding: ReadonlyMap<string, WorldbuildingEntry>;
+  worldbuildingTypes: readonly WorldbuildingType[];
+  onCreateWorldbuildingReference: (name: string, kind: WorldbuildingKind) => Promise<string | null> | string | null;
+  onCreateCatalogueReference: (name: string, category: CatalogueCategory) => Promise<string | null> | string | null;
+  onReferenceOpen: (entry: CatalogueEntry) => void;
+  onWorldbuildingOpen: (entry: WorldbuildingEntry) => void;
 };
 
 const MAX_VISIBLE_RESULTS = 250;
@@ -57,7 +65,13 @@ export function CataloguePanel({
   customCategories,
   privateMonsterCount,
   customEntryCount,
-  selectedEntry
+  selectedEntry,
+  worldbuilding,
+  worldbuildingTypes,
+  onCreateWorldbuildingReference,
+  onCreateCatalogueReference,
+  onReferenceOpen,
+  onWorldbuildingOpen
 }: CataloguePanelProps) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<CatalogueCategory | 'all'>(() => selectedEntry?.category ?? 'monster');
@@ -224,20 +238,28 @@ export function CataloguePanel({
         <section className="catalogue-details" aria-live="polite">
           {monsterEditor ? (
             <CustomMonsterEditor
+              customCategories={customCategories}
               entry={monsterEditor.entry}
               key={`${monsterEditor.entry.id}-${monsterEditor.entry.version}`}
               mode={monsterEditor.mode}
               onCancel={() => setMonsterEditor(null)}
+              onCreateCatalogueReference={onCreateCatalogueReference}
+              onCreateWorldbuildingReference={onCreateWorldbuildingReference}
               onSave={onSaveCustomMonster}
+              worldbuildingTypes={worldbuildingTypes}
             />
           ) : entryEditor ? (
             <CustomCatalogueEntryEditor
               categoryLabel={catalogueCategoryLabel(entryEditor.entry.category, customCategories)}
+              customCategories={customCategories}
               entry={entryEditor.entry}
               key={`${entryEditor.entry.id}-${entryEditor.entry.version}`}
               mode={entryEditor.mode}
               onCancel={() => setEntryEditor(null)}
+              onCreateCatalogueReference={onCreateCatalogueReference}
+              onCreateWorldbuildingReference={onCreateWorldbuildingReference}
               onSave={onSaveCustomEntry}
+              worldbuildingTypes={worldbuildingTypes}
             />
           ) : selected ? (
             <>
@@ -262,6 +284,14 @@ export function CataloguePanel({
                 }
                 categoryLabel={catalogueCategoryLabel(selected.category, customCategories)}
                 entry={selected}
+                references={{
+                  catalogue: new Map(entries.map((entry) => [catalogueEntryKey(entry), entry])),
+                  catalogueCategories: customCategories,
+                  onReferenceOpen,
+                  onWorldbuildingOpen,
+                  worldbuilding,
+                  worldbuildingTypes
+                }}
               />
               {actionError && <p className="catalogue-error catalogue-inline-error" role="alert">{actionError}</p>}
             </>

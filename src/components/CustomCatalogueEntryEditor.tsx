@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import type { CustomCatalogueEntry } from '../catalogue/types';
+import type { CatalogueCategory, CustomCatalogueCategory, CustomCatalogueEntry } from '../catalogue/types';
+import { MarkdownEditor } from './MarkdownEditor';
+import type { WorldbuildingKind, WorldbuildingType } from '../types';
 
 type CustomCatalogueEntryEditorProps = {
   categoryLabel: string;
@@ -7,9 +9,13 @@ type CustomCatalogueEntryEditorProps = {
   mode: 'create' | 'edit';
   onCancel: () => void;
   onSave: (entry: CustomCatalogueEntry) => Promise<void>;
+  customCategories: readonly CustomCatalogueCategory[];
+  worldbuildingTypes: readonly WorldbuildingType[];
+  onCreateWorldbuildingReference: (name: string, kind: WorldbuildingKind) => Promise<string | null> | string | null;
+  onCreateCatalogueReference: (name: string, category: CatalogueCategory) => Promise<string | null> | string | null;
 };
 
-export function CustomCatalogueEntryEditor({ categoryLabel, entry, mode, onCancel, onSave }: CustomCatalogueEntryEditorProps) {
+export function CustomCatalogueEntryEditor({ categoryLabel, entry, mode, onCancel, onSave, customCategories, worldbuildingTypes, onCreateWorldbuildingReference, onCreateCatalogueReference }: CustomCatalogueEntryEditorProps) {
   const [name, setName] = useState(entry.name);
   const [type, setType] = useState(entry.type ?? '');
   const [description, setDescription] = useState(entry.description);
@@ -38,7 +44,20 @@ export function CustomCatalogueEntryEditor({ categoryLabel, entry, mode, onCance
       </header>
       <label>Name<input aria-label="Catalogue entry name" onChange={(event) => setName(event.target.value)} value={name} /></label>
       <label>Type or subtitle<input onChange={(event) => setType(event.target.value)} placeholder="Optional classification" value={type} /></label>
-      <label>Description<textarea onChange={(event) => setDescription(event.target.value)} placeholder="Rules, lore, mechanics, or notes…" value={description} /></label>
+      <div className="custom-catalogue-description">
+        <span>Description</span>
+        <MarkdownEditor
+          ariaLabel="Catalogue entry description"
+          compact
+          content={description}
+          customCatalogueCategories={customCategories}
+          onChange={setDescription}
+          onCreateCatalogueReference={onCreateCatalogueReference}
+          onCreateWorldbuildingReference={onCreateWorldbuildingReference}
+          worldbuildingTypes={worldbuildingTypes}
+        />
+        <small>Right-click selected text to link it to Worldbuilding or the catalogue.</small>
+      </div>
       {error && <p className="custom-monster-error" role="alert">{error}</p>}
       <div className="custom-monster-actions">
         <button disabled={saving} onClick={onCancel} type="button">Cancel</button>

@@ -297,32 +297,41 @@ export default function App() {
     window.requestAnimationFrame(() => editorRef.current?.focus(cursor));
   };
 
-  const insertSelectedCatalogueReference = async (category: CatalogueCategory) => {
-    if (!activeBrew) return;
-    const editor = editorRef.current;
-    const selection = editor?.getSelection() ?? selectionRef.current;
-    const selectedText = activeBrew.content.slice(selection.start, selection.end);
+  const createCatalogueReference = async (selectedText: string, category: CatalogueCategory): Promise<string | null> => {
     let entry = findCatalogueEntryByName(catalogueEntries, category, selectedText);
 
     if (!entry) {
       if (!selectedText.trim()) {
         setSaveState('Select text before adding a reference');
-        window.requestAnimationFrame(() => editorRef.current?.focus(selection.start));
-        return;
+        return null;
       }
       const customEntry = createCustomCatalogueEntry(selectedText, category);
       try {
         const saved = await saveCustomCatalogueEntry(customEntry);
-        setCustomCatalogueEntries((current) => [...current, saved.entry]);
+        const nextEntries = [...customCatalogueEntries, saved.entry];
+        campaignRecordsRef.current = { ...campaignRecordsRef.current, customCatalogueEntries: nextEntries };
+        setCustomCatalogueEntries(nextEntries);
         noteCampaignDataSaved(saved.metadata, 'Reference saved locally');
         entry = saved.entry;
       } catch {
         setSaveState(`Could not save the ${catalogueCategoryLabel(category, customCatalogueCategories)} reference`);
-        return;
+        return null;
       }
     }
 
-    const reference = formatCatalogueReference(entry, selectedText);
+    return formatCatalogueReference(entry, selectedText);
+  };
+
+  const insertSelectedCatalogueReference = async (category: CatalogueCategory) => {
+    if (!activeBrew) return;
+    const editor = editorRef.current;
+    const selection = editor?.getSelection() ?? selectionRef.current;
+    const selectedText = activeBrew.content.slice(selection.start, selection.end);
+    const reference = await createCatalogueReference(selectedText, category);
+    if (!reference) {
+      window.requestAnimationFrame(() => editorRef.current?.focus(selection.start));
+      return;
+    }
     const next = `${activeBrew.content.slice(0, selection.start)}${reference}${activeBrew.content.slice(selection.end)}`;
     updateContent(next);
 
@@ -448,23 +457,16 @@ export default function App() {
     setWorldbuildingSelectedId(entry.id);
   };
 
-  const addWorldbuildingFromEditor = (name: string, kind: WorldbuildingKind) => {
-    if (!activeBrew) return;
-    const editor = editorRef.current;
-    const selection = editor?.getSelection() ?? selectionRef.current;
-    const selectedText = activeBrew.content.slice(selection.start, selection.end);
+  const createWorldbuildingReference = (name: string, kind: WorldbuildingKind): string | null => {
+    const selectedText = name;
     const entry = findWorldbuildingEntryByName(worldbuildingEntries, name) ?? createWorldbuildingEntry(name, kind);
     const isNew = !worldbuildingEntries.some((item) => item.id === entry.id);
     if (isNew) persistWorldbuildingEntry(entry);
     setWorldbuildingSelectedId(entry.id);
 
     const reference = formatWorldbuildingReference(entry, selectedText || entry.name);
-    const next = `${activeBrew.content.slice(0, selection.start)}${reference}${activeBrew.content.slice(selection.end)}`;
-    updateContent(next);
-    const cursor = selection.start + reference.length;
-    selectionRef.current = { start: cursor, end: cursor };
-    window.requestAnimationFrame(() => editorRef.current?.focus(cursor));
-    setSaveState(isNew ? `Added “${entry.name}” and linked it in this brew` : `Linked existing Worldbuilding entry “${entry.name}”`);
+    setSaveState(isNew ? `Added “${entry.name}” and linked it in this source` : `Linked existing Worldbuilding entry “${entry.name}”`);
+    return reference;
   };
 
   const createNewWorldbuildingType = (name: string): string | null => {
@@ -1128,7 +1130,7 @@ export default function App() {
         <div className="brand-lockup">
           <span className="brand-mark" aria-hidden>✦</span>
           <span>Homebrewry</span>
-          <span className="phase-badge">Phase 7 beta</span>
+          <span className="phase-badge">Phase 8 beta</span>
         </div>
         <div className="desktop-view-controls" aria-label="Preview layout">
           {(['editor', 'split', 'preview'] as ViewMode[]).map((mode) => (
@@ -1159,7 +1161,7 @@ export default function App() {
             </button>
           ) : (
             <button onClick={() => void connectDrive()} type="button" disabled={!isGoogleConfigured()}>
-              Connect Drive
+              {campaignDataSync?.drive || privateMonsterSync?.drive ? 'Reconnect Drive' : 'Connect Drive'}
             </button>
           )}
         </div>
@@ -1206,18 +1208,25 @@ export default function App() {
           customEntryCount={customCatalogueEntries.length}
           customCategories={customCatalogueCategories}
           onCreateCustomCategory={createNewCustomCatalogueCategory}
+          onCreateCatalogueReference={createCatalogueReference}
+          onCreateWorldbuildingReference={createWorldbuildingReference}
           onDeleteCustomEntry={deleteGenericCustomEntry}
           onDeleteCustomMonster={deleteCustomMonster}
           onInsertReference={insertCatalogueReference}
           onOpenPrivateMonsterImport={() => setPrivateMonsterImportOpen(true)}
+          onReferenceOpen={setReferenceEntry}
           onSaveCustomEntry={saveGenericCustomEntry}
           onSaveCustomMonster={saveCustomMonster}
+          onWorldbuildingOpen={setWorldbuildingReferenceEntry}
           privateMonsterCount={privateMonsterEntries.length}
           selectedEntry={catalogueSelection}
+          worldbuilding={worldbuildingMap}
+          worldbuildingTypes={worldbuildingTypes}
         />
       ) : encountersOpen ? (
         <EncounterPanel
           encounters={encounters}
+          hasDriveBackup={Boolean(campaignDataSync?.drive)}
           loading={catalogueLoading}
           monsters={catalogueEntries.filter((entry) => entry.category === 'monster')}
           syncState={campaignDataSync?.syncState ?? 'local'}
@@ -1234,15 +1243,23 @@ export default function App() {
         />
       ) : worldbuildingOpen ? (
         <WorldbuildingPanel
+          catalogue={catalogueMap}
+          catalogueCategories={customCatalogueCategories}
           entries={worldbuildingEntries}
+          hasDriveBackup={Boolean(campaignDataSync?.drive)}
           syncState={campaignDataSync?.syncState ?? 'local'}
           onCreate={createNewWorldbuildingEntry}
           onCreateType={createNewWorldbuildingType}
+          onCreateCatalogueReference={createCatalogueReference}
+          onCreateWorldbuildingReference={createWorldbuildingReference}
           onDelete={deleteWorldbuilding}
+          onReferenceOpen={setReferenceEntry}
           onSelect={setWorldbuildingSelectedId}
           onUpdate={persistWorldbuildingEntry}
+          onWorldbuildingOpen={setWorldbuildingReferenceEntry}
           selectedId={worldbuildingSelectedId}
           types={worldbuildingTypes}
+          worldbuilding={worldbuildingMap}
         />
       ) : (
         <div className={`workspace view-${viewMode}`}>
@@ -1287,7 +1304,8 @@ export default function App() {
               }}
               onOpenCatalogue={openCatalogue}
               onOpenEncounters={openEncounters}
-              onAddWorldbuilding={addWorldbuildingFromEditor}
+              onCreateCatalogueReference={createCatalogueReference}
+              onCreateWorldbuildingReference={createWorldbuildingReference}
               worldbuildingTypes={worldbuildingTypes}
               onConvertHomebrewery={convertHomebreweryFormatting}
               onRedo={redo}
@@ -1391,7 +1409,22 @@ export default function App() {
           onImport={importMonsterArchive}
         />
       )}
-      {referenceEntry && <ReferenceDialog categoryLabel={catalogueCategoryLabel(referenceEntry.category, customCatalogueCategories)} entry={referenceEntry} onClose={() => setReferenceEntry(null)} onOpenInCatalogue={openReferenceInCatalogue} />}
+      {referenceEntry && (
+        <ReferenceDialog
+          categoryLabel={catalogueCategoryLabel(referenceEntry.category, customCatalogueCategories)}
+          entry={referenceEntry}
+          onClose={() => setReferenceEntry(null)}
+          onOpenInCatalogue={openReferenceInCatalogue}
+          references={{
+            catalogue: catalogueMap,
+            catalogueCategories: customCatalogueCategories,
+            onReferenceOpen: setReferenceEntry,
+            onWorldbuildingOpen: setWorldbuildingReferenceEntry,
+            worldbuilding: worldbuildingMap,
+            worldbuildingTypes
+          }}
+        />
+      )}
       {worldbuildingReferenceEntry && (
         <WorldbuildingReferenceDialog
           entry={worldbuildingReferenceEntry}

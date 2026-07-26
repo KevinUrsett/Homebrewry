@@ -112,7 +112,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .missing-asset { background: #f3d3cd; color: #8a2f27; display: inline-block; font-family: Inter, sans-serif; font-size: .82rem; padding: 6px 8px; }
 .missing-reference { color: #8a2f27; text-decoration: underline dashed; }
 .catalogue-reference-wrap, .worldbuilding-reference-wrap { display: inline-block; position: relative; }
-.catalogue-reference-link, .worldbuilding-reference-link { background: transparent; border: 0; border-bottom: 1px dashed var(--brew-accent); color: var(--brew-accent); font: inherit; font-weight: 700; padding: 0; text-decoration: none; }
+.catalogue-reference-link, .worldbuilding-reference-link { background: transparent; border: 0; border-bottom: 1px dashed var(--brew-accent, #7a2f27); color: var(--brew-accent, #7a2f27); font: inherit; font-weight: 700; padding: 0; text-decoration: none; }
 .catalogue-reference-link:hover, .catalogue-reference-link:focus-visible, .worldbuilding-reference-link:hover, .worldbuilding-reference-link:focus-visible { color: #5d2f26; }
 .worldbuilding-reference-link { border-bottom-style: dotted; color: #5e4c81; }
 .catalogue-reference-tooltip, .worldbuilding-reference-tooltip { background: #fffaf0; border: 1px solid #a57a42; box-shadow: 0 12px 28px rgb(45 28 16 / 28%); color: #39291f; left: 0; max-height: min(440px, 70vh); min-width: 250px; overflow: auto; padding: 11px; position: absolute; top: calc(100% + 7px); width: min(360px, 70vw); z-index: 4; }
@@ -242,7 +242,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .custom-monster-editor h2 { color: #6a2f26; font-family: "Nodesto Caps Condensed", Georgia, serif; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: .025em; line-height: 1; margin: 0; }
 .custom-monster-editor header > p:not(.eyebrow) { color: #71553e; line-height: 1.5; margin: 8px 0 0; }
 .custom-monster-core-grid { display: grid; gap: 11px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.custom-monster-core-grid label, .custom-monster-description, .custom-monster-features label { color: #71553e; display: grid; font-size: .72rem; font-weight: 800; gap: 5px; letter-spacing: .05em; text-transform: uppercase; }
+.custom-monster-core-grid label, .custom-monster-description, .custom-monster-features label, .custom-catalogue-description { color: #71553e; display: grid; font-size: .72rem; font-weight: 800; gap: 5px; letter-spacing: .05em; text-transform: uppercase; }
 .custom-monster-core-grid .custom-monster-name { grid-column: 1 / -1; }
 .custom-monster-core-grid input, .custom-monster-description textarea, .custom-monster-features textarea, .custom-monster-abilities input { background: #fffaf0; border: 1px solid #cbb99d; border-radius: 5px; color: #39291f; font-size: .9rem; font-weight: 400; letter-spacing: normal; padding: 8px; text-transform: none; width: 100%; }
 .custom-monster-abilities { border: 1px solid #d4c09d; display: grid; gap: 8px; grid-template-columns: repeat(6, minmax(0, 1fr)); margin: 0; padding: 11px; }
@@ -250,6 +250,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .custom-monster-abilities label { color: #71553e; display: grid; font-family: "Scaly Sans", Inter, sans-serif; font-size: .68rem; font-weight: 800; gap: 4px; text-align: center; }
 .custom-monster-abilities input { padding: 7px 4px; text-align: center; }
 .custom-monster-description textarea { line-height: 1.5; min-height: 105px; resize: vertical; }
+.custom-monster-description small, .custom-catalogue-description small, .worldbuilding-notes-label small { color: #806c5a; font-size: .68rem; font-weight: 500; letter-spacing: normal; text-transform: none; }
 .custom-monster-features { display: grid; gap: 13px; }
 .custom-monster-features small { color: #806c5a; font-size: .68rem; font-weight: 500; letter-spacing: normal; text-transform: none; }
 .custom-monster-features textarea { font-family: "Bookinsanity", Georgia, serif; line-height: 1.45; min-height: 98px; resize: vertical; }
@@ -263,6 +264,14 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .custom-catalogue-editor > label { color: #71553e; display: grid; font-size: .72rem; font-weight: 800; gap: 5px; letter-spacing: .05em; text-transform: uppercase; }
 .custom-catalogue-editor input, .custom-catalogue-editor textarea { background: #fffaf0; border: 1px solid #cbb99d; border-radius: 5px; color: #39291f; font-size: .92rem; font-weight: 400; letter-spacing: normal; padding: 8px; text-transform: none; width: 100%; }
 .custom-catalogue-editor textarea { font-family: "Bookinsanity", Georgia, serif; line-height: 1.5; min-height: 210px; resize: vertical; }
+.reference-source-editor { background: #fffaf0; border: 1px solid #cbb99d; border-radius: 5px; min-height: 170px; overflow: hidden; }
+.reference-source-editor .cm-editor { min-height: 168px; }
+.reference-source-editor .cm-scroller { font-family: "Bookinsanity", Georgia, serif; font-size: .92rem; line-height: 1.5; max-height: 360px; min-height: 168px; }
+.reference-source-editor .cm-content { min-height: 168px; padding: 9px; }
+.worldbuilding-notes-label .reference-source-editor { min-height: 280px; }
+.worldbuilding-notes-label .reference-source-editor .cm-editor, .worldbuilding-notes-label .reference-source-editor .cm-content, .worldbuilding-notes-label .reference-source-editor .cm-scroller { min-height: 278px; }
+.reference-content > :first-child { margin-top: 0; }
+.reference-content > :last-child { margin-bottom: 0; }
 .primary-button { background: #5d2f26; border: 1px solid #5d2f26; border-radius: 5px; color: #fffaf0; padding: 8px 10px; }
 .reference-backdrop { align-items: center; background: rgb(30 20 15 / 58%); display: flex; inset: 0; justify-content: center; padding: 20px; position: fixed; z-index: 12; }
 .reference-dialog { background: #fffaf0; border: 1px solid #b99464; border-radius: 10px; box-shadow: 0 20px 60px rgb(20 12 8 / 40%); max-height: calc(100vh - 40px); max-width: 780px; overflow: auto; padding: 24px; width: 100%; }
@@ -394,6 +403,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .quiet-danger { background: transparent; border: 0; color: #8a2f27; font-size: .76rem; font-weight: 700; padding: 5px; }
 .worldbuilding-context-menu { background: #fffaf0; border: 1px solid #b99464; border-radius: 7px; box-shadow: 0 14px 34px rgb(35 21 12 / 28%); display: grid; gap: 2px; max-height: min(530px, calc(100dvh - 24px)); min-width: 205px; overflow: auto; padding: 7px; position: fixed; transform: translateY(4px); z-index: 20; }
 .worldbuilding-context-menu strong { color: #6a2f26; font-size: .73rem; padding: 5px 6px 7px; }
+.worldbuilding-context-menu-label { border-top: 1px solid #e0d2bb; color: #806243; font-size: .63rem; font-weight: 800; letter-spacing: .08em; margin: 3px 2px 0; padding: 8px 5px 2px; text-transform: uppercase; }
+.worldbuilding-context-menu strong + .worldbuilding-context-menu-label { border-top: 0; margin-top: 0; padding-top: 0; }
 .worldbuilding-context-menu button { background: transparent; border: 0; border-radius: 4px; color: #493329; font-size: .78rem; padding: 7px; text-align: left; }
 .worldbuilding-context-menu button:hover, .worldbuilding-context-menu button:focus-visible { background: #ead1a3; }
 

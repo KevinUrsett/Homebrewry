@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { entrySummary } from '../catalogue/presentation';
 import type { CatalogueEntry } from '../catalogue/types';
 import { addMonsterToEncounter, addPartyMembersToEncounter, adjustEncounterParticipantHitPoints, advanceCombatTurn, patchEncounterParticipant, removeEncounterParticipant, sortCombatants, touchEncounter } from '../lib/encounters';
+import { campaignStoragePresentation } from '../lib/campaignStorageStatus';
 import type { Encounter, EncounterParticipant, PartyMember, SyncState } from '../types';
 
 type EncounterPanelProps = {
@@ -11,6 +12,7 @@ type EncounterPanelProps = {
   monsters: CatalogueEntry[];
   loading: boolean;
   syncState: SyncState;
+  hasDriveBackup?: boolean;
   onCreateEncounter: () => void;
   onDeleteEncounter: (encounter: Encounter) => void;
   onInsertReference: (encounter: Encounter) => void;
@@ -19,14 +21,6 @@ type EncounterPanelProps = {
   onCreatePartyMember: (name: string, armorClass: number | null, maxHitPoints: number | null) => void;
   onDeletePartyMember: (member: PartyMember) => void;
   onUpdatePartyMember: (member: PartyMember) => void;
-};
-
-const campaignSyncLabel: Record<SyncState, string> = {
-  local: 'Local only',
-  synced: 'Drive synced',
-  pending: 'Needs sync',
-  conflict: 'Drive conflict',
-  error: 'Sync error'
 };
 
 const MONSTER_RESULTS_PAGE_SIZE = 30;
@@ -53,6 +47,7 @@ export function EncounterPanel({
   monsters,
   loading,
   syncState,
+  hasDriveBackup = false,
   onCreateEncounter,
   onDeleteEncounter,
   onInsertReference,
@@ -70,6 +65,7 @@ export function EncounterPanel({
   const [visibleMonsterCount, setVisibleMonsterCount] = useState(MONSTER_RESULTS_PAGE_SIZE);
   const selected = encounters.find((encounter) => encounter.id === selectedId) ?? encounters[0] ?? null;
   const encounterNameRef = useRef<HTMLInputElement>(null);
+  const storage = campaignStoragePresentation(syncState, hasDriveBackup);
   const orderedParticipants = selected ? sortCombatants(selected.participants) : [];
   const monsterMatches = useMemo(() => {
     const terms = monsterQuery.trim().toLowerCase();
@@ -124,7 +120,7 @@ export function EncounterPanel({
           <p>Build a fight from the offline SRD catalogue, then run initiative and hit points in one place.</p>
         </div>
         <div className="page-header-actions">
-          <span className={`sync-badge sync-${syncState}`}>{campaignSyncLabel[syncState]}</span>
+          <span className={`sync-badge sync-${storage.tone}`} title={storage.title}>{storage.label}</span>
           <button className="primary-button" onClick={onCreateEncounter} type="button">New encounter</button>
         </div>
       </header>

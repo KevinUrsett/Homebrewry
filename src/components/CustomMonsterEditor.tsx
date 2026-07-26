@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { dataRecord, dataRecords, dataString, speedText } from '../catalogue/presentation';
-import type { CustomCatalogueEntry } from '../catalogue/types';
+import type { CatalogueCategory, CustomCatalogueCategory, CustomCatalogueEntry } from '../catalogue/types';
+import { MarkdownEditor } from './MarkdownEditor';
+import type { WorldbuildingKind, WorldbuildingType } from '../types';
 
 type FeatureKey = 'traits' | 'actions' | 'bonusActions' | 'reactions' | 'legendaryActions';
 
@@ -9,6 +11,10 @@ type CustomMonsterEditorProps = {
   mode: 'create' | 'edit';
   onCancel: () => void;
   onSave: (entry: CustomCatalogueEntry) => Promise<void>;
+  customCategories: readonly CustomCatalogueCategory[];
+  worldbuildingTypes: readonly WorldbuildingType[];
+  onCreateWorldbuildingReference: (name: string, kind: WorldbuildingKind) => Promise<string | null> | string | null;
+  onCreateCatalogueReference: (name: string, category: CatalogueCategory) => Promise<string | null> | string | null;
 };
 
 const abilityKeys = ['str', 'dex', 'con', 'int', 'wis', 'cha'] as const;
@@ -66,7 +72,7 @@ function setDataText(data: Record<string, unknown>, key: string, value: string) 
   else delete data[key];
 }
 
-export function CustomMonsterEditor({ entry, mode, onCancel, onSave }: CustomMonsterEditorProps) {
+export function CustomMonsterEditor({ entry, mode, onCancel, onSave, customCategories, worldbuildingTypes, onCreateWorldbuildingReference, onCreateCatalogueReference }: CustomMonsterEditorProps) {
   const [name, setName] = useState(entry.name);
   const [description, setDescription] = useState(entry.description);
   const [size, setSize] = useState(dataString(entry, 'size') ?? '');
@@ -149,7 +155,20 @@ export function CustomMonsterEditor({ entry, mode, onCancel, onSave }: CustomMon
         ))}
       </fieldset>
 
-      <label className="custom-monster-description">Description<textarea onChange={(event) => setDescription(event.target.value)} placeholder="Optional lore or encounter notes." value={description} /></label>
+      <div className="custom-monster-description">
+        <span>Description</span>
+        <MarkdownEditor
+          ariaLabel="Custom monster description"
+          compact
+          content={description}
+          customCatalogueCategories={customCategories}
+          onChange={setDescription}
+          onCreateCatalogueReference={onCreateCatalogueReference}
+          onCreateWorldbuildingReference={onCreateWorldbuildingReference}
+          worldbuildingTypes={worldbuildingTypes}
+        />
+        <small>Right-click selected text to link it to Worldbuilding or the catalogue.</small>
+      </div>
 
       <section className="custom-monster-features" aria-label="Monster features">
         {featureGroups.map(({ key, label, hint }) => (

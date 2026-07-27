@@ -36,6 +36,8 @@ type EncounterPanelProps = {
 };
 
 type CombatantPicker = 'party' | 'monster' | null;
+type StatField = 'initiative' | 'armorClass';
+type StatEditor = { participantId: string; field: StatField; value: string } | null;
 
 const MONSTER_RESULTS_PAGE_SIZE = 30;
 
@@ -77,12 +79,16 @@ export function EncounterPanel({
   const [partyHitPoints, setPartyHitPoints] = useState('');
   const [hitPointChanges, setHitPointChanges] = useState<Record<string, string>>({});
   const [hitPointEditorId, setHitPointEditorId] = useState<string | null>(null);
+  const [statEditor, setStatEditor] = useState<StatEditor>(null);
   const [visibleMonsterCount, setVisibleMonsterCount] = useState(MONSTER_RESULTS_PAGE_SIZE);
   const [combatantPicker, setCombatantPicker] = useState<CombatantPicker>(null);
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
   const [draggingParticipantId, setDraggingParticipantId] = useState<string | null>(null);
+  const [touchDropTargetId, setTouchDropTargetId] = useState<string | null>(null);
   const draggedParticipantId = useRef<string | null>(null);
+  const pointerDragSourceId = useRef<string | null>(null);
+  const pointerDragTargetId = useRef<string | null>(null);
   const selected = encounters.find((encounter) => encounter.id === selectedId) ?? encounters[0] ?? null;
   const storage = campaignStoragePresentation(syncState, hasDriveBackup);
   const orderedParticipants = selected ? sortCombatants(selected.participants) : [];
@@ -107,10 +113,15 @@ export function EncounterPanel({
     setPartyHitPoints('');
   };
 
+  const clearCombatantEditors = () => {
+    setHitPointEditorId(null);
+    setStatEditor(null);
+  };
+
   const selectEncounter = (id: string) => {
     setIsEditingName(false);
     setCombatantPicker(null);
-    setHitPointEditorId(null);
+    clearCombatantEditors();
     onSelectEncounter(id);
   };
 
@@ -138,6 +149,24 @@ export function EncounterPanel({
 
   const canAdjustHitPoints = (participant: EncounterParticipant) => participant.currentHitPoints !== null || participant.maxHitPoints !== null;
 
+  const openStatEditor = (participant: EncounterParticipant, field: StatField) => {
+    setHitPointEditorId(null);
+    setStatEditor({ participantId: participant.id, field, value: String(participant[field] ?? '') });
+  };
+
+  const saveStatEditor = () => {
+    if (!selected || !statEditor) return;
+    const participant = selected.participants.find((item) => item.id === statEditor.participantId);
+    if (!participant) {
+      setStatEditor(null);
+      return;
+    }
+    const value = asNumber(statEditor.value);
+    const changes = statEditor.field === 'initiative' ? { initiative: value } : { armorClass: value };
+    participantPatch(selected, participant, changes, onUpdateEncounter);
+    setStatEditor(null);
+  };
+
   const reorderCombatant = (sourceId: string, targetId: string) => {
     if (!selected || sourceId === targetId) return;
     const sourceIndex = orderedParticipants.findIndex((participant) => participant.id === sourceId);
@@ -147,6 +176,13 @@ export function EncounterPanel({
     const [moved] = next.splice(sourceIndex, 1);
     next.splice(targetIndex, 0, moved);
     onUpdateEncounter(reorderEncounterParticipants(selected, next.map((participant) => participant.id)));
+  };
+
+  const resetPointerDrag = () => {
+    pointerDragSourceId.current = null;
+    pointerDragTargetId.current = null;
+    setDraggingParticipantId(null);
+    setTouchDropTargetId(null);
   };
 
   const includedPartyMemberIds = new Set(
@@ -264,7 +300,7 @@ export function EncounterPanel({
                 <div className="encounter-section-heading">
                   <div><p className="eyebrow">Tracker</p><h2>{selected.participants.length} combatant{selected.participants.length === 1 ? '' : 's'}</h2></div>
                 </div>
-                <p className="encounter-helper">Drag the left grips to set order. The tracker recalculates initiative so the new order remains stable; keyboard users can focus a grip and press ↑ or ↓.</p>
+                <p className="encounter-helper">Press and drag the left grip to set order on phone or desktop. The tracker recalculates initiative so the new order remains stable; keyboard users can focus a grip and press ↑ or ↓.</p>
               </section>
 
               {combatantPicker && (
@@ -349,7 +385,8 @@ export function EncounterPanel({
             <div className="initiative-list">
               {orderedParticipants.map((participant) => (
                 <article
-                  className={`combatant-card ${participant.id === selected.activeCombatantId ? 'is-active' : ''} ${participant.currentHitPoints !== null && participant.currentHitPoints <= 0 ? 'is-defeated' : ''} ${participant.id === draggingParticipantId ? 'is-dragging' : ''}`}
+                  className={`combatant-card ${participant.id === selected.activeCombatantId ? 'is-active' : ''} ${participant.currentHitPoints !== null && participant.currentHitPoints <= 0 ? 'is-defeated' : ''} ${participant.id === draggingParticipantId ? 'is-dragging' : ''} ${participant.id === touchDropTargetId ? 'is-drop-target' : ''}`}
+                  data-participant-id={participant.id}
                   key={participant.id}
                   onDragOver={(event) => {
                     event.preventDefault();
@@ -364,7 +401,7 @@ export function EncounterPanel({
                   }}
                 >
                   <button
-                    aria-label={`Reorder ${participant.name}. Use arrow keys or drag.`}
+                    aria-label={`Reorder ${participant.name}. Drag on touch or desktop, or use arrow keys.`}
                     className="combatant-drag-handle"
                     draggable
                     onDragEnd={() => {
@@ -382,7 +419,36 @@ export function EncounterPanel({
                       event.preventDefault();
                       onUpdateEncounter(moveEncounterParticipant(selected, participant.id, event.key === 'ArrowUp' ? -1 : 1));
                     }}
-                    title="Drag to reorder; ↑ and ↓ also move this combatant"
+                    onPointerCancel={resetPointerDrag}
+                    onPointerDown={(event) => {
+                      if (event.pointerType === 'mouse') return;
+                      event.preventDefault();
+                      pointerDragSourceId.current = participant.id;
+                      pointerDragTargetId.current = participant.id;
+                      draggedParticipantId.current = participant.id;
+                      setDraggingParticipantId(participant.id);
+                      setTouchDropTargetId(participant.id);
+                      event.currentTarget.setPointerCapture(event.pointerId);
+                    }}
+                    onPointerMove={(event) => {
+                      if (!pointerDragSourceId.current || event.pointerType === 'mouse') return;
+                      event.preventDefault();
+                      const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-participant-id]');
+                      const targetId = target?.dataset.participantId ?? null;
+                      if (!targetId) return;
+                      pointerDragTargetId.current = targetId;
+                      setTouchDropTargetId(targetId);
+                    }}
+                    onPointerUp={(event) => {
+                      if (!pointerDragSourceId.current || event.pointerType === 'mouse') return;
+                      event.preventDefault();
+                      const sourceId = pointerDragSourceId.current;
+                      const targetId = pointerDragTargetId.current;
+                      if (targetId) reorderCombatant(sourceId, targetId);
+                      if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+                      resetPointerDrag();
+                    }}
+                    title="Press and drag to reorder; ↑ and ↓ also move this combatant"
                     type="button"
                   >
                     ⋮⋮
@@ -403,20 +469,71 @@ export function EncounterPanel({
                     </div>
 
                     <div className="combatant-summary-row">
-                      <label>Init<input aria-label={`${participant.name} initiative`} onChange={(event) => participantPatch(selected, participant, { initiative: asNumber(event.target.value) }, onUpdateEncounter)} type="number" value={participant.initiative ?? ''} /></label>
                       <button
-                        aria-expanded={hitPointEditorId === participant.id}
-                        className="combatant-hp-button"
-                        disabled={!canAdjustHitPoints(participant)}
-                        onClick={() => setHitPointEditorId((current) => current === participant.id ? null : participant.id)}
-                        title={canAdjustHitPoints(participant) ? 'Open damage and healing calculator' : 'Set maximum HP first'}
+                        aria-label={`Armor class ${participant.armorClass ?? 'not set'}. Edit armor class for ${participant.name}`}
+                        className="combatant-stat-button combatant-ac-button"
+                        onClick={() => openStatEditor(participant, 'armorClass')}
                         type="button"
                       >
-                        <span>HP</span>
-                        <strong>{participant.currentHitPoints ?? '—'} / {participant.maxHitPoints ?? '—'}</strong>
+                        <span>AC</span>
+                        <strong>{participant.armorClass ?? '—'}</strong>
                       </button>
-                      <label>AC<input aria-label={`${participant.name} armor class`} min="0" onChange={(event) => participantPatch(selected, participant, { armorClass: asNumber(event.target.value) }, onUpdateEncounter)} type="number" value={participant.armorClass ?? ''} /></label>
-                      <button aria-label={`Remove ${participant.name} from encounter`} className="quiet-danger" onClick={() => onUpdateEncounter(removeEncounterParticipant(selected, participant.id))} type="button">×</button>
+
+                      <div className="combatant-vitals">
+                        <button
+                          aria-label={`Initiative ${participant.initiative ?? 'not set'}. Edit initiative for ${participant.name}`}
+                          className="combatant-stat-button combatant-initiative-button"
+                          onClick={() => openStatEditor(participant, 'initiative')}
+                          type="button"
+                        >
+                          <span>Initiative</span>
+                          <strong>{participant.initiative ?? '—'}</strong>
+                        </button>
+                        <button
+                          aria-expanded={hitPointEditorId === participant.id}
+                          className="combatant-hp-button"
+                          disabled={!canAdjustHitPoints(participant)}
+                          onClick={() => {
+                            setStatEditor(null);
+                            setHitPointEditorId((current) => current === participant.id ? null : participant.id);
+                          }}
+                          title={canAdjustHitPoints(participant) ? 'Open damage and healing calculator' : 'Set maximum HP first'}
+                          type="button"
+                        >
+                          <span>HP</span>
+                          <strong>{participant.currentHitPoints ?? '—'} / {participant.maxHitPoints ?? '—'}</strong>
+                        </button>
+                      </div>
+
+                      <button aria-label={`Remove ${participant.name} from encounter`} className="quiet-danger combatant-remove-button" onClick={() => onUpdateEncounter(removeEncounterParticipant(selected, participant.id))} type="button">×</button>
+
+                      {statEditor?.participantId === participant.id && (
+                        <div className="combatant-stat-editor">
+                          <label>
+                            {statEditor.field === 'initiative' ? 'Initiative' : 'Armor class'}
+                            <input
+                              aria-label={`Set ${statEditor.field === 'initiative' ? 'initiative' : 'armor class'} for ${participant.name}`}
+                              autoFocus
+                              min={statEditor.field === 'armorClass' ? 0 : undefined}
+                              onChange={(event) => setStatEditor({ ...statEditor, value: event.target.value })}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                  event.preventDefault();
+                                  saveStatEditor();
+                                }
+                                if (event.key === 'Escape') {
+                                  event.preventDefault();
+                                  setStatEditor(null);
+                                }
+                              }}
+                              type="number"
+                              value={statEditor.value}
+                            />
+                          </label>
+                          <button onClick={saveStatEditor} type="button">Save</button>
+                          <button onClick={() => setStatEditor(null)} type="button">Cancel</button>
+                        </div>
+                      )}
 
                       {hitPointEditorId === participant.id && (
                         <div className="combatant-hp-calculator">

@@ -4,10 +4,12 @@ export type RendererBlock =
   | { type: 'markdown'; content: string }
   | { type: 'callout'; variant: 'note' | 'warning' | 'tip' | 'descriptive'; title?: string; content: string }
   | { type: 'statblock' | 'item' | 'spell'; content: string; classes?: string[] }
-  | { type: 'columns' | 'wide'; content: string }
+  | { type: 'columns'; content: string }
+  | { type: 'wide'; content: string }
   | { type: 'homebrewery'; content: string; classes: string[] }
   | { type: 'spacer'; size: number }
-  | { type: 'pagebreak' | 'columnbreak' };
+  | { type: 'pagebreak' }
+  | { type: 'columnbreak' };
 
 const calloutTypes = new Set(['note', 'warning', 'tip', 'descriptive']);
 const characterTypes = new Set(['statblock', 'item', 'spell']);
@@ -39,8 +41,12 @@ export function parseRendererBlocks(source: string): RendererBlock[] {
       const kind = directive[1].toLowerCase();
       const argument = directive[2]?.trim();
 
-      if (kind === 'pagebreak' || kind === 'columnbreak') {
-        blocks.push({ type: kind });
+      if (kind === 'pagebreak') {
+        blocks.push({ type: 'pagebreak' });
+        continue;
+      }
+      if (kind === 'columnbreak') {
+        blocks.push({ type: 'columnbreak' });
         continue;
       }
       if (kind === 'spacer') {
@@ -61,7 +67,8 @@ export function parseRendererBlocks(source: string): RendererBlock[] {
       }
 
       const blockContent = content.join('\n').trim();
-      if (kind === 'columns' || kind === 'wide') blocks.push({ type: kind, content: blockContent });
+      if (kind === 'columns') blocks.push({ type: 'columns', content: blockContent });
+      if (kind === 'wide') blocks.push({ type: 'wide', content: blockContent });
       if (kind === 'homebrewery') blocks.push({ type: 'homebrewery', classes: parseClasses(argument), content: blockContent });
       if (characterTypes.has(kind)) blocks.push({ type: kind as 'statblock' | 'item' | 'spell', classes: parseClasses(argument), content: blockContent });
       if (calloutTypes.has(kind)) blocks.push({ type: 'callout', variant: kind as 'note' | 'warning' | 'tip' | 'descriptive', title: argument, content: blockContent });

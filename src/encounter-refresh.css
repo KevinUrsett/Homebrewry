@@ -133,8 +133,10 @@
   display: grid;
   gap: 8px;
   grid-template-columns: 32px minmax(0, 1fr);
+  margin-top: 0;
   padding: 9px 9px 9px 5px;
-  transition: box-shadow .12s ease, opacity .12s ease, transform .12s ease;
+  position: relative;
+  transition: box-shadow .12s ease, margin-top .12s ease, opacity .12s ease, transform .12s ease;
 }
 
 .combatant-card.is-dragging {
@@ -144,6 +146,23 @@
 
 .combatant-card.is-drop-target:not(.is-dragging) {
   box-shadow: 0 0 0 3px #c5963e;
+  margin-top: 16px;
+  transform: translateY(4px);
+}
+
+.combatant-card:has(+ .combatant-card.is-drop-target:not(.is-dragging)) {
+  transform: translateY(-4px);
+}
+
+.combatant-card.is-drop-target:not(.is-dragging)::before {
+  background: #c5963e;
+  border-radius: 999px;
+  content: "";
+  height: 4px;
+  left: 10px;
+  position: absolute;
+  right: 10px;
+  top: -12px;
 }
 
 .combatant-drag-handle {

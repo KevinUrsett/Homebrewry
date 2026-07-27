@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { addMonsterToEncounter, adjustEncounterParticipantHitPoints, advanceCombatTurn, createEncounter, createPartyMember, rollMonsterInitiative, sortCombatants } from './encounters';
+import {
+  addMonsterToEncounter,
+  adjustEncounterParticipantHitPoints,
+  advanceCombatTurn,
+  createEncounter,
+  createPartyMember,
+  moveEncounterParticipant,
+  reorderEncounterParticipants,
+  rollMonsterInitiative,
+  sortCombatants
+} from './encounters';
 import type { CatalogueEntry } from '../catalogue/types';
 
 const aboleth: CatalogueEntry = {
@@ -11,6 +21,12 @@ const aboleth: CatalogueEntry = {
   source: 'SRD-521',
   ruleset: '5.5e'
 };
+
+const initiativeParticipants = [
+  { id: 'a', kind: 'player' as const, name: 'A', armorClass: null, maxHitPoints: null, currentHitPoints: null, initiative: 12 },
+  { id: 'b', kind: 'monster' as const, name: 'B', armorClass: null, maxHitPoints: null, currentHitPoints: null, initiative: 18 },
+  { id: 'c', kind: 'monster' as const, name: 'C', armorClass: null, maxHitPoints: null, currentHitPoints: null, initiative: 12 }
+];
 
 describe('encounter logic', () => {
   it('snapshots the current party into a new encounter', () => {
@@ -41,12 +57,7 @@ describe('encounter logic', () => {
 
   it('orders initiative descending and advances through a stable turn order', () => {
     const encounter = createEncounter('Initiative');
-    const participants = [
-      { id: 'a', kind: 'player' as const, name: 'A', armorClass: null, maxHitPoints: null, currentHitPoints: null, initiative: 12 },
-      { id: 'b', kind: 'monster' as const, name: 'B', armorClass: null, maxHitPoints: null, currentHitPoints: null, initiative: 18 },
-      { id: 'c', kind: 'monster' as const, name: 'C', armorClass: null, maxHitPoints: null, currentHitPoints: null, initiative: 12 }
-    ];
-    const prepared = { ...encounter, participants };
+    const prepared = { ...encounter, participants: initiativeParticipants };
 
     expect(sortCombatants(prepared.participants).map((participant) => participant.id)).toEqual(['b', 'a', 'c']);
     expect(advanceCombatTurn(prepared).activeCombatantId).toBe('b');
@@ -63,5 +74,38 @@ describe('encounter logic', () => {
     expect(damaged.participants[0].currentHitPoints).toBe(27);
     expect(healed.participants[0].currentHitPoints).toBe(42);
     expect(defeated.participants[0].currentHitPoints).toBe(0);
+  });
+
+  it('reorders combatants and recalculates descending initiative values', () => {
+    const encounter = { ...createEncounter('Manual order'), participants: initiativeParticipants };
+    const reordered = reorderEncounterParticipants(encounter, ['c', 'b', 'a']);
+
+    expect(reordered.participants.map((participant) => participant.id)).toEqual(['c', 'b', 'a']);
+    expect(reordered.participants.map((participant) => participant.initiative)).toEqual([18, 17, 16]);
+    expect(sortCombatants(reordered.participants).map((participant) => participant.id)).toEqual(['c', 'b', 'a']);
+  });
+
+  it('ignores duplicate and unknown reorder IDs and appends omitted combatants', () => {
+    const encounter = { ...createEncounter('Safe order'), participants: initiativeParticipants };
+    const reordered = reorderEncounterParticipants(encounter, ['c', 'missing', 'c']);
+
+    expect(reordered.participants.map((participant) => participant.id)).toEqual(['c', 'a', 'b']);
+    expect(reordered.participants.map((participant) => participant.initiative)).toEqual([18, 17, 16]);
+  });
+
+  it('moves a combatant through the currently sorted initiative order', () => {
+    const encounter = { ...createEncounter('Keyboard order'), participants: initiativeParticipants };
+    const movedUp = moveEncounterParticipant(encounter, 'c', -1);
+    const movedDown = moveEncounterParticipant(movedUp, 'b', 1);
+
+    expect(sortCombatants(movedUp.participants).map((participant) => participant.id)).toEqual(['b', 'c', 'a']);
+    expect(sortCombatants(movedDown.participants).map((participant) => participant.id)).toEqual(['c', 'b', 'a']);
+  });
+
+  it('leaves boundary keyboard moves unchanged', () => {
+    const encounter = { ...createEncounter('Keyboard boundary'), participants: initiativeParticipants };
+
+    expect(moveEncounterParticipant(encounter, 'b', -1)).toBe(encounter);
+    expect(moveEncounterParticipant(encounter, 'c', 1)).toBe(encounter);
   });
 });

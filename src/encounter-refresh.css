@@ -136,33 +136,42 @@
   margin-top: 0;
   padding: 9px 9px 9px 5px;
   position: relative;
-  transition: box-shadow .12s ease, margin-top .12s ease, opacity .12s ease, transform .12s ease;
+  transition: box-shadow .16s ease, margin-top .18s ease, opacity .12s ease, transform .18s ease;
 }
 
 .combatant-card.is-dragging {
-  opacity: .48;
-  transform: scale(.99);
+  opacity: .34;
+  transform: scale(.975);
 }
 
 .combatant-card.is-drop-target:not(.is-dragging) {
   box-shadow: 0 0 0 3px #c5963e;
-  margin-top: 16px;
-  transform: translateY(4px);
+  margin-top: 96px;
+  transform: translateY(12px);
 }
 
 .combatant-card:has(+ .combatant-card.is-drop-target:not(.is-dragging)) {
-  transform: translateY(-4px);
+  transform: translateY(-12px);
 }
 
 .combatant-card.is-drop-target:not(.is-dragging)::before {
-  background: #c5963e;
-  border-radius: 999px;
-  content: "";
-  height: 4px;
-  left: 10px;
+  background: rgb(197 150 62 / 14%);
+  border: 3px dashed #c5963e;
+  border-radius: 8px;
+  box-sizing: border-box;
+  content: "Drop combatant here";
+  color: #6a522c;
+  display: grid;
+  font-size: .68rem;
+  font-weight: 800;
+  height: 70px;
+  left: 4px;
+  letter-spacing: .06em;
+  place-items: center;
   position: absolute;
-  right: 10px;
-  top: -12px;
+  right: 4px;
+  text-transform: uppercase;
+  top: -86px;
 }
 
 .combatant-drag-handle {

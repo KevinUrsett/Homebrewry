@@ -1,0 +1,262 @@
+/* Phase 9 encounter tracker refinements. Kept separate so the feature can be
+   reviewed or reverted without disturbing the shared application theme. */
+
+.encounter-title-display {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  min-width: 0;
+}
+
+.encounter-title-display h2 {
+  color: #5d2f26;
+  flex: 1;
+  font-family: "Nodesto Caps Condensed", Georgia, serif;
+  font-size: clamp(1.8rem, 3vw, 2.7rem);
+  line-height: 1;
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.encounter-name-editor {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  width: 100%;
+}
+
+.encounter-name-editor input {
+  border: 0;
+  border-bottom: 1px solid #d8c9ae;
+  border-radius: 0;
+  color: #5d2f26;
+  font-family: "Nodesto Caps Condensed", Georgia, serif;
+  font-size: clamp(1.8rem, 3vw, 2.7rem);
+  line-height: 1;
+  padding: 4px 0 8px;
+  width: 100%;
+}
+
+.encounter-inline-button,
+.encounter-picker-tabs button,
+.combatant-drag-handle,
+.combatant-hp-button,
+.combatant-hp-calculator button {
+  background: #f7f0df;
+  border: 1px solid #ad9576;
+  border-radius: 5px;
+  color: #422f25;
+  font-size: .76rem;
+  padding: 7px 9px;
+}
+
+.encounter-picker {
+  background: #f7f0df;
+  border: 1px solid #d8c9ae;
+  border-radius: 7px;
+  margin-top: 16px;
+  padding: 12px;
+}
+
+.encounter-picker-header {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.encounter-picker-header h3 {
+  color: #5d2f26;
+  font-family: Georgia, serif;
+  font-size: 1rem;
+  margin: 0;
+}
+
+.encounter-picker-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.encounter-picker-tabs button.is-selected {
+  background: #5d2f26;
+  border-color: #5d2f26;
+  color: #fffaf0;
+}
+
+.encounter-party-picker {
+  display: grid;
+  gap: 6px;
+  max-height: 360px;
+  overflow: auto;
+}
+
+.encounter-party-choice {
+  align-items: center;
+  background: #fffdf7;
+  border: 1px solid #e1d5c0;
+  display: flex;
+  gap: 9px;
+  justify-content: space-between;
+  padding: 8px 9px;
+}
+
+.encounter-party-choice div {
+  display: grid;
+  gap: 2px;
+}
+
+.encounter-party-choice span {
+  color: #806c5a;
+  font-size: .68rem;
+}
+
+.encounter-party-choice button {
+  background: #f7f0df;
+  border: 1px solid #ad9576;
+  border-radius: 5px;
+  color: #422f25;
+  font-size: .76rem;
+  padding: 7px 9px;
+}
+
+.encounter-party-choice button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.combatant-card {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 25px minmax(0, 1fr);
+  padding: 9px 9px 9px 5px;
+}
+
+.combatant-card.is-dragging {
+  opacity: .48;
+}
+
+.combatant-drag-handle {
+  align-self: stretch;
+  cursor: grab;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 4px 2px;
+}
+
+.combatant-drag-handle:active {
+  cursor: grabbing;
+}
+
+.combatant-card-body {
+  min-width: 0;
+}
+
+.combatant-summary-row {
+  align-items: end;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: minmax(58px, .7fr) minmax(96px, 1.2fr) minmax(58px, .7fr) auto;
+  margin-top: 8px;
+}
+
+.combatant-summary-row label {
+  color: #806c5a;
+  display: grid;
+  font-size: .58rem;
+  gap: 2px;
+  text-transform: uppercase;
+}
+
+.combatant-summary-row input {
+  padding: 5px;
+}
+
+.combatant-hp-button {
+  align-items: center;
+  display: grid;
+  gap: 1px;
+  min-height: 45px;
+  text-align: left;
+}
+
+.combatant-hp-button span {
+  color: #806c5a;
+  font-size: .58rem;
+  text-transform: uppercase;
+}
+
+.combatant-hp-button strong {
+  color: #39291f;
+  font-size: .86rem;
+}
+
+.combatant-hp-calculator {
+  align-items: end;
+  background: #f7f0df;
+  border: 1px solid #d8c9ae;
+  border-radius: 5px;
+  display: grid;
+  gap: 6px;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 8px;
+}
+
+.combatant-hp-calculator label {
+  color: #806c5a;
+  display: grid;
+  font-size: .58rem;
+  gap: 3px;
+  text-transform: uppercase;
+}
+
+.combatant-hp-calculator input {
+  background: #fffdf7;
+  border: 1px solid #cbb99d;
+  border-radius: 4px;
+  color: #39291f;
+  min-width: 0;
+  padding: 6px;
+  width: 100%;
+}
+
+.combatant-hp-calculator small {
+  color: #806c5a;
+  grid-column: 1 / -1;
+}
+
+.initiative-panel .encounter-section-heading {
+  align-items: center;
+}
+
+@media (max-width: 760px) {
+  .encounter-name-editor {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .encounter-name-editor .encounter-status {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .encounter-title-display {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .combatant-summary-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .combatant-summary-row .quiet-danger {
+    justify-self: end;
+  }
+
+  .encounter-picker-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

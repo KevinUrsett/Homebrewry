@@ -1,9 +1,21 @@
 import { useMemo, useRef, useState } from 'react';
 import { entrySummary } from '../catalogue/presentation';
 import type { CatalogueEntry } from '../catalogue/types';
-import { addMonsterToEncounter, addPartyMembersToEncounter, adjustEncounterParticipantHitPoints, advanceCombatTurn, patchEncounterParticipant, removeEncounterParticipant, sortCombatants, touchEncounter } from '../lib/encounters';
+import {
+  addMonsterToEncounter,
+  addPartyMembersToEncounter,
+  adjustEncounterParticipantHitPoints,
+  advanceCombatTurn,
+  moveEncounterParticipant,
+  patchEncounterParticipant,
+  removeEncounterParticipant,
+  reorderEncounterParticipants,
+  sortCombatants,
+  touchEncounter
+} from '../lib/encounters';
 import { campaignStoragePresentation } from '../lib/campaignStorageStatus';
 import type { Encounter, EncounterParticipant, PartyMember, SyncState } from '../types';
+import '../encounter-refresh.css';
 
 type EncounterPanelProps = {
   encounters: Encounter[];
@@ -22,6 +34,8 @@ type EncounterPanelProps = {
   onDeletePartyMember: (member: PartyMember) => void;
   onUpdatePartyMember: (member: PartyMember) => void;
 };
+
+type CombatantPicker = 'party' | 'monster' | null;
 
 const MONSTER_RESULTS_PAGE_SIZE = 30;
 
@@ -62,9 +76,14 @@ export function EncounterPanel({
   const [partyArmorClass, setPartyArmorClass] = useState('');
   const [partyHitPoints, setPartyHitPoints] = useState('');
   const [hitPointChanges, setHitPointChanges] = useState<Record<string, string>>({});
+  const [hitPointEditorId, setHitPointEditorId] = useState<string | null>(null);
   const [visibleMonsterCount, setVisibleMonsterCount] = useState(MONSTER_RESULTS_PAGE_SIZE);
+  const [combatantPicker, setCombatantPicker] = useState<CombatantPicker>(null);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+  const [draggingParticipantId, setDraggingParticipantId] = useState<string | null>(null);
+  const draggedParticipantId = useRef<string | null>(null);
   const selected = encounters.find((encounter) => encounter.id === selectedId) ?? encounters[0] ?? null;
-  const encounterNameRef = useRef<HTMLInputElement>(null);
   const storage = campaignStoragePresentation(syncState, hasDriveBackup);
   const orderedParticipants = selected ? sortCombatants(selected.participants) : [];
   const monsterMatches = useMemo(() => {
@@ -88,28 +107,51 @@ export function EncounterPanel({
     setPartyHitPoints('');
   };
 
+  const selectEncounter = (id: string) => {
+    setIsEditingName(false);
+    setCombatantPicker(null);
+    setHitPointEditorId(null);
+    onSelectEncounter(id);
+  };
+
+  const startEditingName = () => {
+    if (!selected) return;
+    setNameDraft(selected.name);
+    setIsEditingName(true);
+  };
+
+  const saveEncounterName = () => {
+    if (!selected) return;
+    const name = nameDraft.replace(/[\r\n]/g, ' ').trim() || 'Untitled encounter';
+    if (name !== selected.name) onUpdateEncounter(touchEncounter(selected, { name }));
+    setIsEditingName(false);
+  };
+
   const applyHitPointChange = (participant: EncounterParticipant) => {
-    const encounter = encounterWithCommittedName();
-    if (!encounter) return;
+    if (!selected) return;
     const change = asNumber(hitPointChanges[participant.id] ?? '');
     if (change === null || change === 0) return;
-    onUpdateEncounter(adjustEncounterParticipantHitPoints(encounter, participant.id, change));
+    onUpdateEncounter(adjustEncounterParticipantHitPoints(selected, participant.id, change));
     setHitPointChanges((current) => ({ ...current, [participant.id]: '' }));
+    setHitPointEditorId(null);
   };
 
   const canAdjustHitPoints = (participant: EncounterParticipant) => participant.currentHitPoints !== null || participant.maxHitPoints !== null;
 
-  const encounterWithCommittedName = () => {
-    if (!selected) return null;
-    const name = (encounterNameRef.current?.value ?? selected.name).replace(/[\r\n]/g, ' ').trim() || 'Untitled encounter';
-    return name === selected.name ? selected : touchEncounter(selected, { name });
+  const reorderCombatant = (sourceId: string, targetId: string) => {
+    if (!selected || sourceId === targetId) return;
+    const sourceIndex = orderedParticipants.findIndex((participant) => participant.id === sourceId);
+    const targetIndex = orderedParticipants.findIndex((participant) => participant.id === targetId);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+    const next = [...orderedParticipants];
+    const [moved] = next.splice(sourceIndex, 1);
+    next.splice(targetIndex, 0, moved);
+    onUpdateEncounter(reorderEncounterParticipants(selected, next.map((participant) => participant.id)));
   };
 
-  const commitEncounterName = () => {
-    const encounter = encounterWithCommittedName();
-    if (encounter && encounter !== selected) onUpdateEncounter(encounter);
-    return encounter;
-  };
+  const includedPartyMemberIds = new Set(
+    selected?.participants.flatMap((participant) => participant.partyMemberId ? [participant.partyMemberId] : []) ?? []
+  );
 
   return (
     <main className="encounter-page" aria-label="Combat encounters">
@@ -133,7 +175,7 @@ export function EncounterPanel({
               <button
                 className={`encounter-list-item ${selected?.id === encounter.id ? 'is-selected' : ''}`}
                 key={encounter.id}
-                onClick={() => onSelectEncounter(encounter.id)}
+                onClick={() => selectEncounter(encounter.id)}
                 type="button"
               >
                 <strong>{encounter.name || 'Untitled encounter'}</strong>
@@ -171,99 +213,127 @@ export function EncounterPanel({
           ) : (
             <>
               <div className="encounter-title-row">
-                <label className="visually-hidden" htmlFor="encounter-name">Encounter name</label>
-                <input
-                  defaultValue={selected.name}
-                  id="encounter-name"
-                  onBlur={() => { void commitEncounterName(); }}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      event.preventDefault();
-                      event.currentTarget.blur();
-                    }
-                  }}
-                  key={selected.id}
-                  ref={encounterNameRef}
-                />
+                {isEditingName ? (
+                  <div className="encounter-name-editor">
+                    <label className="visually-hidden" htmlFor="encounter-name">Encounter name</label>
+                    <input
+                      autoFocus
+                      id="encounter-name"
+                      onChange={(event) => setNameDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          saveEncounterName();
+                        }
+                        if (event.key === 'Escape') {
+                          event.preventDefault();
+                          setIsEditingName(false);
+                        }
+                      }}
+                      value={nameDraft}
+                    />
+                    <button className="primary-button" onClick={saveEncounterName} type="button">Save</button>
+                    <button className="encounter-inline-button" onClick={() => setIsEditingName(false)} type="button">Cancel</button>
+                  </div>
+                ) : (
+                  <div className="encounter-title-display">
+                    <h2>{selected.name || 'Untitled encounter'}</h2>
+                    <button className="encounter-inline-button" onClick={startEditingName} type="button">Edit name</button>
+                  </div>
+                )}
                 <span className={`encounter-status status-${selected.status}`}>{selected.status}</span>
               </div>
+
               <div className="encounter-actions">
                 <button
                   className="primary-button"
                   disabled={!selected.participants.length}
-                  onClick={() => {
-                    const encounter = encounterWithCommittedName();
-                    if (encounter) onUpdateEncounter(advanceCombatTurn(encounter));
-                  }}
+                  onClick={() => onUpdateEncounter(advanceCombatTurn(selected))}
                   type="button"
                 >
                   {selected.status === 'active' ? 'Next turn' : 'Start combat'}
                 </button>
-                <button onClick={() => {
-                  const encounter = commitEncounterName();
-                  if (encounter) onInsertReference(encounter);
-                }} type="button">Insert into brew</button>
+                <button onClick={() => onInsertReference(selected)} type="button">Insert into brew</button>
+                <button onClick={() => setCombatantPicker((current) => current ? null : 'party')} type="button">
+                  {combatantPicker ? 'Close picker' : 'Add combatant'}
+                </button>
                 <button className="quiet-danger" onClick={() => onDeleteEncounter(selected)} type="button">Delete</button>
               </div>
 
               <section className="encounter-section">
                 <div className="encounter-section-heading">
-                  <div><p className="eyebrow">Party</p><h2>Combatants</h2></div>
-                  <button
-                    disabled={!partyMembers.length}
-                    onClick={() => {
-                      const encounter = encounterWithCommittedName();
-                      if (encounter) onUpdateEncounter(addPartyMembersToEncounter(encounter, partyMembers));
-                    }}
-                    type="button"
-                  >
-                    Add current party
-                  </button>
+                  <div><p className="eyebrow">Tracker</p><h2>{selected.participants.length} combatant{selected.participants.length === 1 ? '' : 's'}</h2></div>
                 </div>
-                <p className="encounter-helper">Add a party roster on the left, or add them to this encounter as independent combatants.</p>
+                <p className="encounter-helper">Drag the left grips to set order. The tracker recalculates initiative so the new order remains stable; keyboard users can focus a grip and press ↑ or ↓.</p>
               </section>
 
-              <section className="encounter-section">
-                <div className="encounter-section-heading">
-                  <div><p className="eyebrow">Monsters</p><h2>Add from catalogue</h2></div>
-                  <span>{loading ? 'Loading…' : `${monsterMatches.length.toLocaleString()} match${monsterMatches.length === 1 ? '' : 'es'}`}</span>
-                </div>
-                <input
-                  className="encounter-search"
-                  onChange={(event) => {
-                    setMonsterQuery(event.target.value);
-                    setVisibleMonsterCount(MONSTER_RESULTS_PAGE_SIZE);
-                  }}
-                  placeholder="Search monsters…"
-                  value={monsterQuery}
-                />
-                <div className="encounter-monster-results">
-                  {visibleMonsterMatches.map((monster) => (
-                    <div className="encounter-monster-result" key={monster.id}>
-                      <div><strong>{monster.name}</strong><span>{entrySummary(monster).join(' · ') || 'SRD monster'}</span></div>
-                      <button
-                        onClick={() => {
-                          const encounter = encounterWithCommittedName();
-                          if (encounter) onUpdateEncounter(addMonsterToEncounter(encounter, monster));
-                        }}
-                        type="button"
-                      >
-                        Add
-                      </button>
+              {combatantPicker && (
+                <section className="encounter-picker" aria-label="Add combatant">
+                  <div className="encounter-picker-header">
+                    <h3>Add combatant</h3>
+                    <span>{combatantPicker === 'party' ? `${partyMembers.length} party member${partyMembers.length === 1 ? '' : 's'}` : loading ? 'Loading…' : `${monsterMatches.length.toLocaleString()} monster match${monsterMatches.length === 1 ? '' : 'es'}`}</span>
+                  </div>
+                  <div className="encounter-picker-tabs" role="tablist" aria-label="Combatant source">
+                    <button aria-selected={combatantPicker === 'party'} className={combatantPicker === 'party' ? 'is-selected' : ''} onClick={() => setCombatantPicker('party')} role="tab" type="button">Party</button>
+                    <button aria-selected={combatantPicker === 'monster'} className={combatantPicker === 'monster' ? 'is-selected' : ''} onClick={() => setCombatantPicker('monster')} role="tab" type="button">Catalogue</button>
+                  </div>
+
+                  {combatantPicker === 'party' ? (
+                    <div className="encounter-party-picker">
+                      {partyMembers.length > 0 && (
+                        <button
+                          className="encounter-inline-button"
+                          disabled={partyMembers.every((member) => includedPartyMemberIds.has(member.id))}
+                          onClick={() => onUpdateEncounter(addPartyMembersToEncounter(selected, partyMembers))}
+                          type="button"
+                        >
+                          Add all missing party members
+                        </button>
+                      )}
+                      {partyMembers.map((member) => {
+                        const included = includedPartyMemberIds.has(member.id);
+                        return (
+                          <div className="encounter-party-choice" key={member.id}>
+                            <div><strong>{member.name}</strong><span>AC {member.armorClass ?? '—'} · HP {member.maxHitPoints ?? '—'}</span></div>
+                            <button disabled={included} onClick={() => onUpdateEncounter(addPartyMembersToEncounter(selected, [member]))} type="button">{included ? 'Added' : 'Add'}</button>
+                          </div>
+                        );
+                      })}
+                      {!partyMembers.length && <p className="empty-panel">Add characters to the current party first.</p>}
                     </div>
-                  ))}
-                  {!loading && !monsterMatches.length && <p className="empty-panel">No monsters match that search.</p>}
-                  {visibleMonsterMatches.length < monsterMatches.length && (
-                    <button
-                      className="encounter-monster-more"
-                      onClick={() => setVisibleMonsterCount((count) => count + MONSTER_RESULTS_PAGE_SIZE)}
-                      type="button"
-                    >
-                      Show {Math.min(MONSTER_RESULTS_PAGE_SIZE, monsterMatches.length - visibleMonsterMatches.length)} more ({(monsterMatches.length - visibleMonsterMatches.length).toLocaleString()} remaining)
-                    </button>
+                  ) : (
+                    <>
+                      <input
+                        className="encounter-search"
+                        onChange={(event) => {
+                          setMonsterQuery(event.target.value);
+                          setVisibleMonsterCount(MONSTER_RESULTS_PAGE_SIZE);
+                        }}
+                        placeholder="Search monsters…"
+                        value={monsterQuery}
+                      />
+                      <div className="encounter-monster-results">
+                        {visibleMonsterMatches.map((monster) => (
+                          <div className="encounter-monster-result" key={monster.id}>
+                            <div><strong>{monster.name}</strong><span>{entrySummary(monster).join(' · ') || 'SRD monster'}</span></div>
+                            <button onClick={() => onUpdateEncounter(addMonsterToEncounter(selected, monster))} type="button">Add</button>
+                          </div>
+                        ))}
+                        {!loading && !monsterMatches.length && <p className="empty-panel">No monsters match that search.</p>}
+                        {visibleMonsterMatches.length < monsterMatches.length && (
+                          <button
+                            className="encounter-monster-more"
+                            onClick={() => setVisibleMonsterCount((count) => count + MONSTER_RESULTS_PAGE_SIZE)}
+                            type="button"
+                          >
+                            Show {Math.min(MONSTER_RESULTS_PAGE_SIZE, monsterMatches.length - visibleMonsterMatches.length)} more ({(monsterMatches.length - visibleMonsterMatches.length).toLocaleString()} remaining)
+                          </button>
+                        )}
+                      </div>
+                    </>
                   )}
-                </div>
-              </section>
+                </section>
+              )}
             </>
           )}
         </section>
@@ -278,53 +348,109 @@ export function EncounterPanel({
           ) : (
             <div className="initiative-list">
               {orderedParticipants.map((participant) => (
-                <article className={`combatant-card ${participant.id === selected.activeCombatantId ? 'is-active' : ''} ${participant.currentHitPoints !== null && participant.currentHitPoints <= 0 ? 'is-defeated' : ''}`} key={participant.id}>
-                  <div className="combatant-title">
-                    <button
-                      aria-label={`Set ${participant.name} as current turn`}
-                      className="turn-marker"
-                      onClick={() => {
-                        const encounter = encounterWithCommittedName();
-                        if (encounter) onUpdateEncounter(touchEncounter(encounter, { activeCombatantId: participant.id, status: 'active' }));
-                      }}
-                      type="button"
-                    >
-                      {participant.id === selected.activeCombatantId ? '●' : '○'}
-                    </button>
-                    <input aria-label={`${participant.name} combatant name`} onChange={(event) => participantPatch(encounterWithCommittedName() ?? selected, participant, { name: event.target.value }, onUpdateEncounter)} value={participant.name} />
-                    <span className={`combatant-kind kind-${participant.kind}`}>{participant.kind}</span>
-                  </div>
-                  <div className="combatant-fields">
-                    <label>Init<input aria-label={`${participant.name} initiative`} onChange={(event) => participantPatch(encounterWithCommittedName() ?? selected, participant, { initiative: asNumber(event.target.value) }, onUpdateEncounter)} type="number" value={participant.initiative ?? ''} /></label>
-                    <label>HP<input aria-label={`${participant.name} current hit points`} onChange={(event) => participantPatch(encounterWithCommittedName() ?? selected, participant, { currentHitPoints: asNumber(event.target.value) }, onUpdateEncounter)} type="number" value={participant.currentHitPoints ?? ''} /></label>
-                    <span className="combatant-slash">/</span>
-                    <label>Max<input aria-label={`${participant.name} maximum hit points`} min="0" onChange={(event) => participantPatch(encounterWithCommittedName() ?? selected, participant, { maxHitPoints: asNumber(event.target.value) }, onUpdateEncounter)} type="number" value={participant.maxHitPoints ?? ''} /></label>
-                    <label>AC<input aria-label={`${participant.name} armor class`} min="0" onChange={(event) => participantPatch(encounterWithCommittedName() ?? selected, participant, { armorClass: asNumber(event.target.value) }, onUpdateEncounter)} type="number" value={participant.armorClass ?? ''} /></label>
-                    <button aria-label={`Remove ${participant.name} from encounter`} className="quiet-danger" onClick={() => onUpdateEncounter(removeEncounterParticipant(encounterWithCommittedName() ?? selected, participant.id))} type="button">×</button>
-                  </div>
-                  <div className="combatant-hp-change">
-                    <label>
-                      Damage + / healing −
-                      <input
-                        aria-label={`${participant.name} damage or healing`}
-                        onChange={(event) => setHitPointChanges((current) => ({ ...current, [participant.id]: event.target.value }))}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') {
-                            event.preventDefault();
-                            applyHitPointChange(participant);
-                          }
-                        }}
-                        placeholder="10 or −10"
-                        step="1"
-                        type="number"
-                        value={hitPointChanges[participant.id] ?? ''}
-                      />
-                    </label>
-                    <button disabled={!canAdjustHitPoints(participant) || asNumber(hitPointChanges[participant.id] ?? '') === null || asNumber(hitPointChanges[participant.id] ?? '') === 0} onClick={() => applyHitPointChange(participant)} type="button">Apply HP</button>
+                <article
+                  className={`combatant-card ${participant.id === selected.activeCombatantId ? 'is-active' : ''} ${participant.currentHitPoints !== null && participant.currentHitPoints <= 0 ? 'is-defeated' : ''} ${participant.id === draggingParticipantId ? 'is-dragging' : ''}`}
+                  key={participant.id}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = 'move';
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    const sourceId = draggedParticipantId.current ?? event.dataTransfer.getData('text/plain');
+                    reorderCombatant(sourceId, participant.id);
+                    draggedParticipantId.current = null;
+                    setDraggingParticipantId(null);
+                  }}
+                >
+                  <button
+                    aria-label={`Reorder ${participant.name}. Use arrow keys or drag.`}
+                    className="combatant-drag-handle"
+                    draggable
+                    onDragEnd={() => {
+                      draggedParticipantId.current = null;
+                      setDraggingParticipantId(null);
+                    }}
+                    onDragStart={(event) => {
+                      draggedParticipantId.current = participant.id;
+                      setDraggingParticipantId(participant.id);
+                      event.dataTransfer.effectAllowed = 'move';
+                      event.dataTransfer.setData('text/plain', participant.id);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+                      event.preventDefault();
+                      onUpdateEncounter(moveEncounterParticipant(selected, participant.id, event.key === 'ArrowUp' ? -1 : 1));
+                    }}
+                    title="Drag to reorder; ↑ and ↓ also move this combatant"
+                    type="button"
+                  >
+                    ⋮⋮
+                  </button>
+
+                  <div className="combatant-card-body">
+                    <div className="combatant-title">
+                      <button
+                        aria-label={`Set ${participant.name} as current turn`}
+                        className="turn-marker"
+                        onClick={() => onUpdateEncounter(touchEncounter(selected, { activeCombatantId: participant.id, status: 'active' }))}
+                        type="button"
+                      >
+                        {participant.id === selected.activeCombatantId ? '●' : '○'}
+                      </button>
+                      <input aria-label={`${participant.name} combatant name`} onChange={(event) => participantPatch(selected, participant, { name: event.target.value }, onUpdateEncounter)} value={participant.name} />
+                      <span className={`combatant-kind kind-${participant.kind}`}>{participant.kind}</span>
+                    </div>
+
+                    <div className="combatant-summary-row">
+                      <label>Init<input aria-label={`${participant.name} initiative`} onChange={(event) => participantPatch(selected, participant, { initiative: asNumber(event.target.value) }, onUpdateEncounter)} type="number" value={participant.initiative ?? ''} /></label>
+                      <button
+                        aria-expanded={hitPointEditorId === participant.id}
+                        className="combatant-hp-button"
+                        disabled={!canAdjustHitPoints(participant)}
+                        onClick={() => setHitPointEditorId((current) => current === participant.id ? null : participant.id)}
+                        title={canAdjustHitPoints(participant) ? 'Open damage and healing calculator' : 'Set maximum HP first'}
+                        type="button"
+                      >
+                        <span>HP</span>
+                        <strong>{participant.currentHitPoints ?? '—'} / {participant.maxHitPoints ?? '—'}</strong>
+                      </button>
+                      <label>AC<input aria-label={`${participant.name} armor class`} min="0" onChange={(event) => participantPatch(selected, participant, { armorClass: asNumber(event.target.value) }, onUpdateEncounter)} type="number" value={participant.armorClass ?? ''} /></label>
+                      <button aria-label={`Remove ${participant.name} from encounter`} className="quiet-danger" onClick={() => onUpdateEncounter(removeEncounterParticipant(selected, participant.id))} type="button">×</button>
+
+                      {hitPointEditorId === participant.id && (
+                        <div className="combatant-hp-calculator">
+                          <label>
+                            Damage + / healing −
+                            <input
+                              aria-label={`${participant.name} damage or healing`}
+                              autoFocus
+                              onChange={(event) => setHitPointChanges((current) => ({ ...current, [participant.id]: event.target.value }))}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                  event.preventDefault();
+                                  applyHitPointChange(participant);
+                                }
+                                if (event.key === 'Escape') {
+                                  event.preventDefault();
+                                  setHitPointEditorId(null);
+                                }
+                              }}
+                              placeholder="10 or −10"
+                              step="1"
+                              type="number"
+                              value={hitPointChanges[participant.id] ?? ''}
+                            />
+                          </label>
+                          <button disabled={asNumber(hitPointChanges[participant.id] ?? '') === null || asNumber(hitPointChanges[participant.id] ?? '') === 0} onClick={() => applyHitPointChange(participant)} type="button">Apply</button>
+                          <small>Positive values deal damage; negative values restore HP.</small>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </article>
               ))}
-              {!orderedParticipants.length && <p className="empty-panel">Add party members or monsters to begin.</p>}
+              {!orderedParticipants.length && <p className="empty-panel">Use Add combatant to add party members or monsters.</p>}
             </div>
           )}
         </section>

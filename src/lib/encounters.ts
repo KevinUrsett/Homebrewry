@@ -132,6 +132,59 @@ export function removeEncounterParticipant(encounter: Encounter, participantId: 
   });
 }
 
+/**
+ * Applies an explicit tracker order and assigns descending initiative values so
+ * the normal initiative sorter preserves that order. Missing IDs are appended
+ * safely and duplicate or unknown IDs are ignored.
+ */
+export function reorderEncounterParticipants(encounter: Encounter, orderedParticipantIds: string[]): Encounter {
+  const byId = new Map(encounter.participants.map((participant) => [participant.id, participant]));
+  const seen = new Set<string>();
+  const ordered: EncounterParticipant[] = [];
+
+  for (const participantId of orderedParticipantIds) {
+    const participant = byId.get(participantId);
+    if (!participant || seen.has(participantId)) continue;
+    ordered.push(participant);
+    seen.add(participantId);
+  }
+
+  for (const participant of encounter.participants) {
+    if (seen.has(participant.id)) continue;
+    ordered.push(participant);
+    seen.add(participant.id);
+  }
+
+  const unchanged = ordered.length === encounter.participants.length
+    && ordered.every((participant, index) => participant.id === encounter.participants[index]?.id);
+  if (unchanged) return encounter;
+
+  const highestExistingInitiative = ordered.reduce(
+    (highest, participant) => participant.initiative === null ? highest : Math.max(highest, participant.initiative),
+    ordered.length
+  );
+  const highestInitiative = Math.max(ordered.length, highestExistingInitiative);
+  const participants = ordered.map((participant, index) => ({
+    ...participant,
+    initiative: highestInitiative - index
+  }));
+
+  return touchEncounter(encounter, { participants });
+}
+
+export function moveEncounterParticipant(encounter: Encounter, participantId: string, direction: -1 | 1): Encounter {
+  const ordered = sortCombatants(encounter.participants);
+  const currentIndex = ordered.findIndex((participant) => participant.id === participantId);
+  if (currentIndex < 0) return encounter;
+  const targetIndex = Math.min(Math.max(currentIndex + direction, 0), ordered.length - 1);
+  if (targetIndex === currentIndex) return encounter;
+
+  const next = [...ordered];
+  const [participant] = next.splice(currentIndex, 1);
+  next.splice(targetIndex, 0, participant);
+  return reorderEncounterParticipants(encounter, next.map((item) => item.id));
+}
+
 export function sortCombatants(participants: EncounterParticipant[]): EncounterParticipant[] {
   return participants
     .map((participant, index) => ({ participant, index }))

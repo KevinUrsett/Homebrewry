@@ -5,11 +5,12 @@ import { catalogueReferenceFromUrl, entryFromReference, remarkCatalogueReference
 import { encounterReferenceFromUrl, remarkEncounterReferences } from '../lib/encounterReferences';
 import { worldbuildingReferenceFromUrl, remarkWorldbuildingReferences } from '../lib/worldbuildingReferences';
 import { getHeadingId } from '../lib/outline';
-import { parseRendererBlocks, splitRendererPages, type RendererBlock } from '../renderer/blocks';
+import { parseRendererBlocks, type RendererBlock } from '../renderer/blocks';
 import { catalogueCategoryLabel, type CatalogueEntry, type CustomCatalogueCategory } from '../catalogue/types';
 import type { Brew, BrewAsset, Encounter, WorldbuildingEntry, WorldbuildingType } from '../types';
 import { CatalogueEntryDetails } from './CatalogueEntryDetails';
 import { WorldbuildingReferenceDetails } from './WorldbuildingReferenceDetails';
+import '../homebrewery-theme.css';
 
 type BrewPreviewProps = {
   brew: Brew;
@@ -36,6 +37,14 @@ type MarkdownRendererProps = {
   worldbuilding?: ReadonlyMap<string, WorldbuildingEntry>;
   worldbuildingTypes?: readonly WorldbuildingType[];
   onWorldbuildingOpen?: (entry: WorldbuildingEntry) => void;
+};
+
+type RenderDependencies = Omit<MarkdownRendererProps, 'content' | 'getId'>;
+
+type CharacterRendererBlock = {
+  type: 'statblock' | 'item' | 'spell';
+  content: string;
+  classes?: string[];
 };
 
 function LocalAssetImage({ asset, alt }: { asset: BrewAsset; alt: string }) {
@@ -134,6 +143,8 @@ function MarkdownRenderer({ content, getId, assets, catalogue, catalogueCategori
         h2: ({ children }) => <h2 id={getId(children)}>{children}</h2>,
         h3: ({ children }) => <h3 id={getId(children)}>{children}</h3>,
         h4: ({ children }) => <h4 id={getId(children)}>{children}</h4>,
+        h5: ({ children }) => <h5 id={getId(children)}>{children}</h5>,
+        h6: ({ children }) => <h6 id={getId(children)}>{children}</h6>,
         blockquote: ({ children }) => <blockquote>{children}</blockquote>,
         img: ({ src, alt }) => {
           if (src?.startsWith('asset://')) {
@@ -172,13 +183,19 @@ function MarkdownRenderer({ content, getId, assets, catalogue, catalogueCategori
   );
 }
 
-function CharacterBlock({ type, content }: { type: 'statblock' | 'item' | 'spell'; content: string }) {
-  const [title, ...body] = content.split('\n');
+function CharacterBlock({ block, getId, ...dependencies }: { block: CharacterRendererBlock; getId: (children: ReactNode) => string } & RenderDependencies) {
+  const [title, ...body] = block.content.split('\n');
+  const fallbackTitle = block.type === 'statblock' ? 'Untitled creature' : `Untitled ${block.type}`;
+  const className = [`brew-${block.type}`, ...(block.classes ?? [])].join(' ');
   return (
-    <section className={`brew-${type}`}>
-      <h3>{title || (type === 'statblock' ? 'Untitled creature' : `Untitled ${type}`)}</h3>
+    <section className={className}>
+      <h3>{title || fallbackTitle}</h3>
       <div className="brew-rule" />
-      {body.length > 0 && <div className="brew-block-content">{body.join('\n')}</div>}
+      {body.length > 0 && (
+        <div className="brew-block-content">
+          <MarkdownRenderer content={body.join('\n')} getId={getId} {...dependencies} />
+        </div>
+      )}
     </section>
   );
 }
@@ -197,18 +214,38 @@ function renderBlock(
   onWorldbuildingOpen: ((entry: WorldbuildingEntry) => void) | undefined,
   key: string
 ) {
-  if (block.type === 'markdown') return <MarkdownRenderer assets={assets} catalogue={catalogue} catalogueCategories={catalogueCategories} content={block.content} encounters={encounters} getId={getId} key={key} onEncounterOpen={onEncounterOpen} onReferenceOpen={onReferenceOpen} onWorldbuildingOpen={onWorldbuildingOpen} worldbuilding={worldbuilding} worldbuildingTypes={worldbuildingTypes} />;
-  if (block.type === 'columns') return <section className="brew-columns" key={key}><MarkdownRenderer assets={assets} catalogue={catalogue} catalogueCategories={catalogueCategories} content={block.content} encounters={encounters} getId={getId} onEncounterOpen={onEncounterOpen} onReferenceOpen={onReferenceOpen} onWorldbuildingOpen={onWorldbuildingOpen} worldbuilding={worldbuilding} worldbuildingTypes={worldbuildingTypes} /></section>;
+  const dependencies: RenderDependencies = {
+    assets,
+    catalogue,
+    catalogueCategories,
+    onReferenceOpen,
+    encounters,
+    onEncounterOpen,
+    worldbuilding,
+    worldbuildingTypes,
+    onWorldbuildingOpen
+  };
+
+  if (block.type === 'markdown') return <MarkdownRenderer content={block.content} getId={getId} key={key} {...dependencies} />;
+  if (block.type === 'columns') return <section className="brew-columns" key={key}><MarkdownRenderer content={block.content} getId={getId} {...dependencies} /></section>;
+  if (block.type === 'wide') return <section className="brew-wide" key={key}><MarkdownRenderer content={block.content} getId={getId} {...dependencies} /></section>;
+  if (block.type === 'homebrewery') {
+    return <section className={['brew-homebrewery', ...block.classes].join(' ')} key={key}><MarkdownRenderer content={block.content} getId={getId} {...dependencies} /></section>;
+  }
   if (block.type === 'callout') {
     return (
       <aside className={`brew-callout callout-${block.variant}`} key={key}>
         {block.title && <h4>{block.title}</h4>}
-        <MarkdownRenderer assets={assets} catalogue={catalogue} catalogueCategories={catalogueCategories} content={block.content} encounters={encounters} getId={getId} onEncounterOpen={onEncounterOpen} onReferenceOpen={onReferenceOpen} onWorldbuildingOpen={onWorldbuildingOpen} worldbuilding={worldbuilding} worldbuildingTypes={worldbuildingTypes} />
+        <MarkdownRenderer content={block.content} getId={getId} {...dependencies} />
       </aside>
     );
   }
-  if (block.type === 'pagebreak') return null;
-  return <CharacterBlock content={block.content} key={key} type={block.type} />;
+  if (block.type === 'pagebreak') return <div aria-label="Section break" className="brew-flow-break" key={key} role="separator" />;
+  if (block.type === 'columnbreak') return null;
+  if (block.type === 'spacer') {
+    return <div aria-hidden className="brew-spacer" key={key} style={{ '--brew-spacer-size': block.size } as CSSProperties} />;
+  }
+  return <CharacterBlock block={block} getId={getId} key={key} {...dependencies} />;
 }
 
 export function BrewPreview({ brew, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen }: BrewPreviewProps) {
@@ -219,19 +256,16 @@ export function BrewPreview({ brew, assets, catalogue, catalogueCategories, onRe
     headingOccurrences.set(text, occurrence + 1);
     return getHeadingId(text, occurrence);
   };
-  const pages = splitRendererPages(parseRendererBlocks(brew.content));
+  const blocks = parseRendererBlocks(brew.content);
 
   return (
     <div
       className={`brew-book tone-${brew.rendererSettings.parchmentTone}`}
       style={{ '--brew-accent': brew.rendererSettings.accentColor } as CSSProperties}
     >
-      {pages.map((page, pageIndex) => (
-        <article className="brew-preview" key={`page-${pageIndex}`}>
-          <div className="brew-page-number" aria-hidden>{pageIndex + 1}</div>
-          {page.map((block, blockIndex) => renderBlock(block, getId, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen, `${pageIndex}-${blockIndex}`))}
-        </article>
-      ))}
+      <article className="brew-preview brew-continuous">
+        {blocks.map((block, blockIndex) => renderBlock(block, getId, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen, `block-${blockIndex}`))}
+      </article>
     </div>
   );
 }

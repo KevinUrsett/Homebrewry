@@ -1,0 +1,6 @@
+@media (hover: none) and (pointer: coarse) {
+  .combatant-drag-handle {
+    -webkit-user-drag: none;
+    -webkit-touch-callout: none;
+  }
+}

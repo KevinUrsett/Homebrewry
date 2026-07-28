@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { catalogueReferenceFromUrl, entryFromReference, remarkCatalogueReferences } from '../catalogue/references';
 import { encounterReferenceFromUrl, remarkEncounterReferences } from '../lib/encounterReferences';
 import { worldbuildingReferenceFromUrl, remarkWorldbuildingReferences } from '../lib/worldbuildingReferences';
+import { remarkAutoReferences } from '../lib/autoReferences';
 import { getHeadingId } from '../lib/outline';
 import { parseRendererBlocks, type RendererBlock } from '../renderer/blocks';
 import { catalogueCategoryLabel, type CatalogueEntry, type CustomCatalogueCategory } from '../catalogue/types';
@@ -134,9 +135,14 @@ function WorldbuildingReferenceLink({
 }
 
 function MarkdownRenderer({ content, getId, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen }: MarkdownRendererProps) {
+  const autoReferences = useMemo(
+    () => remarkAutoReferences({ catalogue, encounters, worldbuilding }),
+    [catalogue, encounters, worldbuilding]
+  );
+
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm, remarkCatalogueReferences, remarkEncounterReferences, remarkWorldbuildingReferences]}
+      remarkPlugins={[remarkGfm, remarkCatalogueReferences, remarkEncounterReferences, remarkWorldbuildingReferences, autoReferences]}
       urlTransform={previewUrlTransform}
       components={{
         h1: ({ children }) => <h1 id={getId(children)}>{children}</h1>,

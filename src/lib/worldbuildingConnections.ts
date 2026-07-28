@@ -6,6 +6,7 @@ export type WorldbuildingConnection = {
   id: string;
   label: string;
   count: number;
+  direction?: 'incoming' | 'outgoing' | 'mutual';
 };
 
 function proseOnly(source: string): string {
@@ -59,8 +60,17 @@ export function findWorldbuildingConnections(
   }
   for (const related of entries) {
     if (related.id === entry.id) continue;
-    const count = sourceCount(related.notes, entry);
-    if (count) connections.push({ kind: 'worldbuilding', id: related.id, label: related.name || 'Untitled entry', count });
+    const incoming = sourceCount(related.notes, entry);
+    const outgoing = sourceCount(entry.notes, related);
+    if (incoming || outgoing) {
+      connections.push({
+        kind: 'worldbuilding',
+        id: related.id,
+        label: related.name || 'Untitled entry',
+        count: incoming + outgoing,
+        direction: incoming && outgoing ? 'mutual' : incoming ? 'incoming' : 'outgoing'
+      });
+    }
   }
 
   return connections.sort((left, right) =>

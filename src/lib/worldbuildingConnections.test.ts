@@ -39,7 +39,19 @@ describe('Worldbuilding connections', () => {
     expect(findWorldbuildingConnections(entry, [brew], [encounter], [entry, related])).toEqual([
       { kind: 'brew', id: brew.id, label: brew.title, count: 2 },
       { kind: 'encounter', id: encounter.id, label: encounter.name, count: 1 },
-      { kind: 'worldbuilding', id: related.id, label: related.name, count: 1 }
+      { kind: 'worldbuilding', id: related.id, label: related.name, count: 1, direction: 'incoming' }
+    ]);
+  });
+
+  it('shows a Worldbuilding relationship from both entries when only one mentions the other', () => {
+    const talon = { ...entry, id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', name: 'Talon', notes: 'Talon came from Sund.' };
+    const sund = { ...entry, notes: '' };
+
+    expect(findWorldbuildingConnections(talon, [], [], [talon, sund])).toEqual([
+      { kind: 'worldbuilding', id: sund.id, label: sund.name, count: 1, direction: 'outgoing' }
+    ]);
+    expect(findWorldbuildingConnections(sund, [], [], [talon, sund])).toEqual([
+      { kind: 'worldbuilding', id: talon.id, label: talon.name, count: 1, direction: 'incoming' }
     ]);
   });
 

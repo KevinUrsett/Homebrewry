@@ -126,7 +126,14 @@ function WorldbuildingEntryPreview({ entry, types, catalogue, worldbuilding, cat
           <div className="worldbuilding-connection-list">
             {connections.map((connection) => {
               const related = connection.kind === 'worldbuilding' ? worldbuilding.get(connection.id) : undefined;
-              const content = <><span>{connection.kind}</span><strong>{connection.label}</strong><small>{connection.count} mention{connection.count === 1 ? '' : 's'}</small></>;
+              const direction = connection.direction === 'mutual'
+                ? 'Mutual references'
+                : connection.direction === 'outgoing'
+                  ? 'Mentioned in this entry'
+                  : connection.direction === 'incoming'
+                    ? 'Mentions this entry'
+                    : `${connection.count} mention${connection.count === 1 ? '' : 's'}`;
+              const content = <><span>{connection.kind}</span><strong>{connection.label}</strong><small>{direction}</small></>;
               return related
                 ? <button key={`${connection.kind}:${connection.id}`} onClick={() => onWorldbuildingOpen(related)} type="button">{content}</button>
                 : <article key={`${connection.kind}:${connection.id}`}>{content}</article>;

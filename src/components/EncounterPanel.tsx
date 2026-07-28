@@ -300,7 +300,17 @@ export function EncounterPanel({
                 ) : (
                   <div className="encounter-title-display">
                     <h2>{selected.name || 'Untitled encounter'}</h2>
-                    <button className="encounter-inline-button" onClick={startEditingName} type="button">Edit name</button>
+                    <button
+                      aria-label="Edit encounter name"
+                      className="encounter-icon-button"
+                      onClick={startEditingName}
+                      title="Edit encounter name"
+                      type="button"
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24">
+                        <path d="M4 20h4l11-11-4-4L4 16v4Zm12.5-16.5 4 4 1.1-1.1a1.4 1.4 0 0 0 0-2l-2-2a1.4 1.4 0 0 0-2 0L16.5 3.5Z" />
+                      </svg>
+                    </button>
                   </div>
                 )}
                 <div className="encounter-progress-controls">
@@ -326,7 +336,7 @@ export function EncounterPanel({
                       onChange={(event) => onUpdateEncounter(touchEncounter(selected, { optional: event.target.checked }))}
                       type="checkbox"
                     />
-                    Optional
+                    <span>Optional encounter</span>
                   </label>
                 </div>
               </div>
@@ -340,18 +350,22 @@ export function EncounterPanel({
                 >
                   {selected.status === 'active' ? 'Next turn' : 'Start combat'}
                 </button>
-                <button onClick={() => onInsertReference(selected)} type="button">Insert into brew</button>
-                <button onClick={() => setCombatantPicker((current) => current ? null : 'party')} type="button">
+                <button className="encounter-add-button" onClick={() => setCombatantPicker((current) => current ? null : 'party')} type="button">
                   {combatantPicker ? 'Close picker' : 'Add combatant'}
                 </button>
+                <button onClick={() => onInsertReference(selected)} type="button">Insert into brew</button>
                 <button className="quiet-danger" onClick={() => onDeleteEncounter(selected)} type="button">Delete</button>
               </div>
 
-              <section className="encounter-section">
+              <section className={`encounter-section encounter-tracker-summary ${selected.participants.length ? '' : 'is-empty'}`}>
                 <div className="encounter-section-heading">
                   <div><p className="eyebrow">Tracker</p><h2>{selected.participants.length} combatant{selected.participants.length === 1 ? '' : 's'}</h2></div>
                 </div>
-                <p className="encounter-helper">Press and drag the left grip to set order on phone or desktop. The tracker recalculates initiative so the new order remains stable; keyboard users can focus a grip and press ↑ or ↓.</p>
+                <p className="encounter-helper">
+                  {selected.participants.length
+                    ? 'Press and drag the left grip to set order. Keyboard users can focus a grip and press ↑ or ↓.'
+                    : 'Add party members, confirmed Worldbuilding NPCs, or catalogue monsters to prepare this encounter.'}
+                </p>
               </section>
 
               {combatantPicker && (
@@ -649,7 +663,7 @@ export function EncounterPanel({
                   </div>
                 </article>
               ))}
-              {!orderedParticipants.length && <p className="empty-panel">Use Add combatant to add party members or monsters.</p>}
+              {!orderedParticipants.length && <p className="empty-panel">Use Add combatant to add party members, Worldbuilding NPCs, or monsters.</p>}
             </div>
           )}
         </section>

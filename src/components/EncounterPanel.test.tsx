@@ -143,6 +143,10 @@ describe('EncounterPanel monster browser', () => {
       );
     });
 
+    const editName = container.querySelector<HTMLButtonElement>('button[aria-label="Edit encounter name"]');
+    expect(editName?.querySelector('svg')).toBeTruthy();
+    expect(editName?.textContent).toBe('');
+
     const addCombatant = Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Add combatant');
     await act(async () => {
       addCombatant?.dispatchEvent(new MouseEvent('click', { bubbles: true }));

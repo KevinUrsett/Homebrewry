@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { CataloguePanel } from './components/CataloguePanel';
 import { BrewPreview } from './components/BrewPreview';
 import { EncounterPanel } from './components/EncounterPanel';
@@ -235,6 +235,11 @@ export default function App() {
     () => brews.find((brew) => brew.id === activeId) ?? null,
     [activeId, brews]
   );
+  const deferredBrews = useDeferredValue(brews);
+  const previewBrew = useMemo(
+    () => deferredBrews.find((brew) => brew.id === activeId) ?? activeBrew,
+    [activeBrew, activeId, deferredBrews]
+  );
   const assetMap = useMemo(() => new Map(assets.map((asset) => [asset.id, asset])), [assets]);
   const catalogueEntries = useMemo(
     () => [...baseCatalogueEntries, ...privateMonsterEntries, ...customCatalogueEntries].sort((left, right) => left.category.localeCompare(right.category) || left.name.localeCompare(right.name)),
@@ -242,8 +247,10 @@ export default function App() {
   );
   const catalogueMap = useMemo(() => toCatalogueMap(catalogueEntries), [catalogueEntries]);
   const encounterMap = useMemo(() => new Map(encounters.map((encounter) => [encounter.id, encounter])), [encounters]);
-  const campaignPosition = useMemo(() => deriveCampaignPosition(brews, encounters), [brews, encounters]);
+  const campaignPosition = useMemo(() => deriveCampaignPosition(deferredBrews, encounters), [deferredBrews, encounters]);
   const worldbuildingMap = useMemo(() => new Map(worldbuildingEntries.map((entry) => [entry.id, entry])), [worldbuildingEntries]);
+  const previewContent = previewBrew?.content ?? '';
+  const outline = useMemo(() => getOutline(previewContent), [previewContent]);
 
   useEffect(() => {
     if (!activeBrew || loading) return;
@@ -256,6 +263,17 @@ export default function App() {
 
     return () => window.clearTimeout(timer);
   }, [activeBrew, loading]);
+
+  const saveActiveBrewNow = async () => {
+    if (!activeBrew) return;
+    try {
+      setSaveState('Saving locally…');
+      await saveBrew(activeBrew);
+      setSaveState('Saved locally');
+    } catch {
+      setSaveState('Local save failed');
+    }
+  };
 
   const updateActiveBrew = (updater: (brew: Brew) => Brew) => {
     if (!activeId) return;
@@ -1132,7 +1150,7 @@ export default function App() {
     return <main className="loading-screen">Opening your local brew library…</main>;
   }
 
-  const outline = getOutline(activeBrew.content);
+  const renderedBrew = previewBrew ?? activeBrew;
 
   return (
     <div className={`app-shell mobile-${mobileSection}`}>
@@ -1315,6 +1333,7 @@ export default function App() {
               }}
               onOpenCatalogue={openCatalogue}
               onOpenEncounters={openEncounters}
+              onSave={() => { void saveActiveBrewNow(); }}
               onCreateCatalogueReference={createCatalogueReference}
               onCreateWorldbuildingReference={createWorldbuildingReference}
               worldbuildingTypes={worldbuildingTypes}
@@ -1333,7 +1352,7 @@ export default function App() {
               <div className="preview-canvas">
                 <BrewPreview
                   assets={assetMap}
-                  brew={activeBrew}
+                  brew={renderedBrew}
                   catalogue={catalogueMap}
                   catalogueCategories={customCatalogueCategories}
                   encounters={encounterMap}

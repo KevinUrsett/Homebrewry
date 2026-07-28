@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addMonsterToEncounter,
+  addNpcToEncounter,
   adjustEncounterParticipantHitPoints,
   advanceCombatTurn,
   createEncounter,
@@ -11,6 +12,7 @@ import {
   sortCombatants
 } from './encounters';
 import type { CatalogueEntry } from '../catalogue/types';
+import type { CampaignEntity } from '../types';
 
 const aboleth: CatalogueEntry = {
   id: 'c674b91f-94c8-5c80-9d1d-31bef50bc779',
@@ -20,6 +22,17 @@ const aboleth: CatalogueEntry = {
   data: { ac: '17 (Natural Armor)', hp: '135 (18d10 + 36)', initiativeBonus: 7 },
   source: 'SRD-521',
   ruleset: '5.5e'
+};
+const talon: CampaignEntity = {
+  id: 'worldbuilding:talon',
+  campaignId: 'campaign-1',
+  kind: 'npc',
+  name: 'Talon Bloodwing',
+  aliases: ['Talon'],
+  source: { kind: 'worldbuilding', id: 'talon' },
+  createdAt: '2026-07-28T10:00:00.000Z',
+  updatedAt: '2026-07-28T10:00:00.000Z',
+  version: 1
 };
 
 const initiativeParticipants = [
@@ -53,6 +66,16 @@ describe('encounter logic', () => {
     expect(withSecond.participants.map((participant) => participant.name)).toEqual(['Aboleth', 'Aboleth 2']);
     expect(withSecond.participants[0]).toMatchObject({ armorClass: 17, maxHitPoints: 135, currentHitPoints: 135, initiative: 8 });
     expect(rollMonsterInitiative(aboleth, () => 0.45)).toBe(17);
+  });
+
+  it('links a confirmed NPC entity to one stable encounter participant', () => {
+    const encounter = createEncounter('North Tower');
+    const linked = addNpcToEncounter(encounter, talon);
+
+    expect(linked.participants).toEqual([
+      expect.objectContaining({ kind: 'npc', name: 'Talon Bloodwing', entityId: talon.id })
+    ]);
+    expect(addNpcToEncounter(linked, talon)).toBe(linked);
   });
 
   it('orders initiative descending and advances through a stable turn order', () => {

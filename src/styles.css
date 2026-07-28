@@ -352,6 +352,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .combatant-kind { border-radius: 999px; font-size: .58rem; font-weight: 800; padding: 3px 5px; text-transform: uppercase; }
 .kind-player { background: #dce8ee; color: #325466; }
 .kind-monster { background: #eee2c8; color: #6a522c; }
+.kind-npc { background: #e4d8ea; color: #583c68; }
+.combatant-world-status { color: #705e50; font-size: .64rem; font-weight: 700; text-transform: uppercase; }
 .combatant-fields { align-items: end; display: grid; gap: 5px; grid-template-columns: repeat(2, minmax(0, 1fr)) auto repeat(2, minmax(0, 1fr)) auto; margin-top: 8px; }
 .combatant-fields input { padding: 5px; }
 .combatant-slash { color: #806c5a; font-weight: 700; padding-bottom: 5px; }

@@ -50,7 +50,7 @@ function isSafeTaxonomyId(value: string): boolean {
 function parseParticipant(value: unknown): EncounterParticipant {
   if (!isRecord(value)) throw new Error('Campaign data has an invalid combatant.');
   const kind = value.kind;
-  if (kind !== 'player' && kind !== 'monster') throw new Error('Campaign data has an invalid combatant kind.');
+  if (kind !== 'player' && kind !== 'monster' && kind !== 'npc') throw new Error('Campaign data has an invalid combatant kind.');
 
   let source: EncounterParticipant['source'];
   if (value.source !== undefined) {
@@ -65,6 +65,7 @@ function parseParticipant(value: unknown): EncounterParticipant {
     kind,
     name: requiredString(value.name, 'combatant name'),
     ...(value.partyMemberId === undefined ? {} : { partyMemberId: requiredString(value.partyMemberId, 'party member ID') }),
+    ...(value.entityId === undefined ? {} : { entityId: requiredString(value.entityId, 'combatant entity ID') }),
     ...(source ? { source } : {}),
     armorClass: nullableNumber(value.armorClass, 'combatant armor class'),
     maxHitPoints: nullableNumber(value.maxHitPoints, 'combatant maximum hit points'),

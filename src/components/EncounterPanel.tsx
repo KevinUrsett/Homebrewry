@@ -3,6 +3,7 @@ import { entrySummary } from '../catalogue/presentation';
 import type { CatalogueEntry } from '../catalogue/types';
 import {
   addMonsterToEncounter,
+  addNpcToEncounter,
   addPartyMembersToEncounter,
   adjustEncounterParticipantHitPoints,
   advanceCombatTurn,
@@ -15,7 +16,7 @@ import {
 } from '../lib/encounters';
 import { campaignStoragePresentation } from '../lib/campaignStorageStatus';
 import type { CampaignPosition } from '../lib/campaignProgress';
-import type { Encounter, EncounterParticipant, PartyMember, SyncState } from '../types';
+import type { CampaignEntity, Encounter, EncounterParticipant, EntityCurrentState, PartyMember, SyncState } from '../types';
 import '../encounter-refresh.css';
 
 type EncounterPanelProps = {
@@ -23,6 +24,8 @@ type EncounterPanelProps = {
   campaignPosition?: CampaignPosition | null;
   selectedId: string | null;
   partyMembers: PartyMember[];
+  npcEntities?: CampaignEntity[];
+  currentStateByEntityId?: ReadonlyMap<string, EntityCurrentState>;
   monsters: CatalogueEntry[];
   loading: boolean;
   syncState: SyncState;
@@ -37,7 +40,7 @@ type EncounterPanelProps = {
   onUpdatePartyMember: (member: PartyMember) => void;
 };
 
-type CombatantPicker = 'party' | 'monster' | null;
+type CombatantPicker = 'party' | 'npc' | 'monster' | null;
 type StatField = 'initiative' | 'armorClass';
 type StatEditor = { participantId: string; field: StatField; value: string } | null;
 
@@ -63,6 +66,8 @@ export function EncounterPanel({
   campaignPosition,
   selectedId,
   partyMembers,
+  npcEntities = [],
+  currentStateByEntityId = new Map(),
   monsters,
   loading,
   syncState,
@@ -193,6 +198,9 @@ export function EncounterPanel({
 
   const includedPartyMemberIds = new Set(
     selected?.participants.flatMap((participant) => participant.partyMemberId ? [participant.partyMemberId] : []) ?? []
+  );
+  const includedNpcEntityIds = new Set(
+    selected?.participants.flatMap((participant) => participant.entityId ? [participant.entityId] : []) ?? []
   );
 
   return (
@@ -350,10 +358,19 @@ export function EncounterPanel({
                 <section className="encounter-picker" aria-label="Add combatant">
                   <div className="encounter-picker-header">
                     <h3>Add combatant</h3>
-                    <span>{combatantPicker === 'party' ? `${partyMembers.length} party member${partyMembers.length === 1 ? '' : 's'}` : loading ? 'Loading…' : `${monsterMatches.length.toLocaleString()} monster match${monsterMatches.length === 1 ? '' : 'es'}`}</span>
+                    <span>
+                      {combatantPicker === 'party'
+                        ? `${partyMembers.length} party member${partyMembers.length === 1 ? '' : 's'}`
+                        : combatantPicker === 'npc'
+                          ? `${npcEntities.length} confirmed NPC${npcEntities.length === 1 ? '' : 's'}`
+                          : loading
+                            ? 'Loading…'
+                            : `${monsterMatches.length.toLocaleString()} monster match${monsterMatches.length === 1 ? '' : 'es'}`}
+                    </span>
                   </div>
                   <div className="encounter-picker-tabs" role="tablist" aria-label="Combatant source">
                     <button aria-selected={combatantPicker === 'party'} className={combatantPicker === 'party' ? 'is-selected' : ''} onClick={() => setCombatantPicker('party')} role="tab" type="button">Party</button>
+                    <button aria-selected={combatantPicker === 'npc'} className={combatantPicker === 'npc' ? 'is-selected' : ''} onClick={() => setCombatantPicker('npc')} role="tab" type="button">Worldbuilding NPCs</button>
                     <button aria-selected={combatantPicker === 'monster'} className={combatantPicker === 'monster' ? 'is-selected' : ''} onClick={() => setCombatantPicker('monster')} role="tab" type="button">Catalogue</button>
                   </div>
 
@@ -379,6 +396,23 @@ export function EncounterPanel({
                         );
                       })}
                       {!partyMembers.length && <p className="empty-panel">Add characters to the current party first.</p>}
+                    </div>
+                  ) : combatantPicker === 'npc' ? (
+                    <div className="encounter-party-picker encounter-npc-picker">
+                      {npcEntities.map((entity) => {
+                        const included = includedNpcEntityIds.has(entity.id);
+                        const status = currentStateByEntityId.get(entity.id)?.fields.status?.value;
+                        return (
+                          <div className="encounter-party-choice" key={entity.id}>
+                            <div>
+                              <strong>{entity.name}</strong>
+                              <span>{status === null || status === undefined ? 'No current status' : `Current status: ${String(status)}`}</span>
+                            </div>
+                            <button disabled={included} onClick={() => onUpdateEncounter(addNpcToEncounter(selected, entity))} type="button">{included ? 'Added' : 'Add'}</button>
+                          </div>
+                        );
+                      })}
+                      {!npcEntities.length && <p className="empty-panel">Create a Worldbuilding character to add a confirmed NPC.</p>}
                     </div>
                   ) : (
                     <>
@@ -509,6 +543,11 @@ export function EncounterPanel({
                       </button>
                       <input aria-label={`${participant.name} combatant name`} onChange={(event) => participantPatch(selected, participant, { name: event.target.value }, onUpdateEncounter)} value={participant.name} />
                       <span className={`combatant-kind kind-${participant.kind}`}>{participant.kind}</span>
+                      {participant.entityId && (
+                        <span className="combatant-world-status">
+                          {String(currentStateByEntityId.get(participant.entityId)?.fields.status?.value ?? 'linked')}
+                        </span>
+                      )}
                     </div>
 
                     <div className="combatant-summary-row">

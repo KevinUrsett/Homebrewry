@@ -1319,6 +1319,8 @@ export default function App() {
           hasDriveBackup={Boolean(campaignDataSync?.drive)}
           loading={catalogueLoading}
           monsters={catalogueEntries.filter((entry) => entry.category === 'monster')}
+          npcEntities={livingWorld.entities.filter((entity) => entity.kind === 'npc')}
+          currentStateByEntityId={currentStateByEntityId}
           syncState={campaignDataSync?.syncState ?? 'local'}
           onCreateEncounter={createNewEncounter}
           onCreatePartyMember={addPartyMember}

@@ -86,6 +86,29 @@ describe('campaign data snapshots', () => {
     expect(migrated.worldEvents).toEqual([]);
   });
 
+  it('preserves stable NPC entity links on encounter combatants', () => {
+    const linked = {
+      ...createEncounter('North Tower'),
+      participants: [{
+        id: 'participant-1',
+        kind: 'npc' as const,
+        name: 'Talon Bloodwing',
+        entityId: 'worldbuilding:talon',
+        armorClass: 17,
+        maxHitPoints: 44,
+        currentHitPoints: 44,
+        initiative: 12
+      }]
+    };
+    const snapshot = createCampaignDataSnapshot([linked], [], [], '2026-07-28T10:00:00.000Z');
+
+    expect(parseCampaignDataSnapshot(JSON.parse(JSON.stringify(snapshot))).encounters[0]?.participants[0]).toMatchObject({
+      kind: 'npc',
+      entityId: 'worldbuilding:talon',
+      name: 'Talon Bloodwing'
+    });
+  });
+
   it('keeps conflicting records as separately named local copies', () => {
     const localEntry = { ...createWorldbuildingEntry('Sund', 'town'), notes: 'Local note' };
     const remoteEntry = { ...localEntry, notes: 'Drive note' };

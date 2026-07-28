@@ -67,6 +67,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .editor-toolbar { align-items: center; background: #f5ecdc; border-bottom: 1px solid #d8c9ae; display: flex; flex-wrap: wrap; gap: 4px; min-height: 43px; padding: 5px 8px; }
 .editor-toolbar button { background: #fffaf0; border: 1px solid #d1c0a5; border-radius: 5px; color: #4d392d; font-size: .76rem; min-height: 27px; padding: 4px 7px; }
 .editor-toolbar button:hover { background: #eadbbf; }
+.editor-toolbar .editor-save-button { border-color: #8a5b3d; font-weight: 700; }
 .toolbar-spacer { flex: 1; }
 .toolbar-reference-menu { position: relative; }
 .reference-menu { background: #fffaf0; border: 1px solid #b99464; border-radius: 7px; box-shadow: 0 12px 28px rgb(45 28 16 / 24%); display: grid; gap: 2px; left: 0; max-height: min(430px, 62dvh); min-width: 185px; overflow: auto; padding: 6px; position: absolute; top: calc(100% + 5px); z-index: 15; }

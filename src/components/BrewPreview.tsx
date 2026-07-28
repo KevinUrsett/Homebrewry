@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { memo, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { catalogueReferenceFromUrl, entryFromReference, remarkCatalogueReferences } from '../catalogue/references';
@@ -254,7 +254,7 @@ function renderBlock(
   return <CharacterBlock block={block} getId={getId} key={key} {...dependencies} />;
 }
 
-export function BrewPreview({ brew, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen }: BrewPreviewProps) {
+export const BrewPreview = memo(function BrewPreview({ brew, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen }: BrewPreviewProps) {
   const headingOccurrences = new Map<string, number>();
   const getId = (children: ReactNode) => {
     const text = String(children);
@@ -274,4 +274,12 @@ export function BrewPreview({ brew, assets, catalogue, catalogueCategories, onRe
       </article>
     </div>
   );
-}
+}, (previous, next) =>
+  previous.brew === next.brew
+  && previous.assets === next.assets
+  && previous.catalogue === next.catalogue
+  && previous.catalogueCategories === next.catalogueCategories
+  && previous.encounters === next.encounters
+  && previous.worldbuilding === next.worldbuilding
+  && previous.worldbuildingTypes === next.worldbuildingTypes
+);

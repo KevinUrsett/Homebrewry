@@ -78,6 +78,6 @@ export async function requestDriveAccess() {
       }
     });
 
-    client?.requestAccessToken({ prompt: '' });
+    client?.requestAccessToken({ prompt: 'select_account' });
   });
 }

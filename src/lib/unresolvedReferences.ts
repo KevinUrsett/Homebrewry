@@ -15,12 +15,9 @@ const genericSingleNames = new Set([
   'Wind', 'Wood'
 ]);
 
-// Lowercase words that may legitimately sit inside a proper name. Matching
-// continues through these only when the phrase begins with a capitalised word;
-// trailing connectors are removed if no capitalised word follows them.
 const connectorWords = new Set([
   'and', 'at', 'beneath', 'beyond', 'by', 'de', 'del', 'for', 'from', 'in', 'near',
-  'of', 'on', 'the', 'to', 'under', 'upon', 'within', 'without'
+  'of', 'on', 'the', 'to', 'under', 'upon', 'within'
 ]);
 const wordPattern = /[\p{L}][\p{L}\p{M}'’\-]*/gu;
 
@@ -66,28 +63,32 @@ function candidatesFromSource(source: string): string[] {
     if (!isCapitalised(current.value)) continue;
 
     const phrase = [current.value];
+    const capitalisedParts = new Set([current.value.toLocaleLowerCase()]);
     let cursor = index + 1;
-    let finalCapitalisedIndex = index;
 
     while (cursor < words.length && phrase.length < 10) {
       const previous = words[cursor - 1];
       const next = words[cursor];
       const gap = prose.slice(previous.index + previous.value.length, next.index);
-      if (!/^\s+$/.test(gap)) break;
+
+      // A name never crosses a source line. This prevents separate names entered
+      // on consecutive lines from being merged into one long candidate.
+      if (!/^[\t ]+$/.test(gap)) break;
 
       const lower = next.value.toLocaleLowerCase();
-      if (!isCapitalised(next.value) && !connectorWords.has(lower)) break;
+      const capitalised = isCapitalised(next.value);
+      if (!capitalised && !connectorWords.has(lower)) break;
+
+      // Once a complete phrase starts repeating (for example "Carl the Officer
+      // Carl the Officer"), the repeated first capital starts a new occurrence.
+      if (capitalised && capitalisedParts.has(lower)) break;
 
       phrase.push(next.value);
-      if (isCapitalised(next.value)) finalCapitalisedIndex = cursor;
+      if (capitalised) capitalisedParts.add(lower);
       cursor += 1;
     }
 
-    // A connector is part of the name only when another capitalised word follows
-    // it. This captures “Temple of the Dark Ones” but not “Temple of the”.
-    const retainedLength = finalCapitalisedIndex - index + 1;
-    phrase.splice(retainedLength);
-
+    while (phrase.length > 1 && connectorWords.has(phrase.at(-1)!.toLocaleLowerCase())) phrase.pop();
     const name = phrase.join(' ');
     if (name.length < 4) continue;
 
@@ -100,19 +101,19 @@ function candidatesFromSource(source: string): string[] {
     }
 
     candidates.push(name);
-    // Do not also suggest nested fragments such as “Dark Ones” after already
-    // detecting the complete “Temple of the Dark Ones”.
-    index = finalCapitalisedIndex;
+
+    // Do not emit nested fragments such as "Dark Ones" after already finding
+    // "Temple of the Dark Ones". The longest valid phrase wins.
+    index = Math.max(index, cursor - 1);
   }
 
   return candidates;
 }
 
 /**
- * Finds probable proper names without AI or source rewriting. Capitalised words
- * inside prose are eligible immediately when they are not generic terms. Words
- * seen only at sentence starts still need repetition, while complete connector
- * phrases such as “Temple of the Dark Ones” are treated as one candidate.
+ * Finds probable proper names without AI or source rewriting. Multiword names
+ * are suggested immediately. Single capitalised words used mid-sentence are
+ * also eligible immediately; sentence-start-only words must recur.
  */
 export function findUnresolvedNames(sources: readonly string[], knownNames: Iterable<string>): UnresolvedName[] {
   const known = new Set([...knownNames].map(normaliseName).filter(Boolean));
@@ -134,10 +135,9 @@ export function findUnresolvedNames(sources: readonly string[], knownNames: Iter
   return [...counts.values()]
     .filter((item) => {
       if (item.name.includes(' ')) return true;
-      // A capitalised term used mid-sentence is deliberate enough to review on
-      // first use. Sentence-start-only terms require repetition to avoid noise.
-      if (item.sentenceStarts < item.count) return true;
-      return item.count >= 3;
+      if (item.sentenceStarts === 0) return true;
+      if (item.count < 2) return false;
+      return item.sentenceStarts < item.count;
     })
     .map(({ name, count }) => ({ name, count }))
     .sort((left, right) => right.count - left.count || left.name.localeCompare(right.name));

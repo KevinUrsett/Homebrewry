@@ -15,6 +15,7 @@ type AutoReference = {
   label: string;
   normalised: string;
   url: string;
+  source: 'worldbuilding' | 'encounter' | 'catalogue';
 };
 
 type AutoReferenceSources = {
@@ -44,6 +45,11 @@ function isUsefulLabel(value: string) {
   return trimmed.length >= 3 && /[\p{L}\p{N}]/u.test(trimmed);
 }
 
+function isCapitalised(value: string) {
+  const firstLetter = [...value].find((character) => /\p{L}/u.test(character));
+  return Boolean(firstLetter && firstLetter === firstLetter.toLocaleUpperCase() && firstLetter !== firstLetter.toLocaleLowerCase());
+}
+
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -55,28 +61,39 @@ function escapeRegExp(value: string) {
  */
 export function createAutoReferenceIndex({ catalogue, encounters, worldbuilding }: AutoReferenceSources): AutoReference[] {
   const candidates = new Map<string, AutoReference[]>();
-  const add = (label: string, url: string) => {
+  const add = (label: string, url: string, source: AutoReference['source']) => {
     if (!isUsefulLabel(label)) return;
     const normalised = normalise(label);
     const list = candidates.get(normalised) ?? [];
-    if (!list.some((candidate) => candidate.url === url)) list.push({ label: label.trim(), normalised, url });
+    if (!list.some((candidate) => candidate.url === url)) list.push({ label: label.trim(), normalised, url, source });
     candidates.set(normalised, list);
   };
 
-  // Priority is only relevant for duplicate aliases that point to the same
-  // entity. Ambiguous labels across distinct entities are excluded entirely.
   worldbuilding?.forEach((entry) => {
     const url = worldbuildingUrl({ id: entry.id });
-    add(entry.name, url);
-    entry.aliases.forEach((alias) => add(alias, url));
+    add(entry.name, url, 'worldbuilding');
+    entry.aliases.forEach((alias) => add(alias, url, 'worldbuilding'));
   });
-  encounters?.forEach((encounter) => add(encounter.name, encounterUrl({ id: encounter.id })));
-  catalogue?.forEach((entry) => add(entry.name, catalogueUrl(entry)));
+  encounters?.forEach((encounter) => add(encounter.name, encounterUrl({ id: encounter.id }), 'encounter'));
+  catalogue?.forEach((entry) => add(entry.name, catalogueUrl(entry), 'catalogue'));
 
   return [...candidates.values()]
     .filter((matches) => matches.length === 1)
     .map(([match]) => match)
     .sort((left, right) => right.label.length - left.label.length || left.label.localeCompare(right.label));
+}
+
+function shouldLinkOccurrence(reference: AutoReference, occurrence: string): boolean {
+  if (reference.source !== 'catalogue') return true;
+
+  // Catalogue names include many ordinary words (bell, scout, cover, blight).
+  // Never turn a lower-case single common word into a reference merely because
+  // it happens to share a catalogue entry name. Explicit Markdown references
+  // remain available for intentional lower-case uses.
+  const isSingleWord = !reference.label.trim().includes(' ');
+  if (isSingleWord && !isCapitalised(occurrence)) return false;
+
+  return true;
 }
 
 function referenceNodes(value: string, index: readonly AutoReference[]): MarkdownNode[] | null {
@@ -92,7 +109,7 @@ function referenceNodes(value: string, index: readonly AutoReference[]): Markdow
 
   while ((match = expression.exec(value))) {
     const reference = byName.get(normalise(match[0]));
-    if (!reference) continue;
+    if (!reference || !shouldLinkOccurrence(reference, match[0])) continue;
     if (match.index > cursor) nodes.push({ type: 'text', value: value.slice(cursor, match.index) });
     nodes.push({ type: 'link', url: reference.url, children: [{ type: 'text', value: match[0] }] });
     cursor = match.index + match[0].length;

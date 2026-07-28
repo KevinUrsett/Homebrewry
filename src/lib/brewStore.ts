@@ -1,6 +1,6 @@
 import { openDB } from 'idb';
 import type { CatalogueEntry, CustomCatalogueCategory } from '../catalogue/types';
-import type { Brew, CampaignDataSnapshot, CampaignDataSyncMetadata, Encounter, PartyMember, PrivateMonsterSyncMetadata, WorldbuildingEntry, WorldbuildingType } from '../types';
+import type { Brew, CampaignDataSnapshot, CampaignDataSyncMetadata, Encounter, LivingWorldData, PartyMember, PrivateMonsterSyncMetadata, WorldbuildingEntry, WorldbuildingType } from '../types';
 
 const DATABASE_NAME = 'homebrewry';
 const STORE_NAME = 'brews';
@@ -14,6 +14,7 @@ export const PRIVATE_MONSTER_SYNC_STORE_NAME = 'private-monster-sync';
 export const CUSTOM_CATALOGUE_STORE_NAME = 'custom-catalogue';
 export const CUSTOM_CATALOGUE_CATEGORY_STORE_NAME = 'custom-catalogue-categories';
 export const WORLDBUILDING_TYPE_STORE_NAME = 'worldbuilding-types';
+export const LIVING_WORLD_STORE_NAME = 'living-world';
 
 const starterContent = `# The Ashen Road
 
@@ -38,7 +39,7 @@ The scout fires from cover, then offers a bargain: carry a sealed letter to the 
 `;
 
 export const getDatabase = () =>
-  openDB(DATABASE_NAME, 10, {
+  openDB(DATABASE_NAME, 11, {
     upgrade(database, oldVersion) {
       if (oldVersion < 1) {
         const store = database.createObjectStore(STORE_NAME, { keyPath: 'id' });
@@ -74,8 +75,33 @@ export const getDatabase = () =>
         database.createObjectStore(CUSTOM_CATALOGUE_CATEGORY_STORE_NAME, { keyPath: 'id' });
         database.createObjectStore(WORLDBUILDING_TYPE_STORE_NAME, { keyPath: 'id' });
       }
+      if (oldVersion < 11) {
+        database.createObjectStore(LIVING_WORLD_STORE_NAME, { keyPath: 'id' });
+      }
     }
   });
+
+export function createLivingWorldData(): LivingWorldData {
+  return {
+    id: 'living-world',
+    campaignId: 'default-campaign',
+    entities: [],
+    entityReferences: [],
+    worldEvents: []
+  };
+}
+
+export async function getLivingWorldData(): Promise<LivingWorldData> {
+  const database = await getDatabase();
+  const stored = await database.get(LIVING_WORLD_STORE_NAME, 'living-world') as LivingWorldData | undefined;
+  return stored ?? createLivingWorldData();
+}
+
+export async function saveLivingWorldData(data: LivingWorldData): Promise<CampaignDataSyncMetadata> {
+  const database = await getDatabase();
+  await database.put(LIVING_WORLD_STORE_NAME, data);
+  return markCampaignDataChanged();
+}
 
 export function createBrew(title = 'Untitled Brew'): Brew {
   const now = new Date().toISOString();
@@ -201,6 +227,7 @@ export async function replaceCampaignData(
       CUSTOM_CATALOGUE_STORE_NAME,
       CUSTOM_CATALOGUE_CATEGORY_STORE_NAME,
       WORLDBUILDING_TYPE_STORE_NAME,
+      LIVING_WORLD_STORE_NAME,
       CAMPAIGN_DATA_SYNC_STORE_NAME
     ],
     'readwrite'
@@ -211,6 +238,7 @@ export async function replaceCampaignData(
   const customCatalogue = transaction.objectStore(CUSTOM_CATALOGUE_STORE_NAME);
   const customCatalogueCategories = transaction.objectStore(CUSTOM_CATALOGUE_CATEGORY_STORE_NAME);
   const worldbuildingTypes = transaction.objectStore(WORLDBUILDING_TYPE_STORE_NAME);
+  const livingWorld = transaction.objectStore(LIVING_WORLD_STORE_NAME);
   const metadataStore = transaction.objectStore(CAMPAIGN_DATA_SYNC_STORE_NAME);
 
   await Promise.all([
@@ -219,7 +247,8 @@ export async function replaceCampaignData(
     worldbuilding.clear(),
     customCatalogue.clear(),
     customCatalogueCategories.clear(),
-    worldbuildingTypes.clear()
+    worldbuildingTypes.clear(),
+    livingWorld.clear()
   ]);
   await Promise.all([
     ...snapshot.encounters.map((encounter: Encounter) => encounters.put(encounter)),
@@ -228,6 +257,13 @@ export async function replaceCampaignData(
     ...snapshot.customCatalogueEntries.map((entry) => customCatalogue.put(entry)),
     ...snapshot.customCatalogueCategories.map((category: CustomCatalogueCategory) => customCatalogueCategories.put(category)),
     ...snapshot.worldbuildingTypes.map((type: WorldbuildingType) => worldbuildingTypes.put(type)),
+    livingWorld.put({
+      id: 'living-world',
+      campaignId: snapshot.campaignId,
+      entities: snapshot.entities,
+      entityReferences: snapshot.entityReferences,
+      worldEvents: snapshot.worldEvents
+    } satisfies LivingWorldData),
     metadataStore.put(metadata)
   ]);
   await transaction.done;

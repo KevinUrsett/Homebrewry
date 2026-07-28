@@ -8,7 +8,7 @@ import { listEncounters } from '../lib/encounterStore';
 import { findUnresolvedNames } from '../lib/unresolvedReferences';
 import { createWorldbuildingEntry, worldbuildingKindLabel, worldbuildingKindLabels, worldbuildingKinds, touchWorldbuildingEntry } from '../lib/worldbuilding';
 import type { CatalogueEntry } from '../catalogue/types';
-import type { SyncState, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from '../types';
+import type { CampaignEntity, EntityCurrentState, SyncState, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from '../types';
 import '../unresolved-references.css';
 
 type WorldbuildingPanelProps = {
@@ -20,7 +20,7 @@ type WorldbuildingPanelProps = {
   catalogue: ReadonlyMap<string, CatalogueEntry>;
   worldbuilding: ReadonlyMap<string, WorldbuildingEntry>;
   catalogueCategories: readonly CustomCatalogueCategory[];
-  onCreate: () => void;
+  onCreate: () => string | null | void;
   onCreateType: (name: string) => string | null;
   onCreateWorldbuildingReference: (name: string, kind: WorldbuildingKind) => Promise<string | null> | string | null;
   onCreateCatalogueReference: (name: string, category: CatalogueCategory) => Promise<string | null> | string | null;
@@ -29,6 +29,9 @@ type WorldbuildingPanelProps = {
   onUpdate: (entry: WorldbuildingEntry) => void;
   onReferenceOpen: (entry: CatalogueEntry) => void;
   onWorldbuildingOpen: (entry: WorldbuildingEntry) => void;
+  entitiesByWorldbuildingId?: ReadonlyMap<string, CampaignEntity>;
+  currentStateByEntityId?: ReadonlyMap<string, EntityCurrentState>;
+  onSetNpcStatus?: (entry: WorldbuildingEntry, status: string) => void;
 };
 
 function aliasesFromInput(value: string): string[] {
@@ -89,19 +92,39 @@ type EntryPreviewProps = {
   onEdit: () => void;
   onReferenceOpen: (entry: CatalogueEntry) => void;
   onWorldbuildingOpen: (entry: WorldbuildingEntry) => void;
+  entity?: CampaignEntity;
+  currentState?: EntityCurrentState;
+  onSetNpcStatus: (status: string) => void;
 };
 
-function WorldbuildingEntryPreview({ entry, types, catalogue, worldbuilding, catalogueCategories, onDelete, onEdit, onReferenceOpen, onWorldbuildingOpen }: EntryPreviewProps) {
+function NpcStateControls({ currentState, onSetStatus }: { currentState?: EntityCurrentState; onSetStatus: (status: string) => void }) {
+  const status = String(currentState?.fields.status?.value ?? 'unknown');
+  const [draft, setDraft] = useState(status);
+  return (
+    <section className="worldbuilding-current-state" aria-label="Current NPC state">
+      <div><p className="eyebrow">Current world state</p><h3>{status}</h3></div>
+      <div className="worldbuilding-state-editor">
+        <label>Status<input list="npc-status-options" onChange={(event) => setDraft(event.target.value)} value={draft} /></label>
+        <datalist id="npc-status-options"><option value="alive" /><option value="dead" /><option value="missing" /><option value="unknown" /></datalist>
+        <button disabled={!draft.trim() || draft.trim() === status} onClick={() => onSetStatus(draft.trim().toLocaleLowerCase())} type="button">Update status</button>
+      </div>
+      <small>{currentState?.fields.status ? `Last changed ${new Date(currentState.fields.status.updatedAt).toLocaleString()} · manual DM override` : 'No status event recorded yet.'}</small>
+    </section>
+  );
+}
+
+function WorldbuildingEntryPreview({ entry, types, catalogue, worldbuilding, catalogueCategories, onDelete, onEdit, onReferenceOpen, onWorldbuildingOpen, entity, currentState, onSetNpcStatus }: EntryPreviewProps) {
   return (
     <article className="worldbuilding-entry worldbuilding-entry-preview" aria-label={entry.name}>
       <header className="worldbuilding-preview-header"><div><p className="eyebrow">{worldbuildingKindLabel(entry.kind, types)}</p><h2>{entry.name}</h2>{entry.aliases.length > 0 && <p className="worldbuilding-preview-aliases">Also known as {entry.aliases.join(' · ')}</p>}</div><button className="primary-button" onClick={onEdit} type="button">Edit</button></header>
+      {entity?.kind === 'npc' && <NpcStateControls currentState={currentState} key={currentState?.fields.status?.eventId ?? 'no-status'} onSetStatus={onSetNpcStatus} />}
       <section className="worldbuilding-preview-notes"><h3>Notes</h3>{entry.notes.trim() ? <ReferenceContent catalogue={catalogue} catalogueCategories={catalogueCategories} content={entry.notes} onReferenceOpen={onReferenceOpen} onWorldbuildingOpen={onWorldbuildingOpen} worldbuilding={worldbuilding} worldbuildingTypes={types} /> : <p>No notes yet.</p>}</section>
       <div className="worldbuilding-entry-footer"><span>Last updated {new Date(entry.updatedAt).toLocaleString()}</span><button className="quiet-danger" onClick={() => onDelete(entry)} type="button">Delete entry</button></div>
     </article>
   );
 }
 
-export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBackup = false, types, catalogue, worldbuilding, catalogueCategories, onCreate, onCreateType, onCreateWorldbuildingReference, onCreateCatalogueReference, onDelete, onSelect, onUpdate, onReferenceOpen, onWorldbuildingOpen }: WorldbuildingPanelProps) {
+export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBackup = false, types, catalogue, worldbuilding, catalogueCategories, onCreate, onCreateType, onCreateWorldbuildingReference, onCreateCatalogueReference, onDelete, onSelect, onUpdate, onReferenceOpen, onWorldbuildingOpen, entitiesByWorldbuildingId = new Map(), currentStateByEntityId = new Map(), onSetNpcStatus = () => undefined }: WorldbuildingPanelProps) {
   const [query, setQuery] = useState('');
   const [kind, setKind] = useState<WorldbuildingKind | 'all'>('all');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -151,6 +174,8 @@ export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBac
   const selected = entries.find((entry) => entry.id === selectedId) ?? filtered[0] ?? entries[0] ?? null;
   const editing = editingId === selected?.id;
   const storage = campaignStoragePresentation(syncState, hasDriveBackup);
+  const selectedEntity = selected ? entitiesByWorldbuildingId.get(selected.id) : undefined;
+  const selectedCurrentState = selectedEntity ? currentStateByEntityId.get(selectedEntity.id) : undefined;
 
   const selectEntry = (id: string) => {
     if (editing && id !== selected?.id && !window.confirm('Discard unsaved Worldbuilding changes?')) return;
@@ -172,9 +197,16 @@ export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBac
     setEditingId(entry.id);
   };
 
+  const createEntry = () => {
+    const id = onCreate();
+    if (!id) return;
+    onSelect(id);
+    setEditingId(id);
+  };
+
   return (
     <main className="worldbuilding-page" aria-label="Worldbuilding">
-      <header className="worldbuilding-page-header"><div><p className="eyebrow">Campaign reference</p><h1>Worldbuilding</h1><p>Capture campaign places, people, history, and factions independently from each brew.</p></div><div className="page-header-actions"><span className={`sync-badge sync-${storage.tone}`} title={storage.title}>{storage.label}</span><button onClick={() => setAddingType((open) => !open)} type="button">New type</button><button className="primary-button" onClick={onCreate} type="button">New entry</button></div></header>
+      <header className="worldbuilding-page-header"><div><p className="eyebrow">Campaign reference</p><h1>Worldbuilding</h1><p>Capture campaign places, people, history, and factions independently from each brew.</p></div><div className="page-header-actions"><span className={`sync-badge sync-${storage.tone}`} title={storage.title}>{storage.label}</span><button onClick={() => setAddingType((open) => !open)} type="button">New type</button><button className="primary-button" onClick={createEntry} type="button">New entry</button></div></header>
 
       {addingType && <form className="worldbuilding-new-type" onSubmit={submitType}><label>New Worldbuilding type<input autoFocus onChange={(event) => setTypeName(event.target.value)} placeholder="Tavern, deity, ship…" value={typeName} /></label><button type="button" onClick={() => { setAddingType(false); setTypeError(null); }}>Cancel</button><button className="primary-button" type="submit">Add type</button>{typeError && <p role="alert">{typeError}</p>}</form>}
 
@@ -192,7 +224,7 @@ export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBac
           </section>
         </aside>
 
-        <section className="worldbuilding-details" aria-live="polite">{selected ? (editing ? <WorldbuildingEntryEditor catalogueCategories={catalogueCategories} entry={selected} key={selected.id} onCancel={() => setEditingId(null)} onCreateCatalogueReference={onCreateCatalogueReference} onCreateWorldbuildingReference={onCreateWorldbuildingReference} onSave={(entry) => { onUpdate(entry); setEditingId(null); }} types={types} /> : <WorldbuildingEntryPreview catalogue={catalogue} catalogueCategories={catalogueCategories} entry={selected} onDelete={onDelete} onEdit={() => setEditingId(selected.id)} onReferenceOpen={onReferenceOpen} onWorldbuildingOpen={onWorldbuildingOpen} types={types} worldbuilding={worldbuilding} />) : <p className="empty-panel">Create an entry, or review an unresolved name from the list.</p>}</section>
+        <section className="worldbuilding-details" aria-live="polite">{selected ? (editing ? <WorldbuildingEntryEditor catalogueCategories={catalogueCategories} entry={selected} key={selected.id} onCancel={() => setEditingId(null)} onCreateCatalogueReference={onCreateCatalogueReference} onCreateWorldbuildingReference={onCreateWorldbuildingReference} onSave={(entry) => { onUpdate(entry); setEditingId(null); }} types={types} /> : <WorldbuildingEntryPreview catalogue={catalogue} catalogueCategories={catalogueCategories} currentState={selectedCurrentState} entity={selectedEntity} entry={selected} onDelete={onDelete} onEdit={() => setEditingId(selected.id)} onReferenceOpen={onReferenceOpen} onSetNpcStatus={(status) => onSetNpcStatus(selected, status)} onWorldbuildingOpen={onWorldbuildingOpen} types={types} worldbuilding={worldbuilding} />) : <p className="empty-panel">Create an entry, or review an unresolved name from the list.</p>}</section>
       </section>
     </main>
   );

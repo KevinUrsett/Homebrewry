@@ -162,6 +162,14 @@ export type EntityCurrentState = {
   fields: Record<string, CurrentStateField>;
 };
 
+export type LivingWorldData = {
+  id: 'living-world';
+  campaignId: string;
+  entities: CampaignEntity[];
+  entityReferences: EntityReference[];
+  worldEvents: WorldEvent[];
+};
+
 export const worldbuildingKinds = [
   'town',
   'road',

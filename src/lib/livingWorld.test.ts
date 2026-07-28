@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { WorldEvent } from '../types';
-import { appendWorldEvent, createCampaignEntity, synchroniseWorldbuildingEntities } from './livingWorld';
+import { appendWorldEvent, createCampaignEntity, recordManualStateChange, synchroniseLivingWorld, synchroniseWorldbuildingEntities } from './livingWorld';
 import { createWorldbuildingEntry } from './worldbuilding';
 
 describe('Living World entities and events', () => {
@@ -51,5 +51,23 @@ describe('Living World entities and events', () => {
       name: 'Sund'
     });
     expect(renamed[0]).toMatchObject({ id: first[0]?.id, name: 'Sundholm' });
+  });
+
+  it('records manual NPC status overrides as append-only provenance', () => {
+    const entry = createWorldbuildingEntry('Talon', 'character');
+    const base = synchroniseLivingWorld({
+      id: 'living-world',
+      campaignId: 'campaign-1',
+      entities: [],
+      entityReferences: [],
+      worldEvents: []
+    }, [entry]);
+    const entityId = base.entities[0]!.id;
+    const dead = recordManualStateChange(base, entityId, 'status', 'dead', '2026-07-28T10:00:00.000Z', () => 'event-1');
+    const alive = recordManualStateChange(dead, entityId, 'status', 'alive', '2026-07-28T11:00:00.000Z', () => 'event-2');
+
+    expect(alive.worldEvents).toHaveLength(2);
+    expect(alive.worldEvents[0]?.changes[0]).toMatchObject({ previousValue: null, nextValue: 'dead' });
+    expect(alive.worldEvents[1]?.changes[0]).toMatchObject({ previousValue: 'dead', nextValue: 'alive' });
   });
 });

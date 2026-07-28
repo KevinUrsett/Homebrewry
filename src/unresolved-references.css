@@ -1,0 +1,69 @@
+.unresolved-references {
+  border-top: 1px solid color-mix(in srgb, currentColor, transparent 78%);
+  margin-top: 14px;
+  padding-top: 14px;
+}
+
+.unresolved-references-header {
+  align-items: baseline;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.unresolved-references-header h3 {
+  font-size: .86rem;
+  margin: 0;
+}
+
+.unresolved-references-header span,
+.unresolved-reference-empty {
+  font-size: .72rem;
+  opacity: .7;
+}
+
+.unresolved-reference-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.unresolved-reference-item {
+  background: rgb(255 255 255 / 4%);
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 7px;
+  display: grid;
+  gap: 7px;
+  padding: 9px;
+}
+
+.unresolved-reference-name {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.unresolved-reference-name strong {
+  font-size: .82rem;
+  overflow-wrap: anywhere;
+}
+
+.unresolved-reference-name span {
+  font-size: .68rem;
+  opacity: .7;
+  white-space: nowrap;
+}
+
+.unresolved-reference-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 5px;
+}
+
+.unresolved-reference-actions select,
+.unresolved-reference-actions button {
+  font-size: .7rem;
+  min-width: 0;
+  padding: 6px;
+}

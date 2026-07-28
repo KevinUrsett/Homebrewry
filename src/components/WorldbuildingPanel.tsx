@@ -20,7 +20,7 @@ type WorldbuildingPanelProps = {
   catalogue: ReadonlyMap<string, CatalogueEntry>;
   worldbuilding: ReadonlyMap<string, WorldbuildingEntry>;
   catalogueCategories: readonly CustomCatalogueCategory[];
-  onCreate: () => void;
+  onCreate: () => string | null | void;
   onCreateType: (name: string) => string | null;
   onCreateWorldbuildingReference: (name: string, kind: WorldbuildingKind) => Promise<string | null> | string | null;
   onCreateCatalogueReference: (name: string, category: CatalogueCategory) => Promise<string | null> | string | null;
@@ -197,9 +197,16 @@ export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBac
     setEditingId(entry.id);
   };
 
+  const createEntry = () => {
+    const id = onCreate();
+    if (!id) return;
+    onSelect(id);
+    setEditingId(id);
+  };
+
   return (
     <main className="worldbuilding-page" aria-label="Worldbuilding">
-      <header className="worldbuilding-page-header"><div><p className="eyebrow">Campaign reference</p><h1>Worldbuilding</h1><p>Capture campaign places, people, history, and factions independently from each brew.</p></div><div className="page-header-actions"><span className={`sync-badge sync-${storage.tone}`} title={storage.title}>{storage.label}</span><button onClick={() => setAddingType((open) => !open)} type="button">New type</button><button className="primary-button" onClick={onCreate} type="button">New entry</button></div></header>
+      <header className="worldbuilding-page-header"><div><p className="eyebrow">Campaign reference</p><h1>Worldbuilding</h1><p>Capture campaign places, people, history, and factions independently from each brew.</p></div><div className="page-header-actions"><span className={`sync-badge sync-${storage.tone}`} title={storage.title}>{storage.label}</span><button onClick={() => setAddingType((open) => !open)} type="button">New type</button><button className="primary-button" onClick={createEntry} type="button">New entry</button></div></header>
 
       {addingType && <form className="worldbuilding-new-type" onSubmit={submitType}><label>New Worldbuilding type<input autoFocus onChange={(event) => setTypeName(event.target.value)} placeholder="Tavern, deity, ship…" value={typeName} /></label><button type="button" onClick={() => { setAddingType(false); setTypeError(null); }}>Cancel</button><button className="primary-button" type="submit">Add type</button>{typeError && <p role="alert">{typeError}</p>}</form>}
 

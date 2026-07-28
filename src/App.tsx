@@ -528,6 +528,7 @@ export default function App() {
     const entry = createWorldbuildingEntry();
     persistWorldbuildingEntry(entry);
     setWorldbuildingSelectedId(entry.id);
+    return entry.id;
   };
 
   const createWorldbuildingReference = (name: string, kind: WorldbuildingKind): string | null => {

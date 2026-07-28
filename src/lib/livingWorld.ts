@@ -1,4 +1,5 @@
-import type { CampaignEntity, CampaignEntityKind, WorldbuildingEntry, WorldEvent } from '../types';
+import type { CampaignEntity, CampaignEntityKind, LivingWorldData, WorldbuildingEntry, WorldEvent, WorldStateValue } from '../types';
+import { projectCurrentState } from './worldState';
 
 type CreateEntityInput = {
   campaignId: string;
@@ -53,7 +54,10 @@ export function synchroniseWorldbuildingEntities(
   entries: readonly WorldbuildingEntry[],
   existing: readonly CampaignEntity[] = []
 ): CampaignEntity[] {
-  const retained = existing.filter((entity) => entity.source.kind !== 'worldbuilding');
+  const entryIds = new Set(entries.map((entry) => entry.id));
+  const retained = existing.filter((entity) =>
+    entity.source.kind !== 'worldbuilding' || !entryIds.has(entity.source.id)
+  );
   const bySourceId = new Map(
     existing.flatMap((entity) => entity.source.kind === 'worldbuilding' ? [[entity.source.id, entity] as const] : [])
   );
@@ -72,4 +76,38 @@ export function synchroniseWorldbuildingEntities(
     };
   });
   return [...retained, ...worldbuildingEntities];
+}
+
+export function synchroniseLivingWorld(data: LivingWorldData, entries: readonly WorldbuildingEntry[]): LivingWorldData {
+  return {
+    ...data,
+    entities: synchroniseWorldbuildingEntities(data.campaignId, entries, data.entities)
+  };
+}
+
+export function recordManualStateChange(
+  data: LivingWorldData,
+  entityId: string,
+  field: string,
+  nextValue: WorldStateValue,
+  timestamp = new Date().toISOString(),
+  createId: () => string = () => crypto.randomUUID()
+): LivingWorldData {
+  const entity = data.entities.find((candidate) => candidate.id === entityId);
+  if (!entity) throw new Error('Cannot update state for an unknown campaign entity.');
+  const current = projectCurrentState(data.worldEvents)
+    .find((state) => state.campaignId === data.campaignId && state.entityId === entityId);
+  const previousValue = current?.fields[field]?.value ?? null;
+  if (previousValue === nextValue) return data;
+  const event: WorldEvent = {
+    id: createId(),
+    campaignId: data.campaignId,
+    entityId,
+    type: `${entity.kind}.${field}.changed`,
+    source: { kind: 'manual' },
+    changes: [{ field, previousValue, nextValue }],
+    occurredAt: timestamp,
+    recordedAt: timestamp
+  };
+  return { ...data, worldEvents: appendWorldEvent(data.worldEvents, event) };
 }

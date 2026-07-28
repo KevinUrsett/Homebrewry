@@ -390,6 +390,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .worldbuilding-preview-header > button, .worldbuilding-edit-actions button { background: #f7f0df; border: 1px solid #ad9576; border-radius: 5px; color: #422f25; flex: 0 0 auto; padding: 8px 10px; }
 .worldbuilding-preview-header > .primary-button, .worldbuilding-edit-actions .primary-button { background: #5d2f26; border-color: #5d2f26; color: #fffaf0; }
 .worldbuilding-preview-aliases { color: #725d48; font-size: .87rem; margin: 10px 0 0; }
+.worldbuilding-current-state { align-items: end; background: #f5ecdc; border: 1px solid #d8c9ae; border-radius: 7px; display: grid; gap: 12px; grid-template-columns: minmax(120px, 1fr) minmax(220px, 2fr); padding: 12px; }
+.worldbuilding-current-state h3 { color: #5d2f26; margin: 2px 0 0; text-transform: capitalize; }
+.worldbuilding-current-state > small { color: #725d48; grid-column: 1 / -1; }
+.worldbuilding-state-editor { align-items: end; display: flex; gap: 8px; }
+.worldbuilding-state-editor label { display: grid; flex: 1; font-size: .72rem; font-weight: 700; gap: 3px; text-transform: uppercase; }
+.worldbuilding-state-editor input { min-height: 36px; }
 .worldbuilding-preview-notes { color: #39291f; line-height: 1.65; }
 .worldbuilding-preview-notes h3 { color: #6a2f26; font-family: "Scaly Sans", Inter, sans-serif; font-size: .78rem; letter-spacing: .08em; margin: 0 0 8px; text-transform: uppercase; }
 .worldbuilding-preview-notes div { white-space: pre-wrap; }
@@ -477,6 +483,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .worldbuilding-details { min-height: 55vh; padding: 22px 17px; }
   .worldbuilding-meta-grid { grid-template-columns: 1fr; }
   .worldbuilding-preview-header { align-items: flex-start; flex-direction: column; }
+  .worldbuilding-current-state { grid-template-columns: 1fr; }
+  .worldbuilding-state-editor { align-items: stretch; flex-direction: column; }
   .worldbuilding-context-menu { bottom: 12px; left: 12px !important; max-height: min(530px, calc(100dvh - 24px)); right: 12px; top: auto !important; transform: none; }
 }
 

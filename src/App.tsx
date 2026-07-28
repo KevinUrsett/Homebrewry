@@ -15,12 +15,14 @@ import {
   createBrew,
   deleteBrew,
   getCampaignDataSyncMetadata,
+  getLivingWorldData,
   getPrivateMonsterSyncMetadata,
   replaceBrews,
   replaceCampaignData,
   replacePrivateMonsterData,
   saveBrew,
   saveCampaignDataSyncMetadata,
+  saveLivingWorldData,
   savePrivateMonsterSyncMetadata,
   seedBrews
 } from './lib/brewStore';
@@ -28,6 +30,8 @@ import { createAsset, listAssets, replaceAssets, saveAsset } from './lib/assetSt
 import { syncAssets } from './lib/assetSync';
 import { createCampaignDataSnapshot } from './lib/campaignData';
 import { deriveCampaignPosition } from './lib/campaignProgress';
+import { recordManualStateChange, synchroniseLivingWorld } from './lib/livingWorld';
+import { projectCurrentState } from './lib/worldState';
 import { keepBothCampaignDataVersions, keepDriveCampaignData, overwriteDriveCampaignData, syncCampaignData, type CampaignDataSyncResult } from './lib/campaignSync';
 import { keepBothVersions, resolveWithDriveVersion } from './lib/conflicts';
 import { isGoogleConfigured, requestDriveAccess } from './lib/googleIdentity';
@@ -60,7 +64,7 @@ import { createCustomCatalogueCategory, createCustomCatalogueEntry, normaliseCus
 import { findCatalogueEntryByName, formatCatalogueReference } from './catalogue/references';
 import { formatWorldbuildingReference } from './lib/worldbuildingReferences';
 import { catalogueCategoryLabel, catalogueCategoryLabels, type CatalogueCategory, type CatalogueEntry, type CustomCatalogueCategory, type CustomCatalogueEntry } from './catalogue/types';
-import type { Brew, BrewAsset, CampaignDataSyncMetadata, Encounter, MobileSection, PartyMember, PrivateMonsterSyncMetadata, ViewMode, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from './types';
+import type { Brew, BrewAsset, CampaignDataSyncMetadata, Encounter, LivingWorldData, MobileSection, PartyMember, PrivateMonsterSyncMetadata, ViewMode, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from './types';
 
 const mobileLabels: Record<MobileSection, string> = {
   library: 'Brews',
@@ -106,6 +110,13 @@ export default function App() {
   const [worldbuildingOpen, setWorldbuildingOpen] = useState(false);
   const [worldbuildingSelectedId, setWorldbuildingSelectedId] = useState<string | null>(null);
   const [campaignDataSync, setCampaignDataSync] = useState<CampaignDataSyncMetadata | null>(null);
+  const [livingWorld, setLivingWorld] = useState<LivingWorldData>(() => ({
+    id: 'living-world',
+    campaignId: 'default-campaign',
+    entities: [],
+    entityReferences: [],
+    worldEvents: []
+  }));
   const [privateMonsterSync, setPrivateMonsterSync] = useState<PrivateMonsterSyncMetadata | null>(null);
   const [referenceEntry, setReferenceEntry] = useState<CatalogueEntry | null>(null);
   const [worldbuildingReferenceEntry, setWorldbuildingReferenceEntry] = useState<WorldbuildingEntry | null>(null);
@@ -119,7 +130,8 @@ export default function App() {
     worldbuildingEntries: [] as WorldbuildingEntry[],
     customCatalogueEntries: [] as CustomCatalogueEntry[],
     customCatalogueCategories: [] as CustomCatalogueCategory[],
-    worldbuildingTypes: [] as WorldbuildingType[]
+    worldbuildingTypes: [] as WorldbuildingType[],
+    livingWorld: null as LivingWorldData | null
   });
   const campaignMetadataRef = useRef<CampaignDataSyncMetadata | null>(null);
   const campaignMutationRef = useRef(0);
@@ -145,6 +157,7 @@ export default function App() {
       listCustomCatalogueEntries(),
       listCustomCatalogueCategories(),
       getCampaignDataSyncMetadata(),
+      getLivingWorldData(),
       getPrivateMonsterSyncMetadata()
     ])
       .then(([
@@ -158,6 +171,7 @@ export default function App() {
         storedCustomCatalogueEntries,
         storedCustomCatalogueCategories,
         storedCampaignDataSync,
+        storedLivingWorld,
         storedPrivateMonsterSync
       ]) => {
         setBrews(storedBrews);
@@ -170,6 +184,14 @@ export default function App() {
         setCustomCatalogueEntries(storedCustomCatalogueEntries);
         setCustomCatalogueCategories(storedCustomCatalogueCategories);
         setCampaignDataSync(storedCampaignDataSync);
+        const syncedLivingWorld = synchroniseLivingWorld(storedLivingWorld, storedWorldbuildingEntries);
+        setLivingWorld(syncedLivingWorld);
+        if (JSON.stringify(syncedLivingWorld.entities) !== JSON.stringify(storedLivingWorld.entities)) {
+          void saveLivingWorldData(syncedLivingWorld).then((metadata) => {
+            campaignMetadataRef.current = metadata;
+            setCampaignDataSync(metadata);
+          });
+        }
         setPrivateMonsterSync(storedPrivateMonsterSync);
         setActiveId(storedBrews[0]?.id ?? null);
         setEncounterSelectedId(storedEncounters[0]?.id ?? null);
@@ -206,9 +228,10 @@ export default function App() {
       worldbuildingEntries,
       customCatalogueEntries,
       customCatalogueCategories,
-      worldbuildingTypes
+      worldbuildingTypes,
+      livingWorld
     };
-  }, [customCatalogueCategories, customCatalogueEntries, encounters, partyMembers, worldbuildingEntries, worldbuildingTypes]);
+  }, [customCatalogueCategories, customCatalogueEntries, encounters, livingWorld, partyMembers, worldbuildingEntries, worldbuildingTypes]);
 
   useEffect(() => {
     campaignMetadataRef.current = campaignDataSync;
@@ -249,6 +272,13 @@ export default function App() {
   const encounterMap = useMemo(() => new Map(encounters.map((encounter) => [encounter.id, encounter])), [encounters]);
   const campaignPosition = useMemo(() => deriveCampaignPosition(deferredBrews, encounters), [deferredBrews, encounters]);
   const worldbuildingMap = useMemo(() => new Map(worldbuildingEntries.map((entry) => [entry.id, entry])), [worldbuildingEntries]);
+  const entityByWorldbuildingId = useMemo(() => new Map(
+    livingWorld.entities.flatMap((entity) => entity.source.kind === 'worldbuilding' ? [[entity.source.id, entity] as const] : [])
+  ), [livingWorld.entities]);
+  const currentStateByEntityId = useMemo(
+    () => new Map(projectCurrentState(livingWorld.worldEvents).map((state) => [state.entityId, state])),
+    [livingWorld.worldEvents]
+  );
   const previewContent = previewBrew?.content ?? '';
   const outline = useMemo(() => getOutline(previewContent), [previewContent]);
 
@@ -471,12 +501,27 @@ export default function App() {
   };
 
   const persistWorldbuildingEntry = (entry: WorldbuildingEntry) => {
-    setWorldbuildingEntries((current) => [entry, ...current.filter((item) => item.id !== entry.id)]);
-    void saveWorldbuildingEntry(entry)
+    const nextEntries = [entry, ...worldbuildingEntries.filter((item) => item.id !== entry.id)];
+    const nextLivingWorld = synchroniseLivingWorld(livingWorld, nextEntries);
+    campaignRecordsRef.current = { ...campaignRecordsRef.current, worldbuildingEntries: nextEntries, livingWorld: nextLivingWorld };
+    setWorldbuildingEntries(nextEntries);
+    setLivingWorld(nextLivingWorld);
+    void Promise.all([saveWorldbuildingEntry(entry), saveLivingWorldData(nextLivingWorld)])
       .then((metadata) => {
-        noteCampaignDataSaved(metadata, 'Worldbuilding entry saved locally');
+        noteCampaignDataSaved(metadata.at(-1)!, 'Worldbuilding entry and entity saved locally');
       })
       .catch(() => setSaveState('Worldbuilding save failed'));
+  };
+
+  const setNpcStatus = (entry: WorldbuildingEntry, status: string) => {
+    const entity = entityByWorldbuildingId.get(entry.id);
+    if (!entity || entity.kind !== 'npc') return;
+    const next = recordManualStateChange(livingWorld, entity.id, 'status', status);
+    campaignRecordsRef.current = { ...campaignRecordsRef.current, livingWorld: next };
+    setLivingWorld(next);
+    void saveLivingWorldData(next)
+      .then((metadata) => noteCampaignDataSaved(metadata, `${entry.name} is now ${status}`))
+      .catch(() => setSaveState('NPC status save failed'));
   };
 
   const createNewWorldbuildingEntry = () => {
@@ -683,6 +728,13 @@ export default function App() {
       setCustomCatalogueEntries(result.data.customCatalogueEntries);
       setCustomCatalogueCategories(result.data.customCatalogueCategories);
       setWorldbuildingTypes(result.data.worldbuildingTypes);
+      setLivingWorld({
+        id: 'living-world',
+        campaignId: result.data.campaignId,
+        entities: result.data.entities,
+        entityReferences: result.data.entityReferences,
+        worldEvents: result.data.worldEvents
+      });
       setEncounterSelectedId((current) => result.data.encounters.some((encounter) => encounter.id === current) ? current : result.data.encounters[0]?.id ?? null);
       setWorldbuildingSelectedId((current) => result.data.worldbuildingEntries.some((entry) => entry.id === current) ? current : result.data.worldbuildingEntries[0]?.id ?? null);
     }
@@ -692,7 +744,14 @@ export default function App() {
       worldbuildingEntries: result.data.worldbuildingEntries,
       customCatalogueEntries: result.data.customCatalogueEntries,
       customCatalogueCategories: result.data.customCatalogueCategories,
-      worldbuildingTypes: result.data.worldbuildingTypes
+      worldbuildingTypes: result.data.worldbuildingTypes,
+      livingWorld: {
+        id: 'living-world',
+        campaignId: result.data.campaignId,
+        entities: result.data.entities,
+        entityReferences: result.data.entityReferences,
+        worldEvents: result.data.worldEvents
+      }
     };
     campaignMetadataRef.current = result.metadata;
     setCampaignDataSync(result.metadata);
@@ -848,7 +907,8 @@ export default function App() {
         undefined,
         records.customCatalogueEntries,
         records.customCatalogueCategories,
-        records.worldbuildingTypes
+        records.worldbuildingTypes,
+        records.livingWorld ?? livingWorld
       );
       const metadata = campaignMetadataRef.current ?? await getCampaignDataSyncMetadata();
       campaignMetadataRef.current = metadata;
@@ -1095,14 +1155,14 @@ export default function App() {
     if (!campaignDataSync) return;
     const result = keepDriveCampaignData(campaignDataSync);
     if (!result) return;
-    const sourceData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries, undefined, customCatalogueEntries, customCatalogueCategories, worldbuildingTypes);
+    const sourceData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries, undefined, customCatalogueEntries, customCatalogueCategories, worldbuildingTypes, livingWorld);
     await applyCampaignDataResult(result, sourceData);
     setSaveState(result.detail);
   };
 
   const keepBothCampaignConflict = async () => {
     if (!campaignDataSync) return;
-    const sourceData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries, undefined, customCatalogueEntries, customCatalogueCategories, worldbuildingTypes);
+    const sourceData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries, undefined, customCatalogueEntries, customCatalogueCategories, worldbuildingTypes, livingWorld);
     const result = keepBothCampaignDataVersions(sourceData, campaignDataSync);
     if (!result) return;
     await applyCampaignDataResult(result, sourceData);
@@ -1113,7 +1173,7 @@ export default function App() {
     if (!campaignDataSync || !accessToken) return;
     try {
       setSyncing(true);
-      const sourceData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries, undefined, customCatalogueEntries, customCatalogueCategories, worldbuildingTypes);
+      const sourceData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries, undefined, customCatalogueEntries, customCatalogueCategories, worldbuildingTypes, livingWorld);
       const result = await overwriteDriveCampaignData(accessToken, sourceData, campaignDataSync);
       await applyCampaignDataResult(result, sourceData);
       setSaveState(result.detail);
@@ -1274,6 +1334,8 @@ export default function App() {
         <WorldbuildingPanel
           catalogue={catalogueMap}
           catalogueCategories={customCatalogueCategories}
+          currentStateByEntityId={currentStateByEntityId}
+          entitiesByWorldbuildingId={entityByWorldbuildingId}
           entries={worldbuildingEntries}
           hasDriveBackup={Boolean(campaignDataSync?.drive)}
           syncState={campaignDataSync?.syncState ?? 'local'}
@@ -1283,6 +1345,7 @@ export default function App() {
           onCreateWorldbuildingReference={createWorldbuildingReference}
           onDelete={deleteWorldbuilding}
           onReferenceOpen={setReferenceEntry}
+          onSetNpcStatus={setNpcStatus}
           onSelect={setWorldbuildingSelectedId}
           onUpdate={persistWorldbuildingEntry}
           onWorldbuildingOpen={setWorldbuildingReferenceEntry}

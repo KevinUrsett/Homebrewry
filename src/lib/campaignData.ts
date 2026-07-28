@@ -13,6 +13,7 @@ import type {
 import { worldbuildingKinds } from '../types';
 import { isCatalogueCategory, type CustomCatalogueCategory, type CustomCatalogueEntry } from '../catalogue/types';
 import { normaliseCustomCatalogueEntry } from '../catalogue/customEntries';
+import { synchroniseWorldbuildingEntities } from './livingWorld';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -319,6 +320,7 @@ export function createCampaignDataSnapshot(
     worldEvents: []
   }
 ): CampaignDataSnapshot {
+  const entities = synchroniseWorldbuildingEntities(livingWorld.campaignId, worldbuildingEntries, livingWorld.entities);
   return {
     schemaVersion: 5,
     campaignId: livingWorld.campaignId,
@@ -329,7 +331,7 @@ export function createCampaignDataSnapshot(
     customCatalogueEntries: [...customCatalogueEntries],
     customCatalogueCategories: [...customCatalogueCategories],
     worldbuildingTypes: [...worldbuildingTypes],
-    entities: [...livingWorld.entities],
+    entities,
     entityReferences: [...livingWorld.entityReferences],
     worldEvents: [...livingWorld.worldEvents]
   };

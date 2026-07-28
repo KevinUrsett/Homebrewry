@@ -27,6 +27,7 @@ import {
 import { createAsset, listAssets, replaceAssets, saveAsset } from './lib/assetStore';
 import { syncAssets } from './lib/assetSync';
 import { createCampaignDataSnapshot } from './lib/campaignData';
+import { deriveCampaignPosition } from './lib/campaignProgress';
 import { keepBothCampaignDataVersions, keepDriveCampaignData, overwriteDriveCampaignData, syncCampaignData, type CampaignDataSyncResult } from './lib/campaignSync';
 import { keepBothVersions, resolveWithDriveVersion } from './lib/conflicts';
 import { isGoogleConfigured, requestDriveAccess } from './lib/googleIdentity';
@@ -241,6 +242,7 @@ export default function App() {
   );
   const catalogueMap = useMemo(() => toCatalogueMap(catalogueEntries), [catalogueEntries]);
   const encounterMap = useMemo(() => new Map(encounters.map((encounter) => [encounter.id, encounter])), [encounters]);
+  const campaignPosition = useMemo(() => deriveCampaignPosition(brews, encounters), [brews, encounters]);
   const worldbuildingMap = useMemo(() => new Map(worldbuildingEntries.map((entry) => [entry.id, entry])), [worldbuildingEntries]);
 
   useEffect(() => {
@@ -428,10 +430,18 @@ export default function App() {
   };
 
   const persistEncounter = (encounter: Encounter) => {
-    setEncounters((current) => [encounter, ...current.filter((item) => item.id !== encounter.id)]);
-    void saveEncounter(encounter)
+    const related = encounter.status === 'active'
+      ? encounters.filter((item) => item.id !== encounter.id && item.status === 'active')
+        .map((item) => ({ ...item, status: 'not-started' as const, activeCombatantId: null, updatedAt: encounter.updatedAt, version: item.version + 1 }))
+      : [];
+    const changed = [encounter, ...related];
+    setEncounters((current) => [
+      ...changed,
+      ...current.filter((item) => !changed.some((updated) => updated.id === item.id))
+    ]);
+    void Promise.all(changed.map(saveEncounter))
       .then((metadata) => {
-        noteCampaignDataSaved(metadata, 'Encounter saved locally');
+        noteCampaignDataSaved(metadata.at(-1)!, encounter.status === 'active' ? 'Active encounter saved locally' : 'Encounter progress saved locally');
       })
       .catch(() => setSaveState('Encounter save failed'));
   };
@@ -1226,6 +1236,7 @@ export default function App() {
       ) : encountersOpen ? (
         <EncounterPanel
           encounters={encounters}
+          campaignPosition={campaignPosition}
           hasDriveBackup={Boolean(campaignDataSync?.drive)}
           loading={catalogueLoading}
           monsters={catalogueEntries.filter((entry) => entry.category === 'monster')}

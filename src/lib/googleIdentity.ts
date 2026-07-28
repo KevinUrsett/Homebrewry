@@ -1,6 +1,8 @@
 const GOOGLE_IDENTITY_URL = 'https://accounts.google.com/gsi/client';
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 
+const DRIVE_AUTH_PROMPT = 'select_account consent';
+
 type TokenResponse = {
   access_token?: string;
   error?: string;
@@ -17,6 +19,7 @@ type GoogleIdentity = {
       initTokenClient: (config: {
         client_id: string;
         scope: string;
+        prompt?: string;
         callback: (response: TokenResponse) => void;
       }) => TokenClient;
     };
@@ -69,6 +72,7 @@ export async function requestDriveAccess() {
     const client = window.google?.accounts.oauth2.initTokenClient({
       client_id: clientId,
       scope: DRIVE_SCOPE,
+      prompt: DRIVE_AUTH_PROMPT,
       callback: (response) => {
         if (!response.access_token) {
           reject(new Error(response.error_description ?? response.error ?? 'Google access was not granted.'));
@@ -78,6 +82,8 @@ export async function requestDriveAccess() {
       }
     });
 
-    client?.requestAccessToken({ prompt: 'select_account' });
+    // Set the prompt both on initialization and on the request. This avoids a
+    // browser reusing the previous Google session without showing its chooser.
+    client?.requestAccessToken({ prompt: DRIVE_AUTH_PROMPT });
   });
 }

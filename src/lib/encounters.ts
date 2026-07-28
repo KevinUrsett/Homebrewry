@@ -56,7 +56,8 @@ export function createEncounter(name = 'New encounter', party: PartyMember[] = [
   return {
     id: crypto.randomUUID(),
     name: named(name, 'New encounter'),
-    status: 'prepared',
+    status: 'not-started',
+    optional: false,
     participants: party.map(partyMemberToParticipant),
     activeCombatantId: null,
     createdAt: timestamp,

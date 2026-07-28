@@ -1,11 +1,14 @@
 import type {
   CampaignDataSnapshot,
   CampaignDataSyncMetadata,
+  CampaignEntity,
+  EntityReference,
   Encounter,
   EncounterParticipant,
   PartyMember,
   WorldbuildingEntry,
-  WorldbuildingType
+  WorldbuildingType,
+  WorldEvent
 } from '../types';
 import { worldbuildingKinds } from '../types';
 import { isCatalogueCategory, type CustomCatalogueCategory, type CustomCatalogueEntry } from '../catalogue/types';
@@ -71,7 +74,9 @@ function parseParticipant(value: unknown): EncounterParticipant {
 
 function parseEncounter(value: unknown): Encounter {
   if (!isRecord(value)) throw new Error('Campaign data has an invalid encounter.');
-  if (value.status !== 'prepared' && value.status !== 'active' && value.status !== 'complete') {
+  const legacyStatus = value.status;
+  const status = legacyStatus === 'prepared' ? 'not-started' : legacyStatus === 'complete' ? 'completed' : legacyStatus;
+  if (status !== 'not-started' && status !== 'active' && status !== 'completed' && status !== 'skipped') {
     throw new Error('Campaign data has an invalid encounter status.');
   }
   if (!Array.isArray(value.participants)) throw new Error('Campaign data has invalid encounter participants.');
@@ -79,12 +84,111 @@ function parseEncounter(value: unknown): Encounter {
   return {
     id: requiredString(value.id, 'encounter ID'),
     name: requiredString(value.name, 'encounter name'),
-    status: value.status,
+    status,
+    optional: value.optional === true,
     participants: value.participants.map(parseParticipant),
     activeCombatantId: value.activeCombatantId === null ? null : requiredString(value.activeCombatantId, 'active combatant ID'),
     createdAt: requiredString(value.createdAt, 'encounter creation time'),
     updatedAt: requiredString(value.updatedAt, 'encounter update time'),
     version: nullableNumber(value.version, 'encounter version') ?? 1
+  };
+}
+
+function legacyCampaignId(value: UnknownRecord): string {
+  const ids = [
+    ...(Array.isArray(value.encounters) ? value.encounters : []),
+    ...(Array.isArray(value.worldbuildingEntries) ? value.worldbuildingEntries : [])
+  ].flatMap((record) => isRecord(record) && typeof record.id === 'string' ? [record.id] : []).sort();
+  let hash = 2166136261;
+  for (const character of ids.join('|') || requiredString(value.updatedAt, 'campaign update time')) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `legacy-${(hash >>> 0).toString(16).padStart(8, '0')}`;
+}
+
+function parseCampaignEntity(value: unknown, campaignId: string): CampaignEntity {
+  if (!isRecord(value) || value.campaignId !== campaignId || !isRecord(value.source)) {
+    throw new Error('Campaign data has an invalid entity.');
+  }
+  const kinds = new Set(['npc', 'item', 'settlement', 'location', 'faction', 'quest', 'creature', 'vehicle', 'other']);
+  if (typeof value.kind !== 'string' || !kinds.has(value.kind)) throw new Error('Campaign data has an invalid entity kind.');
+  const sourceKind = value.source.kind;
+  if (sourceKind !== 'manual' && sourceKind !== 'worldbuilding' && sourceKind !== 'catalogue') {
+    throw new Error('Campaign data has an invalid entity source.');
+  }
+  let source: CampaignEntity['source'];
+  if (sourceKind === 'manual') source = { kind: 'manual' };
+  else if (sourceKind === 'worldbuilding') source = { kind: 'worldbuilding', id: requiredString(value.source.id, 'entity source ID') };
+  else source = { kind: 'catalogue', id: requiredString(value.source.id, 'entity source ID') };
+  return {
+    id: requiredString(value.id, 'entity ID'),
+    campaignId,
+    kind: value.kind as CampaignEntity['kind'],
+    name: requiredString(value.name, 'entity name'),
+    aliases: requiredStringArray(value.aliases, 'entity aliases'),
+    source,
+    createdAt: requiredString(value.createdAt, 'entity creation time'),
+    updatedAt: requiredString(value.updatedAt, 'entity update time'),
+    version: nullableNumber(value.version, 'entity version') ?? 1
+  };
+}
+
+function parseEntityReference(value: unknown, campaignId: string): EntityReference {
+  if (!isRecord(value) || value.campaignId !== campaignId || !isRecord(value.source)) {
+    throw new Error('Campaign data has an invalid entity reference.');
+  }
+  const source = value.source.kind === 'encounter'
+    ? { kind: 'encounter' as const, encounterId: requiredString(value.source.encounterId, 'reference encounter ID') }
+    : value.source.kind === 'brew'
+      ? {
+          kind: 'brew' as const,
+          brewId: requiredString(value.source.brewId, 'reference brew ID'),
+          start: nullableNumber(value.source.start, 'reference start') ?? 0,
+          end: nullableNumber(value.source.end, 'reference end') ?? 0
+        }
+      : null;
+  if (!source) throw new Error('Campaign data has an invalid entity reference source.');
+  return {
+    id: requiredString(value.id, 'entity reference ID'),
+    campaignId,
+    entityId: requiredString(value.entityId, 'referenced entity ID'),
+    source,
+    label: requiredString(value.label, 'reference label'),
+    createdAt: requiredString(value.createdAt, 'reference creation time')
+  };
+}
+
+function parseWorldEvent(value: unknown, campaignId: string): WorldEvent {
+  if (!isRecord(value) || value.campaignId !== campaignId || !isRecord(value.source) || !Array.isArray(value.changes)) {
+    throw new Error('Campaign data has an invalid world event.');
+  }
+  const sourceKind = value.source.kind;
+  let source: WorldEvent['source'];
+  if (sourceKind === 'manual') source = { kind: 'manual' };
+  else if (sourceKind === 'encounter') source = { kind: 'encounter', encounterId: requiredString(value.source.encounterId, 'event encounter ID') };
+  else if (sourceKind === 'combat') source = {
+    kind: 'combat',
+    encounterId: requiredString(value.source.encounterId, 'event encounter ID'),
+    ...(value.source.participantId === undefined ? {} : { participantId: requiredString(value.source.participantId, 'event participant ID') })
+  };
+  else if (sourceKind === 'system-migration') source = { kind: 'system-migration', schemaVersion: nullableNumber(value.source.schemaVersion, 'migration schema version') ?? 1 };
+  else throw new Error('Campaign data has an invalid world event source.');
+  const changes = value.changes.map((change) => {
+    if (!isRecord(change) || typeof change.field !== 'string') throw new Error('Campaign data has an invalid world-state change.');
+    const validValue = (item: unknown) => item === null || ['string', 'number', 'boolean'].includes(typeof item);
+    if (!validValue(change.previousValue) || !validValue(change.nextValue)) throw new Error('Campaign data has an invalid world-state value.');
+    return { field: change.field, previousValue: change.previousValue as WorldEvent['changes'][number]['previousValue'], nextValue: change.nextValue as WorldEvent['changes'][number]['nextValue'] };
+  });
+  return {
+    id: requiredString(value.id, 'world event ID'),
+    campaignId,
+    ...(value.entityId === undefined ? {} : { entityId: requiredString(value.entityId, 'event entity ID') }),
+    type: requiredString(value.type, 'world event type'),
+    source,
+    changes,
+    occurredAt: requiredString(value.occurredAt, 'event occurrence time'),
+    recordedAt: requiredString(value.recordedAt, 'event recording time')
   };
 }
 
@@ -159,7 +263,7 @@ export function parseCampaignDataSnapshot(value: unknown): CampaignDataSnapshot 
     throw new Error('This Drive campaign data file is not a supported Homebrewry backup.');
   }
   const schemaVersion = value.schemaVersion;
-  if (schemaVersion !== 1 && schemaVersion !== 2 && schemaVersion !== 3 && schemaVersion !== 4) {
+  if (schemaVersion !== 1 && schemaVersion !== 2 && schemaVersion !== 3 && schemaVersion !== 4 && schemaVersion !== 5) {
     throw new Error('This Drive campaign data file is not a supported Homebrewry backup.');
   }
   if (!Array.isArray(value.encounters) || !Array.isArray(value.partyMembers) || !Array.isArray(value.worldbuildingEntries)) {
@@ -168,12 +272,17 @@ export function parseCampaignDataSnapshot(value: unknown): CampaignDataSnapshot 
   if ((schemaVersion === 2 || schemaVersion === 3) && !Array.isArray(value.customCatalogueEntries)) {
     throw new Error('This Drive campaign data file has an invalid custom catalogue collection.');
   }
-  if (schemaVersion === 4 && (!Array.isArray(value.customCatalogueEntries) || !Array.isArray(value.customCatalogueCategories) || !Array.isArray(value.worldbuildingTypes))) {
+  if ((schemaVersion === 4 || schemaVersion === 5) && (!Array.isArray(value.customCatalogueEntries) || !Array.isArray(value.customCatalogueCategories) || !Array.isArray(value.worldbuildingTypes))) {
     throw new Error('This Drive campaign data file has an invalid campaign taxonomy collection.');
   }
+  if (schemaVersion === 5 && (!Array.isArray(value.entities) || !Array.isArray(value.entityReferences) || !Array.isArray(value.worldEvents))) {
+    throw new Error('This Drive campaign data file has an invalid Living World collection.');
+  }
+  const campaignId = schemaVersion === 5 ? requiredString(value.campaignId, 'campaign ID') : legacyCampaignId(value);
 
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
+    campaignId,
     updatedAt: requiredString(value.updatedAt, 'campaign update time'),
     encounters: value.encounters.map(parseEncounter),
     partyMembers: value.partyMembers.map(parsePartyMember),
@@ -181,12 +290,15 @@ export function parseCampaignDataSnapshot(value: unknown): CampaignDataSnapshot 
     customCatalogueEntries: schemaVersion === 1
       ? []
       : (value.customCatalogueEntries as unknown[]).map((entry) => parseCustomCatalogueEntry(entry, schemaVersion >= 3)),
-    customCatalogueCategories: schemaVersion === 4
+    customCatalogueCategories: schemaVersion >= 4
       ? (value.customCatalogueCategories as unknown[]).map(parseCustomCatalogueCategory)
       : [],
-    worldbuildingTypes: schemaVersion === 4
+    worldbuildingTypes: schemaVersion >= 4
       ? (value.worldbuildingTypes as unknown[]).map(parseWorldbuildingType)
-      : []
+      : [],
+    entities: schemaVersion === 5 ? (value.entities as unknown[]).map((entity) => parseCampaignEntity(entity, campaignId)) : [],
+    entityReferences: schemaVersion === 5 ? (value.entityReferences as unknown[]).map((reference) => parseEntityReference(reference, campaignId)) : [],
+    worldEvents: schemaVersion === 5 ? (value.worldEvents as unknown[]).map((event) => parseWorldEvent(event, campaignId)) : []
   };
 }
 
@@ -197,17 +309,29 @@ export function createCampaignDataSnapshot(
   timestamp = new Date().toISOString(),
   customCatalogueEntries: CustomCatalogueEntry[] = [],
   customCatalogueCategories: CustomCatalogueCategory[] = [],
-  worldbuildingTypes: WorldbuildingType[] = []
+  worldbuildingTypes: WorldbuildingType[] = [],
+  livingWorld: Pick<CampaignDataSnapshot, 'campaignId' | 'entities' | 'entityReferences' | 'worldEvents'> = {
+    // The current app has one campaign companion file per Drive account.
+    // A later multi-campaign migration can replace this file-scoped identity.
+    campaignId: 'default-campaign',
+    entities: [],
+    entityReferences: [],
+    worldEvents: []
+  }
 ): CampaignDataSnapshot {
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
+    campaignId: livingWorld.campaignId,
     updatedAt: timestamp,
     encounters: [...encounters],
     partyMembers: [...partyMembers],
     worldbuildingEntries: [...worldbuildingEntries],
     customCatalogueEntries: [...customCatalogueEntries],
     customCatalogueCategories: [...customCatalogueCategories],
-    worldbuildingTypes: [...worldbuildingTypes]
+    worldbuildingTypes: [...worldbuildingTypes],
+    entities: [...livingWorld.entities],
+    entityReferences: [...livingWorld.entityReferences],
+    worldEvents: [...livingWorld.worldEvents]
   };
 }
 
@@ -217,7 +341,10 @@ export function hasCampaignData(snapshot: CampaignDataSnapshot): boolean {
     || snapshot.worldbuildingEntries.length > 0
     || snapshot.customCatalogueEntries.length > 0
     || snapshot.customCatalogueCategories.length > 0
-    || snapshot.worldbuildingTypes.length > 0;
+    || snapshot.worldbuildingTypes.length > 0
+    || snapshot.entities.length > 0
+    || snapshot.entityReferences.length > 0
+    || snapshot.worldEvents.length > 0;
 }
 
 export function campaignDataChangedLocally(metadata: CampaignDataSyncMetadata): boolean {
@@ -262,13 +389,17 @@ export function keepBothCampaignData(
   createId: () => string = () => crypto.randomUUID()
 ): CampaignDataSnapshot {
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
+    campaignId: remote.campaignId,
     updatedAt: timestamp,
     encounters: preserveBothRecords(local.encounters, remote.encounters, timestamp, createId),
     partyMembers: preserveBothRecords(local.partyMembers, remote.partyMembers, timestamp, createId),
     worldbuildingEntries: preserveBothRecords(local.worldbuildingEntries, remote.worldbuildingEntries, timestamp, createId),
     customCatalogueEntries: preserveBothRecords(local.customCatalogueEntries, remote.customCatalogueEntries, timestamp, createId),
     customCatalogueCategories: preserveBothRecords(local.customCatalogueCategories, remote.customCatalogueCategories, timestamp, createId),
-    worldbuildingTypes: preserveBothRecords(local.worldbuildingTypes, remote.worldbuildingTypes, timestamp, createId)
+    worldbuildingTypes: preserveBothRecords(local.worldbuildingTypes, remote.worldbuildingTypes, timestamp, createId),
+    entities: preserveBothRecords(local.entities, remote.entities, timestamp, createId),
+    entityReferences: [...remote.entityReferences, ...local.entityReferences.filter((record) => !remote.entityReferences.some((remoteRecord) => remoteRecord.id === record.id))],
+    worldEvents: [...remote.worldEvents, ...local.worldEvents.filter((event) => !remote.worldEvents.some((remoteEvent) => remoteEvent.id === event.id))]
   };
 }

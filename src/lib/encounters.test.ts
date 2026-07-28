@@ -90,9 +90,9 @@ describe('encounter logic', () => {
   it('applies signed damage and healing without exceeding known HP bounds', () => {
     const encounter = createEncounter('Hit points', [createPartyMember('Rook', 16, 42)]);
     const participant = encounter.participants[0];
-    const damaged = adjustEncounterParticipantHitPoints(encounter, participant.id, 15);
-    const healed = adjustEncounterParticipantHitPoints(damaged, participant.id, -99);
-    const defeated = adjustEncounterParticipantHitPoints(healed, participant.id, 99);
+    const damaged = adjustEncounterParticipantHitPoints(encounter, participant.id, -15);
+    const healed = adjustEncounterParticipantHitPoints(damaged, participant.id, 99);
+    const defeated = adjustEncounterParticipantHitPoints(healed, participant.id, -99);
 
     expect(damaged.participants[0].currentHitPoints).toBe(27);
     expect(healed.participants[0].currentHitPoints).toBe(42);

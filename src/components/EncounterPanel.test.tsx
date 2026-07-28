@@ -52,6 +52,19 @@ const talon: CampaignEntity = {
   updatedAt: '2026-07-26T10:00:00.000Z',
   version: 1
 };
+const trackedEncounter: Encounter = {
+  ...encounter,
+  id: 'encounter-with-hp',
+  participants: [{
+    id: 'rook',
+    kind: 'player',
+    name: 'Rook',
+    armorClass: 16,
+    maxHitPoints: 42,
+    currentHitPoints: 42,
+    initiative: 14
+  }]
+};
 const talonState: EntityCurrentState = {
   campaignId: 'campaign-1',
   entityId: talon.id,
@@ -164,6 +177,55 @@ describe('EncounterPanel monster browser', () => {
 
     expect(onUpdateEncounter).toHaveBeenCalledWith(expect.objectContaining({
       participants: [expect.objectContaining({ entityId: talon.id, kind: 'npc' })]
+    }));
+  });
+
+  it('defaults Enter in the HP calculator to damage and reduces current HP', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push({ container, root });
+    const onUpdateEncounter = vi.fn();
+
+    await act(async () => {
+      root.render(
+        <EncounterPanel
+          encounters={[trackedEncounter]}
+          loading={false}
+          monsters={[]}
+          onCreateEncounter={vi.fn()}
+          onCreatePartyMember={vi.fn()}
+          onDeleteEncounter={vi.fn()}
+          onDeletePartyMember={vi.fn()}
+          onInsertReference={vi.fn()}
+          onSelectEncounter={vi.fn()}
+          onUpdateEncounter={onUpdateEncounter}
+          onUpdatePartyMember={vi.fn()}
+          partyMembers={[]}
+          selectedId={trackedEncounter.id}
+          syncState="synced"
+        />
+      );
+    });
+
+    const hpButton = container.querySelector<HTMLButtonElement>('.combatant-hp-button');
+    expect(hpButton?.textContent).toContain('42/ 42');
+    await act(async () => {
+      hpButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    const input = container.querySelector<HTMLInputElement>('input[aria-label="Rook HP change"]');
+    const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    await act(async () => {
+      setValue?.call(input, '10');
+      input?.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await act(async () => {
+      input?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }));
+    });
+
+    expect(onUpdateEncounter).toHaveBeenCalledWith(expect.objectContaining({
+      participants: [expect.objectContaining({ id: 'rook', currentHitPoints: 32 })]
     }));
   });
 });

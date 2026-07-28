@@ -126,8 +126,8 @@ export function patchEncounterParticipant(
 }
 
 /**
- * Applies a signed HP change: positive values are damage and negative values
- * are healing. Current HP stays within 0 and the known maximum.
+ * Applies a signed HP delta: negative values deal damage and positive values
+ * restore HP. Current HP stays within 0 and the known maximum.
  */
 export function adjustEncounterParticipantHitPoints(encounter: Encounter, participantId: string, change: number): Encounter {
   if (!Number.isFinite(change) || change === 0) return encounter;
@@ -137,7 +137,7 @@ export function adjustEncounterParticipantHitPoints(encounter: Encounter, partic
   const currentHitPoints = participant.currentHitPoints ?? participant.maxHitPoints;
   if (currentHitPoints === null) return encounter;
   const maximum = participant.maxHitPoints ?? Number.POSITIVE_INFINITY;
-  const nextHitPoints = Math.max(0, Math.min(maximum, currentHitPoints - change));
+  const nextHitPoints = Math.max(0, Math.min(maximum, currentHitPoints + change));
   return patchEncounterParticipant(encounter, participantId, { currentHitPoints: nextHitPoints });
 }
 

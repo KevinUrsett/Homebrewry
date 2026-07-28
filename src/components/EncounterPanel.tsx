@@ -41,7 +41,7 @@ type EncounterPanelProps = {
 };
 
 type CombatantPicker = 'party' | 'npc' | 'monster' | null;
-type StatField = 'initiative' | 'armorClass';
+type StatField = 'initiative' | 'armorClass' | 'maxHitPoints';
 type StatEditor = { participantId: string; field: StatField; value: string } | null;
 
 const MONSTER_RESULTS_PAGE_SIZE = 30;
@@ -149,10 +149,12 @@ export function EncounterPanel({
     setIsEditingName(false);
   };
 
-  const applyHitPointChange = (participant: EncounterParticipant) => {
+  const applyHitPointChange = (participant: EncounterParticipant, mode: 'damage' | 'healing' = 'damage') => {
     if (!selected) return;
-    const change = asNumber(hitPointChanges[participant.id] ?? '');
-    if (change === null || change === 0) return;
+    const entered = asNumber(hitPointChanges[participant.id] ?? '');
+    if (entered === null || entered === 0) return;
+    const amount = Math.abs(entered);
+    const change = mode === 'damage' ? -amount : amount;
     onUpdateEncounter(adjustEncounterParticipantHitPoints(selected, participant.id, change));
     setHitPointChanges((current) => ({ ...current, [participant.id]: '' }));
     setHitPointEditorId(null);
@@ -173,7 +175,18 @@ export function EncounterPanel({
       return;
     }
     const value = asNumber(statEditor.value);
-    const changes = statEditor.field === 'initiative' ? { initiative: value } : { armorClass: value };
+    const changes = statEditor.field === 'initiative'
+      ? { initiative: value }
+      : statEditor.field === 'armorClass'
+        ? { armorClass: value }
+        : {
+            maxHitPoints: value === null ? null : Math.max(0, value),
+            currentHitPoints: value === null
+              ? null
+              : participant.currentHitPoints === null
+                ? Math.max(0, value)
+                : Math.min(participant.currentHitPoints, Math.max(0, value))
+          };
     participantPatch(selected, participant, changes, onUpdateEncounter);
     setStatEditor(null);
   };
@@ -566,16 +579,27 @@ export function EncounterPanel({
 
                     <div className="combatant-summary-row">
                       <button
-                        aria-label={`Armor class ${participant.armorClass ?? 'not set'}. Edit armor class for ${participant.name}`}
-                        className="combatant-stat-button combatant-ac-button"
-                        onClick={() => openStatEditor(participant, 'armorClass')}
+                        aria-expanded={hitPointEditorId === participant.id}
+                        className="combatant-hp-button"
+                        onClick={() => {
+                          if (!canAdjustHitPoints(participant)) {
+                            openStatEditor(participant, 'maxHitPoints');
+                            return;
+                          }
+                          setStatEditor(null);
+                          setHitPointEditorId((current) => current === participant.id ? null : participant.id);
+                        }}
+                        title={canAdjustHitPoints(participant) ? 'Open damage and healing calculator' : 'Set maximum HP first'}
                         type="button"
                       >
-                        <span>AC</span>
-                        <strong>{participant.armorClass ?? '—'}</strong>
+                        <span>Hit points</span>
+                        <strong>
+                          <b>{participant.currentHitPoints ?? '—'}</b>
+                          <small>/ {participant.maxHitPoints ?? '—'}</small>
+                        </strong>
                       </button>
 
-                      <div className="combatant-vitals">
+                      <div className="combatant-secondary-stats">
                         <button
                           aria-label={`Initiative ${participant.initiative ?? 'not set'}. Edit initiative for ${participant.name}`}
                           className="combatant-stat-button combatant-initiative-button"
@@ -586,18 +610,13 @@ export function EncounterPanel({
                           <strong>{participant.initiative ?? '—'}</strong>
                         </button>
                         <button
-                          aria-expanded={hitPointEditorId === participant.id}
-                          className="combatant-hp-button"
-                          disabled={!canAdjustHitPoints(participant)}
-                          onClick={() => {
-                            setStatEditor(null);
-                            setHitPointEditorId((current) => current === participant.id ? null : participant.id);
-                          }}
-                          title={canAdjustHitPoints(participant) ? 'Open damage and healing calculator' : 'Set maximum HP first'}
+                          aria-label={`Armor class ${participant.armorClass ?? 'not set'}. Edit armor class for ${participant.name}`}
+                          className="combatant-stat-button combatant-ac-button"
+                          onClick={() => openStatEditor(participant, 'armorClass')}
                           type="button"
                         >
-                          <span>HP</span>
-                          <strong>{participant.currentHitPoints ?? '—'} / {participant.maxHitPoints ?? '—'}</strong>
+                          <span>Armor class</span>
+                          <strong>{participant.armorClass ?? '—'}</strong>
                         </button>
                       </div>
 
@@ -606,11 +625,11 @@ export function EncounterPanel({
                       {statEditor?.participantId === participant.id && (
                         <div className="combatant-stat-editor">
                           <label>
-                            {statEditor.field === 'initiative' ? 'Initiative' : 'Armor class'}
+                            {statEditor.field === 'initiative' ? 'Initiative' : statEditor.field === 'armorClass' ? 'Armor class' : 'Maximum HP'}
                             <input
-                              aria-label={`Set ${statEditor.field === 'initiative' ? 'initiative' : 'armor class'} for ${participant.name}`}
+                              aria-label={`Set ${statEditor.field === 'initiative' ? 'initiative' : statEditor.field === 'armorClass' ? 'armor class' : 'maximum HP'} for ${participant.name}`}
                               autoFocus
-                              min={statEditor.field === 'armorClass' ? 0 : undefined}
+                              min={statEditor.field === 'initiative' ? undefined : 0}
                               onChange={(event) => setStatEditor({ ...statEditor, value: event.target.value })}
                               onKeyDown={(event) => {
                                 if (event.key === 'Enter') {
@@ -634,29 +653,31 @@ export function EncounterPanel({
                       {hitPointEditorId === participant.id && (
                         <div className="combatant-hp-calculator">
                           <label>
-                            Damage + / healing −
+                            Amount
                             <input
-                              aria-label={`${participant.name} damage or healing`}
+                              aria-label={`${participant.name} HP change`}
                               autoFocus
+                              min="0"
                               onChange={(event) => setHitPointChanges((current) => ({ ...current, [participant.id]: event.target.value }))}
                               onKeyDown={(event) => {
                                 if (event.key === 'Enter') {
                                   event.preventDefault();
-                                  applyHitPointChange(participant);
+                                  applyHitPointChange(participant, 'damage');
                                 }
                                 if (event.key === 'Escape') {
                                   event.preventDefault();
                                   setHitPointEditorId(null);
                                 }
                               }}
-                              placeholder="10 or −10"
+                              placeholder="10"
                               step="1"
                               type="number"
                               value={hitPointChanges[participant.id] ?? ''}
                             />
                           </label>
-                          <button disabled={asNumber(hitPointChanges[participant.id] ?? '') === null || asNumber(hitPointChanges[participant.id] ?? '') === 0} onClick={() => applyHitPointChange(participant)} type="button">Apply</button>
-                          <small>Positive values deal damage; negative values restore HP.</small>
+                          <button className="hp-damage-button" disabled={asNumber(hitPointChanges[participant.id] ?? '') === null || asNumber(hitPointChanges[participant.id] ?? '') === 0} onClick={() => applyHitPointChange(participant, 'damage')} type="button">Damage −</button>
+                          <button className="hp-healing-button" disabled={asNumber(hitPointChanges[participant.id] ?? '') === null || asNumber(hitPointChanges[participant.id] ?? '') === 0} onClick={() => applyHitPointChange(participant, 'healing')} type="button">Heal +</button>
+                          <small>Enter defaults to damage and subtracts this amount from HP.</small>
                         </div>
                       )}
                     </div>

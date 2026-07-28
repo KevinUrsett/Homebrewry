@@ -23,6 +23,7 @@
   align-items: center;
   display: inline-flex;
   gap: 5px;
+  order: -1;
 }
 
 .workspace-home-tab span {
@@ -30,12 +31,9 @@
   line-height: 1;
 }
 
-.desktop-view-controls .workspace-home-tab {
-  order: -1;
-}
-
 @media (max-width: 760px) {
   .mobile-nav .workspace-home-tab {
     flex: 0 0 auto;
+    order: -1;
   }
 }

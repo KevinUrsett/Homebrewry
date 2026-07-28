@@ -33,7 +33,8 @@ function monster(index: number): CatalogueEntry {
 const encounter: Encounter = {
   id: 'encounter-1',
   name: 'Test encounter',
-  status: 'prepared',
+  status: 'not-started',
+  optional: false,
   participants: [],
   activeCombatantId: null,
   createdAt: '2026-07-26T10:00:00.000Z',

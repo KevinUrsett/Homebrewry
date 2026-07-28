@@ -33,7 +33,8 @@ const brew: Brew = {
 const encounter: Encounter = {
   id: '329dec56-7f04-49b2-98b2-5710e54f3de2',
   name: 'The flooded vault',
-  status: 'prepared',
+  status: 'not-started',
+  optional: false,
   participants: [],
   activeCombatantId: null,
   createdAt: '2026-07-25T00:00:00.000Z',

@@ -54,10 +54,36 @@ describe('campaign data snapshots', () => {
 
     const v3 = { ...snapshot, schemaVersion: 3 } as Record<string, unknown>;
     expect(parseCampaignDataSnapshot(v3)).toMatchObject({
-      schemaVersion: 4,
+      schemaVersion: 5,
       customCatalogueCategories: [],
       worldbuildingTypes: []
     });
+  });
+
+  it('migrates legacy encounter progress without rewriting authored brew data', () => {
+    const snapshot = createCampaignDataSnapshot([], [], [], '2026-07-26T12:00:00.000Z');
+    const legacy = {
+      ...snapshot,
+      schemaVersion: 4,
+      encounters: [
+        { ...createEncounter('First'), status: 'prepared', optional: undefined },
+        { ...createEncounter('Second'), status: 'complete', optional: undefined }
+      ]
+    } as Record<string, unknown>;
+    delete legacy.campaignId;
+    delete legacy.entities;
+    delete legacy.entityReferences;
+    delete legacy.worldEvents;
+
+    const migrated = parseCampaignDataSnapshot(legacy);
+    expect(migrated.schemaVersion).toBe(5);
+    expect(migrated.campaignId).toMatch(/^legacy-/);
+    expect(migrated.encounters.map(({ status, optional }) => ({ status, optional }))).toEqual([
+      { status: 'not-started', optional: false },
+      { status: 'completed', optional: false }
+    ]);
+    expect(migrated.entities).toEqual([]);
+    expect(migrated.worldEvents).toEqual([]);
   });
 
   it('keeps conflicting records as separately named local copies', () => {

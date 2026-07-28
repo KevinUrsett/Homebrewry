@@ -74,17 +74,92 @@ export type EncounterParticipant = {
   initiative: number | null;
 };
 
-export type EncounterStatus = 'prepared' | 'active' | 'complete';
+export type EncounterStatus = 'not-started' | 'active' | 'completed' | 'skipped';
 
 export type Encounter = {
   id: string;
   name: string;
   status: EncounterStatus;
+  optional: boolean;
   participants: EncounterParticipant[];
   activeCombatantId: string | null;
   createdAt: string;
   updatedAt: string;
   version: number;
+};
+
+export type CampaignEntityKind =
+  | 'npc'
+  | 'item'
+  | 'settlement'
+  | 'location'
+  | 'faction'
+  | 'quest'
+  | 'creature'
+  | 'vehicle'
+  | 'other';
+
+/** A stable, campaign-scoped identity. Authored brew text never stores or mutates this record. */
+export type CampaignEntity = {
+  id: string;
+  campaignId: string;
+  kind: CampaignEntityKind;
+  name: string;
+  aliases: string[];
+  source: { kind: 'worldbuilding'; id: string } | { kind: 'catalogue'; id: string } | { kind: 'manual' };
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+};
+
+/** References are annotations around authored content, never edits to brew Markdown. */
+export type EntityReference = {
+  id: string;
+  campaignId: string;
+  entityId: string;
+  source: { kind: 'brew'; brewId: string; start: number; end: number } | { kind: 'encounter'; encounterId: string };
+  label: string;
+  createdAt: string;
+};
+
+export type WorldStateValue = string | number | boolean | null;
+
+export type WorldStateChange = {
+  field: string;
+  previousValue: WorldStateValue;
+  nextValue: WorldStateValue;
+};
+
+/**
+ * Append-only provenance. Events describe structured actions; prose recognition
+ * is intentionally not an event source and cannot establish campaign canon.
+ */
+export type WorldEvent = {
+  id: string;
+  campaignId: string;
+  entityId?: string;
+  type: string;
+  source:
+    | { kind: 'manual' }
+    | { kind: 'encounter'; encounterId: string }
+    | { kind: 'combat'; encounterId: string; participantId?: string }
+    | { kind: 'system-migration'; schemaVersion: number };
+  changes: WorldStateChange[];
+  occurredAt: string;
+  recordedAt: string;
+};
+
+export type CurrentStateField = {
+  value: WorldStateValue;
+  eventId: string;
+  updatedAt: string;
+  authority: 'structured' | 'manual';
+};
+
+export type EntityCurrentState = {
+  campaignId: string;
+  entityId: string;
+  fields: Record<string, CurrentStateField>;
 };
 
 export const worldbuildingKinds = [
@@ -130,7 +205,8 @@ export type WorldbuildingEntry = {
  * the established brew document schema.
  */
 export type CampaignDataSnapshot = {
-  schemaVersion: 4;
+  schemaVersion: 5;
+  campaignId: string;
   updatedAt: string;
   encounters: Encounter[];
   partyMembers: PartyMember[];
@@ -138,6 +214,9 @@ export type CampaignDataSnapshot = {
   customCatalogueEntries: CustomCatalogueEntry[];
   customCatalogueCategories: CustomCatalogueCategory[];
   worldbuildingTypes: WorldbuildingType[];
+  entities: CampaignEntity[];
+  entityReferences: EntityReference[];
+  worldEvents: WorldEvent[];
 };
 
 export type CampaignDataConflict = {

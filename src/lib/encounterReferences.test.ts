@@ -5,7 +5,8 @@ import type { Encounter } from '../types';
 const encounter: Encounter = {
   id: 'c674b91f-94c8-5c80-9d1d-31bef50bc779',
   name: 'The flooded vault',
-  status: 'prepared',
+  status: 'not-started',
+  optional: false,
   participants: [],
   activeCombatantId: null,
   createdAt: '2026-07-25T00:00:00.000Z',

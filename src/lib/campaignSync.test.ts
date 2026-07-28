@@ -10,14 +10,18 @@ import { listRemoteCampaignData, uploadCampaignData } from './googleDrive';
 import { syncCampaignData } from './campaignSync';
 
 const snapshot: CampaignDataSnapshot = {
-  schemaVersion: 4,
+  schemaVersion: 5,
+  campaignId: 'campaign-1',
   updatedAt: '2026-07-26T10:00:00.000Z',
   encounters: [],
   partyMembers: [],
   worldbuildingEntries: [],
   customCatalogueEntries: [],
   customCatalogueCategories: [],
-  worldbuildingTypes: []
+  worldbuildingTypes: [],
+  entities: [],
+  entityReferences: [],
+  worldEvents: []
 };
 
 const metadata: CampaignDataSyncMetadata = {

@@ -14,11 +14,13 @@ import {
   touchEncounter
 } from '../lib/encounters';
 import { campaignStoragePresentation } from '../lib/campaignStorageStatus';
+import type { CampaignPosition } from '../lib/campaignProgress';
 import type { Encounter, EncounterParticipant, PartyMember, SyncState } from '../types';
 import '../encounter-refresh.css';
 
 type EncounterPanelProps = {
   encounters: Encounter[];
+  campaignPosition?: CampaignPosition | null;
   selectedId: string | null;
   partyMembers: PartyMember[];
   monsters: CatalogueEntry[];
@@ -58,6 +60,7 @@ function participantPatch(
 
 export function EncounterPanel({
   encounters,
+  campaignPosition,
   selectedId,
   partyMembers,
   monsters,
@@ -90,6 +93,9 @@ export function EncounterPanel({
   const pointerDragSourceId = useRef<string | null>(null);
   const pointerDragTargetId = useRef<string | null>(null);
   const selected = encounters.find((encounter) => encounter.id === selectedId) ?? encounters[0] ?? null;
+  const positionActive = encounters.find((encounter) => encounter.id === campaignPosition?.activeEncounterId);
+  const positionPrevious = encounters.find((encounter) => encounter.id === campaignPosition?.previousEncounterId);
+  const positionNext = encounters.find((encounter) => encounter.id === campaignPosition?.nextEncounterId);
   const storage = campaignStoragePresentation(syncState, hasDriveBackup);
   const orderedParticipants = selected ? sortCombatants(selected.participants) : [];
   const monsterMatches = useMemo(() => {
@@ -203,6 +209,18 @@ export function EncounterPanel({
         </div>
       </header>
 
+      {campaignPosition && (
+        <section className="campaign-position" aria-label="Current campaign position">
+          <span>Campaign now</span>
+          <strong>
+            {positionActive
+              ? `Active: ${positionActive.name}`
+              : `After ${positionPrevious?.name ?? 'the campaign opening'} · Before ${positionNext?.name ?? 'the next required encounter'}`}
+          </strong>
+          <small>Derived from encounter order and progress; brew text remains unchanged.</small>
+        </section>
+      )}
+
       <section className="encounter-workspace">
         <aside className="encounter-library" aria-label="Saved encounters">
           <div className="encounter-sidebar-heading"><span>Saved encounters</span><span>{encounters.length}</span></div>
@@ -277,7 +295,32 @@ export function EncounterPanel({
                     <button className="encounter-inline-button" onClick={startEditingName} type="button">Edit name</button>
                   </div>
                 )}
-                <span className={`encounter-status status-${selected.status}`}>{selected.status}</span>
+                <div className="encounter-progress-controls">
+                  <label>
+                    Progress
+                    <select
+                      aria-label="Encounter progress"
+                      onChange={(event) => onUpdateEncounter(touchEncounter(selected, {
+                        status: event.target.value as Encounter['status'],
+                        activeCombatantId: event.target.value === 'active' ? selected.activeCombatantId : null
+                      }))}
+                      value={selected.status}
+                    >
+                      <option value="not-started">Not started</option>
+                      <option value="active">Active</option>
+                      <option value="completed">Completed</option>
+                      <option value="skipped">Skipped</option>
+                    </select>
+                  </label>
+                  <label className="encounter-optional-toggle">
+                    <input
+                      checked={selected.optional}
+                      onChange={(event) => onUpdateEncounter(touchEncounter(selected, { optional: event.target.checked }))}
+                      type="checkbox"
+                    />
+                    Optional
+                  </label>
+                </div>
               </div>
 
               <div className="encounter-actions">

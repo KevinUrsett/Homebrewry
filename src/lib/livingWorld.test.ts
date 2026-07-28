@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { WorldEvent } from '../types';
-import { appendWorldEvent, createCampaignEntity } from './livingWorld';
+import { appendWorldEvent, createCampaignEntity, synchroniseWorldbuildingEntities } from './livingWorld';
+import { createWorldbuildingEntry } from './worldbuilding';
 
 describe('Living World entities and events', () => {
   it('creates stable campaign-scoped identities without touching brew content', () => {
@@ -36,5 +37,19 @@ describe('Living World entities and events', () => {
     expect(appendWorldEvent(original, second).map(({ id }) => id)).toEqual(['event-1', 'event-2']);
     expect(original).toHaveLength(1);
     expect(() => appendWorldEvent(original, first)).toThrow('already exists');
+  });
+
+  it('turns confirmed Worldbuilding records into stable campaign entities', () => {
+    const entry = createWorldbuildingEntry('Sund', 'town');
+    const first = synchroniseWorldbuildingEntities('campaign-1', [entry]);
+    const renamed = synchroniseWorldbuildingEntities('campaign-1', [{ ...entry, name: 'Sundholm', version: 2 }], first);
+
+    expect(first[0]).toMatchObject({
+      id: `worldbuilding:${entry.id}`,
+      campaignId: 'campaign-1',
+      kind: 'settlement',
+      name: 'Sund'
+    });
+    expect(renamed[0]).toMatchObject({ id: first[0]?.id, name: 'Sundholm' });
   });
 });

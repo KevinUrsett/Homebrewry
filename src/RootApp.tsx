@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import App from './App';
 import { createBrew, saveBrew, seedBrews } from './lib/brewStore';
 import { listEncounters } from './lib/encounterStore';
 import { listWorldbuildingEntries } from './lib/worldbuildingStore';
 import type { Brew } from './types';
 import './landing-page.css';
+import './workspace-home-nav.css';
 
 type LandingStats = {
   encounters: number;
@@ -47,15 +49,82 @@ export default function RootApp() {
   const [brews, setBrews] = useState<Brew[]>([]);
   const [stats, setStats] = useState<LandingStats>({ encounters: 0, worldbuilding: 0 });
   const [loading, setLoading] = useState(true);
+  const [desktopNavigation, setDesktopNavigation] = useState<HTMLElement | null>(null);
+  const [mobileNavigation, setMobileNavigation] = useState<HTMLElement | null>(null);
+
+  const loadLandingData = async () => {
+    const [storedBrews, encounters, worldbuilding] = await Promise.all([
+      seedBrews(),
+      listEncounters(),
+      listWorldbuildingEntries()
+    ]);
+    setBrews(storedBrews);
+    setStats({ encounters: encounters.length, worldbuilding: worldbuilding.length });
+  };
 
   useEffect(() => {
-    Promise.all([seedBrews(), listEncounters(), listWorldbuildingEntries()])
-      .then(([storedBrews, encounters, worldbuilding]) => {
-        setBrews(storedBrews);
-        setStats({ encounters: encounters.length, worldbuilding: worldbuilding.length });
-      })
-      .finally(() => setLoading(false));
+    void loadLandingData().finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!workspaceOpen) {
+      setDesktopNavigation(null);
+      setMobileNavigation(null);
+      return;
+    }
+
+    let logo: HTMLElement | null = null;
+    let cancelled = false;
+
+    const connectWorkspaceNavigation = () => {
+      if (cancelled) return;
+      logo = document.querySelector<HTMLElement>('.brand-lockup');
+      const desktop = document.querySelector<HTMLElement>('.desktop-view-controls');
+      const mobile = document.querySelector<HTMLElement>('.mobile-nav');
+
+      setDesktopNavigation(desktop);
+      setMobileNavigation(mobile);
+
+      if (!logo || !desktop || !mobile) {
+        window.requestAnimationFrame(connectWorkspaceNavigation);
+        return;
+      }
+
+      const goHome = () => void returnHome();
+      const handleKeyDown = (event: KeyboardEvent) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        goHome();
+      };
+
+      logo.classList.add('is-home-link');
+      logo.setAttribute('role', 'button');
+      logo.setAttribute('tabindex', '0');
+      logo.setAttribute('aria-label', 'Return to Homebrewry home');
+      logo.addEventListener('click', goHome);
+      logo.addEventListener('keydown', handleKeyDown);
+
+      return () => {
+        logo?.classList.remove('is-home-link');
+        logo?.removeAttribute('role');
+        logo?.removeAttribute('tabindex');
+        logo?.setAttribute('aria-label', 'Homebrewry');
+        logo?.removeEventListener('click', goHome);
+        logo?.removeEventListener('keydown', handleKeyDown);
+      };
+    };
+
+    let disconnect: (() => void) | undefined;
+    const frame = window.requestAnimationFrame(() => {
+      disconnect = connectWorkspaceNavigation();
+    });
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+      disconnect?.();
+    };
+  }, [workspaceOpen]);
 
   const recentBrews = useMemo(
     () => [...brews].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)).slice(0, 6),
@@ -66,6 +135,16 @@ export default function RootApp() {
     () => brews.reduce((total, brew) => total + wordCount(brew.content), 0),
     [brews]
   );
+
+  const returnHome = async () => {
+    setWorkspaceOpen(false);
+    setLoading(true);
+    try {
+      await loadLandingData();
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const openBrew = async (brew: Brew) => {
     const touched = { ...brew, updatedAt: new Date().toISOString() };
@@ -81,7 +160,22 @@ export default function RootApp() {
     setWorkspaceOpen(true);
   };
 
-  if (workspaceOpen) return <App />;
+  if (workspaceOpen) {
+    const homeButton = (
+      <button className="workspace-home-tab" onClick={() => void returnHome()} type="button">
+        <span aria-hidden>⌂</span>
+        Home
+      </button>
+    );
+
+    return (
+      <>
+        <App />
+        {desktopNavigation && createPortal(homeButton, desktopNavigation)}
+        {mobileNavigation && createPortal(homeButton, mobileNavigation)}
+      </>
+    );
+  }
 
   return (
     <main className="landing-page">

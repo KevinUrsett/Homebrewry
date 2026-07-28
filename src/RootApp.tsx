@@ -13,6 +13,16 @@ type LandingStats = {
   worldbuilding: number;
 };
 
+type WorkspaceDestination = 'library' | 'editor' | 'catalogue' | 'encounters' | 'worldbuilding';
+
+const destinationLabels: Record<WorkspaceDestination, string> = {
+  library: 'Brews',
+  editor: 'Edit',
+  catalogue: 'Catalogue',
+  encounters: 'Encounters',
+  worldbuilding: 'Worldbuilding'
+};
+
 function relativeTime(value: string) {
   const timestamp = new Date(value).getTime();
   const seconds = Math.max(1, Math.round((Date.now() - timestamp) / 1000));
@@ -46,6 +56,7 @@ function wordCount(content: string) {
 
 export default function RootApp() {
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [pendingDestination, setPendingDestination] = useState<WorkspaceDestination | null>(null);
   const [brews, setBrews] = useState<Brew[]>([]);
   const [stats, setStats] = useState<LandingStats>({ encounters: 0, worldbuilding: 0 });
   const [loading, setLoading] = useState(true);
@@ -126,6 +137,32 @@ export default function RootApp() {
     };
   }, [workspaceOpen]);
 
+  useEffect(() => {
+    if (!workspaceOpen || !pendingDestination) return;
+
+    let cancelled = false;
+    let frame = 0;
+    const label = destinationLabels[pendingDestination];
+
+    const navigate = () => {
+      if (cancelled) return;
+      const buttons = [...document.querySelectorAll<HTMLButtonElement>('.mobile-nav button')];
+      const destination = buttons.find((button) => button.textContent?.trim() === label);
+      if (!destination) {
+        frame = window.requestAnimationFrame(navigate);
+        return;
+      }
+      destination.click();
+      setPendingDestination(null);
+    };
+
+    frame = window.requestAnimationFrame(navigate);
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+    };
+  }, [pendingDestination, workspaceOpen]);
+
   const recentBrews = useMemo(
     () => [...brews].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)).slice(0, 6),
     [brews]
@@ -136,8 +173,14 @@ export default function RootApp() {
     [brews]
   );
 
+  const openWorkspace = (destination: WorkspaceDestination) => {
+    setPendingDestination(destination);
+    setWorkspaceOpen(true);
+  };
+
   const returnHome = async () => {
     setWorkspaceOpen(false);
+    setPendingDestination(null);
     setLoading(true);
     try {
       await loadLandingData();
@@ -150,14 +193,14 @@ export default function RootApp() {
     const touched = { ...brew, updatedAt: new Date().toISOString() };
     await saveBrew(touched);
     setBrews((current) => [touched, ...current.filter((candidate) => candidate.id !== brew.id)]);
-    setWorkspaceOpen(true);
+    openWorkspace('editor');
   };
 
   const createNew = async () => {
     const brew = createBrew();
     await saveBrew(brew);
     setBrews((current) => [brew, ...current]);
-    setWorkspaceOpen(true);
+    openWorkspace('editor');
   };
 
   if (workspaceOpen) {
@@ -184,7 +227,7 @@ export default function RootApp() {
           <span aria-hidden>✦</span>
           <strong>Homebrewry</strong>
         </div>
-        <button className="landing-library-button" onClick={() => setWorkspaceOpen(true)} type="button">
+        <button className="landing-library-button" onClick={() => openWorkspace('library')} type="button">
           Open workspace
         </button>
       </header>
@@ -198,7 +241,7 @@ export default function RootApp() {
           </p>
           <div className="landing-hero-actions">
             <button className="landing-primary" onClick={() => void createNew()} type="button">Create a new brew</button>
-            <button className="landing-secondary" onClick={() => setWorkspaceOpen(true)} type="button">Browse all brews</button>
+            <button className="landing-secondary" onClick={() => openWorkspace('library')} type="button">Browse all brews</button>
           </div>
         </div>
         <div className="landing-tome" aria-hidden>
@@ -217,7 +260,7 @@ export default function RootApp() {
             <p className="landing-eyebrow">Continue writing</p>
             <h2>Recent brews</h2>
           </div>
-          <button onClick={() => setWorkspaceOpen(true)} type="button">View library <span aria-hidden>→</span></button>
+          <button onClick={() => openWorkspace('library')} type="button">View library <span aria-hidden>→</span></button>
         </div>
 
         {loading ? (
@@ -249,9 +292,9 @@ export default function RootApp() {
             <p className="landing-eyebrow">At a glance</p>
             <h2>Your campaign library</h2>
             <div className="landing-stats">
-              <button onClick={() => setWorkspaceOpen(true)} type="button"><strong>{brews.length}</strong><span>Brews</span></button>
-              <button onClick={() => setWorkspaceOpen(true)} type="button"><strong>{stats.encounters}</strong><span>Encounters</span></button>
-              <button onClick={() => setWorkspaceOpen(true)} type="button"><strong>{stats.worldbuilding}</strong><span>World entries</span></button>
+              <button onClick={() => openWorkspace('library')} type="button"><strong>{brews.length}</strong><span>Brews</span></button>
+              <button onClick={() => openWorkspace('encounters')} type="button"><strong>{stats.encounters}</strong><span>Encounters</span></button>
+              <button onClick={() => openWorkspace('worldbuilding')} type="button"><strong>{stats.worldbuilding}</strong><span>World entries</span></button>
               <div><strong>{totalWords.toLocaleString()}</strong><span>Words written</span></div>
             </div>
           </div>
@@ -259,9 +302,9 @@ export default function RootApp() {
           <div className="landing-tool-panel">
             <p className="landing-eyebrow">Quick access</p>
             <div className="landing-tool-list">
-              <button onClick={() => setWorkspaceOpen(true)} type="button"><span aria-hidden>⚔</span><div><strong>Prepare an encounter</strong><small>Build and run initiative-ready combats.</small></div><b aria-hidden>→</b></button>
-              <button onClick={() => setWorkspaceOpen(true)} type="button"><span aria-hidden>⌘</span><div><strong>Open worldbuilding</strong><small>Return to your people, factions, and places.</small></div><b aria-hidden>→</b></button>
-              <button onClick={() => setWorkspaceOpen(true)} type="button"><span aria-hidden>◇</span><div><strong>Browse the catalogue</strong><small>Find creatures and reusable references.</small></div><b aria-hidden>→</b></button>
+              <button onClick={() => openWorkspace('encounters')} type="button"><span aria-hidden>⚔</span><div><strong>Prepare an encounter</strong><small>Build and run initiative-ready combats.</small></div><b aria-hidden>→</b></button>
+              <button onClick={() => openWorkspace('worldbuilding')} type="button"><span aria-hidden>⌘</span><div><strong>Open worldbuilding</strong><small>Return to your people, factions, and places.</small></div><b aria-hidden>→</b></button>
+              <button onClick={() => openWorkspace('catalogue')} type="button"><span aria-hidden>◇</span><div><strong>Browse the catalogue</strong><small>Find creatures and reusable references.</small></div><b aria-hidden>→</b></button>
             </div>
           </div>
         </section>

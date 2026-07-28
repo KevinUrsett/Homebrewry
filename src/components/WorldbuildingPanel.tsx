@@ -6,9 +6,10 @@ import { campaignStoragePresentation } from '../lib/campaignStorageStatus';
 import { seedBrews } from '../lib/brewStore';
 import { listEncounters } from '../lib/encounterStore';
 import { findUnresolvedNames } from '../lib/unresolvedReferences';
+import { findWorldbuildingConnections, type WorldbuildingConnection } from '../lib/worldbuildingConnections';
 import { createWorldbuildingEntry, worldbuildingKindLabel, worldbuildingKindLabels, worldbuildingKinds, touchWorldbuildingEntry } from '../lib/worldbuilding';
 import type { CatalogueEntry } from '../catalogue/types';
-import type { CampaignEntity, EntityCurrentState, SyncState, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from '../types';
+import type { Brew, CampaignEntity, Encounter, EntityCurrentState, SyncState, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from '../types';
 import '../unresolved-references.css';
 
 type WorldbuildingPanelProps = {
@@ -95,6 +96,7 @@ type EntryPreviewProps = {
   entity?: CampaignEntity;
   currentState?: EntityCurrentState;
   onSetNpcStatus: (status: string) => void;
+  connections: readonly WorldbuildingConnection[];
 };
 
 function NpcStateControls({ currentState, onSetStatus }: { currentState?: EntityCurrentState; onSetStatus: (status: string) => void }) {
@@ -113,11 +115,32 @@ function NpcStateControls({ currentState, onSetStatus }: { currentState?: Entity
   );
 }
 
-function WorldbuildingEntryPreview({ entry, types, catalogue, worldbuilding, catalogueCategories, onDelete, onEdit, onReferenceOpen, onWorldbuildingOpen, entity, currentState, onSetNpcStatus }: EntryPreviewProps) {
+function WorldbuildingEntryPreview({ entry, types, catalogue, worldbuilding, catalogueCategories, onDelete, onEdit, onReferenceOpen, onWorldbuildingOpen, entity, currentState, onSetNpcStatus, connections }: EntryPreviewProps) {
   return (
     <article className="worldbuilding-entry worldbuilding-entry-preview" aria-label={entry.name}>
       <header className="worldbuilding-preview-header"><div><p className="eyebrow">{worldbuildingKindLabel(entry.kind, types)}</p><h2>{entry.name}</h2>{entry.aliases.length > 0 && <p className="worldbuilding-preview-aliases">Also known as {entry.aliases.join(' · ')}</p>}</div><button className="primary-button" onClick={onEdit} type="button">Edit</button></header>
       {entity?.kind === 'npc' && <NpcStateControls currentState={currentState} key={currentState?.fields.status?.eventId ?? 'no-status'} onSetStatus={onSetNpcStatus} />}
+      <section className="worldbuilding-connections">
+        <div className="worldbuilding-connections-heading"><h3>Connections</h3><span>{connections.length}</span></div>
+        {connections.length ? (
+          <div className="worldbuilding-connection-list">
+            {connections.map((connection) => {
+              const related = connection.kind === 'worldbuilding' ? worldbuilding.get(connection.id) : undefined;
+              const direction = connection.direction === 'mutual'
+                ? 'Mutual references'
+                : connection.direction === 'outgoing'
+                  ? 'Mentioned in this entry'
+                  : connection.direction === 'incoming'
+                    ? 'Mentions this entry'
+                    : `${connection.count} mention${connection.count === 1 ? '' : 's'}`;
+              const content = <><span>{connection.kind}</span><strong>{connection.label}</strong><small>{direction}</small></>;
+              return related
+                ? <button key={`${connection.kind}:${connection.id}`} onClick={() => onWorldbuildingOpen(related)} type="button">{content}</button>
+                : <article key={`${connection.kind}:${connection.id}`}>{content}</article>;
+            })}
+          </div>
+        ) : <p>No connections found yet.</p>}
+      </section>
       <section className="worldbuilding-preview-notes"><h3>Notes</h3>{entry.notes.trim() ? <ReferenceContent catalogue={catalogue} catalogueCategories={catalogueCategories} content={entry.notes} onReferenceOpen={onReferenceOpen} onWorldbuildingOpen={onWorldbuildingOpen} worldbuilding={worldbuilding} worldbuildingTypes={types} /> : <p>No notes yet.</p>}</section>
       <div className="worldbuilding-entry-footer"><span>Last updated {new Date(entry.updatedAt).toLocaleString()}</span><button className="quiet-danger" onClick={() => onDelete(entry)} type="button">Delete entry</button></div>
     </article>
@@ -131,8 +154,8 @@ export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBac
   const [addingType, setAddingType] = useState(false);
   const [typeName, setTypeName] = useState('');
   const [typeError, setTypeError] = useState<string | null>(null);
-  const [brewSources, setBrewSources] = useState<string[]>([]);
-  const [encounterNames, setEncounterNames] = useState<string[]>([]);
+  const [brews, setBrews] = useState<Brew[]>([]);
+  const [encounters, setEncounters] = useState<Encounter[]>([]);
   const [dismissedNames, setDismissedNames] = useState<Set<string>>(() => new Set());
   const [suggestedKinds, setSuggestedKinds] = useState<Record<string, WorldbuildingKind>>({});
 
@@ -140,8 +163,8 @@ export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBac
     let cancelled = false;
     Promise.all([seedBrews(), listEncounters()]).then(([brews, encounters]) => {
       if (cancelled) return;
-      setBrewSources(brews.map((brew) => brew.content));
-      setEncounterNames(encounters.map((encounter) => encounter.name));
+      setBrews(brews);
+      setEncounters(encounters);
     }).catch(() => undefined);
     return () => { cancelled = true; };
   }, []);
@@ -163,12 +186,12 @@ export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBac
   const knownNames = useMemo(() => [
     ...entries.flatMap((entry) => [entry.name, ...entry.aliases]),
     ...[...catalogue.values()].map((entry) => entry.name),
-    ...encounterNames
-  ], [catalogue, encounterNames, entries]);
+    ...encounters.map((encounter) => encounter.name)
+  ], [catalogue, encounters, entries]);
 
   const unresolved = useMemo(
-    () => findUnresolvedNames(brewSources, knownNames).filter((item) => !dismissedNames.has(item.name.toLocaleLowerCase())).slice(0, 30),
-    [brewSources, dismissedNames, knownNames]
+    () => findUnresolvedNames(brews.map((brew) => brew.content), knownNames).filter((item) => !dismissedNames.has(item.name.toLocaleLowerCase())).slice(0, 30),
+    [brews, dismissedNames, knownNames]
   );
 
   const selected = entries.find((entry) => entry.id === selectedId) ?? filtered[0] ?? entries[0] ?? null;
@@ -176,6 +199,10 @@ export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBac
   const storage = campaignStoragePresentation(syncState, hasDriveBackup);
   const selectedEntity = selected ? entitiesByWorldbuildingId.get(selected.id) : undefined;
   const selectedCurrentState = selectedEntity ? currentStateByEntityId.get(selectedEntity.id) : undefined;
+  const connections = useMemo(
+    () => selected ? findWorldbuildingConnections(selected, brews, encounters, entries) : [],
+    [brews, encounters, entries, selected]
+  );
 
   const selectEntry = (id: string) => {
     if (editing && id !== selected?.id && !window.confirm('Discard unsaved Worldbuilding changes?')) return;
@@ -224,7 +251,7 @@ export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBac
           </section>
         </aside>
 
-        <section className="worldbuilding-details" aria-live="polite">{selected ? (editing ? <WorldbuildingEntryEditor catalogueCategories={catalogueCategories} entry={selected} key={selected.id} onCancel={() => setEditingId(null)} onCreateCatalogueReference={onCreateCatalogueReference} onCreateWorldbuildingReference={onCreateWorldbuildingReference} onSave={(entry) => { onUpdate(entry); setEditingId(null); }} types={types} /> : <WorldbuildingEntryPreview catalogue={catalogue} catalogueCategories={catalogueCategories} currentState={selectedCurrentState} entity={selectedEntity} entry={selected} onDelete={onDelete} onEdit={() => setEditingId(selected.id)} onReferenceOpen={onReferenceOpen} onSetNpcStatus={(status) => onSetNpcStatus(selected, status)} onWorldbuildingOpen={onWorldbuildingOpen} types={types} worldbuilding={worldbuilding} />) : <p className="empty-panel">Create an entry, or review an unresolved name from the list.</p>}</section>
+        <section className="worldbuilding-details" aria-live="polite">{selected ? (editing ? <WorldbuildingEntryEditor catalogueCategories={catalogueCategories} entry={selected} key={selected.id} onCancel={() => setEditingId(null)} onCreateCatalogueReference={onCreateCatalogueReference} onCreateWorldbuildingReference={onCreateWorldbuildingReference} onSave={(entry) => { onUpdate(entry); setEditingId(null); }} types={types} /> : <WorldbuildingEntryPreview catalogue={catalogue} catalogueCategories={catalogueCategories} connections={connections} currentState={selectedCurrentState} entity={selectedEntity} entry={selected} onDelete={onDelete} onEdit={() => setEditingId(selected.id)} onReferenceOpen={onReferenceOpen} onSetNpcStatus={(status) => onSetNpcStatus(selected, status)} onWorldbuildingOpen={onWorldbuildingOpen} types={types} worldbuilding={worldbuilding} />) : <p className="empty-panel">Create an entry, or review an unresolved name from the list.</p>}</section>
       </section>
     </main>
   );

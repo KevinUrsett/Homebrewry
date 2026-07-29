@@ -1,5 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { CataloguePanel } from './components/CataloguePanel';
+import { CampaignPanel } from './components/CampaignPanel';
 import { BrewPreview } from './components/BrewPreview';
 import { EncounterPanel } from './components/EncounterPanel';
 import { EditorPane } from './components/EditorPane';
@@ -72,6 +73,7 @@ const mobileLabels: Record<MobileSection, string> = {
   preview: 'Preview',
   outline: 'Outline',
   catalogue: 'Catalogue',
+  campaign: 'Campaign',
   encounters: 'Encounters',
   worldbuilding: 'Worldbuilding'
 };
@@ -98,6 +100,7 @@ export default function App() {
   const [catalogueLoading, setCatalogueLoading] = useState(true);
   const [catalogueError, setCatalogueError] = useState<string | null>(null);
   const [catalogueOpen, setCatalogueOpen] = useState(false);
+  const [campaignOpen, setCampaignOpen] = useState(false);
   const [privateMonsterImportOpen, setPrivateMonsterImportOpen] = useState(false);
   const [catalogueSelection, setCatalogueSelection] = useState<CatalogueEntry | null>(null);
   const [encounters, setEncounters] = useState<Encounter[]>([]);
@@ -397,6 +400,7 @@ export default function App() {
   const openCatalogue = (entry?: CatalogueEntry) => {
     setCatalogueSelection(entry ?? null);
     setCatalogueOpen(true);
+    setCampaignOpen(false);
     setEncountersOpen(false);
     setWorldbuildingOpen(false);
     setPendingEncounterInsertion(null);
@@ -432,6 +436,7 @@ export default function App() {
   const openEncounters = (encounter?: Encounter) => {
     if (encounter) setEncounterSelectedId(encounter.id);
     setCatalogueOpen(false);
+    setCampaignOpen(false);
     setEncountersOpen(true);
     setWorldbuildingOpen(false);
     setPendingEncounterInsertion(null);
@@ -441,6 +446,7 @@ export default function App() {
   const openWorldbuilding = (entry?: WorldbuildingEntry) => {
     if (entry) setWorldbuildingSelectedId(entry.id);
     setCatalogueOpen(false);
+    setCampaignOpen(false);
     setEncountersOpen(false);
     setWorldbuildingOpen(true);
     setPendingEncounterInsertion(null);
@@ -451,6 +457,15 @@ export default function App() {
     if (!referenceEntry) return;
     openCatalogue(referenceEntry);
     setReferenceEntry(null);
+  };
+
+  const openCampaign = () => {
+    setCatalogueOpen(false);
+    setEncountersOpen(false);
+    setWorldbuildingOpen(false);
+    setCampaignOpen(true);
+    setPendingEncounterInsertion(null);
+    setMobileSection('campaign');
   };
 
   const openReferenceInWorldbuilding = () => {
@@ -1272,6 +1287,7 @@ export default function App() {
               onClick={() => {
                 setViewMode(mode);
                 setCatalogueOpen(false);
+                setCampaignOpen(false);
                 setEncountersOpen(false);
                 setWorldbuildingOpen(false);
                 setPendingEncounterInsertion(null);
@@ -1282,6 +1298,7 @@ export default function App() {
             </button>
           ))}
           <button className={catalogueOpen ? 'is-selected' : ''} onClick={() => catalogueOpen ? setCatalogueOpen(false) : openCatalogue()} type="button">Catalogue</button>
+          <button className={campaignOpen ? 'is-selected' : ''} onClick={() => campaignOpen ? setCampaignOpen(false) : openCampaign()} type="button">Campaign</button>
           <button className={encountersOpen ? 'is-selected' : ''} onClick={() => encountersOpen ? setEncountersOpen(false) : openEncounters()} type="button">Encounters</button>
           <button className={worldbuildingOpen ? 'is-selected' : ''} onClick={() => worldbuildingOpen ? setWorldbuildingOpen(false) : openWorldbuilding()} type="button">Worldbuilding</button>
           <button onClick={() => window.print()} type="button">Print</button>
@@ -1310,6 +1327,10 @@ export default function App() {
                 openCatalogue();
                 return;
               }
+              if (section === 'campaign') {
+                openCampaign();
+                return;
+              }
               if (section === 'encounters') {
                 openEncounters();
                 return;
@@ -1320,6 +1341,7 @@ export default function App() {
               }
               setMobileSection(section);
               setCatalogueOpen(false);
+              setCampaignOpen(false);
               setEncountersOpen(false);
               setWorldbuildingOpen(false);
               if (section !== 'outline') setPendingEncounterInsertion(null);
@@ -1331,7 +1353,24 @@ export default function App() {
         ))}
       </nav>
 
-      {catalogueOpen ? (
+      {campaignOpen ? (
+        <CampaignPanel
+          brews={brews}
+          currentStateByEntityId={currentStateByEntityId}
+          encounters={encounters}
+          entities={livingWorld.entities}
+          onOpenEncounter={openEncounters}
+          onOpenEntity={(entity) => {
+            const source = entity.source;
+            if (source.kind !== 'worldbuilding') return;
+            const entry = worldbuildingEntries.find((item) => item.id === source.id);
+            if (entry) openWorldbuilding(entry);
+          }}
+          partyLocation={partyLocation}
+          position={campaignPosition}
+          worldEvents={livingWorld.worldEvents}
+        />
+      ) : catalogueOpen ? (
         <CataloguePanel
           key={catalogueSelection?.id ?? 'browse'}
           entries={catalogueEntries}

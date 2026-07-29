@@ -274,4 +274,4 @@ export type OutlineItem = {
 };
 
 export type ViewMode = 'split' | 'editor' | 'preview';
-export type MobileSection = 'library' | 'editor' | 'preview' | 'outline' | 'catalogue' | 'encounters' | 'worldbuilding';
+export type MobileSection = 'library' | 'editor' | 'preview' | 'outline' | 'catalogue' | 'campaign' | 'encounters' | 'worldbuilding';

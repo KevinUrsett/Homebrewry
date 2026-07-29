@@ -352,6 +352,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .combatant-kind { border-radius: 999px; font-size: .58rem; font-weight: 800; padding: 3px 5px; text-transform: uppercase; }
 .kind-player { background: #dce8ee; color: #325466; }
 .kind-monster { background: #eee2c8; color: #6a522c; }
+.kind-npc { background: #e4d8ea; color: #583c68; }
+.combatant-world-status { color: #705e50; font-size: .64rem; font-weight: 700; text-transform: uppercase; }
 .combatant-fields { align-items: end; display: grid; gap: 5px; grid-template-columns: repeat(2, minmax(0, 1fr)) auto repeat(2, minmax(0, 1fr)) auto; margin-top: 8px; }
 .combatant-fields input { padding: 5px; }
 .combatant-slash { color: #806c5a; font-weight: 700; padding-bottom: 5px; }
@@ -396,6 +398,15 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .worldbuilding-state-editor { align-items: end; display: flex; gap: 8px; }
 .worldbuilding-state-editor label { display: grid; flex: 1; font-size: .72rem; font-weight: 700; gap: 3px; text-transform: uppercase; }
 .worldbuilding-state-editor input { min-height: 36px; }
+.worldbuilding-combat-notes { border-top: 1px solid #d8c9ae; padding-top: 14px; }
+.worldbuilding-combat-notes h3 { color: #6a2f26; font-family: "Scaly Sans", Inter, sans-serif; font-size: .78rem; letter-spacing: .08em; margin: 0 0 9px; text-transform: uppercase; }
+.worldbuilding-combat-notes > div { display: grid; gap: 7px; }
+.worldbuilding-combat-notes article { background: #f7f0df; border: 1px solid #d8c9ae; border-left: 4px solid #7a2f27; border-radius: 6px; display: grid; gap: 2px; padding: 9px 10px; }
+.worldbuilding-combat-notes article strong { color: #7a2f27; font-size: .75rem; text-transform: uppercase; }
+.worldbuilding-combat-notes article span { color: #39291f; font-weight: 700; }
+.worldbuilding-combat-notes article span button { appearance: none; background: transparent; border: 0; color: #6a2f26; cursor: pointer; font: inherit; padding: 0; text-decoration: underline; text-decoration-color: #bd9b63; text-underline-offset: 2px; }
+.worldbuilding-combat-notes article span button:hover { color: #97392d; text-decoration-color: currentColor; }
+.worldbuilding-combat-notes article small { color: #725d48; }
 .worldbuilding-connections { border-top: 1px solid #d8c9ae; padding-top: 14px; }
 .worldbuilding-connections-heading { align-items: center; display: flex; justify-content: space-between; }
 .worldbuilding-connections-heading h3 { color: #6a2f26; font-family: "Scaly Sans", Inter, sans-serif; font-size: .78rem; letter-spacing: .08em; margin: 0; text-transform: uppercase; }

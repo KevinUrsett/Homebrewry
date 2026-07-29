@@ -3,7 +3,7 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { CampaignEntity, EntityCurrentState, WorldbuildingEntry } from '../types';
+import type { CampaignEntity, EntityCurrentState, WorldbuildingEntry, WorldEvent } from '../types';
 import { WorldbuildingPanel } from './WorldbuildingPanel';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -137,5 +137,76 @@ describe('WorldbuildingPanel', () => {
     const update = Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Update status');
     await act(async () => update?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(onSetNpcStatus).toHaveBeenCalledWith(npc, 'dead');
+  });
+
+  it('shows a structured death as a derived combat note without changing authored notes', async () => {
+    const npc = { ...entry, id: 'talon-dead-id', name: 'Talon', kind: 'character' };
+    const entity: CampaignEntity = {
+      id: 'worldbuilding:talon-dead-id',
+      campaignId: 'campaign-1',
+      kind: 'npc',
+      name: 'Talon',
+      aliases: [],
+      source: { kind: 'worldbuilding', id: npc.id },
+      createdAt: npc.createdAt,
+      updatedAt: npc.updatedAt,
+      version: 1
+    };
+    const death: WorldEvent = {
+      id: 'death-event',
+      campaignId: 'campaign-1',
+      entityId: entity.id,
+      type: 'npc.died',
+      source: { kind: 'combat', encounterId: 'encounter-1', participantId: 'talon-combatant' },
+      changes: [{ field: 'status', previousValue: 'alive', nextValue: 'dead' }],
+      occurredAt: '2026-07-28T13:00:00.000Z',
+      recordedAt: '2026-07-28T13:00:00.000Z'
+    };
+    const state: EntityCurrentState = {
+      campaignId: 'campaign-1',
+      entityId: entity.id,
+      fields: {
+        status: { value: 'dead', eventId: death.id, updatedAt: death.recordedAt, authority: 'structured' }
+      }
+    };
+    const onEncounterOpen = vi.fn();
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push({ container, root });
+
+    await act(async () => {
+      root.render(
+        <WorldbuildingPanel
+          catalogue={new Map()}
+          catalogueCategories={[]}
+          currentStateByEntityId={new Map([[entity.id, state]])}
+          entitiesByWorldbuildingId={new Map([[npc.id, entity]])}
+          entries={[npc]}
+          onCreate={vi.fn()}
+          onCreateType={vi.fn()}
+          onCreateCatalogueReference={vi.fn()}
+          onCreateWorldbuildingReference={vi.fn()}
+          onDelete={vi.fn()}
+          onEncounterOpen={onEncounterOpen}
+          onReferenceOpen={vi.fn()}
+          onSelect={vi.fn()}
+          onUpdate={vi.fn()}
+          onWorldbuildingOpen={vi.fn()}
+          selectedId={npc.id}
+          syncState="synced"
+          types={[]}
+          worldbuilding={new Map([[npc.id, npc]])}
+          worldEvents={[death]}
+        />
+      );
+    });
+
+    expect(container.querySelector('.worldbuilding-current-state')?.textContent).toContain('structured combat update');
+    expect(container.querySelector('.worldbuilding-combat-notes')?.textContent).toContain('Died during an unavailable encounter');
+    expect(container.querySelector('.worldbuilding-preview-notes')?.textContent).toContain(npc.notes);
+    const encounterLink = container.querySelector<HTMLButtonElement>('.worldbuilding-combat-notes button')!;
+    await act(async () => encounterLink.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(onEncounterOpen).toHaveBeenCalledWith('encounter-1');
   });
 });

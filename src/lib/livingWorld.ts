@@ -1,4 +1,4 @@
-import type { CampaignEntity, CampaignEntityKind, LivingWorldData, WorldbuildingEntry, WorldEvent, WorldStateValue } from '../types';
+import type { CampaignEntity, CampaignEntityKind, Encounter, LivingWorldData, WorldbuildingEntry, WorldEvent, WorldStateValue } from '../types';
 import { projectCurrentState } from './worldState';
 
 type CreateEntityInput = {
@@ -110,4 +110,41 @@ export function recordManualStateChange(
     recordedAt: timestamp
   };
   return { ...data, worldEvents: appendWorldEvent(data.worldEvents, event) };
+}
+
+/**
+ * Ending combat is an authoritative structured action. Only confirmed NPC
+ * entities linked to combatants at 0 HP become dead; unlinked monsters, party
+ * members, and prose mentions never establish World State.
+ */
+export function recordCombatCompletion(
+  data: LivingWorldData,
+  encounter: Encounter,
+  timestamp = new Date().toISOString(),
+  createId: () => string = () => crypto.randomUUID()
+): LivingWorldData {
+  const entities = new Map(data.entities.map((entity) => [entity.id, entity]));
+  const currentState = new Map(projectCurrentState(data.worldEvents).map((state) => [state.entityId, state]));
+  let worldEvents = data.worldEvents;
+
+  for (const participant of encounter.participants) {
+    if (!participant.entityId || participant.currentHitPoints === null || participant.currentHitPoints > 0) continue;
+    const entity = entities.get(participant.entityId);
+    if (!entity || entity.kind !== 'npc') continue;
+    const previousValue = currentState.get(entity.id)?.fields.status?.value ?? null;
+    if (previousValue === 'dead') continue;
+    const event: WorldEvent = {
+      id: createId(),
+      campaignId: data.campaignId,
+      entityId: entity.id,
+      type: 'npc.died',
+      source: { kind: 'combat', encounterId: encounter.id, participantId: participant.id },
+      changes: [{ field: 'status', previousValue, nextValue: 'dead' }],
+      occurredAt: timestamp,
+      recordedAt: timestamp
+    };
+    worldEvents = appendWorldEvent(worldEvents, event);
+  }
+
+  return worldEvents === data.worldEvents ? data : { ...data, worldEvents };
 }

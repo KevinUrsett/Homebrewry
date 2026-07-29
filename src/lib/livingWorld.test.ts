@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { WorldEvent } from '../types';
-import { appendWorldEvent, createCampaignEntity, recordManualStateChange, synchroniseLivingWorld, synchroniseWorldbuildingEntities } from './livingWorld';
+import type { Encounter, WorldEvent } from '../types';
+import { appendWorldEvent, createCampaignEntity, recordCombatCompletion, recordManualStateChange, synchroniseLivingWorld, synchroniseWorldbuildingEntities } from './livingWorld';
 import { createWorldbuildingEntry } from './worldbuilding';
 
 describe('Living World entities and events', () => {
@@ -69,5 +69,50 @@ describe('Living World entities and events', () => {
     expect(alive.worldEvents).toHaveLength(2);
     expect(alive.worldEvents[0]?.changes[0]).toMatchObject({ previousValue: null, nextValue: 'dead' });
     expect(alive.worldEvents[1]?.changes[0]).toMatchObject({ previousValue: 'dead', nextValue: 'alive' });
+  });
+
+  it('records a linked NPC at 0 HP as dead when combat ends', () => {
+    const entry = createWorldbuildingEntry('Talon', 'character');
+    const base = synchroniseLivingWorld({
+      id: 'living-world',
+      campaignId: 'campaign-1',
+      entities: [],
+      entityReferences: [],
+      worldEvents: []
+    }, [entry]);
+    const encounter: Encounter = {
+      id: 'encounter-1',
+      name: 'North Tower',
+      status: 'completed',
+      optional: false,
+      participants: [{
+        id: 'talon-combatant',
+        kind: 'npc',
+        name: 'Talon',
+        entityId: base.entities[0]!.id,
+        armorClass: 17,
+        maxHitPoints: 44,
+        currentHitPoints: 0,
+        initiative: 12
+      }],
+      activeCombatantId: null,
+      createdAt: '2026-07-28T10:00:00.000Z',
+      updatedAt: '2026-07-28T11:00:00.000Z',
+      version: 2
+    };
+
+    const completed = recordCombatCompletion(base, encounter, encounter.updatedAt, () => 'event-1');
+    expect(completed.worldEvents).toEqual([
+      expect.objectContaining({
+        id: 'event-1',
+        entityId: base.entities[0]!.id,
+        type: 'npc.died',
+        source: { kind: 'combat', encounterId: encounter.id, participantId: 'talon-combatant' },
+        changes: [{ field: 'status', previousValue: null, nextValue: 'dead' }]
+      })
+    ]);
+
+    const overridden = recordManualStateChange(completed, base.entities[0]!.id, 'status', 'alive', '2026-07-28T12:00:00.000Z', () => 'event-2');
+    expect(overridden.worldEvents.at(-1)?.changes[0]?.nextValue).toBe('alive');
   });
 });

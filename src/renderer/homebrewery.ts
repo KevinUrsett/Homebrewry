@@ -74,7 +74,9 @@ export function normaliseHomebrewerySource(source: string): string {
       output.push(':::columnbreak');
       continue;
     }
-    if (/^:+$/.test(trimmed)) {
+    // `:::` closes the app's safe block directives. Preserve it for the block
+    // parser instead of interpreting it as Homebrewery vertical spacing.
+    if (trimmed !== ':::' && /^:+$/.test(trimmed)) {
       output.push(`:::spacer ${Math.min(trimmed.length, 8)}`);
       continue;
     }

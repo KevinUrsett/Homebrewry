@@ -61,9 +61,11 @@ export type PartyMember = {
 
 export type EncounterParticipant = {
   id: string;
-  kind: 'player' | 'monster';
+  kind: 'player' | 'monster' | 'npc';
   name: string;
   partyMemberId?: string;
+  /** Stable Living World identity for confirmed NPC combatants. */
+  entityId?: string;
   source?: {
     category: 'monster';
     id: string;

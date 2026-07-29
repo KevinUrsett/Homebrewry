@@ -3,6 +3,7 @@ import { entrySummary } from '../catalogue/presentation';
 import type { CatalogueEntry } from '../catalogue/types';
 import {
   addMonsterToEncounter,
+  addNpcToEncounter,
   addPartyMembersToEncounter,
   adjustEncounterParticipantHitPoints,
   advanceCombatTurn,
@@ -15,7 +16,7 @@ import {
 } from '../lib/encounters';
 import { campaignStoragePresentation } from '../lib/campaignStorageStatus';
 import type { CampaignPosition } from '../lib/campaignProgress';
-import type { Encounter, EncounterParticipant, PartyMember, SyncState } from '../types';
+import type { CampaignEntity, Encounter, EncounterParticipant, EntityCurrentState, PartyMember, SyncState } from '../types';
 import '../encounter-refresh.css';
 
 type EncounterPanelProps = {
@@ -23,6 +24,8 @@ type EncounterPanelProps = {
   campaignPosition?: CampaignPosition | null;
   selectedId: string | null;
   partyMembers: PartyMember[];
+  npcEntities?: CampaignEntity[];
+  currentStateByEntityId?: ReadonlyMap<string, EntityCurrentState>;
   monsters: CatalogueEntry[];
   loading: boolean;
   syncState: SyncState;
@@ -35,10 +38,11 @@ type EncounterPanelProps = {
   onCreatePartyMember: (name: string, armorClass: number | null, maxHitPoints: number | null) => void;
   onDeletePartyMember: (member: PartyMember) => void;
   onUpdatePartyMember: (member: PartyMember) => void;
+  onEndCombat?: (encounter: Encounter) => void;
 };
 
-type CombatantPicker = 'party' | 'monster' | null;
-type StatField = 'initiative' | 'armorClass';
+type CombatantPicker = 'party' | 'npc' | 'monster' | null;
+type StatField = 'initiative' | 'armorClass' | 'maxHitPoints';
 type StatEditor = { participantId: string; field: StatField; value: string } | null;
 
 const MONSTER_RESULTS_PAGE_SIZE = 30;
@@ -63,6 +67,8 @@ export function EncounterPanel({
   campaignPosition,
   selectedId,
   partyMembers,
+  npcEntities = [],
+  currentStateByEntityId = new Map(),
   monsters,
   loading,
   syncState,
@@ -74,7 +80,8 @@ export function EncounterPanel({
   onUpdateEncounter,
   onCreatePartyMember,
   onDeletePartyMember,
-  onUpdatePartyMember
+  onUpdatePartyMember,
+  onEndCombat = () => undefined
 }: EncounterPanelProps) {
   const [monsterQuery, setMonsterQuery] = useState('');
   const [partyName, setPartyName] = useState('');
@@ -144,10 +151,12 @@ export function EncounterPanel({
     setIsEditingName(false);
   };
 
-  const applyHitPointChange = (participant: EncounterParticipant) => {
+  const applyHitPointChange = (participant: EncounterParticipant, mode: 'damage' | 'healing' = 'damage') => {
     if (!selected) return;
-    const change = asNumber(hitPointChanges[participant.id] ?? '');
-    if (change === null || change === 0) return;
+    const entered = asNumber(hitPointChanges[participant.id] ?? '');
+    if (entered === null || entered === 0) return;
+    const amount = Math.abs(entered);
+    const change = mode === 'damage' ? -amount : amount;
     onUpdateEncounter(adjustEncounterParticipantHitPoints(selected, participant.id, change));
     setHitPointChanges((current) => ({ ...current, [participant.id]: '' }));
     setHitPointEditorId(null);
@@ -168,7 +177,18 @@ export function EncounterPanel({
       return;
     }
     const value = asNumber(statEditor.value);
-    const changes = statEditor.field === 'initiative' ? { initiative: value } : { armorClass: value };
+    const changes = statEditor.field === 'initiative'
+      ? { initiative: value }
+      : statEditor.field === 'armorClass'
+        ? { armorClass: value }
+        : {
+            maxHitPoints: value === null ? null : Math.max(0, value),
+            currentHitPoints: value === null
+              ? null
+              : participant.currentHitPoints === null
+                ? Math.max(0, value)
+                : Math.min(participant.currentHitPoints, Math.max(0, value))
+          };
     participantPatch(selected, participant, changes, onUpdateEncounter);
     setStatEditor(null);
   };
@@ -193,6 +213,9 @@ export function EncounterPanel({
 
   const includedPartyMemberIds = new Set(
     selected?.participants.flatMap((participant) => participant.partyMemberId ? [participant.partyMemberId] : []) ?? []
+  );
+  const includedNpcEntityIds = new Set(
+    selected?.participants.flatMap((participant) => participant.entityId ? [participant.entityId] : []) ?? []
   );
 
   return (
@@ -292,7 +315,17 @@ export function EncounterPanel({
                 ) : (
                   <div className="encounter-title-display">
                     <h2>{selected.name || 'Untitled encounter'}</h2>
-                    <button className="encounter-inline-button" onClick={startEditingName} type="button">Edit name</button>
+                    <button
+                      aria-label="Edit encounter name"
+                      className="encounter-icon-button"
+                      onClick={startEditingName}
+                      title="Edit encounter name"
+                      type="button"
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24">
+                        <path d="M4 20h4l11-11-4-4L4 16v4Zm12.5-16.5 4 4 1.1-1.1a1.4 1.4 0 0 0 0-2l-2-2a1.4 1.4 0 0 0-2 0L16.5 3.5Z" />
+                      </svg>
+                    </button>
                   </div>
                 )}
                 <div className="encounter-progress-controls">
@@ -318,7 +351,7 @@ export function EncounterPanel({
                       onChange={(event) => onUpdateEncounter(touchEncounter(selected, { optional: event.target.checked }))}
                       type="checkbox"
                     />
-                    Optional
+                    <span>Optional encounter</span>
                   </label>
                 </div>
               </div>
@@ -332,28 +365,44 @@ export function EncounterPanel({
                 >
                   {selected.status === 'active' ? 'Next turn' : 'Start combat'}
                 </button>
-                <button onClick={() => onInsertReference(selected)} type="button">Insert into brew</button>
-                <button onClick={() => setCombatantPicker((current) => current ? null : 'party')} type="button">
+                {selected.status === 'active' && (
+                  <button className="encounter-end-button" onClick={() => onEndCombat(selected)} type="button">End combat</button>
+                )}
+                <button className="encounter-add-button" onClick={() => setCombatantPicker((current) => current ? null : 'party')} type="button">
                   {combatantPicker ? 'Close picker' : 'Add combatant'}
                 </button>
+                <button onClick={() => onInsertReference(selected)} type="button">Insert into brew</button>
                 <button className="quiet-danger" onClick={() => onDeleteEncounter(selected)} type="button">Delete</button>
               </div>
 
-              <section className="encounter-section">
+              <section className={`encounter-section encounter-tracker-summary ${selected.participants.length ? '' : 'is-empty'}`}>
                 <div className="encounter-section-heading">
                   <div><p className="eyebrow">Tracker</p><h2>{selected.participants.length} combatant{selected.participants.length === 1 ? '' : 's'}</h2></div>
                 </div>
-                <p className="encounter-helper">Press and drag the left grip to set order on phone or desktop. The tracker recalculates initiative so the new order remains stable; keyboard users can focus a grip and press ↑ or ↓.</p>
+                <p className="encounter-helper">
+                  {selected.participants.length
+                    ? 'Press and drag the left grip to set order. Keyboard users can focus a grip and press ↑ or ↓.'
+                    : 'Add party members, confirmed Worldbuilding NPCs, or catalogue monsters to prepare this encounter.'}
+                </p>
               </section>
 
               {combatantPicker && (
                 <section className="encounter-picker" aria-label="Add combatant">
                   <div className="encounter-picker-header">
                     <h3>Add combatant</h3>
-                    <span>{combatantPicker === 'party' ? `${partyMembers.length} party member${partyMembers.length === 1 ? '' : 's'}` : loading ? 'Loading…' : `${monsterMatches.length.toLocaleString()} monster match${monsterMatches.length === 1 ? '' : 'es'}`}</span>
+                    <span>
+                      {combatantPicker === 'party'
+                        ? `${partyMembers.length} party member${partyMembers.length === 1 ? '' : 's'}`
+                        : combatantPicker === 'npc'
+                          ? `${npcEntities.length} confirmed NPC${npcEntities.length === 1 ? '' : 's'}`
+                          : loading
+                            ? 'Loading…'
+                            : `${monsterMatches.length.toLocaleString()} monster match${monsterMatches.length === 1 ? '' : 'es'}`}
+                    </span>
                   </div>
                   <div className="encounter-picker-tabs" role="tablist" aria-label="Combatant source">
                     <button aria-selected={combatantPicker === 'party'} className={combatantPicker === 'party' ? 'is-selected' : ''} onClick={() => setCombatantPicker('party')} role="tab" type="button">Party</button>
+                    <button aria-selected={combatantPicker === 'npc'} className={combatantPicker === 'npc' ? 'is-selected' : ''} onClick={() => setCombatantPicker('npc')} role="tab" type="button">Worldbuilding NPCs</button>
                     <button aria-selected={combatantPicker === 'monster'} className={combatantPicker === 'monster' ? 'is-selected' : ''} onClick={() => setCombatantPicker('monster')} role="tab" type="button">Catalogue</button>
                   </div>
 
@@ -379,6 +428,23 @@ export function EncounterPanel({
                         );
                       })}
                       {!partyMembers.length && <p className="empty-panel">Add characters to the current party first.</p>}
+                    </div>
+                  ) : combatantPicker === 'npc' ? (
+                    <div className="encounter-party-picker encounter-npc-picker">
+                      {npcEntities.map((entity) => {
+                        const included = includedNpcEntityIds.has(entity.id);
+                        const status = currentStateByEntityId.get(entity.id)?.fields.status?.value;
+                        return (
+                          <div className="encounter-party-choice" key={entity.id}>
+                            <div>
+                              <strong>{entity.name}</strong>
+                              <span>{status === null || status === undefined ? 'No current status' : `Current status: ${String(status)}`}</span>
+                            </div>
+                            <button disabled={included} onClick={() => onUpdateEncounter(addNpcToEncounter(selected, entity))} type="button">{included ? 'Added' : 'Add'}</button>
+                          </div>
+                        );
+                      })}
+                      {!npcEntities.length && <p className="empty-panel">Create a Worldbuilding character to add a confirmed NPC.</p>}
                     </div>
                   ) : (
                     <>
@@ -509,20 +575,36 @@ export function EncounterPanel({
                       </button>
                       <input aria-label={`${participant.name} combatant name`} onChange={(event) => participantPatch(selected, participant, { name: event.target.value }, onUpdateEncounter)} value={participant.name} />
                       <span className={`combatant-kind kind-${participant.kind}`}>{participant.kind}</span>
+                      {participant.entityId && (
+                        <span className="combatant-world-status">
+                          {String(currentStateByEntityId.get(participant.entityId)?.fields.status?.value ?? 'linked')}
+                        </span>
+                      )}
                     </div>
 
                     <div className="combatant-summary-row">
                       <button
-                        aria-label={`Armor class ${participant.armorClass ?? 'not set'}. Edit armor class for ${participant.name}`}
-                        className="combatant-stat-button combatant-ac-button"
-                        onClick={() => openStatEditor(participant, 'armorClass')}
+                        aria-expanded={hitPointEditorId === participant.id}
+                        className="combatant-hp-button"
+                        onClick={() => {
+                          if (!canAdjustHitPoints(participant)) {
+                            openStatEditor(participant, 'maxHitPoints');
+                            return;
+                          }
+                          setStatEditor(null);
+                          setHitPointEditorId((current) => current === participant.id ? null : participant.id);
+                        }}
+                        title={canAdjustHitPoints(participant) ? 'Open damage and healing calculator' : 'Set maximum HP first'}
                         type="button"
                       >
-                        <span>AC</span>
-                        <strong>{participant.armorClass ?? '—'}</strong>
+                        <span>Hit points</span>
+                        <strong>
+                          <b>{participant.currentHitPoints ?? '—'}</b>
+                          <small>/ {participant.maxHitPoints ?? '—'}</small>
+                        </strong>
                       </button>
 
-                      <div className="combatant-vitals">
+                      <div className="combatant-secondary-stats">
                         <button
                           aria-label={`Initiative ${participant.initiative ?? 'not set'}. Edit initiative for ${participant.name}`}
                           className="combatant-stat-button combatant-initiative-button"
@@ -533,18 +615,13 @@ export function EncounterPanel({
                           <strong>{participant.initiative ?? '—'}</strong>
                         </button>
                         <button
-                          aria-expanded={hitPointEditorId === participant.id}
-                          className="combatant-hp-button"
-                          disabled={!canAdjustHitPoints(participant)}
-                          onClick={() => {
-                            setStatEditor(null);
-                            setHitPointEditorId((current) => current === participant.id ? null : participant.id);
-                          }}
-                          title={canAdjustHitPoints(participant) ? 'Open damage and healing calculator' : 'Set maximum HP first'}
+                          aria-label={`Armor class ${participant.armorClass ?? 'not set'}. Edit armor class for ${participant.name}`}
+                          className="combatant-stat-button combatant-ac-button"
+                          onClick={() => openStatEditor(participant, 'armorClass')}
                           type="button"
                         >
-                          <span>HP</span>
-                          <strong>{participant.currentHitPoints ?? '—'} / {participant.maxHitPoints ?? '—'}</strong>
+                          <span>Armor class</span>
+                          <strong>{participant.armorClass ?? '—'}</strong>
                         </button>
                       </div>
 
@@ -553,11 +630,11 @@ export function EncounterPanel({
                       {statEditor?.participantId === participant.id && (
                         <div className="combatant-stat-editor">
                           <label>
-                            {statEditor.field === 'initiative' ? 'Initiative' : 'Armor class'}
+                            {statEditor.field === 'initiative' ? 'Initiative' : statEditor.field === 'armorClass' ? 'Armor class' : 'Maximum HP'}
                             <input
-                              aria-label={`Set ${statEditor.field === 'initiative' ? 'initiative' : 'armor class'} for ${participant.name}`}
+                              aria-label={`Set ${statEditor.field === 'initiative' ? 'initiative' : statEditor.field === 'armorClass' ? 'armor class' : 'maximum HP'} for ${participant.name}`}
                               autoFocus
-                              min={statEditor.field === 'armorClass' ? 0 : undefined}
+                              min={statEditor.field === 'initiative' ? undefined : 0}
                               onChange={(event) => setStatEditor({ ...statEditor, value: event.target.value })}
                               onKeyDown={(event) => {
                                 if (event.key === 'Enter') {
@@ -581,36 +658,38 @@ export function EncounterPanel({
                       {hitPointEditorId === participant.id && (
                         <div className="combatant-hp-calculator">
                           <label>
-                            Damage + / healing −
+                            Amount
                             <input
-                              aria-label={`${participant.name} damage or healing`}
+                              aria-label={`${participant.name} HP change`}
                               autoFocus
+                              min="0"
                               onChange={(event) => setHitPointChanges((current) => ({ ...current, [participant.id]: event.target.value }))}
                               onKeyDown={(event) => {
                                 if (event.key === 'Enter') {
                                   event.preventDefault();
-                                  applyHitPointChange(participant);
+                                  applyHitPointChange(participant, 'damage');
                                 }
                                 if (event.key === 'Escape') {
                                   event.preventDefault();
                                   setHitPointEditorId(null);
                                 }
                               }}
-                              placeholder="10 or −10"
+                              placeholder="10"
                               step="1"
                               type="number"
                               value={hitPointChanges[participant.id] ?? ''}
                             />
                           </label>
-                          <button disabled={asNumber(hitPointChanges[participant.id] ?? '') === null || asNumber(hitPointChanges[participant.id] ?? '') === 0} onClick={() => applyHitPointChange(participant)} type="button">Apply</button>
-                          <small>Positive values deal damage; negative values restore HP.</small>
+                          <button className="hp-damage-button" disabled={asNumber(hitPointChanges[participant.id] ?? '') === null || asNumber(hitPointChanges[participant.id] ?? '') === 0} onClick={() => applyHitPointChange(participant, 'damage')} type="button">Damage −</button>
+                          <button className="hp-healing-button" disabled={asNumber(hitPointChanges[participant.id] ?? '') === null || asNumber(hitPointChanges[participant.id] ?? '') === 0} onClick={() => applyHitPointChange(participant, 'healing')} type="button">Heal +</button>
+                          <small>Enter defaults to damage and subtracts this amount from HP.</small>
                         </div>
                       )}
                     </div>
                   </div>
                 </article>
               ))}
-              {!orderedParticipants.length && <p className="empty-panel">Use Add combatant to add party members or monsters.</p>}
+              {!orderedParticipants.length && <p className="empty-panel">Use Add combatant to add party members, Worldbuilding NPCs, or monsters.</p>}
             </div>
           )}
         </section>

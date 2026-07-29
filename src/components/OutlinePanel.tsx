@@ -5,9 +5,10 @@ type OutlinePanelProps = {
   insertionLabel?: string | null;
   onCancelInsertion?: () => void;
   onInsertAtSection?: (item: OutlineItem | null) => void;
+  onNavigate?: (item: OutlineItem) => void;
 };
 
-export function OutlinePanel({ outline, insertionLabel, onCancelInsertion, onInsertAtSection }: OutlinePanelProps) {
+export function OutlinePanel({ outline, insertionLabel, onCancelInsertion, onInsertAtSection, onNavigate }: OutlinePanelProps) {
   const scrollToHeading = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
@@ -25,7 +26,11 @@ export function OutlinePanel({ outline, insertionLabel, onCancelInsertion, onIns
             <button
               className={`outline-item ${insertionLabel ? 'is-insertion-target' : ''}`}
               key={item.id}
-              onClick={() => insertionLabel ? onInsertAtSection?.(item) : scrollToHeading(item.id)}
+              onClick={() => {
+                if (insertionLabel) onInsertAtSection?.(item);
+                else if (onNavigate) onNavigate(item);
+                else scrollToHeading(item.id);
+              }}
               style={{ paddingInlineStart: `${(item.level - 1) * 12 + 10}px` }}
               type="button"
             >

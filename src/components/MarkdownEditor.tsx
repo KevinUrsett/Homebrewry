@@ -116,7 +116,7 @@ export function MarkdownEditor({
     focus: (position) => {
       const view = viewRef.current;
       if (!view) return;
-      if (typeof position === 'number') view.dispatch({ selection: { anchor: position } });
+      if (typeof position === 'number') view.dispatch({ selection: { anchor: position }, scrollIntoView: true });
       view.focus();
     }
   }), []);

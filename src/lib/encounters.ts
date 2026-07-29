@@ -115,6 +115,13 @@ export function addMonsterToEncounter(encounter: Encounter, monster: CatalogueEn
   return touchEncounter(encounter, { participants: [...encounter.participants, participant] });
 }
 
+export function addMonstersToEncounter(encounter: Encounter, monster: CatalogueEntry, quantity: number, random: () => number = Math.random): Encounter {
+  const count = Number.isFinite(quantity) ? Math.max(1, Math.floor(quantity)) : 1;
+  let next = encounter;
+  for (let index = 0; index < count; index += 1) next = addMonsterToEncounter(next, monster, random);
+  return next;
+}
+
 export function patchEncounterParticipant(
   encounter: Encounter,
   participantId: string,

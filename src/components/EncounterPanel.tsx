@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { entrySummary } from '../catalogue/presentation';
 import type { CatalogueEntry } from '../catalogue/types';
 import {
-  addMonsterToEncounter,
+  addMonstersToEncounter,
   addNpcToEncounter,
   addPartyMembersToEncounter,
   adjustEncounterParticipantHitPoints,
@@ -102,6 +102,8 @@ export function EncounterPanel({
   const [statEditor, setStatEditor] = useState<StatEditor>(null);
   const [visibleMonsterCount, setVisibleMonsterCount] = useState(MONSTER_RESULTS_PAGE_SIZE);
   const [combatantPicker, setCombatantPicker] = useState<CombatantPicker>(null);
+  const [monsterQuantityPicker, setMonsterQuantityPicker] = useState<CatalogueEntry | null>(null);
+  const [monsterQuantity, setMonsterQuantity] = useState('1');
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
   const [draggingParticipantId, setDraggingParticipantId] = useState<string | null>(null);
@@ -152,6 +154,18 @@ export function EncounterPanel({
     setMonsterQuery('');
     setVisibleMonsterCount(MONSTER_RESULTS_PAGE_SIZE);
     clearCombatantEditors();
+  };
+
+  const openMonsterQuantityPicker = (monster: CatalogueEntry) => {
+    setMonsterQuantity('1');
+    setMonsterQuantityPicker(monster);
+  };
+
+  const addMonsterQuantity = () => {
+    if (!selected || !monsterQuantityPicker) return;
+    const quantity = Math.min(99, Math.max(1, Math.floor(Number(monsterQuantity)) || 1));
+    addCombatantAndClosePicker(addMonstersToEncounter(selected, monsterQuantityPicker, quantity));
+    setMonsterQuantityPicker(null);
   };
 
   const selectEncounter = (id: string) => {
@@ -494,7 +508,7 @@ export function EncounterPanel({
                         {visibleMonsterMatches.map((monster) => (
                           <div className="encounter-monster-result" key={monster.id}>
                             <div><strong>{monster.name}</strong><span>{entrySummary(monster).join(' · ') || 'SRD monster'}</span></div>
-                            <button onClick={() => addCombatantAndClosePicker(addMonsterToEncounter(selected, monster))} type="button">Add</button>
+                            <button onClick={() => openMonsterQuantityPicker(monster)} type="button">Add</button>
                           </div>
                         ))}
                         {!loading && !monsterMatches.length && <p className="empty-panel">No monsters match that search.</p>}
@@ -520,9 +534,25 @@ export function EncounterPanel({
               )}
             </>
           )}
-        </section>
+      </section>
 
-        <section className="initiative-panel" aria-label="Initiative tracker">
+      {monsterQuantityPicker && (
+        <div className="encounter-quantity-backdrop" role="presentation">
+          <form aria-labelledby="monster-quantity-title" aria-modal="true" className="encounter-quantity-dialog" onSubmit={(event) => { event.preventDefault(); addMonsterQuantity(); }} role="dialog">
+            <p className="eyebrow">Add combatants</p>
+            <h2 id="monster-quantity-title">{monsterQuantityPicker.name}</h2>
+            <label>How many?
+              <input autoFocus inputMode="numeric" max="99" min="1" onChange={(event) => setMonsterQuantity(event.target.value)} type="number" value={monsterQuantity} />
+            </label>
+            <div>
+              <button onClick={() => setMonsterQuantityPicker(null)} type="button">Cancel</button>
+              <button className="primary-button" type="submit">Add</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      <section className="initiative-panel" aria-label="Initiative tracker">
           <div className="encounter-section-heading">
             <div><p className="eyebrow">Run combat</p><h2>Initiative</h2></div>
             {selected?.activeCombatantId && <span className="initiative-current">Current turn</span>}

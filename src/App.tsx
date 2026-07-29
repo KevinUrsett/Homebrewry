@@ -1636,9 +1636,22 @@ export default function App() {
               setSaveState('Encounter placement cancelled');
             }}
             onInsertAtSection={insertEncounterAtSection}
+            onNavigate={(item) => {
+              if (!window.matchMedia('(max-width: 820px)').matches) {
+                document.getElementById(item.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                return;
+              }
+              const target = getOutlineLocations(activeBrew.content).find((location) => location.id === item.id);
+              if (!target) return;
+              setMobileSection('editor');
+              window.requestAnimationFrame(() => editorRef.current?.focus(target.from));
+            }}
             outline={outline}
           />
         </div>
+      )}
+      {!campaignOpen && !catalogueOpen && !encountersOpen && !worldbuildingOpen && mobileSection === 'editor' && (
+        <button aria-label="Open outline navigation" className="mobile-outline-fab" onClick={() => setMobileSection('outline')} type="button">Outline</button>
       )}
       {activeBrew.syncState === 'conflict' && activeBrew.conflict && (
         <div className="conflict-backdrop" role="dialog" aria-modal="true" aria-labelledby="conflict-title">

@@ -66,6 +66,8 @@ export type EncounterParticipant = {
   partyMemberId?: string;
   /** Stable Living World identity for confirmed NPC combatants. */
   entityId?: string;
+  /** A deliberate one-encounter exception for flashbacks or temporary returns. */
+  availabilityOverride?: 'flashback' | 'temporary';
   source?: {
     category: 'monster';
     id: string;

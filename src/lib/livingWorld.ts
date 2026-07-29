@@ -1,5 +1,6 @@
-import type { CampaignEntity, CampaignEntityKind, Encounter, LivingWorldData, WorldbuildingEntry, WorldEvent, WorldStateValue } from '../types';
+import type { Brew, CampaignEntity, CampaignEntityKind, Encounter, EntityReference, LivingWorldData, WorldbuildingEntry, WorldEvent, WorldStateValue } from '../types';
 import { projectCurrentState } from './worldState';
+import { worldbuildingReferenceMatches } from './worldbuildingReferences';
 
 type CreateEntityInput = {
   campaignId: string;
@@ -35,14 +36,37 @@ export function appendWorldEvent(events: readonly WorldEvent[], event: WorldEven
   return [...events, event];
 }
 
-const locationKinds = new Set(['town', 'road', 'landmark', 'region']);
+const locationKinds = new Set(['town', 'road', 'landmark', 'region', 'location', 'settlement']);
 
 export function entityKindForWorldbuilding(kind: string): CampaignEntityKind {
   if (kind === 'character' || kind === 'historical-figure') return 'npc';
   if (kind === 'faction' || kind === 'organization') return 'faction';
   if (kind === 'town') return 'settlement';
   if (locationKinds.has(kind)) return 'location';
+  if (kind === 'item' || kind === 'quest' || kind === 'creature' || kind === 'vehicle') return kind;
   return 'other';
+}
+
+export const partyEntityId = 'party:default';
+
+/** The party is a campaign-level subject, kept as an event stream rather than authored prose. */
+export function recordPartyLocation(
+  data: LivingWorldData,
+  locationEntityId: string,
+  timestamp = new Date().toISOString(),
+  createId: () => string = () => crypto.randomUUID(),
+  source: WorldEvent['source'] = { kind: 'manual' }
+): LivingWorldData {
+  const current = projectCurrentState(data.worldEvents).find((state) => state.entityId === partyEntityId);
+  const previousValue = current?.fields.location?.value ?? null;
+  if (previousValue === locationEntityId) return data;
+  const event: WorldEvent = {
+    id: createId(), campaignId: data.campaignId, entityId: partyEntityId,
+    type: 'party.location.changed', source,
+    changes: [{ field: 'location', previousValue, nextValue: locationEntityId }],
+    occurredAt: timestamp, recordedAt: timestamp
+  };
+  return { ...data, worldEvents: appendWorldEvent(data.worldEvents, event) };
 }
 
 /**
@@ -83,6 +107,39 @@ export function synchroniseLivingWorld(data: LivingWorldData, entries: readonly 
     ...data,
     entities: synchroniseWorldbuildingEntities(data.campaignId, entries, data.entities)
   };
+}
+
+/** Rebuilds only explicit, stable links. Free prose never creates a reference or world state. */
+export function synchroniseEntityReferences(
+  campaignId: string,
+  entities: readonly CampaignEntity[],
+  brews: readonly Brew[],
+  encounters: readonly Encounter[]
+): EntityReference[] {
+  const entityByWorldbuildingId = new Map(entities.flatMap((entity) => entity.source.kind === 'worldbuilding' ? [[entity.source.id, entity] as const] : []));
+  const references: EntityReference[] = [];
+  for (const brew of brews) {
+    for (const match of worldbuildingReferenceMatches(brew.content)) {
+      const entity = entityByWorldbuildingId.get(match.id);
+      if (!entity) continue;
+      references.push({
+        id: `brew:${brew.id}:${match.from}:${entity.id}`, campaignId, entityId: entity.id,
+        source: { kind: 'brew', brewId: brew.id, start: match.from, end: match.to }, label: match.label,
+        createdAt: brew.updatedAt
+      });
+    }
+  }
+  for (const encounter of encounters) {
+    for (const participant of encounter.participants) {
+      if (!participant.entityId || !entities.some((entity) => entity.id === participant.entityId)) continue;
+      references.push({
+        id: `encounter:${encounter.id}:${participant.entityId}`, campaignId, entityId: participant.entityId,
+        source: { kind: 'encounter', encounterId: encounter.id }, label: participant.name,
+        createdAt: encounter.updatedAt
+      });
+    }
+  }
+  return references;
 }
 
 export function recordManualStateChange(

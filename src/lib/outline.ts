@@ -12,7 +12,7 @@ type OutlineLocation = OutlineItem & {
   from: number;
 };
 
-function getOutlineLocations(markdown: string): OutlineLocation[] {
+export function getOutlineLocations(markdown: string): OutlineLocation[] {
   const counts = new Map<string, number>();
   let from = 0;
 

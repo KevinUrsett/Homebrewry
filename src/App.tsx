@@ -29,8 +29,8 @@ import {
 import { createAsset, listAssets, replaceAssets, saveAsset } from './lib/assetStore';
 import { syncAssets } from './lib/assetSync';
 import { createCampaignDataSnapshot } from './lib/campaignData';
-import { deriveCampaignPosition } from './lib/campaignProgress';
-import { recordCombatCompletion, recordManualStateChange, synchroniseLivingWorld } from './lib/livingWorld';
+import { deriveCampaignPosition, derivePartyLocation } from './lib/campaignProgress';
+import { partyEntityId, recordCombatCompletion, recordManualStateChange, recordPartyLocation, synchroniseLivingWorld } from './lib/livingWorld';
 import { projectCurrentState } from './lib/worldState';
 import { keepBothCampaignDataVersions, keepDriveCampaignData, overwriteDriveCampaignData, syncCampaignData, type CampaignDataSyncResult } from './lib/campaignSync';
 import { keepBothVersions, resolveWithDriveVersion } from './lib/conflicts';
@@ -278,6 +278,10 @@ export default function App() {
   const currentStateByEntityId = useMemo(
     () => new Map(projectCurrentState(livingWorld.worldEvents).map((state) => [state.entityId, state])),
     [livingWorld.worldEvents]
+  );
+  const partyLocation = useMemo(
+    () => derivePartyLocation(campaignPosition, deferredBrews, livingWorld.entities, currentStateByEntityId),
+    [campaignPosition, currentStateByEntityId, deferredBrews, livingWorld.entities]
   );
   const previewContent = previewBrew?.content ?? '';
   const outline = useMemo(() => getOutline(previewContent), [previewContent]);
@@ -542,6 +546,24 @@ export default function App() {
     void saveLivingWorldData(next)
       .then((metadata) => noteCampaignDataSaved(metadata, `${entry.name} is now ${status}`))
       .catch(() => setSaveState('NPC status save failed'));
+  };
+
+  const setPartyLocation = (entityId: string) => {
+    const next = recordPartyLocation(livingWorld, entityId);
+    campaignRecordsRef.current = { ...campaignRecordsRef.current, livingWorld: next };
+    setLivingWorld(next);
+    void saveLivingWorldData(next)
+      .then((metadata) => noteCampaignDataSaved(metadata, 'Party location updated'))
+      .catch(() => setSaveState('Party location save failed'));
+  };
+
+  const resurrectNpc = (entityId: string) => {
+    const entity = livingWorld.entities.find((item) => item.id === entityId);
+    if (!entity) return;
+    const next = recordManualStateChange(livingWorld, entityId, 'status', 'alive');
+    campaignRecordsRef.current = { ...campaignRecordsRef.current, livingWorld: next };
+    setLivingWorld(next);
+    void saveLivingWorldData(next).then((metadata) => noteCampaignDataSaved(metadata, `${entity.name} restored`)).catch(() => setSaveState('NPC restoration save failed'));
   };
 
   const createNewWorldbuildingEntry = () => {
@@ -929,6 +951,7 @@ export default function App() {
         records.customCatalogueEntries,
         records.customCatalogueCategories,
         records.worldbuildingTypes,
+        brews,
         records.livingWorld ?? livingWorld
       );
       const metadata = campaignMetadataRef.current ?? await getCampaignDataSyncMetadata();
@@ -1176,14 +1199,14 @@ export default function App() {
     if (!campaignDataSync) return;
     const result = keepDriveCampaignData(campaignDataSync);
     if (!result) return;
-    const sourceData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries, undefined, customCatalogueEntries, customCatalogueCategories, worldbuildingTypes, livingWorld);
+    const sourceData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries, undefined, customCatalogueEntries, customCatalogueCategories, worldbuildingTypes, brews, livingWorld);
     await applyCampaignDataResult(result, sourceData);
     setSaveState(result.detail);
   };
 
   const keepBothCampaignConflict = async () => {
     if (!campaignDataSync) return;
-    const sourceData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries, undefined, customCatalogueEntries, customCatalogueCategories, worldbuildingTypes, livingWorld);
+    const sourceData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries, undefined, customCatalogueEntries, customCatalogueCategories, worldbuildingTypes, brews, livingWorld);
     const result = keepBothCampaignDataVersions(sourceData, campaignDataSync);
     if (!result) return;
     await applyCampaignDataResult(result, sourceData);
@@ -1194,7 +1217,7 @@ export default function App() {
     if (!campaignDataSync || !accessToken) return;
     try {
       setSyncing(true);
-      const sourceData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries, undefined, customCatalogueEntries, customCatalogueCategories, worldbuildingTypes, livingWorld);
+      const sourceData = createCampaignDataSnapshot(encounters, partyMembers, worldbuildingEntries, undefined, customCatalogueEntries, customCatalogueCategories, worldbuildingTypes, brews, livingWorld);
       const result = await overwriteDriveCampaignData(accessToken, sourceData, campaignDataSync);
       await applyCampaignDataResult(result, sourceData);
       setSaveState(result.detail);
@@ -1336,6 +1359,9 @@ export default function App() {
         <EncounterPanel
           encounters={encounters}
           campaignPosition={campaignPosition}
+          partyLocation={partyLocation}
+          locationEntities={livingWorld.entities.filter((entity) => entity.kind === 'location' || entity.kind === 'settlement')}
+          worldEvents={livingWorld.worldEvents}
           hasDriveBackup={Boolean(campaignDataSync?.drive)}
           loading={catalogueLoading}
           monsters={catalogueEntries.filter((entry) => entry.category === 'monster')}
@@ -1347,6 +1373,8 @@ export default function App() {
           onDeleteEncounter={deleteEncounter}
           onDeletePartyMember={deletePartyMember}
           onEndCombat={endCombat}
+          onResurrectNpc={resurrectNpc}
+          onSetPartyLocation={setPartyLocation}
           onInsertReference={beginEncounterInsertion}
           onSelectEncounter={setEncounterSelectedId}
           onUpdateEncounter={persistEncounter}

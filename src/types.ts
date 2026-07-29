@@ -155,6 +155,14 @@ export type WorldEvent = {
 
 export type TimelineLane = 'main' | 'quest' | 'backstory';
 export type TimelineStatus = 'planned' | 'current' | 'past';
+export type BelentorEra = 'BA' | 'AA';
+export type BelentorMonth = 'Quen' | 'Incan' | 'Abjar' | 'Methyl Melt' | 'Illin' | 'Evao' | 'Eryl' | 'Conjun' | 'Din' | 'Albedo Perigee' | 'Unri' | 'Trin';
+export type BelentorDate = {
+  era: BelentorEra;
+  year: number;
+  month: BelentorMonth;
+  day: number;
+};
 
 /** A DM-authored timeline beat. Unlike World Events, it is planning/context, not an asserted state change. */
 export type TimelineEntry = {
@@ -167,6 +175,8 @@ export type TimelineEntry = {
   order: number;
   notes: string;
   entityIds: string[];
+  /** Structured Belentor calendar date. `when` remains for legacy/imported free-text dates. */
+  date?: BelentorDate;
   encounterId?: string;
   brewId?: string;
   sectionId?: string;

@@ -527,6 +527,12 @@
   font-weight: 700;
 }
 
+.encounter-actions .encounter-end-button {
+  background: #e8e0dc;
+  border-color: #90775d;
+  font-weight: 700;
+}
+
 .encounter-actions .quiet-danger {
   margin-left: auto;
 }

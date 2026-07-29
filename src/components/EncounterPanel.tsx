@@ -38,6 +38,7 @@ type EncounterPanelProps = {
   onCreatePartyMember: (name: string, armorClass: number | null, maxHitPoints: number | null) => void;
   onDeletePartyMember: (member: PartyMember) => void;
   onUpdatePartyMember: (member: PartyMember) => void;
+  onEndCombat?: (encounter: Encounter) => void;
 };
 
 type CombatantPicker = 'party' | 'npc' | 'monster' | null;
@@ -79,7 +80,8 @@ export function EncounterPanel({
   onUpdateEncounter,
   onCreatePartyMember,
   onDeletePartyMember,
-  onUpdatePartyMember
+  onUpdatePartyMember,
+  onEndCombat = () => undefined
 }: EncounterPanelProps) {
   const [monsterQuery, setMonsterQuery] = useState('');
   const [partyName, setPartyName] = useState('');
@@ -363,6 +365,9 @@ export function EncounterPanel({
                 >
                   {selected.status === 'active' ? 'Next turn' : 'Start combat'}
                 </button>
+                {selected.status === 'active' && (
+                  <button className="encounter-end-button" onClick={() => onEndCombat(selected)} type="button">End combat</button>
+                )}
                 <button className="encounter-add-button" onClick={() => setCombatantPicker((current) => current ? null : 'party')} type="button">
                   {combatantPicker ? 'Close picker' : 'Add combatant'}
                 </button>

@@ -228,4 +228,41 @@ describe('EncounterPanel monster browser', () => {
       participants: [expect.objectContaining({ id: 'rook', currentHitPoints: 32 })]
     }));
   });
+
+  it('offers an explicit End combat action for an active encounter', async () => {
+    const activeEncounter = { ...trackedEncounter, status: 'active' as const, activeCombatantId: 'rook' };
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push({ container, root });
+    const onEndCombat = vi.fn();
+
+    await act(async () => {
+      root.render(
+        <EncounterPanel
+          encounters={[activeEncounter]}
+          loading={false}
+          monsters={[]}
+          onCreateEncounter={vi.fn()}
+          onCreatePartyMember={vi.fn()}
+          onDeleteEncounter={vi.fn()}
+          onDeletePartyMember={vi.fn()}
+          onEndCombat={onEndCombat}
+          onInsertReference={vi.fn()}
+          onSelectEncounter={vi.fn()}
+          onUpdateEncounter={vi.fn()}
+          onUpdatePartyMember={vi.fn()}
+          partyMembers={[]}
+          selectedId={activeEncounter.id}
+          syncState="synced"
+        />
+      );
+    });
+
+    const endCombat = Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'End combat');
+    await act(async () => {
+      endCombat?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    expect(onEndCombat).toHaveBeenCalledWith(activeEncounter);
+  });
 });

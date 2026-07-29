@@ -30,7 +30,7 @@ import { createAsset, listAssets, replaceAssets, saveAsset } from './lib/assetSt
 import { syncAssets } from './lib/assetSync';
 import { createCampaignDataSnapshot } from './lib/campaignData';
 import { deriveCampaignPosition } from './lib/campaignProgress';
-import { recordManualStateChange, synchroniseLivingWorld } from './lib/livingWorld';
+import { recordCombatCompletion, recordManualStateChange, synchroniseLivingWorld } from './lib/livingWorld';
 import { projectCurrentState } from './lib/worldState';
 import { keepBothCampaignDataVersions, keepDriveCampaignData, overwriteDriveCampaignData, syncCampaignData, type CampaignDataSyncResult } from './lib/campaignSync';
 import { keepBothVersions, resolveWithDriveVersion } from './lib/conflicts';
@@ -48,7 +48,7 @@ import {
   saveCustomCatalogueEntry
 } from './lib/customCatalogueStore';
 import { overwriteDriveBrew, syncBrews } from './lib/sync';
-import { createEncounter as createCombatEncounter, createPartyMember } from './lib/encounters';
+import { createEncounter as createCombatEncounter, createPartyMember, touchEncounter } from './lib/encounters';
 import { deleteEncounter as deleteStoredEncounter, deletePartyMember as deleteStoredPartyMember, listEncounters, listPartyMembers, saveEncounter, savePartyMember } from './lib/encounterStore';
 import { formatEncounterReference } from './lib/encounterReferences';
 import { createWorldbuildingEntry, createWorldbuildingType, findWorldbuildingEntryByName, worldbuildingKindLabels } from './lib/worldbuilding';
@@ -492,6 +492,26 @@ export default function App() {
         noteCampaignDataSaved(metadata.at(-1)!, encounter.status === 'active' ? 'Active encounter saved locally' : 'Encounter progress saved locally');
       })
       .catch(() => setSaveState('Encounter save failed'));
+  };
+
+  const endCombat = (encounter: Encounter) => {
+    const completed = touchEncounter(encounter, { status: 'completed', activeCombatantId: null });
+    const nextLivingWorld = recordCombatCompletion(livingWorld, completed, completed.updatedAt);
+    const worldUpdates = nextLivingWorld.worldEvents.length - livingWorld.worldEvents.length;
+    const nextEncounters = [completed, ...encounters.filter((item) => item.id !== completed.id)];
+    campaignRecordsRef.current = { ...campaignRecordsRef.current, encounters: nextEncounters, livingWorld: nextLivingWorld };
+    setEncounters(nextEncounters);
+    setLivingWorld(nextLivingWorld);
+    void Promise.all([saveEncounter(completed), saveLivingWorldData(nextLivingWorld)])
+      .then((metadata) => {
+        noteCampaignDataSaved(
+          metadata.at(-1)!,
+          worldUpdates
+            ? `Combat ended · ${worldUpdates} NPC status update${worldUpdates === 1 ? '' : 's'} saved`
+            : 'Combat ended'
+        );
+      })
+      .catch(() => setSaveState('Combat outcome save failed'));
   };
 
   const createNewEncounter = () => {
@@ -1326,6 +1346,7 @@ export default function App() {
           onCreatePartyMember={addPartyMember}
           onDeleteEncounter={deleteEncounter}
           onDeletePartyMember={deletePartyMember}
+          onEndCombat={endCombat}
           onInsertReference={beginEncounterInsertion}
           onSelectEncounter={setEncounterSelectedId}
           onUpdateEncounter={persistEncounter}
@@ -1347,6 +1368,10 @@ export default function App() {
           onCreateCatalogueReference={createCatalogueReference}
           onCreateWorldbuildingReference={createWorldbuildingReference}
           onDelete={deleteWorldbuilding}
+          onEncounterOpen={(encounterId) => {
+            const encounter = encounters.find((item) => item.id === encounterId);
+            if (encounter) openEncounters(encounter);
+          }}
           onReferenceOpen={setReferenceEntry}
           onSetNpcStatus={setNpcStatus}
           onSelect={setWorldbuildingSelectedId}
@@ -1355,6 +1380,7 @@ export default function App() {
           selectedId={worldbuildingSelectedId}
           types={worldbuildingTypes}
           worldbuilding={worldbuildingMap}
+          worldEvents={livingWorld.worldEvents}
         />
       ) : (
         <div className={`workspace view-${viewMode}`}>

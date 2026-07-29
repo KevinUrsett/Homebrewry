@@ -1,4 +1,5 @@
 import type {
+  Brew,
   CampaignDataSnapshot,
   CampaignDataSyncMetadata,
   CampaignEntity,
@@ -13,7 +14,7 @@ import type {
 import { worldbuildingKinds } from '../types';
 import { isCatalogueCategory, type CustomCatalogueCategory, type CustomCatalogueEntry } from '../catalogue/types';
 import { normaliseCustomCatalogueEntry } from '../catalogue/customEntries';
-import { synchroniseWorldbuildingEntities } from './livingWorld';
+import { synchroniseEntityReferences, synchroniseWorldbuildingEntities } from './livingWorld';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -66,6 +67,7 @@ function parseParticipant(value: unknown): EncounterParticipant {
     name: requiredString(value.name, 'combatant name'),
     ...(value.partyMemberId === undefined ? {} : { partyMemberId: requiredString(value.partyMemberId, 'party member ID') }),
     ...(value.entityId === undefined ? {} : { entityId: requiredString(value.entityId, 'combatant entity ID') }),
+    ...(value.availabilityOverride === 'flashback' || value.availabilityOverride === 'temporary' ? { availabilityOverride: value.availabilityOverride } : {}),
     ...(source ? { source } : {}),
     armorClass: nullableNumber(value.armorClass, 'combatant armor class'),
     maxHitPoints: nullableNumber(value.maxHitPoints, 'combatant maximum hit points'),
@@ -265,7 +267,7 @@ export function parseCampaignDataSnapshot(value: unknown): CampaignDataSnapshot 
     throw new Error('This Drive campaign data file is not a supported Homebrewry backup.');
   }
   const schemaVersion = value.schemaVersion;
-  if (schemaVersion !== 1 && schemaVersion !== 2 && schemaVersion !== 3 && schemaVersion !== 4 && schemaVersion !== 5) {
+  if (schemaVersion !== 1 && schemaVersion !== 2 && schemaVersion !== 3 && schemaVersion !== 4 && schemaVersion !== 5 && schemaVersion !== 6) {
     throw new Error('This Drive campaign data file is not a supported Homebrewry backup.');
   }
   if (!Array.isArray(value.encounters) || !Array.isArray(value.partyMembers) || !Array.isArray(value.worldbuildingEntries)) {
@@ -277,10 +279,10 @@ export function parseCampaignDataSnapshot(value: unknown): CampaignDataSnapshot 
   if ((schemaVersion === 4 || schemaVersion === 5) && (!Array.isArray(value.customCatalogueEntries) || !Array.isArray(value.customCatalogueCategories) || !Array.isArray(value.worldbuildingTypes))) {
     throw new Error('This Drive campaign data file has an invalid campaign taxonomy collection.');
   }
-  if (schemaVersion === 5 && (!Array.isArray(value.entities) || !Array.isArray(value.entityReferences) || !Array.isArray(value.worldEvents))) {
+  if ((schemaVersion === 5 || schemaVersion === 6) && (!Array.isArray(value.entities) || !Array.isArray(value.entityReferences) || !Array.isArray(value.worldEvents))) {
     throw new Error('This Drive campaign data file has an invalid Living World collection.');
   }
-  const campaignId = schemaVersion === 5 ? requiredString(value.campaignId, 'campaign ID') : legacyCampaignId(value);
+  const campaignId = schemaVersion >= 5 ? requiredString(value.campaignId, 'campaign ID') : legacyCampaignId(value);
 
   return {
     schemaVersion: 5,
@@ -298,9 +300,9 @@ export function parseCampaignDataSnapshot(value: unknown): CampaignDataSnapshot 
     worldbuildingTypes: schemaVersion >= 4
       ? (value.worldbuildingTypes as unknown[]).map(parseWorldbuildingType)
       : [],
-    entities: schemaVersion === 5 ? (value.entities as unknown[]).map((entity) => parseCampaignEntity(entity, campaignId)) : [],
-    entityReferences: schemaVersion === 5 ? (value.entityReferences as unknown[]).map((reference) => parseEntityReference(reference, campaignId)) : [],
-    worldEvents: schemaVersion === 5 ? (value.worldEvents as unknown[]).map((event) => parseWorldEvent(event, campaignId)) : []
+    entities: schemaVersion >= 5 ? (value.entities as unknown[]).map((entity) => parseCampaignEntity(entity, campaignId)) : [],
+    entityReferences: schemaVersion >= 5 ? (value.entityReferences as unknown[]).map((reference) => parseEntityReference(reference, campaignId)) : [],
+    worldEvents: schemaVersion >= 5 ? (value.worldEvents as unknown[]).map((event) => parseWorldEvent(event, campaignId)) : []
   };
 }
 
@@ -312,6 +314,7 @@ export function createCampaignDataSnapshot(
   customCatalogueEntries: CustomCatalogueEntry[] = [],
   customCatalogueCategories: CustomCatalogueCategory[] = [],
   worldbuildingTypes: WorldbuildingType[] = [],
+  brews: Brew[] = [],
   livingWorld: Pick<CampaignDataSnapshot, 'campaignId' | 'entities' | 'entityReferences' | 'worldEvents'> = {
     // The current app has one campaign companion file per Drive account.
     // A later multi-campaign migration can replace this file-scoped identity.
@@ -333,7 +336,7 @@ export function createCampaignDataSnapshot(
     customCatalogueCategories: [...customCatalogueCategories],
     worldbuildingTypes: [...worldbuildingTypes],
     entities,
-    entityReferences: [...livingWorld.entityReferences],
+    entityReferences: synchroniseEntityReferences(livingWorld.campaignId, entities, brews, encounters),
     worldEvents: [...livingWorld.worldEvents]
   };
 }

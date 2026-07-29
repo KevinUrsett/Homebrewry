@@ -15,13 +15,16 @@ import {
   touchEncounter
 } from '../lib/encounters';
 import { campaignStoragePresentation } from '../lib/campaignStorageStatus';
-import type { CampaignPosition } from '../lib/campaignProgress';
-import type { CampaignEntity, Encounter, EncounterParticipant, EntityCurrentState, PartyMember, SyncState } from '../types';
+import type { CampaignPosition, DerivedPartyLocation } from '../lib/campaignProgress';
+import type { CampaignEntity, Encounter, EncounterParticipant, EntityCurrentState, PartyMember, SyncState, WorldEvent } from '../types';
 import '../encounter-refresh.css';
 
 type EncounterPanelProps = {
   encounters: Encounter[];
   campaignPosition?: CampaignPosition | null;
+  partyLocation?: DerivedPartyLocation;
+  locationEntities?: CampaignEntity[];
+  worldEvents?: readonly WorldEvent[];
   selectedId: string | null;
   partyMembers: PartyMember[];
   npcEntities?: CampaignEntity[];
@@ -39,6 +42,8 @@ type EncounterPanelProps = {
   onDeletePartyMember: (member: PartyMember) => void;
   onUpdatePartyMember: (member: PartyMember) => void;
   onEndCombat?: (encounter: Encounter) => void;
+  onResurrectNpc?: (entityId: string) => void;
+  onSetPartyLocation?: (entityId: string) => void;
 };
 
 type CombatantPicker = 'party' | 'npc' | 'monster' | null;
@@ -56,7 +61,7 @@ const asNumber = (value: string): number | null => {
 function participantPatch(
   encounter: Encounter,
   participant: EncounterParticipant,
-  changes: Partial<Pick<EncounterParticipant, 'name' | 'armorClass' | 'maxHitPoints' | 'currentHitPoints' | 'initiative'>>,
+  changes: Partial<Pick<EncounterParticipant, 'name' | 'armorClass' | 'maxHitPoints' | 'currentHitPoints' | 'initiative' | 'availabilityOverride'>>,
   onUpdateEncounter: (encounter: Encounter) => void
 ) {
   onUpdateEncounter(patchEncounterParticipant(encounter, participant.id, changes));
@@ -65,6 +70,9 @@ function participantPatch(
 export function EncounterPanel({
   encounters,
   campaignPosition,
+  partyLocation = null,
+  locationEntities = [],
+  worldEvents = [],
   selectedId,
   partyMembers,
   npcEntities = [],
@@ -81,7 +89,9 @@ export function EncounterPanel({
   onCreatePartyMember,
   onDeletePartyMember,
   onUpdatePartyMember,
-  onEndCombat = () => undefined
+  onEndCombat = () => undefined,
+  onResurrectNpc = () => undefined,
+  onSetPartyLocation = () => undefined
 }: EncounterPanelProps) {
   const [monsterQuery, setMonsterQuery] = useState('');
   const [partyName, setPartyName] = useState('');
@@ -104,7 +114,10 @@ export function EncounterPanel({
   const positionPrevious = encounters.find((encounter) => encounter.id === campaignPosition?.previousEncounterId);
   const positionNext = encounters.find((encounter) => encounter.id === campaignPosition?.nextEncounterId);
   const storage = campaignStoragePresentation(syncState, hasDriveBackup);
-  const orderedParticipants = selected ? sortCombatants(selected.participants) : [];
+  const unavailableParticipants = selected?.status === 'completed' ? [] : (selected?.participants ?? []).filter((participant) => participant.entityId && currentStateByEntityId.get(participant.entityId)?.fields.status?.value === 'dead' && !participant.availabilityOverride);
+  const orderedParticipants = selected ? sortCombatants(selected.participants.filter((participant) => !unavailableParticipants.some((item) => item.id === participant.id))) : [];
+  const availableNpcEntities = npcEntities.filter((entity) => currentStateByEntityId.get(entity.id)?.fields.status?.value !== 'dead');
+  const unavailableNpcEntities = npcEntities.filter((entity) => currentStateByEntityId.get(entity.id)?.fields.status?.value === 'dead');
   const monsterMatches = useMemo(() => {
     const terms = monsterQuery.trim().toLowerCase();
     const source = terms
@@ -240,9 +253,18 @@ export function EncounterPanel({
               ? `Active: ${positionActive.name}`
               : `After ${positionPrevious?.name ?? 'the campaign opening'} · Before ${positionNext?.name ?? 'the next required encounter'}`}
           </strong>
-          <small>Derived from encounter order and progress; brew text remains unchanged.</small>
+          <small>{campaignPosition.headingPath.join(' › ') || 'No section heading'} · {partyLocation ? `Party: ${partyLocation.name}${partyLocation.source === 'manual' ? ' (manual)' : ''}` : 'Party location not set'}.</small>
         </section>
       )}
+
+      <section className="campaign-position" aria-label="Campaign view">
+        <span>Campaign view</span>
+        <strong>{campaignPosition?.headingPath.join(' › ') || 'No linked encounter position'}</strong>
+        <div className="campaign-location-control">
+          <label>Party location<select aria-label="Party location" onChange={(event) => event.target.value && onSetPartyLocation(event.target.value)} value={partyLocation?.source === 'manual' ? partyLocation.entityId : ''}><option value="">Derived from section</option>{locationEntities.map((entity) => <option key={entity.id} value={entity.id}>{entity.name}</option>)}</select></label>
+          <small>{worldEvents.slice(-3).reverse().map((event) => event.type).join(' · ') || 'No recent campaign events'}</small>
+        </div>
+      </section>
 
       <section className="encounter-workspace">
         <aside className="encounter-library" aria-label="Saved encounters">
@@ -394,7 +416,7 @@ export function EncounterPanel({
                       {combatantPicker === 'party'
                         ? `${partyMembers.length} party member${partyMembers.length === 1 ? '' : 's'}`
                         : combatantPicker === 'npc'
-                          ? `${npcEntities.length} confirmed NPC${npcEntities.length === 1 ? '' : 's'}`
+                          ? `${availableNpcEntities.length} available NPC${availableNpcEntities.length === 1 ? '' : 's'}`
                           : loading
                             ? 'Loading…'
                             : `${monsterMatches.length.toLocaleString()} monster match${monsterMatches.length === 1 ? '' : 'es'}`}
@@ -431,7 +453,7 @@ export function EncounterPanel({
                     </div>
                   ) : combatantPicker === 'npc' ? (
                     <div className="encounter-party-picker encounter-npc-picker">
-                      {npcEntities.map((entity) => {
+                      {availableNpcEntities.map((entity) => {
                         const included = includedNpcEntityIds.has(entity.id);
                         const status = currentStateByEntityId.get(entity.id)?.fields.status?.value;
                         return (
@@ -444,7 +466,8 @@ export function EncounterPanel({
                           </div>
                         );
                       })}
-                      {!npcEntities.length && <p className="empty-panel">Create a Worldbuilding character to add a confirmed NPC.</p>}
+                      {!availableNpcEntities.length && <p className="empty-panel">No available Worldbuilding NPCs. Dead NPCs are retained for history.</p>}
+                      {unavailableNpcEntities.length > 0 && <section className="unavailable-combatants"><h4>Unavailable combatants</h4>{unavailableNpcEntities.map((entity) => <div className="encounter-party-choice" key={entity.id}><div><strong>{entity.name}</strong><span>Dead · preserved in historical encounters</span></div><button onClick={() => onResurrectNpc(entity.id)} type="button">Resurrect</button></div>)}</section>}
                     </div>
                   ) : (
                     <>
@@ -477,6 +500,12 @@ export function EncounterPanel({
                       </div>
                     </>
                   )}
+                </section>
+              )}
+              {unavailableParticipants.length > 0 && (
+                <section className="unavailable-combatants" aria-label="Unavailable combatants">
+                  <h3>Unavailable combatants</h3><p>Dead NPCs stay in this encounter record but do not enter future initiative.</p>
+                  {unavailableParticipants.map((participant) => <div className="encounter-party-choice" key={participant.id}><div><strong>{participant.name}</strong><span>Dead · choose an explicit exception</span></div><button onClick={() => participantPatch(selected, participant, { availabilityOverride: 'flashback' }, onUpdateEncounter)} type="button">Flashback</button><button onClick={() => participantPatch(selected, participant, { availabilityOverride: 'temporary' }, onUpdateEncounter)} type="button">Temporary return</button>{participant.entityId && <button onClick={() => onResurrectNpc(participant.entityId!)} type="button">Resurrect</button>}</div>)}
                 </section>
               )}
             </>

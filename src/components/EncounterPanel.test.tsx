@@ -126,6 +126,23 @@ describe('EncounterPanel monster browser', () => {
     expect(container.querySelectorAll('.encounter-monster-result')).toHaveLength(31);
   });
 
+  it('closes the touch-sized picker after adding a monster so the tracker stays interactive', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push({ container, root });
+    const onUpdateEncounter = vi.fn();
+    await act(async () => {
+      root.render(<EncounterPanel encounters={[encounter]} loading={false} monsters={[monster(1)]} onCreateEncounter={vi.fn()} onCreatePartyMember={vi.fn()} onDeleteEncounter={vi.fn()} onDeletePartyMember={vi.fn()} onInsertReference={vi.fn()} onSelectEncounter={vi.fn()} onUpdateEncounter={onUpdateEncounter} onUpdatePartyMember={vi.fn()} partyMembers={[]} selectedId={encounter.id} syncState="synced" />);
+    });
+    await act(async () => { Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Add combatant')?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+    await act(async () => { Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Catalogue')?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+    await act(async () => { Array.from(container.querySelectorAll('.encounter-monster-result button')).find((button) => button.textContent === 'Add')?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+    expect(onUpdateEncounter).toHaveBeenCalledWith(expect.objectContaining({ participants: [expect.objectContaining({ kind: 'monster' })] }));
+    expect(container.querySelector('.encounter-picker')).toBeNull();
+    expect(Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Add combatant')).toBeTruthy();
+  });
+
   it('adds a confirmed Worldbuilding NPC with its current status and stable entity link', async () => {
     const container = document.createElement('div');
     document.body.append(container);

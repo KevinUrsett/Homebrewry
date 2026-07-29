@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addMonsterToEncounter,
+  addMonstersToEncounter,
   addNpcToEncounter,
   adjustEncounterParticipantHitPoints,
   advanceCombatTurn,
@@ -66,6 +67,12 @@ describe('encounter logic', () => {
     expect(withSecond.participants.map((participant) => participant.name)).toEqual(['Aboleth', 'Aboleth 2']);
     expect(withSecond.participants[0]).toMatchObject({ armorClass: 17, maxHitPoints: 135, currentHitPoints: 135, initiative: 8 });
     expect(rollMonsterInitiative(aboleth, () => 0.45)).toBe(17);
+  });
+
+  it('adds the requested number of numbered monster copies', () => {
+    const encounter = addMonstersToEncounter(createEncounter('Depths'), aboleth, 3, () => 0);
+
+    expect(encounter.participants.map((participant) => participant.name)).toEqual(['Aboleth', 'Aboleth 2', 'Aboleth 3']);
   });
 
   it('links a confirmed NPC entity to one stable encounter participant', () => {

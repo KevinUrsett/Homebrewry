@@ -53,11 +53,13 @@ import { createEncounter as createCombatEncounter, createPartyMember, touchEncou
 import { deleteEncounter as deleteStoredEncounter, deletePartyMember as deleteStoredPartyMember, listEncounters, listPartyMembers, saveEncounter, savePartyMember } from './lib/encounterStore';
 import { formatEncounterReference } from './lib/encounterReferences';
 import { createWorldbuildingEntry, createWorldbuildingType, findWorldbuildingEntryByName, worldbuildingKindLabels } from './lib/worldbuilding';
+import type { CuratedReference } from './lib/talesOnUnwrittenTomesReferences';
 import {
   deleteWorldbuildingEntry as deleteStoredWorldbuildingEntry,
   listWorldbuildingEntries,
   listWorldbuildingTypes,
   saveWorldbuildingEntry,
+  saveWorldbuildingEntries,
   saveWorldbuildingType
 } from './lib/worldbuildingStore';
 import { loadCatalogue, toCatalogueMap } from './catalogue/catalogueData';
@@ -552,6 +554,23 @@ export default function App() {
         noteCampaignDataSaved(metadata.at(-1)!, 'Worldbuilding entry and entity saved locally');
       })
       .catch(() => setSaveState('Worldbuilding save failed'));
+  };
+
+  const createCuratedReferences = (references: readonly CuratedReference[]) => {
+    if (!references.length) return;
+    const newEntries = references.map((reference) => ({
+      ...createWorldbuildingEntry(reference.name, reference.kind),
+      aliases: [...(reference.aliases ?? [])],
+      notes: reference.notes
+    }));
+    const nextEntries = [...newEntries, ...worldbuildingEntries];
+    const nextLivingWorld = synchroniseLivingWorld(livingWorld, nextEntries);
+    campaignRecordsRef.current = { ...campaignRecordsRef.current, worldbuildingEntries: nextEntries, livingWorld: nextLivingWorld };
+    setWorldbuildingEntries(nextEntries);
+    setLivingWorld(nextLivingWorld);
+    void Promise.all([saveWorldbuildingEntries(newEntries), saveLivingWorldData(nextLivingWorld)])
+      .then((metadata) => noteCampaignDataSaved(metadata.at(-1)!, `${newEntries.length} curated references created`))
+      .catch(() => setSaveState('Curated reference setup failed'));
   };
 
   const setNpcStatus = (entry: WorldbuildingEntry, status: string) => {
@@ -1505,6 +1524,7 @@ export default function App() {
           onCreateType={createNewWorldbuildingType}
           onCreateCatalogueReference={createCatalogueReference}
           onCreateWorldbuildingReference={createWorldbuildingReference}
+          onCreateCuratedReferences={createCuratedReferences}
           onCreateTimelineEvent={createTimelineEventFromWorldbuilding}
           onDelete={deleteWorldbuilding}
           onEncounterOpen={(encounterId) => {

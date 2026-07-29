@@ -16,6 +16,9 @@ export const worldbuildingKindLabels: Record<BuiltInWorldbuildingKind, string> =
   region: 'Region',
   organization: 'Organisation',
   event: 'Event',
+  deity: 'Deity',
+  item: 'Item',
+  creature: 'Creature',
   custom: 'Custom'
 };
 

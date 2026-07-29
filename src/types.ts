@@ -218,6 +218,9 @@ export const worldbuildingKinds = [
   'region',
   'organization',
   'event',
+  'deity',
+  'item',
+  'creature',
   'custom'
 ] as const;
 

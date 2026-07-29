@@ -13,6 +13,14 @@ export async function saveWorldbuildingEntry(entry: WorldbuildingEntry): Promise
   return markCampaignDataChanged();
 }
 
+export async function saveWorldbuildingEntries(entries: readonly WorldbuildingEntry[]): Promise<CampaignDataSyncMetadata> {
+  const database = await getDatabase();
+  const transaction = database.transaction(WORLDBUILDING_STORE_NAME, 'readwrite');
+  await Promise.all(entries.map((entry) => transaction.store.put(entry)));
+  await transaction.done;
+  return markCampaignDataChanged();
+}
+
 export async function deleteWorldbuildingEntry(id: string): Promise<CampaignDataSyncMetadata> {
   const database = await getDatabase();
   await database.delete(WORLDBUILDING_STORE_NAME, id);

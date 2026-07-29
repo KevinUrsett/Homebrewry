@@ -144,6 +144,16 @@ export function EncounterPanel({
     setStatEditor(null);
   };
 
+  /** On touch screens, close the large picker before the tracker reflows. This
+   * avoids leaving an inert scroll layer above the newly added combatant. */
+  const addCombatantAndClosePicker = (next: Encounter) => {
+    onUpdateEncounter(next);
+    setCombatantPicker(null);
+    setMonsterQuery('');
+    setVisibleMonsterCount(MONSTER_RESULTS_PAGE_SIZE);
+    clearCombatantEditors();
+  };
+
   const selectEncounter = (id: string) => {
     setIsEditingName(false);
     setCombatantPicker(null);
@@ -462,7 +472,7 @@ export function EncounterPanel({
                               <strong>{entity.name}</strong>
                               <span>{status === null || status === undefined ? 'No current status' : `Current status: ${String(status)}`}</span>
                             </div>
-                            <button disabled={included} onClick={() => onUpdateEncounter(addNpcToEncounter(selected, entity))} type="button">{included ? 'Added' : 'Add'}</button>
+                            <button disabled={included} onClick={() => addCombatantAndClosePicker(addNpcToEncounter(selected, entity))} type="button">{included ? 'Added' : 'Add'}</button>
                           </div>
                         );
                       })}
@@ -484,7 +494,7 @@ export function EncounterPanel({
                         {visibleMonsterMatches.map((monster) => (
                           <div className="encounter-monster-result" key={monster.id}>
                             <div><strong>{monster.name}</strong><span>{entrySummary(monster).join(' · ') || 'SRD monster'}</span></div>
-                            <button onClick={() => onUpdateEncounter(addMonsterToEncounter(selected, monster))} type="button">Add</button>
+                            <button onClick={() => addCombatantAndClosePicker(addMonsterToEncounter(selected, monster))} type="button">Add</button>
                           </div>
                         ))}
                         {!loading && !monsterMatches.length && <p className="empty-panel">No monsters match that search.</p>}

@@ -156,6 +156,7 @@ describe('BrewPreview', () => {
   it('keeps a Worldbuilding popover actionable for quick notes and removal', async () => {
     const onAddWorldbuildingNote = vi.fn();
     const onDeleteWorldbuildingReference = vi.fn();
+    const onOpenInWorldbuilding = vi.fn();
     const container = document.createElement('div');
     document.body.append(container);
     const root = createRoot(container);
@@ -163,7 +164,7 @@ describe('BrewPreview', () => {
     const worldBrew = { ...brew, content: `Visit [[world:${worldbuildingEntry.id}|Sund]].` };
 
     await act(async () => {
-      root.render(<BrewPreview brew={worldBrew} onAddWorldbuildingNote={onAddWorldbuildingNote} onDeleteWorldbuildingReference={onDeleteWorldbuildingReference} worldbuilding={new Map([[worldbuildingEntry.id, worldbuildingEntry]])} />);
+      root.render(<BrewPreview brew={worldBrew} onAddWorldbuildingNote={onAddWorldbuildingNote} onDeleteWorldbuildingReference={onDeleteWorldbuildingReference} onOpenInWorldbuilding={onOpenInWorldbuilding} worldbuilding={new Map([[worldbuildingEntry.id, worldbuildingEntry]])} />);
     });
 
     const reference = container.querySelector<HTMLButtonElement>('.worldbuilding-reference-link');
@@ -178,6 +179,9 @@ describe('BrewPreview', () => {
     const addButton = [...container.querySelectorAll<HTMLButtonElement>('.reference-popover-actions button')].find((button) => button.textContent === 'Add note');
     await act(async () => { addButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
     expect(onAddWorldbuildingNote).toHaveBeenCalledWith(worldbuildingEntry, 'Use the old gate.');
+    const openButton = [...container.querySelectorAll<HTMLButtonElement>('.reference-popover-actions button')].find((button) => button.textContent === 'Open');
+    await act(async () => { openButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+    expect(onOpenInWorldbuilding).toHaveBeenCalledWith(worldbuildingEntry);
     const deleteButton = [...container.querySelectorAll<HTMLButtonElement>('.reference-popover-actions button')].find((button) => button.textContent === 'Delete reference');
     await act(async () => { deleteButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
     expect(onDeleteWorldbuildingReference).toHaveBeenCalledWith(worldbuildingEntry);

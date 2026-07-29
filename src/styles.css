@@ -126,6 +126,14 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .worldbuilding-reference-details.is-compact strong { font-size: 1rem; }
 .worldbuilding-reference-aliases, .worldbuilding-reference-empty { color: #725d48; font-size: .82rem; }
 .worldbuilding-reference-notes { margin: 0; white-space: pre-wrap; }
+.reference-popover { display: grid; gap: 8px; }
+.reference-quick-note { color: #725d48; display: grid; font-family: "Scaly Sans", Inter, sans-serif; font-size: .73rem; font-weight: 800; gap: 4px; letter-spacing: .03em; text-transform: uppercase; }
+.reference-quick-note textarea { background: #f1e4c8; border: 1px solid #b99a67; border-radius: 3px; color: #39291f; font: 400 .88rem/1.35 "Bookinsanity", Georgia, serif; min-height: 56px; padding: 7px; resize: vertical; text-transform: none; }
+.reference-quick-note textarea::placeholder { color: #8b755f; }
+.reference-popover-actions { display: flex; gap: 6px; justify-content: space-between; }
+.reference-popover-actions button { background: #ead9b8; border: 1px solid #a78355; border-radius: 3px; color: #4e3024; font: 800 .69rem "Scaly Sans", Inter, sans-serif; padding: 5px 7px; }
+.reference-popover-actions button:disabled { cursor: not-allowed; opacity: .55; }
+.reference-popover-actions .reference-remove { background: transparent; border-color: #a7695f; color: #7d332c; }
 .brew-page-number { bottom: 18px; color: #9a856e; font-family: Inter, sans-serif; font-size: .7rem; position: absolute; right: 25px; }
 .brew-callout { border: 1px solid #bea06e; border-left: 6px solid var(--brew-accent); break-inside: avoid; margin: 1.15em 0; padding: 12px 16px; }
 .brew-callout h4 { margin: 0 0 6px; }

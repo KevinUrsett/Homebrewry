@@ -35,6 +35,7 @@ type WorldbuildingPanelProps = {
   currentStateByEntityId?: ReadonlyMap<string, EntityCurrentState>;
   worldEvents?: readonly WorldEvent[];
   onSetNpcStatus?: (entry: WorldbuildingEntry, status: string) => void;
+  onCreateTimelineEvent?: (entry: WorldbuildingEntry, entity?: CampaignEntity) => void;
 };
 
 function aliasesFromInput(value: string): string[] {
@@ -96,6 +97,7 @@ type EntryPreviewProps = {
   onReferenceOpen: (entry: CatalogueEntry) => void;
   onWorldbuildingOpen: (entry: WorldbuildingEntry) => void;
   onEncounterOpen: (encounterId: string) => void;
+  onCreateTimelineEvent: () => void;
   entity?: CampaignEntity;
   currentState?: EntityCurrentState;
   onSetNpcStatus: (status: string) => void;
@@ -123,7 +125,7 @@ function NpcStateControls({ currentState, onSetStatus }: { currentState?: Entity
   );
 }
 
-function WorldbuildingEntryPreview({ entry, types, catalogue, worldbuilding, catalogueCategories, onDelete, onEdit, onReferenceOpen, onWorldbuildingOpen, onEncounterOpen, entity, currentState, onSetNpcStatus, connections, combatNotes }: EntryPreviewProps) {
+function WorldbuildingEntryPreview({ entry, types, catalogue, worldbuilding, catalogueCategories, onDelete, onEdit, onReferenceOpen, onWorldbuildingOpen, onEncounterOpen, onCreateTimelineEvent, entity, currentState, onSetNpcStatus, connections, combatNotes }: EntryPreviewProps) {
   return (
     <article className="worldbuilding-entry worldbuilding-entry-preview" aria-label={entry.name}>
       <header className="worldbuilding-preview-header"><div><p className="eyebrow">{worldbuildingKindLabel(entry.kind, types)}</p><h2>{entry.name}</h2>{entry.aliases.length > 0 && <p className="worldbuilding-preview-aliases">Also known as {entry.aliases.join(' · ')}</p>}</div><button className="primary-button" onClick={onEdit} type="button">Edit</button></header>
@@ -166,12 +168,12 @@ function WorldbuildingEntryPreview({ entry, types, catalogue, worldbuilding, cat
         ) : <p>No connections found yet.</p>}
       </section>
       <section className="worldbuilding-preview-notes"><h3>Notes</h3>{entry.notes.trim() ? <ReferenceContent catalogue={catalogue} catalogueCategories={catalogueCategories} content={entry.notes} onReferenceOpen={onReferenceOpen} onWorldbuildingOpen={onWorldbuildingOpen} worldbuilding={worldbuilding} worldbuildingTypes={types} /> : <p>No notes yet.</p>}</section>
-      <div className="worldbuilding-entry-footer"><span>Last updated {new Date(entry.updatedAt).toLocaleString()}</span><button className="quiet-danger" onClick={() => onDelete(entry)} type="button">Delete entry</button></div>
+      <div className="worldbuilding-entry-footer"><span>Last updated {new Date(entry.updatedAt).toLocaleString()}</span><div className="worldbuilding-edit-actions"><button onClick={onCreateTimelineEvent} type="button">Add to timeline</button><button className="quiet-danger" onClick={() => onDelete(entry)} type="button">Delete entry</button></div></div>
     </article>
   );
 }
 
-export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBackup = false, types, catalogue, worldbuilding, catalogueCategories, onCreate, onCreateType, onCreateWorldbuildingReference, onCreateCatalogueReference, onDelete, onSelect, onUpdate, onReferenceOpen, onWorldbuildingOpen, onEncounterOpen = () => undefined, entitiesByWorldbuildingId = new Map(), currentStateByEntityId = new Map(), worldEvents = [], onSetNpcStatus = () => undefined }: WorldbuildingPanelProps) {
+export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBackup = false, types, catalogue, worldbuilding, catalogueCategories, onCreate, onCreateType, onCreateWorldbuildingReference, onCreateCatalogueReference, onDelete, onSelect, onUpdate, onReferenceOpen, onWorldbuildingOpen, onEncounterOpen = () => undefined, entitiesByWorldbuildingId = new Map(), currentStateByEntityId = new Map(), worldEvents = [], onSetNpcStatus = () => undefined, onCreateTimelineEvent = () => undefined }: WorldbuildingPanelProps) {
   const [query, setQuery] = useState('');
   const [kind, setKind] = useState<WorldbuildingKind | 'all'>('all');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -288,7 +290,7 @@ export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBac
           </section>
         </aside>
 
-        <section className="worldbuilding-details" aria-live="polite">{selected ? (editing ? <WorldbuildingEntryEditor catalogueCategories={catalogueCategories} entry={selected} key={selected.id} onCancel={() => setEditingId(null)} onCreateCatalogueReference={onCreateCatalogueReference} onCreateWorldbuildingReference={onCreateWorldbuildingReference} onSave={(entry) => { onUpdate(entry); setEditingId(null); }} types={types} /> : <WorldbuildingEntryPreview catalogue={catalogue} catalogueCategories={catalogueCategories} combatNotes={combatNotes} connections={connections} currentState={selectedCurrentState} entity={selectedEntity} entry={selected} onDelete={onDelete} onEdit={() => setEditingId(selected.id)} onEncounterOpen={onEncounterOpen} onReferenceOpen={onReferenceOpen} onSetNpcStatus={(status) => onSetNpcStatus(selected, status)} onWorldbuildingOpen={onWorldbuildingOpen} types={types} worldbuilding={worldbuilding} />) : <p className="empty-panel">Create an entry, or review an unresolved name from the list.</p>}</section>
+        <section className="worldbuilding-details" aria-live="polite">{selected ? (editing ? <WorldbuildingEntryEditor catalogueCategories={catalogueCategories} entry={selected} key={selected.id} onCancel={() => setEditingId(null)} onCreateCatalogueReference={onCreateCatalogueReference} onCreateWorldbuildingReference={onCreateWorldbuildingReference} onSave={(entry) => { onUpdate(entry); setEditingId(null); }} types={types} /> : <WorldbuildingEntryPreview catalogue={catalogue} catalogueCategories={catalogueCategories} combatNotes={combatNotes} connections={connections} currentState={selectedCurrentState} entity={selectedEntity} entry={selected} onCreateTimelineEvent={() => onCreateTimelineEvent(selected, selectedEntity)} onDelete={onDelete} onEdit={() => setEditingId(selected.id)} onEncounterOpen={onEncounterOpen} onReferenceOpen={onReferenceOpen} onSetNpcStatus={(status) => onSetNpcStatus(selected, status)} onWorldbuildingOpen={onWorldbuildingOpen} types={types} worldbuilding={worldbuilding} />) : <p className="empty-panel">Create an entry, or review an unresolved name from the list.</p>}</section>
       </section>
     </main>
   );

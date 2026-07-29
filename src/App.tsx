@@ -53,11 +53,13 @@ import { createEncounter as createCombatEncounter, createPartyMember, touchEncou
 import { deleteEncounter as deleteStoredEncounter, deletePartyMember as deleteStoredPartyMember, listEncounters, listPartyMembers, saveEncounter, savePartyMember } from './lib/encounterStore';
 import { formatEncounterReference } from './lib/encounterReferences';
 import { createWorldbuildingEntry, createWorldbuildingType, findWorldbuildingEntryByName, worldbuildingKindLabels } from './lib/worldbuilding';
+import type { BrewReferenceCandidate } from './lib/brewReferenceCandidates';
 import {
   deleteWorldbuildingEntry as deleteStoredWorldbuildingEntry,
   listWorldbuildingEntries,
   listWorldbuildingTypes,
   saveWorldbuildingEntry,
+  saveWorldbuildingEntries,
   saveWorldbuildingType
 } from './lib/worldbuildingStore';
 import { loadCatalogue, toCatalogueMap } from './catalogue/catalogueData';
@@ -552,6 +554,19 @@ export default function App() {
         noteCampaignDataSaved(metadata.at(-1)!, 'Worldbuilding entry and entity saved locally');
       })
       .catch(() => setSaveState('Worldbuilding save failed'));
+  };
+
+  const createBrewReferences = (candidates: readonly BrewReferenceCandidate[]) => {
+    if (!candidates.length) return;
+    const newEntries = candidates.map((candidate) => createWorldbuildingEntry(candidate.name, candidate.kind));
+    const nextEntries = [...newEntries, ...worldbuildingEntries];
+    const nextLivingWorld = synchroniseLivingWorld(livingWorld, nextEntries);
+    campaignRecordsRef.current = { ...campaignRecordsRef.current, worldbuildingEntries: nextEntries, livingWorld: nextLivingWorld };
+    setWorldbuildingEntries(nextEntries);
+    setLivingWorld(nextLivingWorld);
+    void Promise.all([saveWorldbuildingEntries(newEntries), saveLivingWorldData(nextLivingWorld)])
+      .then((metadata) => noteCampaignDataSaved(metadata.at(-1)!, `${newEntries.length} brew references created`))
+      .catch(() => setSaveState('Brew reference setup failed'));
   };
 
   const setNpcStatus = (entry: WorldbuildingEntry, status: string) => {
@@ -1505,6 +1520,7 @@ export default function App() {
           onCreateType={createNewWorldbuildingType}
           onCreateCatalogueReference={createCatalogueReference}
           onCreateWorldbuildingReference={createWorldbuildingReference}
+          onCreateBrewReferences={createBrewReferences}
           onCreateTimelineEvent={createTimelineEventFromWorldbuilding}
           onDelete={deleteWorldbuilding}
           onEncounterOpen={(encounterId) => {

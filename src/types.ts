@@ -168,6 +168,8 @@ export type TimelineEntry = {
   notes: string;
   entityIds: string[];
   encounterId?: string;
+  brewId?: string;
+  sectionId?: string;
   createdAt: string;
   updatedAt: string;
 };

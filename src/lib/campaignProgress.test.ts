@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { Brew, Encounter } from '../types';
-import { deriveCampaignPosition } from './campaignProgress';
+import type { Brew, CampaignEntity, Encounter } from '../types';
+import { deriveCampaignPosition, derivePartyLocation } from './campaignProgress';
 
 const encounter = (id: string, status: Encounter['status'], optional = false): Encounter => ({
   id,
@@ -39,5 +39,23 @@ describe('derived campaign position', () => {
     const required = encounter('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'not-started');
     const source = [optional, required].map((item) => `[[encounter:${item.id}|${item.name}]]`).join('\n');
     expect(deriveCampaignPosition([brew(source)], [optional, required])?.nextEncounterId).toBe(required.id);
+  });
+
+  it('chooses an active encounter across brews instead of whichever brew is first', () => {
+    const inactive = encounter('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'not-started');
+    const active = encounter('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'active');
+    const first = { ...brew(`[[encounter:${inactive.id}|First]]`), id: 'first' };
+    const second = { ...brew(`# Sund\n[[encounter:${active.id}|Second]]`), id: 'second' };
+    expect(deriveCampaignPosition([first, second], [inactive, active])).toMatchObject({ brewId: 'second', activeEncounterId: active.id, headingPath: ['Sund'] });
+  });
+
+  it('inherits a linked location from the selected encounter section', () => {
+    const active = encounter('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'active');
+    const locationId = 'c674b91f-94c8-5c80-9d1d-31bef50bc779';
+    const source = `# Sund\n[[world:${locationId}|Sund]]\n[[encounter:${active.id}|Fight]]`;
+    const document = brew(source);
+    const entity: CampaignEntity = { id: `worldbuilding:${locationId}`, campaignId: 'default-campaign', kind: 'settlement', name: 'Sund', aliases: [], source: { kind: 'worldbuilding', id: locationId }, createdAt: document.createdAt, updatedAt: document.updatedAt, version: 1 };
+    const position = deriveCampaignPosition([document], [active]);
+    expect(derivePartyLocation(position, [document], [entity], new Map())).toEqual({ entityId: entity.id, name: 'Sund', source: 'section' });
   });
 });

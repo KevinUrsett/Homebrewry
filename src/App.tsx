@@ -1640,6 +1640,9 @@ export default function App() {
           />
         </div>
       )}
+      {!campaignOpen && !catalogueOpen && !encountersOpen && !worldbuildingOpen && mobileSection === 'editor' && (
+        <button aria-label="Open outline navigation" className="mobile-outline-fab" onClick={() => setMobileSection('outline')} type="button">Outline</button>
+      )}
       {activeBrew.syncState === 'conflict' && activeBrew.conflict && (
         <div className="conflict-backdrop" role="dialog" aria-modal="true" aria-labelledby="conflict-title">
           <section className="conflict-dialog">

@@ -31,7 +31,7 @@ import { createAsset, listAssets, replaceAssets, saveAsset } from './lib/assetSt
 import { syncAssets } from './lib/assetSync';
 import { createCampaignDataSnapshot } from './lib/campaignData';
 import { deriveCampaignPosition, derivePartyLocation } from './lib/campaignProgress';
-import { partyEntityId, recordCombatCompletion, recordManualStateChange, recordPartyLocation, synchroniseLivingWorld } from './lib/livingWorld';
+import { createTimelineEntry, deleteTimelineEntry, partyEntityId, recordCombatCompletion, recordManualStateChange, recordPartyLocation, saveTimelineEntry, synchroniseLivingWorld } from './lib/livingWorld';
 import { projectCurrentState } from './lib/worldState';
 import { keepBothCampaignDataVersions, keepDriveCampaignData, overwriteDriveCampaignData, syncCampaignData, type CampaignDataSyncResult } from './lib/campaignSync';
 import { keepBothVersions, resolveWithDriveVersion } from './lib/conflicts';
@@ -65,7 +65,7 @@ import { createCustomCatalogueCategory, createCustomCatalogueEntry, normaliseCus
 import { findCatalogueEntryByName, formatCatalogueReference } from './catalogue/references';
 import { formatWorldbuildingReference } from './lib/worldbuildingReferences';
 import { catalogueCategoryLabel, catalogueCategoryLabels, type CatalogueCategory, type CatalogueEntry, type CustomCatalogueCategory, type CustomCatalogueEntry } from './catalogue/types';
-import type { Brew, BrewAsset, CampaignDataSyncMetadata, Encounter, LivingWorldData, MobileSection, PartyMember, PrivateMonsterSyncMetadata, ViewMode, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from './types';
+import type { Brew, BrewAsset, CampaignDataSyncMetadata, Encounter, LivingWorldData, MobileSection, PartyMember, PrivateMonsterSyncMetadata, TimelineEntry, ViewMode, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from './types';
 
 const mobileLabels: Record<MobileSection, string> = {
   library: 'Brews',
@@ -118,7 +118,8 @@ export default function App() {
     campaignId: 'default-campaign',
     entities: [],
     entityReferences: [],
-    worldEvents: []
+    worldEvents: [],
+    timelineEntries: []
   }));
   const [privateMonsterSync, setPrivateMonsterSync] = useState<PrivateMonsterSyncMetadata | null>(null);
   const [referenceEntry, setReferenceEntry] = useState<CatalogueEntry | null>(null);
@@ -581,6 +582,21 @@ export default function App() {
     void saveLivingWorldData(next).then((metadata) => noteCampaignDataSaved(metadata, `${entity.name} restored`)).catch(() => setSaveState('NPC restoration save failed'));
   };
 
+  const saveTimeline = (entry: TimelineEntry | Omit<TimelineEntry, 'id' | 'campaignId' | 'order' | 'createdAt' | 'updatedAt'>) => {
+    const nextEntry = 'id' in entry ? entry : createTimelineEntry(livingWorld, entry);
+    const next = saveTimelineEntry(livingWorld, nextEntry);
+    campaignRecordsRef.current = { ...campaignRecordsRef.current, livingWorld: next };
+    setLivingWorld(next);
+    void saveLivingWorldData(next).then((metadata) => noteCampaignDataSaved(metadata, 'Timeline updated')).catch(() => setSaveState('Timeline save failed'));
+  };
+
+  const removeTimeline = (entryId: string) => {
+    const next = deleteTimelineEntry(livingWorld, entryId);
+    campaignRecordsRef.current = { ...campaignRecordsRef.current, livingWorld: next };
+    setLivingWorld(next);
+    void saveLivingWorldData(next).then((metadata) => noteCampaignDataSaved(metadata, 'Timeline entry removed')).catch(() => setSaveState('Timeline delete failed'));
+  };
+
   const createNewWorldbuildingEntry = () => {
     const entry = createWorldbuildingEntry();
     persistWorldbuildingEntry(entry);
@@ -791,7 +807,8 @@ export default function App() {
         campaignId: result.data.campaignId,
         entities: result.data.entities,
         entityReferences: result.data.entityReferences,
-        worldEvents: result.data.worldEvents
+        worldEvents: result.data.worldEvents,
+        timelineEntries: result.data.timelineEntries ?? []
       });
       setEncounterSelectedId((current) => result.data.encounters.some((encounter) => encounter.id === current) ? current : result.data.encounters[0]?.id ?? null);
       setWorldbuildingSelectedId((current) => result.data.worldbuildingEntries.some((entry) => entry.id === current) ? current : result.data.worldbuildingEntries[0]?.id ?? null);
@@ -808,7 +825,8 @@ export default function App() {
         campaignId: result.data.campaignId,
         entities: result.data.entities,
         entityReferences: result.data.entityReferences,
-        worldEvents: result.data.worldEvents
+        worldEvents: result.data.worldEvents,
+        timelineEntries: result.data.timelineEntries ?? []
       }
     };
     campaignMetadataRef.current = result.metadata;
@@ -1368,6 +1386,9 @@ export default function App() {
           }}
           partyLocation={partyLocation}
           position={campaignPosition}
+          timelineEntries={livingWorld.timelineEntries ?? []}
+          onSaveTimelineEntry={saveTimeline}
+          onDeleteTimelineEntry={removeTimeline}
           worldEvents={livingWorld.worldEvents}
         />
       ) : catalogueOpen ? (

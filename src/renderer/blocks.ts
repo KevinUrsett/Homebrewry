@@ -101,8 +101,7 @@ export function parseRendererBlocks(source: string): RendererBlock[] {
 }
 
 /**
- * Retained for older callers and tests. The live preview now renders a single
- * continuous document and does not use this pagination helper.
+ * Used by the desktop book preview to preserve explicit Homebrewery page breaks.
  */
 export function splitRendererPages(blocks: RendererBlock[]): RendererBlock[][] {
   const pages: RendererBlock[][] = [[]];

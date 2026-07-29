@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { CataloguePanel } from './components/CataloguePanel';
-import { CampaignPanel } from './components/CampaignPanel';
+import { CampaignPanel, type TimelineDraftSeed } from './components/CampaignPanel';
 import { BrewPreview } from './components/BrewPreview';
 import { EncounterPanel } from './components/EncounterPanel';
 import { EditorPane } from './components/EditorPane';
@@ -101,6 +101,7 @@ export default function App() {
   const [catalogueError, setCatalogueError] = useState<string | null>(null);
   const [catalogueOpen, setCatalogueOpen] = useState(false);
   const [campaignOpen, setCampaignOpen] = useState(false);
+  const [timelineDraftSeed, setTimelineDraftSeed] = useState<TimelineDraftSeed | null>(null);
   const [privateMonsterImportOpen, setPrivateMonsterImportOpen] = useState(false);
   const [catalogueSelection, setCatalogueSelection] = useState<CatalogueEntry | null>(null);
   const [encounters, setEncounters] = useState<Encounter[]>([]);
@@ -595,6 +596,35 @@ export default function App() {
     campaignRecordsRef.current = { ...campaignRecordsRef.current, livingWorld: next };
     setLivingWorld(next);
     void saveLivingWorldData(next).then((metadata) => noteCampaignDataSaved(metadata, 'Timeline entry removed')).catch(() => setSaveState('Timeline delete failed'));
+  };
+
+  const openTimelineComposer = (seed: TimelineDraftSeed) => {
+    setTimelineDraftSeed(seed);
+    setCampaignOpen(true);
+    setCatalogueOpen(false);
+    setEncountersOpen(false);
+    setWorldbuildingOpen(false);
+    setMobileSection('campaign');
+  };
+
+  const createTimelineEventFromBrew = () => {
+    if (!activeBrew) return;
+    const selection = editorRef.current?.getSelection() ?? selectionRef.current;
+    const selectedText = activeBrew.content.slice(selection.start, selection.end).replace(/[#*_`\[\]]/g, '').replace(/\s+/g, ' ').trim();
+    const section = getOutlineLocations(activeBrew.content).filter((item) => item.from <= selection.start).at(-1);
+    openTimelineComposer({
+      title: selectedText || section?.text || activeBrew.title,
+      brewId: activeBrew.id,
+      sectionId: section?.id
+    });
+  };
+
+  const createTimelineEventFromWorldbuilding = (entry: WorldbuildingEntry, entity?: { id: string }) => {
+    openTimelineComposer({
+      title: entry.name,
+      entityIds: entity ? [entity.id] : [],
+      worldbuildingId: entry.id
+    });
   };
 
   const createNewWorldbuildingEntry = () => {
@@ -1384,6 +1414,10 @@ export default function App() {
             const entry = worldbuildingEntries.find((item) => item.id === source.id);
             if (entry) openWorldbuilding(entry);
           }}
+          onOpenWorldbuildingEntry={(entryId) => {
+            const entry = worldbuildingEntries.find((item) => item.id === entryId);
+            if (entry) openWorldbuilding(entry);
+          }}
           onOpenBrewSection={(brewId, sectionId) => {
             const targetBrew = brews.find((item) => item.id === brewId);
             const targetSection = targetBrew && sectionId ? getOutlineLocations(targetBrew.content).find((item) => item.id === sectionId) : undefined;
@@ -1401,6 +1435,8 @@ export default function App() {
           partyLocation={partyLocation}
           position={campaignPosition}
           timelineEntries={livingWorld.timelineEntries ?? []}
+          timelineDraftSeed={timelineDraftSeed}
+          onTimelineDraftSeedApplied={() => setTimelineDraftSeed(null)}
           onSaveTimelineEntry={saveTimeline}
           onDeleteTimelineEntry={removeTimeline}
           worldEvents={livingWorld.worldEvents}
@@ -1469,6 +1505,7 @@ export default function App() {
           onCreateType={createNewWorldbuildingType}
           onCreateCatalogueReference={createCatalogueReference}
           onCreateWorldbuildingReference={createWorldbuildingReference}
+          onCreateTimelineEvent={createTimelineEventFromWorldbuilding}
           onDelete={deleteWorldbuilding}
           onEncounterOpen={(encounterId) => {
             const encounter = encounters.find((item) => item.id === encounterId);
@@ -1509,6 +1546,7 @@ export default function App() {
               findValue={findValue}
               findVisible={findVisible}
               onContentChange={updateContent}
+              onCreateTimelineEvent={createTimelineEventFromBrew}
               onFindChange={setFindValue}
               onImageUpload={(file) => void uploadImage(file)}
               onInsert={insertText}

@@ -18,6 +18,7 @@ type EditorPaneProps = {
   customCatalogueCategories: readonly CustomCatalogueCategory[];
   onOpenCatalogue: () => void;
   onOpenEncounters: () => void;
+  onCreateTimelineEvent: () => void;
   onSave: () => void;
   onCreateWorldbuildingReference: (name: string, kind: WorldbuildingKind) => Promise<string | null> | string | null;
   onCreateCatalogueReference: (name: string, category: CatalogueCategory) => Promise<string | null> | string | null;
@@ -48,6 +49,7 @@ export function EditorPane({
   customCatalogueCategories,
   onOpenCatalogue,
   onOpenEncounters,
+  onCreateTimelineEvent,
   onSave,
   onCreateWorldbuildingReference,
   onCreateCatalogueReference,
@@ -80,6 +82,7 @@ export function EditorPane({
         <button onClick={() => imageInputRef.current?.click()} type="button">Image</button>
         <ReferenceMenu customCategories={customCatalogueCategories} onBrowseCatalogue={onOpenCatalogue} onSelectCategory={onInsertReferenceCategory} />
         <button onClick={onOpenEncounters} type="button">Encounter</button>
+        <button onClick={onCreateTimelineEvent} type="button">Timeline</button>
         <button onClick={onConvertHomebrewery} type="button">Convert HB</button>
         <span className="toolbar-spacer" />
         <button className="editor-save-button" onClick={onSave} type="button">Save</button>

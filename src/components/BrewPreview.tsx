@@ -6,7 +6,7 @@ import { encounterReferenceFromUrl, remarkEncounterReferences } from '../lib/enc
 import { worldbuildingReferenceFromUrl, remarkWorldbuildingReferences } from '../lib/worldbuildingReferences';
 import { remarkAutoReferences } from '../lib/autoReferences';
 import { getHeadingId } from '../lib/outline';
-import { parseRendererBlocks, type RendererBlock } from '../renderer/blocks';
+import { parseRendererBlocks, splitRendererPages, type RendererBlock } from '../renderer/blocks';
 import { catalogueCategoryLabel, type CatalogueEntry, type CustomCatalogueCategory } from '../catalogue/types';
 import type { Brew, BrewAsset, Encounter, WorldbuildingEntry, WorldbuildingType } from '../types';
 import { CatalogueEntryDetails } from './CatalogueEntryDetails';
@@ -246,8 +246,8 @@ function renderBlock(
       </aside>
     );
   }
-  if (block.type === 'pagebreak') return <div aria-label="Section break" className="brew-flow-break" key={key} role="separator" />;
-  if (block.type === 'columnbreak') return null;
+  if (block.type === 'pagebreak') return null;
+  if (block.type === 'columnbreak') return <div aria-label="Column break" className="brew-column-break" key={key} role="separator" />;
   if (block.type === 'spacer') {
     return <div aria-hidden className="brew-spacer" key={key} style={{ '--brew-spacer-size': block.size } as CSSProperties} />;
   }
@@ -263,15 +263,19 @@ export const BrewPreview = memo(function BrewPreview({ brew, assets, catalogue, 
     return getHeadingId(text, occurrence);
   };
   const blocks = parseRendererBlocks(brew.content);
+  const pages = splitRendererPages(blocks);
 
   return (
     <div
       className={`brew-book tone-${brew.rendererSettings.parchmentTone}`}
       style={{ '--brew-accent': brew.rendererSettings.accentColor } as CSSProperties}
     >
-      <article className="brew-preview brew-continuous">
-        {blocks.map((block, blockIndex) => renderBlock(block, getId, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen, `block-${blockIndex}`))}
-      </article>
+      {pages.map((page, pageIndex) => (
+        <article className="brew-preview brew-continuous" key={`page-${pageIndex}`}>
+          {page.map((block, blockIndex) => renderBlock(block, getId, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen, `page-${pageIndex}-block-${blockIndex}`))}
+          <span aria-hidden className="brew-page-number">{pageIndex + 1}</span>
+        </article>
+      ))}
     </div>
   );
 }, (previous, next) =>

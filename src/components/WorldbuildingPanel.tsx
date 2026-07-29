@@ -6,7 +6,7 @@ import { campaignStoragePresentation } from '../lib/campaignStorageStatus';
 import { seedBrews } from '../lib/brewStore';
 import { listEncounters } from '../lib/encounterStore';
 import { findUnresolvedNames } from '../lib/unresolvedReferences';
-import { findBrewReferenceCandidates, type BrewReferenceCandidate } from '../lib/brewReferenceCandidates';
+import { remainingTalesOnUnwrittenTomesReferences, type CuratedReference } from '../lib/talesOnUnwrittenTomesReferences';
 import { findWorldbuildingConnections, type WorldbuildingConnection } from '../lib/worldbuildingConnections';
 import { createWorldbuildingEntry, worldbuildingKindLabel, worldbuildingKindLabels, worldbuildingKinds, touchWorldbuildingEntry } from '../lib/worldbuilding';
 import type { CatalogueEntry } from '../catalogue/types';
@@ -37,7 +37,7 @@ type WorldbuildingPanelProps = {
   worldEvents?: readonly WorldEvent[];
   onSetNpcStatus?: (entry: WorldbuildingEntry, status: string) => void;
   onCreateTimelineEvent?: (entry: WorldbuildingEntry, entity?: CampaignEntity) => void;
-  onCreateBrewReferences?: (candidates: readonly BrewReferenceCandidate[]) => void;
+  onCreateCuratedReferences?: (references: readonly CuratedReference[]) => void;
 };
 
 function aliasesFromInput(value: string): string[] {
@@ -175,7 +175,7 @@ function WorldbuildingEntryPreview({ entry, types, catalogue, worldbuilding, cat
   );
 }
 
-export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBackup = false, types, catalogue, worldbuilding, catalogueCategories, onCreate, onCreateType, onCreateWorldbuildingReference, onCreateCatalogueReference, onDelete, onSelect, onUpdate, onReferenceOpen, onWorldbuildingOpen, onEncounterOpen = () => undefined, entitiesByWorldbuildingId = new Map(), currentStateByEntityId = new Map(), worldEvents = [], onSetNpcStatus = () => undefined, onCreateTimelineEvent = () => undefined, onCreateBrewReferences = () => undefined }: WorldbuildingPanelProps) {
+export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBackup = false, types, catalogue, worldbuilding, catalogueCategories, onCreate, onCreateType, onCreateWorldbuildingReference, onCreateCatalogueReference, onDelete, onSelect, onUpdate, onReferenceOpen, onWorldbuildingOpen, onEncounterOpen = () => undefined, entitiesByWorldbuildingId = new Map(), currentStateByEntityId = new Map(), worldEvents = [], onSetNpcStatus = () => undefined, onCreateTimelineEvent = () => undefined, onCreateCuratedReferences = () => undefined }: WorldbuildingPanelProps) {
   const [query, setQuery] = useState('');
   const [kind, setKind] = useState<WorldbuildingKind | 'all'>('all');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -222,7 +222,7 @@ export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBac
     [brews, dismissedNames, knownNames]
   );
   const unresolved = allUnresolved;
-  const brewReferenceCandidates = useMemo(() => findBrewReferenceCandidates(brews, entries), [brews, entries]);
+  const curatedReferences = useMemo(() => remainingTalesOnUnwrittenTomesReferences(entries), [entries]);
 
   const selected = entries.find((entry) => entry.id === selectedId) ?? filtered[0] ?? entries[0] ?? null;
   const editing = editingId === selected?.id;
@@ -288,7 +288,7 @@ export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBac
           <p className="worldbuilding-count">{filtered.length} entr{filtered.length === 1 ? 'y' : 'ies'}</p>
           <div className="worldbuilding-list">{filtered.map((entry) => <button className={`worldbuilding-list-item ${selected?.id === entry.id ? 'is-selected' : ''}`} key={entry.id} onClick={() => selectEntry(entry.id)} type="button"><strong>{entry.name}</strong><span>{worldbuildingKindLabel(entry.kind, types)}</span>{entry.aliases.length > 0 && <small>{entry.aliases.join(' · ')}</small>}</button>)}{!filtered.length && <p className="empty-panel">No entries match that search.</p>}</div>
 
-          <section className="brew-reference-index" aria-label="Brew reference index"><div className="unresolved-references-header"><div><h3>Brew reference index</h3><small>Named headings only</small></div><div><span>{brewReferenceCandidates.length}</span><button disabled={!brewReferenceCandidates.length} onClick={() => onCreateBrewReferences(brewReferenceCandidates)} type="button">Build index</button></div></div><p>Creates separate editable references from brew headings. It never changes the source text or writes world state.</p></section>
+          <section className="brew-reference-index" aria-label="Tales on Unwritten Tomes references"><div className="unresolved-references-header"><div><h3>Tales on Unwritten Tomes</h3><small>Hand-curated reference set</small></div><div><span>{curatedReferences.length}</span><button disabled={!curatedReferences.length} onClick={() => onCreateCuratedReferences(curatedReferences)} type="button">Add references</button></div></div><p>Reviewed campaign references from the supplied source, with types, aliases, and notes. This never changes brew text or writes world state.</p></section>
           <section className="unresolved-references" aria-label="Unresolved names">
             <div className="unresolved-references-header"><h3>Unresolved names</h3><div><span>{unresolved.length}</span><button disabled={!unresolved.length} onClick={() => setDismissedNames((current) => new Set([...current, ...allUnresolved.map((item) => item.name.toLocaleLowerCase())]))} type="button">Clear all</button></div></div>
             {unresolved.length ? <div className="unresolved-reference-list">{unresolved.map((item) => <div className="unresolved-reference-item" key={item.name}><div className="unresolved-reference-name"><strong>{item.name}</strong><span>{item.count} mention{item.count === 1 ? '' : 's'}</span></div><div className="unresolved-reference-actions"><select aria-label={`Type for ${item.name}`} onChange={(event) => setSuggestedKinds((current) => ({ ...current, [item.name]: event.target.value as WorldbuildingKind }))} value={suggestedKinds[item.name] ?? 'place'}>{typeOptions.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}</select><button className="primary-button" onClick={() => createSuggestedEntry(item.name)} type="button">Create</button><button aria-label={`Dismiss ${item.name}`} onClick={() => setDismissedNames((current) => new Set(current).add(item.name.toLocaleLowerCase()))} type="button">×</button></div></div>)}</div> : <p className="unresolved-reference-empty">No likely unresolved names found. Detection is deliberately conservative.</p>}

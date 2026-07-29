@@ -134,6 +134,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .reference-popover-actions button { background: #ead9b8; border: 1px solid #a78355; border-radius: 3px; color: #4e3024; font: 800 .69rem "Scaly Sans", Inter, sans-serif; padding: 5px 7px; }
 .reference-popover-actions button:disabled { cursor: not-allowed; opacity: .55; }
 .reference-popover-actions .reference-remove { background: transparent; border-color: #a7695f; color: #7d332c; }
+/* Reference popovers use the same parchment palette as the preview page. */
 .brew-page-number { bottom: 18px; color: #9a856e; font-family: Inter, sans-serif; font-size: .7rem; position: absolute; right: 25px; }
 .brew-callout { border: 1px solid #bea06e; border-left: 6px solid var(--brew-accent); break-inside: avoid; margin: 1.15em 0; padding: 12px 16px; }
 .brew-callout h4 { margin: 0 0 6px; }

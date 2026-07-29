@@ -215,10 +215,11 @@ export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBac
     ...encounters.map((encounter) => encounter.name)
   ], [catalogue, encounters, entries]);
 
-  const unresolved = useMemo(
+  const allUnresolved = useMemo(
     () => findUnresolvedNames(brews.map((brew) => brew.content), knownNames).filter((item) => !dismissedNames.has(item.name.toLocaleLowerCase())).slice(0, 30),
     [brews, dismissedNames, knownNames]
   );
+  const unresolved = allUnresolved;
 
   const selected = entries.find((entry) => entry.id === selectedId) ?? filtered[0] ?? entries[0] ?? null;
   const editing = editingId === selected?.id;
@@ -285,7 +286,7 @@ export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBac
           <div className="worldbuilding-list">{filtered.map((entry) => <button className={`worldbuilding-list-item ${selected?.id === entry.id ? 'is-selected' : ''}`} key={entry.id} onClick={() => selectEntry(entry.id)} type="button"><strong>{entry.name}</strong><span>{worldbuildingKindLabel(entry.kind, types)}</span>{entry.aliases.length > 0 && <small>{entry.aliases.join(' · ')}</small>}</button>)}{!filtered.length && <p className="empty-panel">No entries match that search.</p>}</div>
 
           <section className="unresolved-references" aria-label="Unresolved names">
-            <div className="unresolved-references-header"><h3>Unresolved names</h3><span>{unresolved.length}</span></div>
+            <div className="unresolved-references-header"><h3>Unresolved names</h3><div><span>{unresolved.length}</span><button disabled={!unresolved.length} onClick={() => setDismissedNames((current) => new Set([...current, ...allUnresolved.map((item) => item.name.toLocaleLowerCase())]))} type="button">Clear all</button></div></div>
             {unresolved.length ? <div className="unresolved-reference-list">{unresolved.map((item) => <div className="unresolved-reference-item" key={item.name}><div className="unresolved-reference-name"><strong>{item.name}</strong><span>{item.count} mention{item.count === 1 ? '' : 's'}</span></div><div className="unresolved-reference-actions"><select aria-label={`Type for ${item.name}`} onChange={(event) => setSuggestedKinds((current) => ({ ...current, [item.name]: event.target.value as WorldbuildingKind }))} value={suggestedKinds[item.name] ?? 'place'}>{typeOptions.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}</select><button className="primary-button" onClick={() => createSuggestedEntry(item.name)} type="button">Create</button><button aria-label={`Dismiss ${item.name}`} onClick={() => setDismissedNames((current) => new Set(current).add(item.name.toLocaleLowerCase()))} type="button">×</button></div></div>)}</div> : <p className="unresolved-reference-empty">No likely unresolved names found. Detection is deliberately conservative.</p>}
           </section>
         </aside>

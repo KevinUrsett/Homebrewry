@@ -16,6 +16,28 @@
   margin: 0;
 }
 
+.unresolved-references-header > div {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.unresolved-references-header button {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font-size: .68rem;
+  opacity: .78;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.unresolved-references-header button:disabled {
+  cursor: default;
+  opacity: .35;
+}
+
 .unresolved-references-header span,
 .unresolved-reference-empty {
   font-size: .72rem;

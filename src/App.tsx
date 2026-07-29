@@ -1621,6 +1621,7 @@ export default function App() {
                   onAddWorldbuildingNote={addWorldbuildingQuickNote}
                   onDeleteWorldbuildingReference={deleteWorldbuilding}
                   onWorldbuildingOpen={setWorldbuildingReferenceEntry}
+                  onOpenInWorldbuilding={openWorldbuilding}
                   worldbuilding={worldbuildingMap}
                   worldbuildingTypes={worldbuildingTypes}
                 />

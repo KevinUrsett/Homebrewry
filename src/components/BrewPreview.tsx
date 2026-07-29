@@ -325,8 +325,4 @@ export const BrewPreview = memo(function BrewPreview({ brew, assets, catalogue, 
   && previous.encounters === next.encounters
   && previous.worldbuilding === next.worldbuilding
   && previous.worldbuildingTypes === next.worldbuildingTypes
-  && previous.onWorldbuildingOpen === next.onWorldbuildingOpen
-  && previous.onOpenInWorldbuilding === next.onOpenInWorldbuilding
-  && previous.onDeleteWorldbuildingReference === next.onDeleteWorldbuildingReference
-  && previous.onAddWorldbuildingNote === next.onAddWorldbuildingNote
 );

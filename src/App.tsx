@@ -52,7 +52,7 @@ import { overwriteDriveBrew, syncBrews } from './lib/sync';
 import { createEncounter as createCombatEncounter, createPartyMember, touchEncounter } from './lib/encounters';
 import { deleteEncounter as deleteStoredEncounter, deletePartyMember as deleteStoredPartyMember, listEncounters, listPartyMembers, saveEncounter, savePartyMember } from './lib/encounterStore';
 import { formatEncounterReference } from './lib/encounterReferences';
-import { createWorldbuildingEntry, createWorldbuildingType, findWorldbuildingEntryByName, worldbuildingKindLabels } from './lib/worldbuilding';
+import { createWorldbuildingEntry, createWorldbuildingType, findWorldbuildingEntryByName, touchWorldbuildingEntry, worldbuildingKindLabels } from './lib/worldbuilding';
 import type { CuratedReference } from './lib/talesOnUnwrittenTomesReferences';
 import {
   deleteWorldbuildingEntry as deleteStoredWorldbuildingEntry,
@@ -554,6 +554,14 @@ export default function App() {
         noteCampaignDataSaved(metadata.at(-1)!, 'Worldbuilding entry and entity saved locally');
       })
       .catch(() => setSaveState('Worldbuilding save failed'));
+  };
+
+  const addWorldbuildingQuickNote = (entry: WorldbuildingEntry, note: string) => {
+    const value = note.trim();
+    if (!value) return;
+    persistWorldbuildingEntry(touchWorldbuildingEntry(entry, {
+      notes: [entry.notes.trim(), value].filter(Boolean).join('\n\n')
+    }));
   };
 
   const createCuratedReferences = (references: readonly CuratedReference[]) => {
@@ -1610,7 +1618,10 @@ export default function App() {
                   encounters={encounterMap}
                   onEncounterOpen={openEncounters}
                   onReferenceOpen={setReferenceEntry}
+                  onAddWorldbuildingNote={addWorldbuildingQuickNote}
+                  onDeleteWorldbuildingReference={deleteWorldbuilding}
                   onWorldbuildingOpen={setWorldbuildingReferenceEntry}
+                  onOpenInWorldbuilding={openWorldbuilding}
                   worldbuilding={worldbuildingMap}
                   worldbuildingTypes={worldbuildingTypes}
                 />

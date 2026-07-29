@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { catalogueReferenceFromUrl, entryFromReference, remarkCatalogueReferences } from '../catalogue/references';
@@ -24,6 +24,9 @@ type BrewPreviewProps = {
   worldbuilding?: ReadonlyMap<string, WorldbuildingEntry>;
   worldbuildingTypes?: readonly WorldbuildingType[];
   onWorldbuildingOpen?: (entry: WorldbuildingEntry) => void;
+  onOpenInWorldbuilding?: (entry: WorldbuildingEntry) => void;
+  onDeleteWorldbuildingReference?: (entry: WorldbuildingEntry) => void;
+  onAddWorldbuildingNote?: (entry: WorldbuildingEntry, note: string) => void;
 };
 
 type MarkdownRendererProps = {
@@ -38,6 +41,9 @@ type MarkdownRendererProps = {
   worldbuilding?: ReadonlyMap<string, WorldbuildingEntry>;
   worldbuildingTypes?: readonly WorldbuildingType[];
   onWorldbuildingOpen?: (entry: WorldbuildingEntry) => void;
+  onOpenInWorldbuilding?: (entry: WorldbuildingEntry) => void;
+  onDeleteWorldbuildingReference?: (entry: WorldbuildingEntry) => void;
+  onAddWorldbuildingNote?: (entry: WorldbuildingEntry, note: string) => void;
 };
 
 type RenderDependencies = Omit<MarkdownRendererProps, 'content' | 'getId'>;
@@ -109,32 +115,59 @@ function WorldbuildingReferenceLink({
   children,
   entry,
   types,
-  onOpen
+  onOpen,
+  onOpenInWorldbuilding,
+  onDelete,
+  onAddNote
 }: {
   children: ReactNode;
   entry: WorldbuildingEntry;
   types?: readonly WorldbuildingType[];
   onOpen?: (entry: WorldbuildingEntry) => void;
+  onOpenInWorldbuilding?: (entry: WorldbuildingEntry) => void;
+  onDelete?: (entry: WorldbuildingEntry) => void;
+  onAddNote?: (entry: WorldbuildingEntry, note: string) => void;
 }) {
   const [visible, setVisible] = useState(false);
+  const [note, setNote] = useState('');
+  const closeTimer = useRef<number | null>(null);
+  const keepOpen = () => {
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
+    setVisible(true);
+  };
+  const closeLater = () => {
+    closeTimer.current = window.setTimeout(() => setVisible(false), 140);
+  };
+  const addNote = () => {
+    const value = note.trim();
+    if (!value) return;
+    onAddNote?.(entry, value);
+    setNote('');
+  };
   return (
-    <span className="worldbuilding-reference-wrap" onMouseEnter={() => setVisible(true)} onMouseLeave={() => setVisible(false)}>
+    <span className="worldbuilding-reference-wrap" onMouseEnter={keepOpen} onMouseLeave={closeLater}>
       <button
         aria-haspopup="dialog"
         className="worldbuilding-reference-link"
-        onBlur={() => setVisible(false)}
+        onBlur={closeLater}
         onClick={() => onOpen?.(entry)}
-        onFocus={() => setVisible(true)}
+        onFocus={keepOpen}
         type="button"
       >
         {children}
       </button>
-      {visible && <span className="worldbuilding-reference-tooltip" role="tooltip"><WorldbuildingReferenceDetails compact entry={entry} types={types} /></span>}
+      {visible && (
+        <span className="worldbuilding-reference-tooltip reference-popover" onMouseEnter={keepOpen} onMouseLeave={closeLater} role="dialog" aria-label={`${entry.name} reference`}>
+          <WorldbuildingReferenceDetails compact entry={entry} types={types} />
+          <label className="reference-quick-note">Quick note<textarea onChange={(event) => setNote(event.target.value)} placeholder="Add a comment…" value={note} /></label>
+          <span className="reference-popover-actions"><button disabled={!note.trim()} onClick={addNote} type="button">Add note</button><button onClick={() => onOpenInWorldbuilding?.(entry)} type="button">Open</button><button className="reference-remove" onClick={() => onDelete?.(entry)} type="button">Delete reference</button></span>
+        </span>
+      )}
     </span>
   );
 }
 
-function MarkdownRenderer({ content, getId, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen }: MarkdownRendererProps) {
+function MarkdownRenderer({ content, getId, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen, onOpenInWorldbuilding, onDeleteWorldbuildingReference, onAddWorldbuildingNote }: MarkdownRendererProps) {
   const autoReferences = useMemo(
     () => remarkAutoReferences({ catalogue, encounters, worldbuilding }),
     [catalogue, encounters, worldbuilding]
@@ -172,7 +205,7 @@ function MarkdownRenderer({ content, getId, assets, catalogue, catalogueCategori
           if (worldbuildingReference) {
             const entry = worldbuilding?.get(worldbuildingReference.id);
             return entry
-              ? <WorldbuildingReferenceLink entry={entry} onOpen={onWorldbuildingOpen} types={worldbuildingTypes}>{children}</WorldbuildingReferenceLink>
+              ? <WorldbuildingReferenceLink entry={entry} onAddNote={onAddWorldbuildingNote} onDelete={onDeleteWorldbuildingReference} onOpen={onWorldbuildingOpen} onOpenInWorldbuilding={onOpenInWorldbuilding} types={worldbuildingTypes}>{children}</WorldbuildingReferenceLink>
               : <span className="missing-reference">{children}</span>;
           }
           const reference = catalogueReferenceFromUrl(href);
@@ -218,6 +251,9 @@ function renderBlock(
   worldbuilding: ReadonlyMap<string, WorldbuildingEntry> | undefined,
   worldbuildingTypes: readonly WorldbuildingType[] | undefined,
   onWorldbuildingOpen: ((entry: WorldbuildingEntry) => void) | undefined,
+  onOpenInWorldbuilding: ((entry: WorldbuildingEntry) => void) | undefined,
+  onDeleteWorldbuildingReference: ((entry: WorldbuildingEntry) => void) | undefined,
+  onAddWorldbuildingNote: ((entry: WorldbuildingEntry, note: string) => void) | undefined,
   key: string
 ) {
   const dependencies: RenderDependencies = {
@@ -229,7 +265,10 @@ function renderBlock(
     onEncounterOpen,
     worldbuilding,
     worldbuildingTypes,
-    onWorldbuildingOpen
+    onWorldbuildingOpen,
+    onOpenInWorldbuilding,
+    onDeleteWorldbuildingReference,
+    onAddWorldbuildingNote
   };
 
   if (block.type === 'markdown') return <MarkdownRenderer content={block.content} getId={getId} key={key} {...dependencies} />;
@@ -254,7 +293,7 @@ function renderBlock(
   return <CharacterBlock block={block} getId={getId} key={key} {...dependencies} />;
 }
 
-export const BrewPreview = memo(function BrewPreview({ brew, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen }: BrewPreviewProps) {
+export const BrewPreview = memo(function BrewPreview({ brew, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen, onOpenInWorldbuilding, onDeleteWorldbuildingReference, onAddWorldbuildingNote }: BrewPreviewProps) {
   const headingOccurrences = new Map<string, number>();
   const getId = (children: ReactNode) => {
     const text = String(children);
@@ -272,7 +311,7 @@ export const BrewPreview = memo(function BrewPreview({ brew, assets, catalogue, 
     >
       {pages.map((page, pageIndex) => (
         <article className="brew-preview brew-continuous" key={`page-${pageIndex}`}>
-          {page.map((block, blockIndex) => renderBlock(block, getId, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen, `page-${pageIndex}-block-${blockIndex}`))}
+          {page.map((block, blockIndex) => renderBlock(block, getId, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen, onOpenInWorldbuilding, onDeleteWorldbuildingReference, onAddWorldbuildingNote, `page-${pageIndex}-block-${blockIndex}`))}
           <span aria-hidden className="brew-page-number">{pageIndex + 1}</span>
         </article>
       ))}
@@ -286,4 +325,8 @@ export const BrewPreview = memo(function BrewPreview({ brew, assets, catalogue, 
   && previous.encounters === next.encounters
   && previous.worldbuilding === next.worldbuilding
   && previous.worldbuildingTypes === next.worldbuildingTypes
+  && previous.onWorldbuildingOpen === next.onWorldbuildingOpen
+  && previous.onOpenInWorldbuilding === next.onOpenInWorldbuilding
+  && previous.onDeleteWorldbuildingReference === next.onDeleteWorldbuildingReference
+  && previous.onAddWorldbuildingNote === next.onAddWorldbuildingNote
 );

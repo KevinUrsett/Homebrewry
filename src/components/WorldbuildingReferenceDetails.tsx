@@ -18,8 +18,18 @@ function excerpt(notes: string, compact: boolean): string {
 
 export function WorldbuildingReferenceDetails({ compact = false, entry, types = [] }: WorldbuildingReferenceDetailsProps) {
   const notes = excerpt(entry.notes, compact);
+  if (compact) {
+    return (
+      <span className="worldbuilding-reference-details is-compact">
+        <span className="eyebrow">{worldbuildingKindLabel(entry.kind, types)}</span>
+        <strong>{entry.name}</strong>
+        {entry.aliases.length > 0 && <span className="worldbuilding-reference-aliases">Also known as {entry.aliases.join(' · ')}</span>}
+        {notes ? <span className="worldbuilding-reference-notes">{notes}</span> : <span className="worldbuilding-reference-empty">No notes yet.</span>}
+      </span>
+    );
+  }
   return (
-    <article className={`worldbuilding-reference-details ${compact ? 'is-compact' : ''}`}>
+    <article className="worldbuilding-reference-details">
       <p className="eyebrow">{worldbuildingKindLabel(entry.kind, types)}</p>
       <strong>{entry.name}</strong>
       {entry.aliases.length > 0 && <span className="worldbuilding-reference-aliases">Also known as {entry.aliases.join(' · ')}</span>}

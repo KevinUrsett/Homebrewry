@@ -36,7 +36,7 @@ import { projectCurrentState } from './lib/worldState';
 import { keepBothCampaignDataVersions, keepDriveCampaignData, overwriteDriveCampaignData, syncCampaignData, type CampaignDataSyncResult } from './lib/campaignSync';
 import { keepBothVersions, resolveWithDriveVersion } from './lib/conflicts';
 import { isGoogleConfigured, requestDriveAccess } from './lib/googleIdentity';
-import { getOutline, insertAtOutlineSectionEnd } from './lib/outline';
+import { getOutline, getOutlineLocations, insertAtOutlineSectionEnd } from './lib/outline';
 import { importHomebrewerySource, titleFromImportedSource } from './lib/importer';
 import type { PrivateMonsterImportReport } from './lib/privateMonsterImport';
 import { clearPrivateMonsterEntries, listPrivateMonsterEntries, replacePrivateMonsterEntries } from './lib/privateMonsterStore';
@@ -1383,6 +1383,20 @@ export default function App() {
             if (source.kind !== 'worldbuilding') return;
             const entry = worldbuildingEntries.find((item) => item.id === source.id);
             if (entry) openWorldbuilding(entry);
+          }}
+          onOpenBrewSection={(brewId, sectionId) => {
+            const targetBrew = brews.find((item) => item.id === brewId);
+            const targetSection = targetBrew && sectionId ? getOutlineLocations(targetBrew.content).find((item) => item.id === sectionId) : undefined;
+            setActiveId(brewId);
+            setCampaignOpen(false);
+            setCatalogueOpen(false);
+            setEncountersOpen(false);
+            setWorldbuildingOpen(false);
+            setMobileSection('editor');
+            if (targetSection) {
+              selectionRef.current = { start: targetSection.from, end: targetSection.from };
+              window.requestAnimationFrame(() => editorRef.current?.focus(targetSection.from));
+            }
           }}
           partyLocation={partyLocation}
           position={campaignPosition}

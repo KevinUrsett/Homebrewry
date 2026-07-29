@@ -177,6 +177,8 @@ export type TimelineEntry = {
   entityIds: string[];
   /** Structured Belentor calendar date. `when` remains for legacy/imported free-text dates. */
   date?: BelentorDate;
+  /** Optional source Worldbuilding entry for a timeline beat authored from that entry. */
+  worldbuildingId?: string;
   encounterId?: string;
   brewId?: string;
   sectionId?: string;

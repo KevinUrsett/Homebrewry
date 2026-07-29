@@ -7,6 +7,7 @@ import type {
   Encounter,
   EncounterParticipant,
   PartyMember,
+  TimelineEntry,
   WorldbuildingEntry,
   WorldbuildingType,
   WorldEvent
@@ -261,6 +262,13 @@ function parseCustomCatalogueEntry(value: unknown, preserveStructuredData: boole
   }
 }
 
+function parseTimelineEntry(value: unknown, campaignId: string): TimelineEntry {
+  if (!isRecord(value) || value.campaignId !== campaignId || !Array.isArray(value.entityIds)) throw new Error('Campaign data has an invalid timeline entry.');
+  if (value.lane !== 'main' && value.lane !== 'quest' && value.lane !== 'backstory') throw new Error('Campaign data has an invalid timeline lane.');
+  if (value.status !== 'planned' && value.status !== 'current' && value.status !== 'past') throw new Error('Campaign data has an invalid timeline status.');
+  return { id: requiredString(value.id, 'timeline ID'), campaignId, lane: value.lane, status: value.status, title: requiredString(value.title, 'timeline title'), when: requiredString(value.when, 'timeline date'), order: nullableNumber(value.order, 'timeline order') ?? 0, notes: requiredString(value.notes, 'timeline notes'), entityIds: requiredStringArray(value.entityIds, 'timeline entity IDs'), ...(value.encounterId === undefined ? {} : { encounterId: requiredString(value.encounterId, 'timeline encounter ID') }), createdAt: requiredString(value.createdAt, 'timeline creation time'), updatedAt: requiredString(value.updatedAt, 'timeline update time') };
+}
+
 /** Validates untrusted Drive JSON before it can replace any local campaign records. */
 export function parseCampaignDataSnapshot(value: unknown): CampaignDataSnapshot {
   if (!isRecord(value)) {
@@ -302,7 +310,8 @@ export function parseCampaignDataSnapshot(value: unknown): CampaignDataSnapshot 
       : [],
     entities: schemaVersion >= 5 ? (value.entities as unknown[]).map((entity) => parseCampaignEntity(entity, campaignId)) : [],
     entityReferences: schemaVersion >= 5 ? (value.entityReferences as unknown[]).map((reference) => parseEntityReference(reference, campaignId)) : [],
-    worldEvents: schemaVersion >= 5 ? (value.worldEvents as unknown[]).map((event) => parseWorldEvent(event, campaignId)) : []
+    worldEvents: schemaVersion >= 5 ? (value.worldEvents as unknown[]).map((event) => parseWorldEvent(event, campaignId)) : [],
+    ...(Array.isArray(value.timelineEntries) ? { timelineEntries: value.timelineEntries.map((entry) => parseTimelineEntry(entry, campaignId)) } : {})
   };
 }
 
@@ -315,13 +324,13 @@ export function createCampaignDataSnapshot(
   customCatalogueCategories: CustomCatalogueCategory[] = [],
   worldbuildingTypes: WorldbuildingType[] = [],
   brews: Brew[] = [],
-  livingWorld: Pick<CampaignDataSnapshot, 'campaignId' | 'entities' | 'entityReferences' | 'worldEvents'> = {
+  livingWorld: Pick<CampaignDataSnapshot, 'campaignId' | 'entities' | 'entityReferences' | 'worldEvents' | 'timelineEntries'> = {
     // The current app has one campaign companion file per Drive account.
     // A later multi-campaign migration can replace this file-scoped identity.
     campaignId: 'default-campaign',
     entities: [],
     entityReferences: [],
-    worldEvents: []
+    worldEvents: [], timelineEntries: []
   }
 ): CampaignDataSnapshot {
   const entities = synchroniseWorldbuildingEntities(livingWorld.campaignId, worldbuildingEntries, livingWorld.entities);
@@ -337,7 +346,8 @@ export function createCampaignDataSnapshot(
     worldbuildingTypes: [...worldbuildingTypes],
     entities,
     entityReferences: synchroniseEntityReferences(livingWorld.campaignId, entities, brews, encounters),
-    worldEvents: [...livingWorld.worldEvents]
+    worldEvents: [...livingWorld.worldEvents],
+    ...(livingWorld.timelineEntries?.length ? { timelineEntries: [...livingWorld.timelineEntries] } : {})
   };
 }
 
@@ -350,7 +360,8 @@ export function hasCampaignData(snapshot: CampaignDataSnapshot): boolean {
     || snapshot.worldbuildingTypes.length > 0
     || snapshot.entities.length > 0
     || snapshot.entityReferences.length > 0
-    || snapshot.worldEvents.length > 0;
+    || snapshot.worldEvents.length > 0
+    || Boolean(snapshot.timelineEntries?.length);
 }
 
 export function campaignDataChangedLocally(metadata: CampaignDataSyncMetadata): boolean {
@@ -406,6 +417,7 @@ export function keepBothCampaignData(
     worldbuildingTypes: preserveBothRecords(local.worldbuildingTypes, remote.worldbuildingTypes, timestamp, createId),
     entities: preserveBothRecords(local.entities, remote.entities, timestamp, createId),
     entityReferences: [...remote.entityReferences, ...local.entityReferences.filter((record) => !remote.entityReferences.some((remoteRecord) => remoteRecord.id === record.id))],
-    worldEvents: [...remote.worldEvents, ...local.worldEvents.filter((event) => !remote.worldEvents.some((remoteEvent) => remoteEvent.id === event.id))]
+    worldEvents: [...remote.worldEvents, ...local.worldEvents.filter((event) => !remote.worldEvents.some((remoteEvent) => remoteEvent.id === event.id))],
+    ...(remote.timelineEntries || local.timelineEntries ? { timelineEntries: [...(remote.timelineEntries ?? []), ...(local.timelineEntries ?? []).filter((entry) => !(remote.timelineEntries ?? []).some((remoteEntry) => remoteEntry.id === entry.id))] } : {})
   };
 }

@@ -18,7 +18,9 @@
       for (const mutation of mutations) {
         if (mutation.type === 'attributes' && mutation.target instanceof HTMLElement) {
           if (mutation.target.matches('.combatant-drag-handle')) {
-            mutation.target.draggable = false;
+            // Only alter React's draggable=true update. Reassigning false on
+            // our own attribute notification can create an observer loop on iOS.
+            if (mutation.target.draggable) mutation.target.draggable = false;
           }
           continue;
         }

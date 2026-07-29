@@ -153,6 +153,27 @@ export type WorldEvent = {
   recordedAt: string;
 };
 
+export type TimelineLane = 'main' | 'quest' | 'backstory';
+export type TimelineStatus = 'planned' | 'current' | 'past';
+
+/** A DM-authored timeline beat. Unlike World Events, it is planning/context, not an asserted state change. */
+export type TimelineEntry = {
+  id: string;
+  campaignId: string;
+  lane: TimelineLane;
+  status: TimelineStatus;
+  title: string;
+  when: string;
+  order: number;
+  notes: string;
+  entityIds: string[];
+  encounterId?: string;
+  brewId?: string;
+  sectionId?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type CurrentStateField = {
   value: WorldStateValue;
   eventId: string;
@@ -172,6 +193,7 @@ export type LivingWorldData = {
   entities: CampaignEntity[];
   entityReferences: EntityReference[];
   worldEvents: WorldEvent[];
+  timelineEntries?: TimelineEntry[];
 };
 
 export const worldbuildingKinds = [
@@ -229,6 +251,8 @@ export type CampaignDataSnapshot = {
   entities: CampaignEntity[];
   entityReferences: EntityReference[];
   worldEvents: WorldEvent[];
+  /** Optional to retain compatibility with existing schema-5 Drive files. */
+  timelineEntries?: TimelineEntry[];
 };
 
 export type CampaignDataConflict = {

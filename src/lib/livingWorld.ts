@@ -1,4 +1,4 @@
-import type { Brew, CampaignEntity, CampaignEntityKind, Encounter, EntityReference, LivingWorldData, WorldbuildingEntry, WorldEvent, WorldStateValue } from '../types';
+import type { Brew, CampaignEntity, CampaignEntityKind, Encounter, EntityReference, LivingWorldData, TimelineEntry, TimelineLane, TimelineStatus, WorldbuildingEntry, WorldEvent, WorldStateValue } from '../types';
 import { projectCurrentState } from './worldState';
 import { worldbuildingReferenceMatches } from './worldbuildingReferences';
 
@@ -48,6 +48,26 @@ export function entityKindForWorldbuilding(kind: string): CampaignEntityKind {
 }
 
 export const partyEntityId = 'party:default';
+
+export function createTimelineEntry(
+  data: LivingWorldData,
+  input: Pick<TimelineEntry, 'lane' | 'status' | 'title' | 'when' | 'notes' | 'entityIds' | 'encounterId' | 'brewId' | 'sectionId'>,
+  timestamp = new Date().toISOString(),
+  createId: () => string = () => crypto.randomUUID()
+): TimelineEntry {
+  const order = Math.max(-1, ...(data.timelineEntries ?? []).map((entry) => entry.order)) + 1;
+  return { id: createId(), campaignId: data.campaignId, order, createdAt: timestamp, updatedAt: timestamp, ...input, title: input.title.trim() || 'Untitled timeline event', when: input.when.trim(), notes: input.notes.trim(), entityIds: [...new Set(input.entityIds)] };
+}
+
+export function saveTimelineEntry(data: LivingWorldData, entry: TimelineEntry): LivingWorldData {
+  if (entry.campaignId !== data.campaignId) throw new Error('Timeline entry belongs to another campaign.');
+  const updated = { ...entry, updatedAt: new Date().toISOString() };
+  return { ...data, timelineEntries: [updated, ...(data.timelineEntries ?? []).filter((item) => item.id !== entry.id)] };
+}
+
+export function deleteTimelineEntry(data: LivingWorldData, entryId: string): LivingWorldData {
+  return { ...data, timelineEntries: (data.timelineEntries ?? []).filter((entry) => entry.id !== entryId) };
+}
 
 /** The party is a campaign-level subject, kept as an event stream rather than authored prose. */
 export function recordPartyLocation(

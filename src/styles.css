@@ -75,7 +75,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .library-actions .danger-button { border-color: #a85a4d; color: #8a2f27; }
 
 .main-panes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: 0; min-width: 0; }
-.editor-pane { background: #f7edd7 url('/parchment-texture.webp') center / 768px auto repeat; border-right: 1px solid #d4c7b1; display: flex; flex-direction: column; min-height: 0; }
+.editor-pane { background: #f7edd7; border-right: 1px solid #d4c7b1; display: flex; flex-direction: column; min-height: 0; }
 .editor-toolbar { align-items: center; background: #f5ecdc; border-bottom: 1px solid #d8c9ae; display: flex; flex-wrap: wrap; gap: 4px; min-height: 43px; padding: 5px 8px; }
 .editor-toolbar button { background: #fffaf0; border: 1px solid #d1c0a5; border-radius: 5px; color: #4d392d; font-size: .76rem; min-height: 27px; padding: 4px 7px; }
 .editor-toolbar button:hover { background: #eadbbf; }
@@ -96,7 +96,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .markdown-editor .cm-editor, .markdown-editor .cm-scroller { background: transparent; }
 .markdown-editor .cm-editor { height: 100%; }
 .markdown-editor .cm-scroller { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: .85rem; line-height: 1.65; overflow: auto; }
-.markdown-editor .cm-content { min-height: 100%; padding: 20px; }
+/* Keep the paper on CodeMirror's moving content rather than behind its scroll area. */
+.markdown-editor .cm-content { background: #f7edd7 url('/parchment-texture.webp') center top / 768px auto repeat; min-height: 100%; padding: 20px; }
 .markdown-editor .cm-focused { outline: none; }
 .markdown-editor .cm-reference-chip { background: #f1dfb3; border: 1px solid #c8a563; border-radius: 999px; color: #5d3528; cursor: text; font-family: Inter, sans-serif; font-size: .82em; font-weight: 800; letter-spacing: .01em; padding: 1px 6px; }
 

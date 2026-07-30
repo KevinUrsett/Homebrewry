@@ -1578,6 +1578,7 @@ export default function App() {
           onDeleteTimelineEntry={removeTimeline}
           onSaveCampaignMap={saveCampaignMap}
           worldEvents={livingWorld.worldEvents}
+          worldbuildingEntries={worldbuildingEntries}
         />
       ) : catalogueOpen ? (
         <CataloguePanel

@@ -5,6 +5,7 @@ import { BrewPreview } from './components/BrewPreview';
 import { EncounterPanel } from './components/EncounterPanel';
 import { EditorPane } from './components/EditorPane';
 import { ImportDialog } from './components/ImportDialog';
+import { IdeasPanel } from './components/IdeasPanel';
 import { LibraryPanel } from './components/LibraryPanel';
 import { OutlinePanel } from './components/OutlinePanel';
 import { PrivateMonsterImportDialog } from './components/PrivateMonsterImportDialog';
@@ -67,7 +68,7 @@ import { createCustomCatalogueCategory, createCustomCatalogueEntry, normaliseCus
 import { findCatalogueEntryByName, formatCatalogueReference } from './catalogue/references';
 import { formatWorldbuildingReference } from './lib/worldbuildingReferences';
 import { catalogueCategoryLabel, catalogueCategoryLabels, type CatalogueCategory, type CatalogueEntry, type CustomCatalogueCategory, type CustomCatalogueEntry } from './catalogue/types';
-import type { Brew, BrewAsset, CampaignDataSyncMetadata, Encounter, LivingWorldData, MobileSection, PartyMember, PrivateMonsterSyncMetadata, TimelineEntry, ViewMode, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from './types';
+import type { Brew, BrewAsset, CampaignDataSyncMetadata, Encounter, IdeaDraft, LivingWorldData, MobileSection, PartyMember, PrivateMonsterSyncMetadata, TimelineEntry, ViewMode, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from './types';
 
 const mobileLabels: Record<MobileSection, string> = {
   library: 'Brews',
@@ -110,10 +111,12 @@ export default function App() {
   const [partyMembers, setPartyMembers] = useState<PartyMember[]>([]);
   const [encountersOpen, setEncountersOpen] = useState(false);
   const [encounterSelectedId, setEncounterSelectedId] = useState<string | null>(null);
-  const [pendingEncounterInsertion, setPendingEncounterInsertion] = useState<Encounter | null>(null);
+  const [pendingInsertion, setPendingInsertion] = useState<{ label: string; content: string; ideaId?: string } | null>(null);
   const [worldbuildingEntries, setWorldbuildingEntries] = useState<WorldbuildingEntry[]>([]);
   const [worldbuildingTypes, setWorldbuildingTypes] = useState<WorldbuildingType[]>([]);
   const [worldbuildingOpen, setWorldbuildingOpen] = useState(false);
+  const [ideasOpen, setIdeasOpen] = useState(false);
+  const [captureMenuOpen, setCaptureMenuOpen] = useState(false);
   const [worldbuildingSelectedId, setWorldbuildingSelectedId] = useState<string | null>(null);
   const [campaignDataSync, setCampaignDataSync] = useState<CampaignDataSyncMetadata | null>(null);
   const [livingWorld, setLivingWorld] = useState<LivingWorldData>(() => ({
@@ -122,7 +125,8 @@ export default function App() {
     entities: [],
     entityReferences: [],
     worldEvents: [],
-    timelineEntries: []
+    timelineEntries: [],
+    ideaDrafts: []
   }));
   const [privateMonsterSync, setPrivateMonsterSync] = useState<PrivateMonsterSyncMetadata | null>(null);
   const [referenceEntry, setReferenceEntry] = useState<CatalogueEntry | null>(null);
@@ -407,7 +411,8 @@ export default function App() {
     setCampaignOpen(false);
     setEncountersOpen(false);
     setWorldbuildingOpen(false);
-    setPendingEncounterInsertion(null);
+    setIdeasOpen(false);
+    setPendingInsertion(null);
     setMobileSection('catalogue');
   };
 
@@ -443,7 +448,8 @@ export default function App() {
     setCampaignOpen(false);
     setEncountersOpen(true);
     setWorldbuildingOpen(false);
-    setPendingEncounterInsertion(null);
+    setIdeasOpen(false);
+    setPendingInsertion(null);
     setMobileSection('encounters');
   };
 
@@ -453,7 +459,8 @@ export default function App() {
     setCampaignOpen(false);
     setEncountersOpen(false);
     setWorldbuildingOpen(true);
-    setPendingEncounterInsertion(null);
+    setIdeasOpen(false);
+    setPendingInsertion(null);
     setMobileSection('worldbuilding');
   };
 
@@ -467,8 +474,9 @@ export default function App() {
     setCatalogueOpen(false);
     setEncountersOpen(false);
     setWorldbuildingOpen(false);
+    setIdeasOpen(false);
     setCampaignOpen(true);
-    setPendingEncounterInsertion(null);
+    setPendingInsertion(null);
     setMobileSection('campaign');
   };
 
@@ -486,17 +494,22 @@ export default function App() {
   };
 
   const beginEncounterInsertion = (encounter: Encounter) => {
-    setPendingEncounterInsertion(encounter);
+    setPendingInsertion({
+      label: encounter.name || 'Untitled encounter',
+      content: formatEncounterReference(encounter)
+    });
     setEncountersOpen(false);
     setWorldbuildingOpen(false);
+    setIdeasOpen(false);
     setMobileSection('outline');
     setSaveState('Choose an outline section for this encounter');
   };
 
-  const insertEncounterAtSection = (item: { id: string } | null) => {
-    if (!activeBrew || !pendingEncounterInsertion) return;
-    updateContent(insertAtOutlineSectionEnd(activeBrew.content, item?.id ?? null, formatEncounterReference(pendingEncounterInsertion)));
-    setPendingEncounterInsertion(null);
+  const insertPendingAtSection = (item: { id: string } | null) => {
+    if (!activeBrew || !pendingInsertion) return;
+    updateContent(insertAtOutlineSectionEnd(activeBrew.content, item?.id ?? null, pendingInsertion.content));
+    if (pendingInsertion.ideaId) removeIdeaDraft(pendingInsertion.ideaId, false);
+    setPendingInsertion(null);
     setMobileSection('editor');
   };
 
@@ -776,7 +789,7 @@ export default function App() {
     const brew = createBrew();
     setBrews((currentBrews) => [brew, ...currentBrews]);
     setActiveId(brew.id);
-    setPendingEncounterInsertion(null);
+    setPendingInsertion(null);
     historyRef.current = [];
     redoRef.current = [];
     setMobileSection('editor');
@@ -865,7 +878,8 @@ export default function App() {
         entities: result.data.entities,
         entityReferences: result.data.entityReferences,
         worldEvents: result.data.worldEvents,
-        timelineEntries: result.data.timelineEntries ?? []
+        timelineEntries: result.data.timelineEntries ?? [],
+        ideaDrafts: result.data.ideaDrafts ?? []
       });
       setEncounterSelectedId((current) => result.data.encounters.some((encounter) => encounter.id === current) ? current : result.data.encounters[0]?.id ?? null);
       setWorldbuildingSelectedId((current) => result.data.worldbuildingEntries.some((entry) => entry.id === current) ? current : result.data.worldbuildingEntries[0]?.id ?? null);
@@ -883,7 +897,8 @@ export default function App() {
         entities: result.data.entities,
         entityReferences: result.data.entityReferences,
         worldEvents: result.data.worldEvents,
-        timelineEntries: result.data.timelineEntries ?? []
+        timelineEntries: result.data.timelineEntries ?? [],
+        ideaDrafts: result.data.ideaDrafts ?? []
       }
     };
     campaignMetadataRef.current = result.metadata;
@@ -1135,6 +1150,69 @@ export default function App() {
     scheduleCampaignSync();
   };
 
+  const persistIdeaDrafts = (ideas: IdeaDraft[], message: string | null) => {
+    const nextLivingWorld = { ...livingWorld, ideaDrafts: ideas };
+    campaignRecordsRef.current = { ...campaignRecordsRef.current, livingWorld: nextLivingWorld };
+    setLivingWorld(nextLivingWorld);
+    void saveLivingWorldData(nextLivingWorld)
+      .then((metadata) => {
+        if (message) noteCampaignDataSaved(metadata, message);
+      })
+      .catch(() => setSaveState('Idea save failed'));
+  };
+
+  const createIdeaDraft = (brewId: string) => {
+    if (!brewId) return;
+    const timestamp = new Date().toISOString();
+    const idea: IdeaDraft = { id: crypto.randomUUID(), brewId, text: '', createdAt: timestamp, updatedAt: timestamp };
+    persistIdeaDrafts([idea, ...(livingWorld.ideaDrafts ?? [])], 'Idea saved locally');
+  };
+
+  const saveIdeaDraft = (idea: IdeaDraft) => {
+    const next = [idea, ...(livingWorld.ideaDrafts ?? []).filter((item) => item.id !== idea.id)];
+    persistIdeaDrafts(next, 'Idea saved locally');
+  };
+
+  const removeIdeaDraft = (ideaId: string, announce = true) => {
+    persistIdeaDrafts((livingWorld.ideaDrafts ?? []).filter((idea) => idea.id !== ideaId), announce ? 'Idea removed locally' : null);
+  };
+
+  const openIdeas = () => {
+    setCatalogueOpen(false);
+    setCampaignOpen(false);
+    setEncountersOpen(false);
+    setWorldbuildingOpen(false);
+    setIdeasOpen(true);
+    setCaptureMenuOpen(false);
+    setPendingInsertion(null);
+    setMobileSection('editor');
+  };
+
+  const createIdeaContent = (idea: IdeaDraft) => {
+    const target = brews.find((brew) => brew.id === idea.brewId);
+    const content = idea.text.trim();
+    if (!target || !content) return;
+    setActiveId(target.id);
+    setIdeasOpen(false);
+    setPendingInsertion({ label: 'Idea text', content, ideaId: idea.id });
+    setMobileSection('outline');
+    setSaveState('Choose an outline section for this idea');
+  };
+
+  const createIdeaEncounter = (idea: IdeaDraft) => {
+    const target = brews.find((brew) => brew.id === idea.brewId);
+    const title = idea.text.trim().split(/\r?\n/)[0]?.slice(0, 80) || 'New encounter';
+    if (!target || !idea.text.trim()) return;
+    const encounter = createCombatEncounter(title, partyMembers);
+    persistEncounter(encounter);
+    setEncounterSelectedId(encounter.id);
+    setActiveId(target.id);
+    setIdeasOpen(false);
+    setPendingInsertion({ label: encounter.name, content: formatEncounterReference(encounter), ideaId: idea.id });
+    setMobileSection('outline');
+    setSaveState('Choose where to place this encounter');
+  };
+
   const saveCustomMonster = async (draft: CustomCatalogueEntry) => {
     const existing = customCatalogueEntries.find((entry) => entry.id === draft.id);
     const timestamp = new Date().toISOString();
@@ -1365,7 +1443,8 @@ export default function App() {
                 setCampaignOpen(false);
                 setEncountersOpen(false);
                 setWorldbuildingOpen(false);
-                setPendingEncounterInsertion(null);
+                setIdeasOpen(false);
+                setPendingInsertion(null);
               }}
               type="button"
             >
@@ -1376,6 +1455,7 @@ export default function App() {
           <button className={campaignOpen ? 'is-selected' : ''} onClick={() => campaignOpen ? setCampaignOpen(false) : openCampaign()} type="button">Campaign</button>
           <button className={encountersOpen ? 'is-selected' : ''} onClick={() => encountersOpen ? setEncountersOpen(false) : openEncounters()} type="button">Encounters</button>
           <button className={worldbuildingOpen ? 'is-selected' : ''} onClick={() => worldbuildingOpen ? setWorldbuildingOpen(false) : openWorldbuilding()} type="button">Worldbuilding</button>
+          <button className={ideasOpen ? 'is-selected' : ''} onClick={() => ideasOpen ? setIdeasOpen(false) : openIdeas()} type="button">My ideas</button>
           <button onClick={() => window.print()} type="button">Print</button>
         </div>
         <div className="cloud-controls">
@@ -1419,7 +1499,8 @@ export default function App() {
               setCampaignOpen(false);
               setEncountersOpen(false);
               setWorldbuildingOpen(false);
-              if (section !== 'outline') setPendingEncounterInsertion(null);
+              setIdeasOpen(false);
+              if (section !== 'outline') setPendingInsertion(null);
             }}
             type="button"
           >
@@ -1428,7 +1509,22 @@ export default function App() {
         ))}
       </nav>
 
-      {campaignOpen ? (
+      {ideasOpen ? (
+        <IdeasPanel
+          brews={brews}
+          ideas={livingWorld.ideaDrafts ?? []}
+          initialBrewId={activeBrew.id}
+          onClose={() => {
+            setIdeasOpen(false);
+            setMobileSection('editor');
+          }}
+          onCreate={createIdeaDraft}
+          onCreateContent={createIdeaContent}
+          onCreateEncounter={createIdeaEncounter}
+          onDelete={(idea) => removeIdeaDraft(idea.id)}
+          onSave={saveIdeaDraft}
+        />
+      ) : campaignOpen ? (
         <CampaignPanel
           brews={brews}
           currentStateByEntityId={currentStateByEntityId}
@@ -1453,6 +1549,7 @@ export default function App() {
             setCatalogueOpen(false);
             setEncountersOpen(false);
             setWorldbuildingOpen(false);
+            setIdeasOpen(false);
             setMobileSection('editor');
             if (targetSection) {
               selectionRef.current = { start: targetSection.from, end: targetSection.from };
@@ -1561,7 +1658,7 @@ export default function App() {
             onQueryChange={setQuery}
             onSelect={(id) => {
               setActiveId(id);
-              setPendingEncounterInsertion(null);
+              setPendingInsertion(null);
               setMobileSection('editor');
             }}
             query={query}
@@ -1630,12 +1727,12 @@ export default function App() {
           </div>
 
           <OutlinePanel
-            insertionLabel={pendingEncounterInsertion?.name ?? null}
+            insertionLabel={pendingInsertion?.label ?? null}
             onCancelInsertion={() => {
-              setPendingEncounterInsertion(null);
-              setSaveState('Encounter placement cancelled');
+              setPendingInsertion(null);
+              setSaveState('Placement cancelled');
             }}
-            onInsertAtSection={insertEncounterAtSection}
+            onInsertAtSection={insertPendingAtSection}
             onNavigate={(item) => {
               if (!window.matchMedia('(max-width: 820px)').matches) {
                 document.getElementById(item.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1650,8 +1747,14 @@ export default function App() {
           />
         </div>
       )}
-      {!campaignOpen && !catalogueOpen && !encountersOpen && !worldbuildingOpen && mobileSection === 'editor' && (
-        <button aria-label="Open outline navigation" className="mobile-outline-fab" onClick={() => setMobileSection('outline')} type="button">Outline</button>
+      {!ideasOpen && !campaignOpen && !catalogueOpen && !encountersOpen && !worldbuildingOpen && mobileSection === 'editor' && (
+        <div className="mobile-capture-menu">
+          {captureMenuOpen && <>
+            <button className="mobile-capture-option" onClick={() => { setCaptureMenuOpen(false); setMobileSection('outline'); }} type="button">Outline</button>
+            <button className="mobile-capture-option" onClick={openIdeas} type="button">My ideas</button>
+          </>}
+          <button aria-expanded={captureMenuOpen} aria-label="Open writing tools" className="mobile-outline-fab" onClick={() => setCaptureMenuOpen((open) => !open)} type="button">+</button>
+        </div>
       )}
       {activeBrew.syncState === 'conflict' && activeBrew.conflict && (
         <div className="conflict-backdrop" role="dialog" aria-modal="true" aria-labelledby="conflict-title">

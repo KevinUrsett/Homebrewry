@@ -296,6 +296,7 @@ function parseCampaignMap(value: unknown): CampaignMap {
       label: requiredString(node.label, 'campaign map node label'),
       kind: node.kind as CampaignMap['nodes'][number]['kind'],
       ...(node.entityId === undefined ? {} : { entityId: requiredString(node.entityId, 'campaign map entity ID') }),
+      ...(node.brewId === undefined ? {} : { brewId: requiredString(node.brewId, 'campaign map brew ID') }),
       x,
       y,
       createdAt: requiredString(node.createdAt, 'campaign map node creation time'),

@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 21604)
+Total output lines: 1887
+
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { CataloguePanel } from './components/CataloguePanel';
 import { CampaignPanel, type TimelineDraftSeed } from './components/CampaignPanel';
@@ -879,143 +882,7 @@ export default function App() {
     const detail = result.notices.join(' ') || 'Known Homebrewery formatting will be converted.';
     if (!window.confirm(`${detail}\n\nApply this reversible conversion to the current brew?`)) return;
     updateContent(result.content);
-    setSaveState(`Converted current brew. ${detail}`);
-  };
-
-  const applyCampaignDataResult = async (
-    result: CampaignDataSyncResult,
-    sourceData: CampaignDataSyncResult['data']
-  ) => {
-    if (result.data === sourceData) {
-      await saveCampaignDataSyncMetadata(result.metadata);
-    } else {
-      await replaceCampaignData(result.data, result.metadata);
-      setEncounters(result.data.encounters);
-      setPartyMembers(result.data.partyMembers);
-      setWorldbuildingEntries(result.data.worldbuildingEntries);
-      setCustomCatalogueEntries(result.data.customCatalogueEntries);
-      setCustomCatalogueCategories(result.data.customCatalogueCategories);
-      setWorldbuildingTypes(result.data.worldbuildingTypes);
-      setLivingWorld({
-        id: 'living-world',
-        campaignId: result.data.campaignId,
-        entities: result.data.entities,
-        entityReferences: result.data.entityReferences,
-        worldEvents: result.data.worldEvents,
-        timelineEntries: result.data.timelineEntries ?? [],
-        ideaDrafts: result.data.ideaDrafts ?? [],
-        ...(result.data.campaignMap ? { campaignMap: result.data.campaignMap } : {}),
-        ...(result.data.currentBrewId ? { currentBrewId: result.data.currentBrewId } : {})
-      });
-      setEncounterSelectedId((current) => result.data.encounters.some((encounter) => encounter.id === current) ? current : result.data.encounters[0]?.id ?? null);
-      setWorldbuildingSelectedId((current) => result.data.worldbuildingEntries.some((entry) => entry.id === current) ? current : result.data.worldbuildingEntries[0]?.id ?? null);
-    }
-    campaignRecordsRef.current = {
-      encounters: result.data.encounters,
-      partyMembers: result.data.partyMembers,
-      worldbuildingEntries: result.data.worldbuildingEntries,
-      customCatalogueEntries: result.data.customCatalogueEntries,
-      customCatalogueCategories: result.data.customCatalogueCategories,
-      worldbuildingTypes: result.data.worldbuildingTypes,
-      livingWorld: {
-        id: 'living-world',
-        campaignId: result.data.campaignId,
-        entities: result.data.entities,
-        entityReferences: result.data.entityReferences,
-        worldEvents: result.data.worldEvents,
-        timelineEntries: result.data.timelineEntries ?? [],
-        ideaDrafts: result.data.ideaDrafts ?? [],
-        ...(result.data.campaignMap ? { campaignMap: result.data.campaignMap } : {}),
-        ...(result.data.currentBrewId ? { currentBrewId: result.data.currentBrewId } : {})
-      }
-    };
-    campaignMetadataRef.current = result.metadata;
-    setCampaignDataSync(result.metadata);
-  };
-
-  const applyPrivateMonsterSyncResult = async (
-    result: PrivateMonsterSyncResult,
-    sourceEntries: CatalogueEntry[]
-  ) => {
-    if (result.entries === sourceEntries) {
-      await savePrivateMonsterSyncMetadata(result.metadata);
-    } else {
-      await replacePrivateMonsterData(result.entries, result.metadata);
-      setPrivateMonsterEntries(result.entries);
-      setCatalogueSelection((current) => {
-        if (!current?.source.toLowerCase().includes('private import')) return current;
-        return result.entries.some((entry) => entry.id === current.id) ? current : result.entries[0] ?? null;
-      });
-      setReferenceEntry((current) => {
-        if (!current?.source.toLowerCase().includes('private import')) return current;
-        return result.entries.some((entry) => entry.id === current.id) ? current : null;
-      });
-    }
-    privateMonsterEntriesRef.current = result.entries;
-    privateMonsterMetadataRef.current = result.metadata;
-    setPrivateMonsterSync(result.metadata);
-  };
-
-  const syncPrivateMonsterCatalogueOnly = async (token: string, announce = false): Promise<PrivateMonsterSyncResult | null> => {
-    if (privateMonsterSyncInFlightRef.current) {
-      privateMonsterSyncQueuedRef.current = true;
-      return null;
-    }
-
-    privateMonsterSyncInFlightRef.current = true;
-    const mutationAtStart = privateMonsterMutationRef.current;
-
-    try {
-      if (announce) setSaveState('Syncing private monster catalogue with Google Drive…');
-      const sourceEntries = privateMonsterEntriesRef.current;
-      const metadata = privateMonsterMetadataRef.current ?? await getPrivateMonsterSyncMetadata();
-      privateMonsterMetadataRef.current = metadata;
-      const result = await syncPrivateMonsterCatalogue(token, sourceEntries, metadata);
-      const changedDuringSync = privateMonsterMutationRef.current !== mutationAtStart;
-
-      if (result.state === 'conflict' || !changedDuringSync) {
-        await applyPrivateMonsterSyncResult(result, sourceEntries);
-      } else if (result.entries === sourceEntries && result.metadata.drive) {
-        const latestMetadata = privateMonsterMetadataRef.current ?? metadata;
-        const pendingMetadata: PrivateMonsterSyncMetadata = {
-          ...latestMetadata,
-          drive: result.metadata.drive,
-          syncState: 'pending',
-          conflict: undefined
-        };
-        await savePrivateMonsterSyncMetadata(pendingMetadata);
-        privateMonsterMetadataRef.current = pendingMetadata;
-        setPrivateMonsterSync(pendingMetadata);
-        privateMonsterSyncQueuedRef.current = true;
-      } else {
-        const latestMetadata = privateMonsterMetadataRef.current ?? metadata;
-        const remoteDrive = result.metadata.drive;
-        const conflictMetadata: PrivateMonsterSyncMetadata = {
-          ...latestMetadata,
-          ...(remoteDrive ? { drive: remoteDrive } : {}),
-          syncState: 'conflict',
-          conflict: {
-            remoteEntries: result.entries,
-            remoteRevisionId: remoteDrive?.revisionId ?? ''
-          }
-        };
-        await savePrivateMonsterSyncMetadata(conflictMetadata);
-        privateMonsterMetadataRef.current = conflictMetadata;
-        setPrivateMonsterSync(conflictMetadata);
-      }
-
-      if (announce) setSaveState(result.detail);
-      return result;
-    } catch (error) {
-      const metadata = privateMonsterMetadataRef.current ?? await getPrivateMonsterSyncMetadata();
-      if (!metadata.conflict) {
-        const errorMetadata: PrivateMonsterSyncMetadata = { ...metadata, syncState: 'error' };
-        try {
-          await savePrivateMonsterSyncMetadata(errorMetadata);
-        } catch {
-          // Preserve the original Drive error when local metadata persistence is unavailable.
-        }
-        privateMonsterMetadataRef.current = errorMetadata;
+    setSaveState(`Converted c…1604 tokens truncated…tadata;
         setPrivateMonsterSync(errorMetadata);
       }
       throw error;
@@ -1576,8 +1443,12 @@ export default function App() {
           }}
           onOpenBrewSection={(brewId, sectionId) => {
             const targetBrew = brews.find((item) => item.id === brewId);
+            // Timeline entries can outlive an imported, deleted, or device-duplicate brew.
+            // Never replace the active brew with an unavailable ID; that would strand the app
+            // on its loading screen because there is no active document to render.
+            if (!targetBrew) return;
             const targetSection = targetBrew && sectionId ? getOutlineLocations(targetBrew.content).find((item) => item.id === sectionId) : undefined;
-            setActiveId(brewId);
+            setActiveId(targetBrew.id);
             setCampaignOpen(false);
             setCatalogueOpen(false);
             setEncountersOpen(false);

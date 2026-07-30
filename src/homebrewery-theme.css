@@ -19,7 +19,7 @@
 
 .brew-preview.brew-continuous {
   background:
-    linear-gradient(rgb(255 253 245 / 76%), rgb(247 240 223 / 76%)),
+    linear-gradient(rgb(255 253 245 / 30%), rgb(247 240 223 / 36%)),
     radial-gradient(circle at 15% 10%, rgb(122 47 39 / 5%), transparent 34%),
     url('/parchment-texture.webp') center / 768px auto repeat,
     #f7f0df;
@@ -39,7 +39,7 @@
 
 .brew-book.tone-light .brew-preview.brew-continuous {
   background:
-    linear-gradient(rgb(255 255 250 / 80%), rgb(255 253 245 / 80%)),
+    linear-gradient(rgb(255 255 250 / 35%), rgb(255 253 245 / 40%)),
     radial-gradient(circle at 15% 10%, rgb(122 47 39 / 4%), transparent 34%),
     url('/parchment-texture.webp') center / 768px auto repeat,
     #fffdf5;

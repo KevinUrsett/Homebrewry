@@ -88,14 +88,15 @@ export function createLivingWorldData(): LivingWorldData {
     entities: [],
     entityReferences: [],
     worldEvents: [],
-    timelineEntries: []
+    timelineEntries: [],
+    ideaDrafts: []
   };
 }
 
 export async function getLivingWorldData(): Promise<LivingWorldData> {
   const database = await getDatabase();
   const stored = await database.get(LIVING_WORLD_STORE_NAME, 'living-world') as LivingWorldData | undefined;
-  return stored ? { ...stored, timelineEntries: stored.timelineEntries ?? [] } : createLivingWorldData();
+  return stored ? { ...stored, timelineEntries: stored.timelineEntries ?? [], ideaDrafts: stored.ideaDrafts ?? [] } : createLivingWorldData();
 }
 
 export async function saveLivingWorldData(data: LivingWorldData): Promise<CampaignDataSyncMetadata> {
@@ -264,7 +265,8 @@ export async function replaceCampaignData(
       entities: snapshot.entities,
       entityReferences: snapshot.entityReferences,
       worldEvents: snapshot.worldEvents,
-      timelineEntries: snapshot.timelineEntries ?? []
+      timelineEntries: snapshot.timelineEntries ?? [],
+      ideaDrafts: snapshot.ideaDrafts ?? []
     } satisfies LivingWorldData),
     metadataStore.put(metadata)
   ]);

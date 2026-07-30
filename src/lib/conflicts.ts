@@ -1,3 +1,4 @@
+import { creationDeviceLabel } from './brewStore';
 import type { Brew } from '../types';
 
 const now = () => new Date().toISOString();
@@ -27,6 +28,7 @@ export function keepBothVersions(brew: Brew): Brew[] {
     id: crypto.randomUUID(),
     title: `${brew.title || 'Untitled Brew'} (local copy)`,
     createdAt: now(),
+    createdOn: creationDeviceLabel(),
     updatedAt: now(),
     version: 1,
     drive: undefined,

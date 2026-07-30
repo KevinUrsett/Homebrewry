@@ -3,6 +3,7 @@ import type {
   CampaignDataSnapshot,
   CampaignDataSyncMetadata,
   CampaignEntity,
+  CampaignMap,
   EntityReference,
   Encounter,
   IdeaDraft,
@@ -283,6 +284,31 @@ function parseIdeaDraft(value: unknown): IdeaDraft {
   };
 }
 
+function parseCampaignMap(value: unknown): CampaignMap {
+  if (!isRecord(value) || !Array.isArray(value.nodes) || !Array.isArray(value.links)) throw new Error('Campaign data has an invalid campaign map.');
+  const nodes = value.nodes.map((node) => {
+    if (!isRecord(node) || (node.kind !== 'note' && node.kind !== 'entity')) throw new Error('Campaign data has an invalid campaign map node.');
+    const x = nullableNumber(node.x, 'campaign map x position');
+    const y = nullableNumber(node.y, 'campaign map y position');
+    if (x === null || y === null || x < 0 || x > 100 || y < 0 || y > 100) throw new Error('Campaign data has an invalid campaign map position.');
+    return {
+      id: requiredString(node.id, 'campaign map node ID'),
+      label: requiredString(node.label, 'campaign map node label'),
+      kind: node.kind as CampaignMap['nodes'][number]['kind'],
+      ...(node.entityId === undefined ? {} : { entityId: requiredString(node.entityId, 'campaign map entity ID') }),
+      x,
+      y,
+      createdAt: requiredString(node.createdAt, 'campaign map node creation time'),
+      updatedAt: requiredString(node.updatedAt, 'campaign map node update time')
+    };
+  });
+  const links = value.links.map((link) => {
+    if (!isRecord(link)) throw new Error('Campaign data has an invalid campaign map link.');
+    return { id: requiredString(link.id, 'campaign map link ID'), sourceId: requiredString(link.sourceId, 'campaign map link source'), targetId: requiredString(link.targetId, 'campaign map link target'), label: requiredString(link.label, 'campaign map link label'), createdAt: requiredString(link.createdAt, 'campaign map link creation time') };
+  });
+  return { nodes, links, updatedAt: requiredString(value.updatedAt, 'campaign map update time') };
+}
+
 /** Validates untrusted Drive JSON before it can replace any local campaign records. */
 export function parseCampaignDataSnapshot(value: unknown): CampaignDataSnapshot {
   if (!isRecord(value)) {
@@ -326,7 +352,8 @@ export function parseCampaignDataSnapshot(value: unknown): CampaignDataSnapshot 
     entityReferences: schemaVersion >= 5 ? (value.entityReferences as unknown[]).map((reference) => parseEntityReference(reference, campaignId)) : [],
     worldEvents: schemaVersion >= 5 ? (value.worldEvents as unknown[]).map((event) => parseWorldEvent(event, campaignId)) : [],
     ...(Array.isArray(value.timelineEntries) ? { timelineEntries: value.timelineEntries.map((entry) => parseTimelineEntry(entry, campaignId)) } : {}),
-    ...(Array.isArray(value.ideaDrafts) ? { ideaDrafts: value.ideaDrafts.map(parseIdeaDraft) } : {})
+    ...(Array.isArray(value.ideaDrafts) ? { ideaDrafts: value.ideaDrafts.map(parseIdeaDraft) } : {}),
+    ...(value.campaignMap === undefined ? {} : { campaignMap: parseCampaignMap(value.campaignMap) })
   };
 }
 
@@ -339,7 +366,7 @@ export function createCampaignDataSnapshot(
   customCatalogueCategories: CustomCatalogueCategory[] = [],
   worldbuildingTypes: WorldbuildingType[] = [],
   brews: Brew[] = [],
-  livingWorld: Pick<CampaignDataSnapshot, 'campaignId' | 'entities' | 'entityReferences' | 'worldEvents' | 'timelineEntries' | 'ideaDrafts'> = {
+  livingWorld: Pick<CampaignDataSnapshot, 'campaignId' | 'entities' | 'entityReferences' | 'worldEvents' | 'timelineEntries' | 'ideaDrafts' | 'campaignMap'> = {
     // The current app has one campaign companion file per Drive account.
     // A later multi-campaign migration can replace this file-scoped identity.
     campaignId: 'default-campaign',
@@ -363,7 +390,8 @@ export function createCampaignDataSnapshot(
     entityReferences: synchroniseEntityReferences(livingWorld.campaignId, entities, brews, encounters),
     worldEvents: [...livingWorld.worldEvents],
     ...(livingWorld.timelineEntries?.length ? { timelineEntries: [...livingWorld.timelineEntries] } : {}),
-    ...(livingWorld.ideaDrafts?.length ? { ideaDrafts: [...livingWorld.ideaDrafts] } : {})
+    ...(livingWorld.ideaDrafts?.length ? { ideaDrafts: [...livingWorld.ideaDrafts] } : {}),
+    ...(livingWorld.campaignMap ? { campaignMap: livingWorld.campaignMap } : {})
   };
 }
 
@@ -378,7 +406,8 @@ export function hasCampaignData(snapshot: CampaignDataSnapshot): boolean {
     || snapshot.entityReferences.length > 0
     || snapshot.worldEvents.length > 0
     || Boolean(snapshot.timelineEntries?.length)
-    || Boolean(snapshot.ideaDrafts?.length);
+    || Boolean(snapshot.ideaDrafts?.length)
+    || Boolean(snapshot.campaignMap);
 }
 
 export function campaignDataChangedLocally(metadata: CampaignDataSyncMetadata): boolean {
@@ -436,6 +465,7 @@ export function keepBothCampaignData(
     entityReferences: [...remote.entityReferences, ...local.entityReferences.filter((record) => !remote.entityReferences.some((remoteRecord) => remoteRecord.id === record.id))],
     worldEvents: [...remote.worldEvents, ...local.worldEvents.filter((event) => !remote.worldEvents.some((remoteEvent) => remoteEvent.id === event.id))],
     ...(remote.timelineEntries || local.timelineEntries ? { timelineEntries: [...(remote.timelineEntries ?? []), ...(local.timelineEntries ?? []).filter((entry) => !(remote.timelineEntries ?? []).some((remoteEntry) => remoteEntry.id === entry.id))] } : {}),
-    ...(remote.ideaDrafts || local.ideaDrafts ? { ideaDrafts: [...(remote.ideaDrafts ?? []), ...(local.ideaDrafts ?? []).filter((idea) => !(remote.ideaDrafts ?? []).some((remoteIdea) => remoteIdea.id === idea.id))] } : {})
+    ...(remote.ideaDrafts || local.ideaDrafts ? { ideaDrafts: [...(remote.ideaDrafts ?? []), ...(local.ideaDrafts ?? []).filter((idea) => !(remote.ideaDrafts ?? []).some((remoteIdea) => remoteIdea.id === idea.id))] } : {}),
+    ...(remote.campaignMap || local.campaignMap ? { campaignMap: remote.campaignMap ?? local.campaignMap } : {})
   };
 }

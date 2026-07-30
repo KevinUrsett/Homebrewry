@@ -326,7 +326,8 @@ export function parseCampaignDataSnapshot(value: unknown): CampaignDataSnapshot 
     entityReferences: schemaVersion >= 5 ? (value.entityReferences as unknown[]).map((reference) => parseEntityReference(reference, campaignId)) : [],
     worldEvents: schemaVersion >= 5 ? (value.worldEvents as unknown[]).map((event) => parseWorldEvent(event, campaignId)) : [],
     ...(Array.isArray(value.timelineEntries) ? { timelineEntries: value.timelineEntries.map((entry) => parseTimelineEntry(entry, campaignId)) } : {}),
-    ...(Array.isArray(value.ideaDrafts) ? { ideaDrafts: value.ideaDrafts.map(parseIdeaDraft) } : {})
+    ...(Array.isArray(value.ideaDrafts) ? { ideaDrafts: value.ideaDrafts.map(parseIdeaDraft) } : {}),
+    ...(value.currentBrewId === undefined ? {} : { currentBrewId: requiredString(value.currentBrewId, 'current brew ID') })
   };
 }
 
@@ -339,7 +340,7 @@ export function createCampaignDataSnapshot(
   customCatalogueCategories: CustomCatalogueCategory[] = [],
   worldbuildingTypes: WorldbuildingType[] = [],
   brews: Brew[] = [],
-  livingWorld: Pick<CampaignDataSnapshot, 'campaignId' | 'entities' | 'entityReferences' | 'worldEvents' | 'timelineEntries' | 'ideaDrafts'> = {
+  livingWorld: Pick<CampaignDataSnapshot, 'campaignId' | 'entities' | 'entityReferences' | 'worldEvents' | 'timelineEntries' | 'ideaDrafts' | 'currentBrewId'> = {
     // The current app has one campaign companion file per Drive account.
     // A later multi-campaign migration can replace this file-scoped identity.
     campaignId: 'default-campaign',
@@ -363,7 +364,8 @@ export function createCampaignDataSnapshot(
     entityReferences: synchroniseEntityReferences(livingWorld.campaignId, entities, brews, encounters),
     worldEvents: [...livingWorld.worldEvents],
     ...(livingWorld.timelineEntries?.length ? { timelineEntries: [...livingWorld.timelineEntries] } : {}),
-    ...(livingWorld.ideaDrafts?.length ? { ideaDrafts: [...livingWorld.ideaDrafts] } : {})
+    ...(livingWorld.ideaDrafts?.length ? { ideaDrafts: [...livingWorld.ideaDrafts] } : {}),
+    ...(livingWorld.currentBrewId ? { currentBrewId: livingWorld.currentBrewId } : {})
   };
 }
 
@@ -378,7 +380,8 @@ export function hasCampaignData(snapshot: CampaignDataSnapshot): boolean {
     || snapshot.entityReferences.length > 0
     || snapshot.worldEvents.length > 0
     || Boolean(snapshot.timelineEntries?.length)
-    || Boolean(snapshot.ideaDrafts?.length);
+    || Boolean(snapshot.ideaDrafts?.length)
+    || Boolean(snapshot.currentBrewId);
 }
 
 export function campaignDataChangedLocally(metadata: CampaignDataSyncMetadata): boolean {
@@ -436,6 +439,7 @@ export function keepBothCampaignData(
     entityReferences: [...remote.entityReferences, ...local.entityReferences.filter((record) => !remote.entityReferences.some((remoteRecord) => remoteRecord.id === record.id))],
     worldEvents: [...remote.worldEvents, ...local.worldEvents.filter((event) => !remote.worldEvents.some((remoteEvent) => remoteEvent.id === event.id))],
     ...(remote.timelineEntries || local.timelineEntries ? { timelineEntries: [...(remote.timelineEntries ?? []), ...(local.timelineEntries ?? []).filter((entry) => !(remote.timelineEntries ?? []).some((remoteEntry) => remoteEntry.id === entry.id))] } : {}),
-    ...(remote.ideaDrafts || local.ideaDrafts ? { ideaDrafts: [...(remote.ideaDrafts ?? []), ...(local.ideaDrafts ?? []).filter((idea) => !(remote.ideaDrafts ?? []).some((remoteIdea) => remoteIdea.id === idea.id))] } : {})
+    ...(remote.ideaDrafts || local.ideaDrafts ? { ideaDrafts: [...(remote.ideaDrafts ?? []), ...(local.ideaDrafts ?? []).filter((idea) => !(remote.ideaDrafts ?? []).some((remoteIdea) => remoteIdea.id === idea.id))] } : {}),
+    ...(remote.currentBrewId || local.currentBrewId ? { currentBrewId: remote.currentBrewId ?? local.currentBrewId } : {})
   };
 }

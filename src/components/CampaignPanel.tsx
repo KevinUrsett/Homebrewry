@@ -3,7 +3,7 @@ import type { CampaignPosition, DerivedPartyLocation } from '../lib/campaignProg
 import { belentorMonths, compareBelentorDates, formatBelentorDate } from '../lib/belentorCalendar';
 import { getOutline } from '../lib/outline';
 import { CampaignMapPanel } from './CampaignMapPanel';
-import type { BelentorEra, BelentorMonth, Brew, CampaignEntity, CampaignMap, Encounter, EntityCurrentState, EntityReference, TimelineEntry, TimelineLane, TimelineStatus, WorldEvent, WorldbuildingEntry } from '../types';
+import type { BelentorEra, BelentorMonth, Brew, CampaignEntity, CampaignMap, Encounter, EntityCurrentState, EntityReference, TimelineEntry, TimelineLane, TimelineStatus, WorldEvent } from '../types';
 import '../campaign.css';
 
 export type TimelineDraftSeed = {
@@ -25,7 +25,6 @@ type CampaignPanelProps = {
   timelineEntries: readonly TimelineEntry[];
   campaignMap?: CampaignMap;
   entityReferences: readonly EntityReference[];
-  worldbuildingEntries: readonly WorldbuildingEntry[];
   onOpenEncounter: (encounter: Encounter) => void;
   onOpenEntity: (entity: CampaignEntity) => void;
   onOpenBrewSection: (brewId: string, sectionId?: string) => void;
@@ -49,7 +48,7 @@ function orderTimeline(entries: readonly TimelineEntry[]) {
   });
 }
 
-export function CampaignPanel({ position, partyLocation, brews, encounters, entities, currentStateByEntityId, worldEvents, timelineEntries, campaignMap, entityReferences, worldbuildingEntries, onOpenEncounter, onOpenEntity, onOpenBrewSection, onOpenWorldbuildingEntry, timelineDraftSeed, onTimelineDraftSeedApplied, onSaveTimelineEntry, onDeleteTimelineEntry, onSaveCampaignMap }: CampaignPanelProps) {
+export function CampaignPanel({ position, partyLocation, brews, encounters, entities, currentStateByEntityId, worldEvents, timelineEntries, campaignMap, entityReferences, onOpenEncounter, onOpenEntity, onOpenBrewSection, onOpenWorldbuildingEntry, timelineDraftSeed, onTimelineDraftSeedApplied, onSaveTimelineEntry, onDeleteTimelineEntry, onSaveCampaignMap }: CampaignPanelProps) {
   const [laneFilter, setLaneFilter] = useState<TimelineLane | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<TimelineStatus | 'all'>('all');
   const [draft, setDraft] = useState({ lane: 'main' as TimelineLane, status: 'planned' as TimelineStatus, title: '', when: '', notes: '', entityIds: [] as string[], dateEra: 'AA' as BelentorEra, dateYear: '', dateMonth: 'Din' as BelentorMonth, dateDay: '', worldbuildingId: '', encounterId: '', brewId: '', sectionId: '' });
@@ -108,14 +107,8 @@ export function CampaignPanel({ position, partyLocation, brews, encounters, enti
       brews={brews}
       campaignMap={campaignMap}
       currentStateByEntityId={currentStateByEntityId}
-      encounters={encounters}
       entities={entities}
       entityReferences={entityReferences}
-      timelineEntries={timelineEntries}
-      worldbuildingEntries={worldbuildingEntries}
-      onOpenBrew={(brewId) => onOpenBrewSection(brewId)}
-      onOpenEncounter={onOpenEncounter}
-      onOpenEntity={onOpenEntity}
       onSave={onSaveCampaignMap}
     />
     <section className="campaign-timeline" aria-label="Campaign timeline">

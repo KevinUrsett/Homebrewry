@@ -5,6 +5,7 @@ import type {
   CampaignEntity,
   EntityReference,
   Encounter,
+  IdeaDraft,
   EncounterParticipant,
   PartyMember,
   TimelineEntry,
@@ -271,13 +272,24 @@ function parseTimelineEntry(value: unknown, campaignId: string): TimelineEntry {
   return { id: requiredString(value.id, 'timeline ID'), campaignId, lane: value.lane, status: value.status, title: requiredString(value.title, 'timeline title'), when: requiredString(value.when, 'timeline date'), order: nullableNumber(value.order, 'timeline order') ?? 0, notes: requiredString(value.notes, 'timeline notes'), entityIds: requiredStringArray(value.entityIds, 'timeline entity IDs'), ...(value.date === undefined ? {} : { date: value.date }), ...(value.worldbuildingId === undefined ? {} : { worldbuildingId: requiredString(value.worldbuildingId, 'timeline Worldbuilding ID') }), ...(value.encounterId === undefined ? {} : { encounterId: requiredString(value.encounterId, 'timeline encounter ID') }), ...(value.brewId === undefined ? {} : { brewId: requiredString(value.brewId, 'timeline brew ID') }), ...(value.sectionId === undefined ? {} : { sectionId: requiredString(value.sectionId, 'timeline section ID') }), createdAt: requiredString(value.createdAt, 'timeline creation time'), updatedAt: requiredString(value.updatedAt, 'timeline update time') };
 }
 
+function parseIdeaDraft(value: unknown): IdeaDraft {
+  if (!isRecord(value)) throw new Error('Campaign data has an invalid idea draft.');
+  return {
+    id: requiredString(value.id, 'idea ID'),
+    brewId: requiredString(value.brewId, 'idea brew ID'),
+    text: requiredString(value.text, 'idea text'),
+    createdAt: requiredString(value.createdAt, 'idea creation time'),
+    updatedAt: requiredString(value.updatedAt, 'idea update time')
+  };
+}
+
 /** Validates untrusted Drive JSON before it can replace any local campaign records. */
 export function parseCampaignDataSnapshot(value: unknown): CampaignDataSnapshot {
   if (!isRecord(value)) {
     throw new Error('This Drive campaign data file is not a supported Homebrewry backup.');
   }
   const schemaVersion = value.schemaVersion;
-  if (schemaVersion !== 1 && schemaVersion !== 2 && schemaVersion !== 3 && schemaVersion !== 4 && schemaVersion !== 5 && schemaVersion !== 6) {
+  if (schemaVersion !== 1 && schemaVersion !== 2 && schemaVersion !== 3 && schemaVersion !== 4 && schemaVersion !== 5) {
     throw new Error('This Drive campaign data file is not a supported Homebrewry backup.');
   }
   if (!Array.isArray(value.encounters) || !Array.isArray(value.partyMembers) || !Array.isArray(value.worldbuildingEntries)) {
@@ -289,7 +301,7 @@ export function parseCampaignDataSnapshot(value: unknown): CampaignDataSnapshot 
   if ((schemaVersion === 4 || schemaVersion === 5) && (!Array.isArray(value.customCatalogueEntries) || !Array.isArray(value.customCatalogueCategories) || !Array.isArray(value.worldbuildingTypes))) {
     throw new Error('This Drive campaign data file has an invalid campaign taxonomy collection.');
   }
-  if ((schemaVersion === 5 || schemaVersion === 6) && (!Array.isArray(value.entities) || !Array.isArray(value.entityReferences) || !Array.isArray(value.worldEvents))) {
+  if (schemaVersion === 5 && (!Array.isArray(value.entities) || !Array.isArray(value.entityReferences) || !Array.isArray(value.worldEvents))) {
     throw new Error('This Drive campaign data file has an invalid Living World collection.');
   }
   const campaignId = schemaVersion >= 5 ? requiredString(value.campaignId, 'campaign ID') : legacyCampaignId(value);
@@ -313,7 +325,8 @@ export function parseCampaignDataSnapshot(value: unknown): CampaignDataSnapshot 
     entities: schemaVersion >= 5 ? (value.entities as unknown[]).map((entity) => parseCampaignEntity(entity, campaignId)) : [],
     entityReferences: schemaVersion >= 5 ? (value.entityReferences as unknown[]).map((reference) => parseEntityReference(reference, campaignId)) : [],
     worldEvents: schemaVersion >= 5 ? (value.worldEvents as unknown[]).map((event) => parseWorldEvent(event, campaignId)) : [],
-    ...(Array.isArray(value.timelineEntries) ? { timelineEntries: value.timelineEntries.map((entry) => parseTimelineEntry(entry, campaignId)) } : {})
+    ...(Array.isArray(value.timelineEntries) ? { timelineEntries: value.timelineEntries.map((entry) => parseTimelineEntry(entry, campaignId)) } : {}),
+    ...(Array.isArray(value.ideaDrafts) ? { ideaDrafts: value.ideaDrafts.map(parseIdeaDraft) } : {})
   };
 }
 
@@ -326,13 +339,13 @@ export function createCampaignDataSnapshot(
   customCatalogueCategories: CustomCatalogueCategory[] = [],
   worldbuildingTypes: WorldbuildingType[] = [],
   brews: Brew[] = [],
-  livingWorld: Pick<CampaignDataSnapshot, 'campaignId' | 'entities' | 'entityReferences' | 'worldEvents' | 'timelineEntries'> = {
+  livingWorld: Pick<CampaignDataSnapshot, 'campaignId' | 'entities' | 'entityReferences' | 'worldEvents' | 'timelineEntries' | 'ideaDrafts'> = {
     // The current app has one campaign companion file per Drive account.
     // A later multi-campaign migration can replace this file-scoped identity.
     campaignId: 'default-campaign',
     entities: [],
     entityReferences: [],
-    worldEvents: [], timelineEntries: []
+    worldEvents: [], timelineEntries: [], ideaDrafts: []
   }
 ): CampaignDataSnapshot {
   const entities = synchroniseWorldbuildingEntities(livingWorld.campaignId, worldbuildingEntries, livingWorld.entities);
@@ -349,7 +362,8 @@ export function createCampaignDataSnapshot(
     entities,
     entityReferences: synchroniseEntityReferences(livingWorld.campaignId, entities, brews, encounters),
     worldEvents: [...livingWorld.worldEvents],
-    ...(livingWorld.timelineEntries?.length ? { timelineEntries: [...livingWorld.timelineEntries] } : {})
+    ...(livingWorld.timelineEntries?.length ? { timelineEntries: [...livingWorld.timelineEntries] } : {}),
+    ...(livingWorld.ideaDrafts?.length ? { ideaDrafts: [...livingWorld.ideaDrafts] } : {})
   };
 }
 
@@ -363,7 +377,8 @@ export function hasCampaignData(snapshot: CampaignDataSnapshot): boolean {
     || snapshot.entities.length > 0
     || snapshot.entityReferences.length > 0
     || snapshot.worldEvents.length > 0
-    || Boolean(snapshot.timelineEntries?.length);
+    || Boolean(snapshot.timelineEntries?.length)
+    || Boolean(snapshot.ideaDrafts?.length);
 }
 
 export function campaignDataChangedLocally(metadata: CampaignDataSyncMetadata): boolean {
@@ -420,6 +435,7 @@ export function keepBothCampaignData(
     entities: preserveBothRecords(local.entities, remote.entities, timestamp, createId),
     entityReferences: [...remote.entityReferences, ...local.entityReferences.filter((record) => !remote.entityReferences.some((remoteRecord) => remoteRecord.id === record.id))],
     worldEvents: [...remote.worldEvents, ...local.worldEvents.filter((event) => !remote.worldEvents.some((remoteEvent) => remoteEvent.id === event.id))],
-    ...(remote.timelineEntries || local.timelineEntries ? { timelineEntries: [...(remote.timelineEntries ?? []), ...(local.timelineEntries ?? []).filter((entry) => !(remote.timelineEntries ?? []).some((remoteEntry) => remoteEntry.id === entry.id))] } : {})
+    ...(remote.timelineEntries || local.timelineEntries ? { timelineEntries: [...(remote.timelineEntries ?? []), ...(local.timelineEntries ?? []).filter((entry) => !(remote.timelineEntries ?? []).some((remoteEntry) => remoteEntry.id === entry.id))] } : {}),
+    ...(remote.ideaDrafts || local.ideaDrafts ? { ideaDrafts: [...(remote.ideaDrafts ?? []), ...(local.ideaDrafts ?? []).filter((idea) => !(remote.ideaDrafts ?? []).some((remoteIdea) => remoteIdea.id === idea.id))] } : {})
   };
 }

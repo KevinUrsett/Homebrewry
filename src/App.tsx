@@ -205,7 +205,8 @@ export default function App() {
           });
         }
         setPrivateMonsterSync(storedPrivateMonsterSync);
-        setActiveId(storedBrews[0]?.id ?? null);
+        const savedCurrentBrew = syncedLivingWorld.currentBrewId;
+        setActiveId(storedBrews.some((brew) => brew.id === savedCurrentBrew) ? savedCurrentBrew! : storedBrews[0]?.id ?? null);
         setEncounterSelectedId(storedEncounters[0]?.id ?? null);
         setWorldbuildingSelectedId(storedWorldbuildingEntries[0]?.id ?? null);
         setSaveState('Saved locally');
@@ -282,7 +283,10 @@ export default function App() {
   );
   const catalogueMap = useMemo(() => toCatalogueMap(catalogueEntries), [catalogueEntries]);
   const encounterMap = useMemo(() => new Map(encounters.map((encounter) => [encounter.id, encounter])), [encounters]);
-  const campaignPosition = useMemo(() => deriveCampaignPosition(deferredBrews, encounters), [deferredBrews, encounters]);
+  const campaignPosition = useMemo(
+    () => deriveCampaignPosition(deferredBrews, encounters, livingWorld.currentBrewId),
+    [deferredBrews, encounters, livingWorld.currentBrewId]
+  );
   const worldbuildingMap = useMemo(() => new Map(worldbuildingEntries.map((entry) => [entry.id, entry])), [worldbuildingEntries]);
   const entityByWorldbuildingId = useMemo(() => new Map(
     livingWorld.entities.flatMap((entity) => entity.source.kind === 'worldbuilding' ? [[entity.source.id, entity] as const] : [])
@@ -646,6 +650,16 @@ export default function App() {
     void saveLivingWorldData(next).then((metadata) => noteCampaignDataSaved(metadata, 'Campaign board updated')).catch(() => setSaveState('Campaign board save failed'));
   };
 
+  const setCurrentCampaignBrew = (brewId: string | null) => {
+    const next = { ...livingWorld, ...(brewId ? { currentBrewId: brewId } : { currentBrewId: undefined }) };
+    campaignRecordsRef.current = { ...campaignRecordsRef.current, livingWorld: next };
+    setLivingWorld(next);
+    if (brewId && brews.some((brew) => brew.id === brewId)) setActiveId(brewId);
+    void saveLivingWorldData(next)
+      .then((metadata) => noteCampaignDataSaved(metadata, brewId ? 'Current campaign brew updated' : 'Campaign brew returned to automatic'))
+      .catch(() => setSaveState('Current campaign brew save failed'));
+  };
+
   const openTimelineComposer = (seed: TimelineDraftSeed) => {
     setTimelineDraftSeed(seed);
     setCampaignOpen(true);
@@ -824,6 +838,7 @@ export default function App() {
     if (!window.confirm(`Delete “${activeBrew.title || 'Untitled Brew'}” from this device? This cannot be undone.`)) return;
 
     await deleteBrew(activeBrew.id);
+    if (livingWorld.currentBrewId === activeBrew.id) setCurrentCampaignBrew(null);
     const remaining = brews.filter((brew) => brew.id !== activeBrew.id);
     if (remaining.length === 0) {
       const replacement = createBrew();
@@ -889,7 +904,8 @@ export default function App() {
         worldEvents: result.data.worldEvents,
         timelineEntries: result.data.timelineEntries ?? [],
         ideaDrafts: result.data.ideaDrafts ?? [],
-        ...(result.data.campaignMap ? { campaignMap: result.data.campaignMap } : {})
+        ...(result.data.campaignMap ? { campaignMap: result.data.campaignMap } : {}),
+        ...(result.data.currentBrewId ? { currentBrewId: result.data.currentBrewId } : {})
       });
       setEncounterSelectedId((current) => result.data.encounters.some((encounter) => encounter.id === current) ? current : result.data.encounters[0]?.id ?? null);
       setWorldbuildingSelectedId((current) => result.data.worldbuildingEntries.some((entry) => entry.id === current) ? current : result.data.worldbuildingEntries[0]?.id ?? null);
@@ -909,7 +925,8 @@ export default function App() {
         worldEvents: result.data.worldEvents,
         timelineEntries: result.data.timelineEntries ?? [],
         ideaDrafts: result.data.ideaDrafts ?? [],
-        ...(result.data.campaignMap ? { campaignMap: result.data.campaignMap } : {})
+        ...(result.data.campaignMap ? { campaignMap: result.data.campaignMap } : {}),
+        ...(result.data.currentBrewId ? { currentBrewId: result.data.currentBrewId } : {})
       }
     };
     campaignMetadataRef.current = result.metadata;
@@ -1309,6 +1326,8 @@ export default function App() {
       await replaceBrews(brewResult.brews);
       setBrews(brewResult.brews);
       const campaignResult = await syncCampaignDataOnly(accessToken);
+      const syncedCurrentBrew = campaignResult?.data.currentBrewId;
+      if (syncedCurrentBrew && brewResult.brews.some((brew) => brew.id === syncedCurrentBrew)) setActiveId(syncedCurrentBrew);
       const privateMonsterResult = await syncPrivateMonsterCatalogueOnly(accessToken);
       setSaveState(`${brewResult.detail}; ${assetResult.detail}; ${campaignResult?.detail ?? 'Campaign data sync already in progress'}; ${privateMonsterResult?.detail ?? 'Private monster catalogue sync already in progress'}`);
     } catch (error) {
@@ -1539,6 +1558,7 @@ export default function App() {
         <CampaignPanel
           brews={brews}
           campaignMap={livingWorld.campaignMap}
+          currentBrewId={livingWorld.currentBrewId}
           currentStateByEntityId={currentStateByEntityId}
           encounters={encounters}
           entityReferences={livingWorld.entityReferences}
@@ -1569,6 +1589,7 @@ export default function App() {
               window.requestAnimationFrame(() => editorRef.current?.focus(targetSection.from));
             }
           }}
+          onSetCurrentBrew={setCurrentCampaignBrew}
           partyLocation={partyLocation}
           position={campaignPosition}
           timelineEntries={livingWorld.timelineEntries ?? []}

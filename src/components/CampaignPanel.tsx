@@ -113,6 +113,8 @@ export function CampaignPanel({ position, partyLocation, brews, encounters, enti
       entities={entities}
       entityReferences={entityReferences}
       worldbuildingEntries={worldbuildingEntries}
+      onOpenEntity={onOpenEntity}
+      onOpenBrew={(brewId) => onOpenBrewSection(brewId)}
       onSave={onSaveCampaignMap}
     />
     <section className="campaign-timeline" aria-label="Campaign timeline">

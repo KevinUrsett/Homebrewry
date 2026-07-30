@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import type { CampaignPosition, DerivedPartyLocation } from '../lib/campaignProgress';
 import { belentorMonths, compareBelentorDates, formatBelentorDate } from '../lib/belentorCalendar';
 import { getOutline } from '../lib/outline';
-import type { BelentorEra, BelentorMonth, Brew, CampaignEntity, Encounter, EntityCurrentState, TimelineEntry, TimelineLane, TimelineStatus, WorldEvent } from '../types';
+import { CampaignMapPanel } from './CampaignMapPanel';
+import type { BelentorEra, BelentorMonth, Brew, CampaignEntity, CampaignMap, Encounter, EntityCurrentState, EntityReference, TimelineEntry, TimelineLane, TimelineStatus, WorldEvent, WorldbuildingEntry } from '../types';
 import '../campaign.css';
 
 export type TimelineDraftSeed = {
@@ -22,6 +23,9 @@ type CampaignPanelProps = {
   currentStateByEntityId: ReadonlyMap<string, EntityCurrentState>;
   worldEvents: readonly WorldEvent[];
   timelineEntries: readonly TimelineEntry[];
+  campaignMap?: CampaignMap;
+  entityReferences: readonly EntityReference[];
+  worldbuildingEntries: readonly WorldbuildingEntry[];
   onOpenEncounter: (encounter: Encounter) => void;
   onOpenEntity: (entity: CampaignEntity) => void;
   onOpenBrewSection: (brewId: string, sectionId?: string) => void;
@@ -30,6 +34,7 @@ type CampaignPanelProps = {
   onTimelineDraftSeedApplied?: () => void;
   onSaveTimelineEntry: (entry: TimelineEntry | Omit<TimelineEntry, 'id' | 'campaignId' | 'order' | 'createdAt' | 'updatedAt'>) => void;
   onDeleteTimelineEntry: (entryId: string) => void;
+  onSaveCampaignMap: (map: CampaignMap) => void;
 };
 
 const entityLabel = (entity: CampaignEntity) => entity.kind === 'npc' ? 'NPC' : entity.kind;
@@ -44,7 +49,7 @@ function orderTimeline(entries: readonly TimelineEntry[]) {
   });
 }
 
-export function CampaignPanel({ position, partyLocation, brews, encounters, entities, currentStateByEntityId, worldEvents, timelineEntries, onOpenEncounter, onOpenEntity, onOpenBrewSection, onOpenWorldbuildingEntry, timelineDraftSeed, onTimelineDraftSeedApplied, onSaveTimelineEntry, onDeleteTimelineEntry }: CampaignPanelProps) {
+export function CampaignPanel({ position, partyLocation, brews, encounters, entities, currentStateByEntityId, worldEvents, timelineEntries, campaignMap, entityReferences, worldbuildingEntries, onOpenEncounter, onOpenEntity, onOpenBrewSection, onOpenWorldbuildingEntry, timelineDraftSeed, onTimelineDraftSeedApplied, onSaveTimelineEntry, onDeleteTimelineEntry, onSaveCampaignMap }: CampaignPanelProps) {
   const [laneFilter, setLaneFilter] = useState<TimelineLane | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<TimelineStatus | 'all'>('all');
   const [draft, setDraft] = useState({ lane: 'main' as TimelineLane, status: 'planned' as TimelineStatus, title: '', when: '', notes: '', entityIds: [] as string[], dateEra: 'AA' as BelentorEra, dateYear: '', dateMonth: 'Din' as BelentorMonth, dateDay: '', worldbuildingId: '', encounterId: '', brewId: '', sectionId: '' });
@@ -99,6 +104,20 @@ export function CampaignPanel({ position, partyLocation, brews, encounters, enti
       <article className="campaign-card"><h2>Important entities</h2>{notable.length ? notable.map((entity) => <button key={entity.id} onClick={() => onOpenEntity(entity)} type="button"><span>{entityLabel(entity)} · {String(currentStateByEntityId.get(entity.id)?.fields.status?.value ?? 'unknown')}</span><strong>{entity.name}</strong></button>) : <p>No confirmed NPCs or factions yet.</p>}</article>
       <article className="campaign-card"><h2>Recent world events</h2>{recentEvents.length ? recentEvents.map((event) => <div key={event.id}><strong>{event.type.replaceAll('.', ' ')}</strong><span>{new Date(event.occurredAt).toLocaleString()}</span></div>) : <p>No structured world events yet.</p>}</article>
     </section>
+    <CampaignMapPanel
+      brews={brews}
+      campaignMap={campaignMap}
+      currentStateByEntityId={currentStateByEntityId}
+      encounters={encounters}
+      entities={entities}
+      entityReferences={entityReferences}
+      timelineEntries={timelineEntries}
+      worldbuildingEntries={worldbuildingEntries}
+      onOpenBrew={(brewId) => onOpenBrewSection(brewId)}
+      onOpenEncounter={onOpenEncounter}
+      onOpenEntity={onOpenEntity}
+      onSave={onSaveCampaignMap}
+    />
     <section className="campaign-timeline" aria-label="Campaign timeline">
       <header><div><p className="eyebrow">World progression</p><h2>Timeline</h2><small>Manual story beats live alongside read-only structured World Events.</small></div><div className="timeline-filters"><select aria-label="Timeline lane" onChange={(event) => setLaneFilter(event.target.value as TimelineLane | 'all')} value={laneFilter}><option value="all">All stories</option><option value="main">Main campaign</option><option value="quest">Quest / side story</option><option value="backstory">Character backstory</option></select><select aria-label="Timeline status" onChange={(event) => setStatusFilter(event.target.value as TimelineStatus | 'all')} value={statusFilter}><option value="all">All statuses</option><option value="planned">Planned</option><option value="current">Current</option><option value="past">Past</option></select></div></header>
       <div className="timeline-branch-actions" aria-label="Create timeline branch"><button className={draft.lane === 'main' ? 'is-selected' : ''} onClick={() => setDraft({ ...draft, lane: 'main' })} type="button">+ Main node</button><button className={draft.lane === 'quest' ? 'is-selected' : ''} onClick={() => setDraft({ ...draft, lane: 'quest' })} type="button">+ Side-quest branch</button><button className={draft.lane === 'backstory' ? 'is-selected' : ''} onClick={() => setDraft({ ...draft, lane: 'backstory' })} type="button">+ Backstory branch</button></div>

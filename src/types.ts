@@ -197,6 +197,32 @@ export type IdeaDraft = {
   updatedAt: string;
 };
 
+export type CampaignMapNode = {
+  id: string;
+  label: string;
+  kind: 'note' | 'entity';
+  entityId?: string;
+  x: number;
+  y: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CampaignMapLink = {
+  id: string;
+  sourceId: string;
+  targetId: string;
+  label: string;
+  createdAt: string;
+};
+
+/** A deliberate, editable campaign-planning board. Generated references remain separate. */
+export type CampaignMap = {
+  nodes: CampaignMapNode[];
+  links: CampaignMapLink[];
+  updatedAt: string;
+};
+
 export type CurrentStateField = {
   value: WorldStateValue;
   eventId: string;
@@ -218,6 +244,7 @@ export type LivingWorldData = {
   worldEvents: WorldEvent[];
   timelineEntries?: TimelineEntry[];
   ideaDrafts?: IdeaDraft[];
+  campaignMap?: CampaignMap;
 };
 
 export const worldbuildingKinds = [
@@ -282,6 +309,7 @@ export type CampaignDataSnapshot = {
   timelineEntries?: TimelineEntry[];
   /** Optional to retain compatibility with existing campaign backups. */
   ideaDrafts?: IdeaDraft[];
+  campaignMap?: CampaignMap;
 };
 
 export type CampaignDataConflict = {

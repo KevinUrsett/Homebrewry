@@ -97,7 +97,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .markdown-editor .cm-editor { height: 100%; }
 .markdown-editor .cm-scroller { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: .85rem; line-height: 1.65; overflow: auto; }
 /* Keep the paper on CodeMirror's moving content rather than behind its scroll area. */
-.markdown-editor .cm-content { background: #f7edd7 url('/parchment-texture.webp') center top / 768px auto repeat; min-height: 100%; padding: 20px; }
+.markdown-editor .cm-content { background: linear-gradient(rgb(255 253 247 / 52%), rgb(255 253 247 / 52%)), #f7edd7 url('/parchment-texture.webp') center top / 768px auto repeat; min-height: 100%; padding: 20px; }
 .markdown-editor .cm-focused { outline: none; }
 .markdown-editor .cm-reference-chip { background: #f1dfb3; border: 1px solid #c8a563; border-radius: 999px; color: #5d3528; cursor: text; font-family: Inter, sans-serif; font-size: .82em; font-weight: 800; letter-spacing: .01em; padding: 1px 6px; }
 

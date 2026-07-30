@@ -303,6 +303,7 @@ export default function RootApp() {
                     <span>{wordCount(brew.content).toLocaleString()} words</span>
                     <span>{brew.drive ? 'Drive linked' : 'Local'}</span>
                   </span>
+                  <span className="recent-brew-origin">Created on: {brew.createdOn ?? 'Earlier version'}</span>
                 </button>
                 <button aria-label={`Capture an idea for ${brew.title || 'Untitled Brew'}`} className="recent-brew-idea-plus" onClick={() => { setQuickIdeaBrew(brew); setQuickIdeaText(''); }} type="button">+</button>
               </article>

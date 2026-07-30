@@ -73,6 +73,7 @@
 .recent-brew-open > strong, .recent-brew-card > strong { color: #5e3028; font-family: Georgia, serif; font-size: 1.2rem; margin: 17px 0 9px; }
 .recent-brew-excerpt { color: #675747; display: -webkit-box; font-family: "Scaly Sans", Inter, sans-serif; font-size: .84rem; line-height: 1.48; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
 .recent-brew-meta { border-top: 1px solid #dfcfb6; color: #7f6954; display: flex; font-size: .7rem; justify-content: space-between; margin-top: auto; padding-top: 15px; }
+.recent-brew-origin { color: #92775d; font-size: .64rem; margin-top: 7px; }
 .recent-brew-idea-plus { align-items: center; background: #6e342b; border: 1px solid #bf8953; border-radius: 50%; box-shadow: 0 3px 9px rgb(67 36 22 / 26%); color: #fff6e6; cursor: pointer; display: flex; font-family: Georgia, serif; font-size: 1.3rem; height: 28px; justify-content: center; line-height: 1; padding: 0 0 2px; position: absolute; right: 13px; top: 12px; width: 28px; z-index: 2; }
 .recent-brew-idea-plus:hover { background: #8a4734; transform: scale(1.07); }
 .new-brew-card { align-items: center; background: transparent; border-style: dashed; justify-content: center; padding: 20px; text-align: center; }

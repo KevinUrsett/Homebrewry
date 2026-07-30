@@ -138,6 +138,7 @@ describe('EncounterPanel monster browser', () => {
     await act(async () => { Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Add combatant')?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
     await act(async () => { Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Catalogue')?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
     await act(async () => { Array.from(container.querySelectorAll('.encounter-monster-result button')).find((button) => button.textContent === 'Add')?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+    await act(async () => { container.querySelector<HTMLFormElement>('.encounter-quantity-dialog')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
     expect(onUpdateEncounter).toHaveBeenCalledWith(expect.objectContaining({ participants: [expect.objectContaining({ kind: 'monster' })] }));
     expect(container.querySelector('.encounter-picker')).toBeNull();
     expect(Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Add combatant')).toBeTruthy();

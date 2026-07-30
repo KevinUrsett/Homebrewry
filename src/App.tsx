@@ -14,6 +14,7 @@ import { WorldbuildingPanel } from './components/WorldbuildingPanel';
 import { WorldbuildingReferenceDialog } from './components/WorldbuildingReferenceDialog';
 import type { MarkdownEditorHandle } from './components/MarkdownEditor';
 import {
+  creationDeviceLabel,
   createBrew,
   deleteBrew,
   getCampaignDataSyncMetadata,
@@ -802,6 +803,7 @@ export default function App() {
       id: crypto.randomUUID(),
       title: `${activeBrew.title || 'Untitled Brew'} copy`,
       createdAt: new Date().toISOString(),
+      createdOn: creationDeviceLabel(),
       updatedAt: new Date().toISOString(),
       version: 1
     };

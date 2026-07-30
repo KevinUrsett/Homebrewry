@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CampaignPosition, DerivedPartyLocation } from '../lib/campaignProgress';
-import { compareBelentorDates, formatBelentorDate } from '../lib/belentorCalendar';
+import { belentorMonths, compareBelentorDates, formatBelentorDate } from '../lib/belentorCalendar';
 import { CampaignMapPanel } from './CampaignMapPanel';
-import type { Brew, CampaignEntity, CampaignMap, Encounter, EntityCurrentState, EntityReference, TimelineEntry, TimelineLane, TimelineStatus, WorldEvent, WorldbuildingEntry } from '../types';
+import type { BelentorEra, BelentorMonth, Brew, CampaignEntity, CampaignMap, Encounter, EntityCurrentState, EntityReference, TimelineEntry, TimelineLane, TimelineStatus, WorldEvent, WorldbuildingEntry } from '../types';
 import '../campaign.css';
 
 export type TimelineDraftSeed = {
@@ -41,12 +41,24 @@ type StoryNodeEditor = {
   placement: 'right' | 'top' | 'bottom';
   title: string;
   notes: string;
+  referenceEntityId: string;
+  referenceName: string;
+  dateEra: BelentorEra;
+  dateYear: string;
+  dateMonth: BelentorMonth;
+  dateDay: string;
 };
 
 const emptyNodeEditor = (lane: TimelineLane = 'main', parentId?: string, placement: StoryNodeEditor['placement'] = 'right'): StoryNodeEditor => ({
   lane,
   title: '',
   notes: '',
+  referenceEntityId: '',
+  referenceName: '',
+  dateEra: 'AA',
+  dateYear: '',
+  dateMonth: 'Din',
+  dateDay: '',
   parentId,
   placement
 });
@@ -102,41 +114,80 @@ export function CampaignPanel({ position, partyLocation, brews, encounters, enti
 
   useEffect(() => {
     if (!timelineDraftSeed) return;
-    setNodeEditor(emptyNodeEditor('main', mainStory.at(-1)?.id, 'right'));
-    setNodeEditor((current) => current ? { ...current, title: timelineDraftSeed.title ?? current.title } : current);
+    const referenceEntityId = timelineDraftSeed.entityIds?.find((id) => entityById.has(id)) ?? '';
+    setNodeEditor({ ...emptyNodeEditor('main', mainStory.at(-1)?.id, 'right'), title: timelineDraftSeed.title ?? '', referenceEntityId, referenceName: entityById.get(referenceEntityId)?.name ?? '' });
     onTimelineDraftSeedApplied?.();
-  }, [mainStory, onTimelineDraftSeedApplied, timelineDraftSeed]);
+  }, [entityById, mainStory, onTimelineDraftSeedApplied, timelineDraftSeed]);
 
   const openNewNode = (parentId: string, lane: TimelineLane, placement: StoryNodeEditor['placement']) => {
     setNodeEditor(emptyNodeEditor(lane, parentId, placement));
   };
 
   const openExistingNode = (entry: TimelineEntry) => {
-    setNodeEditor({ id: entry.id, lane: entry.lane, parentId: entry.parentId, placement: entry.lane === 'main' ? 'right' : entry.lane === 'quest' ? 'top' : 'bottom', title: entry.title, notes: entry.notes });
+    const referenceEntityId = entry.entityIds.find((id) => entityById.has(id)) ?? '';
+    setNodeEditor({
+      id: entry.id,
+      lane: entry.lane,
+      parentId: entry.parentId,
+      placement: entry.lane === 'main' ? 'right' : entry.lane === 'quest' ? 'top' : 'bottom',
+      title: entry.title,
+      notes: entry.notes,
+      referenceEntityId,
+      referenceName: entityById.get(referenceEntityId)?.name ?? '',
+      dateEra: entry.date?.era ?? 'AA',
+      dateYear: entry.date ? String(entry.date.year) : '',
+      dateMonth: entry.date?.month ?? 'Din',
+      dateDay: entry.date ? String(entry.date.day) : ''
+    });
   };
 
   const saveNode = () => {
     if (!nodeEditor?.title.trim()) return;
+    const year = Number(nodeEditor.dateYear);
+    const day = Number(nodeEditor.dateDay);
+    const date = Number.isInteger(year) && year >= 0 && Number.isInteger(day) && day >= 1 && day <= 30
+      ? { era: nodeEditor.dateEra, year, month: nodeEditor.dateMonth, day }
+      : undefined;
+    const entity = entityById.get(nodeEditor.referenceEntityId);
+    const entityIds = entity ? [entity.id] : [];
+    const source = entity?.source.kind === 'worldbuilding' ? { worldbuildingId: entity.source.id } : {};
     if (nodeEditor.id) {
       const existing = timelineById.get(nodeEditor.id);
-      if (existing) onSaveTimelineEntry({ ...existing, title: nodeEditor.title, notes: nodeEditor.notes });
+      if (existing) {
+        const { worldbuildingId: _worldbuildingId, ...withoutWorldbuilding } = existing;
+        onSaveTimelineEntry({ ...withoutWorldbuilding, ...source, lane: nodeEditor.lane, title: nodeEditor.title, notes: nodeEditor.notes, when: date ? formatBelentorDate(date) : '', date, entityIds });
+      }
     } else {
-      onSaveTimelineEntry({ lane: nodeEditor.lane, status: 'planned', title: nodeEditor.title, when: '', notes: nodeEditor.notes, entityIds: [], parentId: nodeEditor.parentId });
+      onSaveTimelineEntry({ lane: nodeEditor.lane, status: 'planned', title: nodeEditor.title, when: date ? formatBelentorDate(date) : '', date, notes: nodeEditor.notes, entityIds, parentId: nodeEditor.parentId, ...source });
     }
     setNodeEditor(null);
   };
 
-  const renderNodeEditor = () => nodeEditor && <div className="story-node-editor"><input aria-label="Story node title" autoFocus onChange={(event) => setNodeEditor({ ...nodeEditor, title: event.target.value })} placeholder="Name this node" value={nodeEditor.title} /><textarea aria-label="Story node information" onChange={(event) => setNodeEditor({ ...nodeEditor, notes: event.target.value })} placeholder="Information, possible outcomes, or questions…" value={nodeEditor.notes} /><div><button className="primary-button" onClick={saveNode} type="button">Save</button><button onClick={() => setNodeEditor(null)} type="button">Cancel</button>{nodeEditor.id && <button className="quiet-danger" onClick={() => { onDeleteTimelineEntry(nodeEditor.id!); setNodeEditor(null); }} type="button">Remove</button>}</div></div>;
+  const renderNodeEditor = () => nodeEditor && <div className="story-node-editor">
+    <label>Narrative <select aria-label="Narrative type" onChange={(event) => setNodeEditor({ ...nodeEditor, lane: event.target.value as TimelineLane })} value={nodeEditor.lane}><option value="main">Main story</option><option value="quest">Side story</option><option value="backstory">Backstory</option></select></label>
+    <input aria-label="Story node title" autoFocus onChange={(event) => setNodeEditor({ ...nodeEditor, title: event.target.value })} placeholder="Name this node" value={nodeEditor.title} />
+    <label>Reference <input aria-label="Reference" list="timeline-reference-options" onChange={(event) => { const entity = entities.find((item) => item.name === event.target.value); setNodeEditor({ ...nodeEditor, referenceName: event.target.value, referenceEntityId: entity?.id ?? '' }); }} placeholder="Search Worldbuilding references" value={nodeEditor.referenceName} /><datalist id="timeline-reference-options">{entities.map((entity) => <option key={entity.id} value={entity.name}>{entityLabel(entity)}</option>)}</datalist></label>
+    <div className="story-node-date-fields"><label>Era <select aria-label="Era" onChange={(event) => setNodeEditor({ ...nodeEditor, dateEra: event.target.value as BelentorEra })} value={nodeEditor.dateEra}><option value="AA">AA</option><option value="BA">BA</option></select></label><label>Year <input aria-label="Year" min="0" onChange={(event) => setNodeEditor({ ...nodeEditor, dateYear: event.target.value })} placeholder="Year" type="number" value={nodeEditor.dateYear} /></label><label>Month <select aria-label="Month" onChange={(event) => setNodeEditor({ ...nodeEditor, dateMonth: event.target.value as BelentorMonth })} value={nodeEditor.dateMonth}>{belentorMonths.map(({ name }) => <option key={name} value={name}>{name}</option>)}</select></label><label>Day <input aria-label="Day" max="30" min="1" onChange={(event) => setNodeEditor({ ...nodeEditor, dateDay: event.target.value })} placeholder="Day" type="number" value={nodeEditor.dateDay} /></label></div>
+    <textarea aria-label="Story node information" onChange={(event) => setNodeEditor({ ...nodeEditor, notes: event.target.value })} placeholder="Information, possible outcomes, or questions…" value={nodeEditor.notes} />
+    <div><button className="primary-button" onClick={saveNode} type="button">Save</button><button onClick={() => setNodeEditor(null)} type="button">Cancel</button>{nodeEditor.id && <button className="quiet-danger" onClick={() => { onDeleteTimelineEntry(nodeEditor.id!); setNodeEditor(null); }} type="button">Remove</button>}</div>
+  </div>;
 
   const renderNodeControls = (entry: TimelineEntry) => <div className="story-node-controls"><button aria-label={`Continue from ${entry.title}`} onClick={() => openNewNode(entry.id, entry.lane, 'right')} type="button">+</button><button aria-label={`Add side story from ${entry.title}`} onClick={() => openNewNode(entry.id, 'quest', 'top')} type="button">+</button><button aria-label={`Add backstory from ${entry.title}`} onClick={() => openNewNode(entry.id, 'backstory', 'bottom')} type="button">+</button></div>;
 
   const renderBranch = (entry: TimelineEntry) => {
     const children = (childrenByParent.get(entry.id) ?? []).filter((child) => child.lane !== 'main');
-    const pendingNode = nodeEditor && !nodeEditor.id && nodeEditor.parentId === entry.id ? <div className={`story-branch story-pending-node lane-${nodeEditor.lane}`}>{renderNodeEditor()}</div> : null;
-    return <div className={`story-branch lane-${entry.lane}`} key={entry.id}>
-      <span className="story-branch-connector" />
-      <div className="story-node-shell">{nodeEditor?.id === entry.id ? renderNodeEditor() : <button className="story-branch-node" onClick={() => openExistingNode(entry)} type="button"><strong>{entry.title}</strong>{timelineDateLabel(entry) && <small>{timelineDateLabel(entry)}</small>}</button>}{renderNodeControls(entry)}</div>
-      {(children.length > 0 || pendingNode) && <div className="story-branch-children">{pendingNode}{children.map(renderBranch)}</div>}
+    const continuations = children.filter((child) => child.lane === entry.lane);
+    const offshoots = children.filter((child) => child.lane !== entry.lane);
+    const pendingContinuation = nodeEditor && !nodeEditor.id && nodeEditor.parentId === entry.id && nodeEditor.placement === 'right' ? <div className={`story-branch story-pending-node lane-${nodeEditor.lane}`}>{renderNodeEditor()}</div> : null;
+    const pendingOffshoot = nodeEditor && !nodeEditor.id && nodeEditor.parentId === entry.id && nodeEditor.placement !== 'right' ? <div className={`story-branch story-pending-node lane-${nodeEditor.lane}`}>{renderNodeEditor()}</div> : null;
+    return <div className={`story-branch-chain lane-${entry.lane}`} key={entry.id}>
+      <div className={`story-branch lane-${entry.lane}`}>
+        <span className="story-branch-connector" />
+        <div className="story-node-shell">{nodeEditor?.id === entry.id ? renderNodeEditor() : <button className="story-branch-node" onClick={() => openExistingNode(entry)} type="button"><strong>{entry.title}</strong>{timelineDateLabel(entry) && <small>{timelineDateLabel(entry)}</small>}</button>}{renderNodeControls(entry)}</div>
+        {(offshoots.length > 0 || pendingOffshoot) && <div className="story-branch-children">{pendingOffshoot}{offshoots.map(renderBranch)}</div>}
+      </div>
+      {continuations.map(renderBranch)}
+      {pendingContinuation}
     </div>;
   };
 

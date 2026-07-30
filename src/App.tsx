@@ -282,7 +282,10 @@ export default function App() {
   );
   const catalogueMap = useMemo(() => toCatalogueMap(catalogueEntries), [catalogueEntries]);
   const encounterMap = useMemo(() => new Map(encounters.map((encounter) => [encounter.id, encounter])), [encounters]);
-  const campaignPosition = useMemo(() => deriveCampaignPosition(deferredBrews, encounters), [deferredBrews, encounters]);
+  const campaignPosition = useMemo(
+    () => deriveCampaignPosition(deferredBrews, encounters, livingWorld.currentBrewId),
+    [deferredBrews, encounters, livingWorld.currentBrewId]
+  );
   const worldbuildingMap = useMemo(() => new Map(worldbuildingEntries.map((entry) => [entry.id, entry])), [worldbuildingEntries]);
   const entityByWorldbuildingId = useMemo(() => new Map(
     livingWorld.entities.flatMap((entity) => entity.source.kind === 'worldbuilding' ? [[entity.source.id, entity] as const] : [])
@@ -639,6 +642,15 @@ export default function App() {
     void saveLivingWorldData(next).then((metadata) => noteCampaignDataSaved(metadata, 'Timeline entry removed')).catch(() => setSaveState('Timeline delete failed'));
   };
 
+  const setCurrentCampaignBrew = (brewId: string | null) => {
+    const next = { ...livingWorld, ...(brewId ? { currentBrewId: brewId } : { currentBrewId: undefined }) };
+    campaignRecordsRef.current = { ...campaignRecordsRef.current, livingWorld: next };
+    setLivingWorld(next);
+    void saveLivingWorldData(next)
+      .then((metadata) => noteCampaignDataSaved(metadata, brewId ? 'Current campaign brew updated' : 'Campaign brew returned to automatic'))
+      .catch(() => setSaveState('Current campaign brew save failed'));
+  };
+
   const openTimelineComposer = (seed: TimelineDraftSeed) => {
     setTimelineDraftSeed(seed);
     setCampaignOpen(true);
@@ -817,6 +829,7 @@ export default function App() {
     if (!window.confirm(`Delete “${activeBrew.title || 'Untitled Brew'}” from this device? This cannot be undone.`)) return;
 
     await deleteBrew(activeBrew.id);
+    if (livingWorld.currentBrewId === activeBrew.id) setCurrentCampaignBrew(null);
     const remaining = brews.filter((brew) => brew.id !== activeBrew.id);
     if (remaining.length === 0) {
       const replacement = createBrew();
@@ -881,7 +894,8 @@ export default function App() {
         entityReferences: result.data.entityReferences,
         worldEvents: result.data.worldEvents,
         timelineEntries: result.data.timelineEntries ?? [],
-        ideaDrafts: result.data.ideaDrafts ?? []
+        ideaDrafts: result.data.ideaDrafts ?? [],
+        ...(result.data.currentBrewId ? { currentBrewId: result.data.currentBrewId } : {})
       });
       setEncounterSelectedId((current) => result.data.encounters.some((encounter) => encounter.id === current) ? current : result.data.encounters[0]?.id ?? null);
       setWorldbuildingSelectedId((current) => result.data.worldbuildingEntries.some((entry) => entry.id === current) ? current : result.data.worldbuildingEntries[0]?.id ?? null);
@@ -900,7 +914,8 @@ export default function App() {
         entityReferences: result.data.entityReferences,
         worldEvents: result.data.worldEvents,
         timelineEntries: result.data.timelineEntries ?? [],
-        ideaDrafts: result.data.ideaDrafts ?? []
+        ideaDrafts: result.data.ideaDrafts ?? [],
+        ...(result.data.currentBrewId ? { currentBrewId: result.data.currentBrewId } : {})
       }
     };
     campaignMetadataRef.current = result.metadata;
@@ -1529,6 +1544,7 @@ export default function App() {
       ) : campaignOpen ? (
         <CampaignPanel
           brews={brews}
+          currentBrewId={livingWorld.currentBrewId}
           currentStateByEntityId={currentStateByEntityId}
           encounters={encounters}
           entities={livingWorld.entities}
@@ -1558,6 +1574,7 @@ export default function App() {
               window.requestAnimationFrame(() => editorRef.current?.focus(targetSection.from));
             }
           }}
+          onSetCurrentBrew={setCurrentCampaignBrew}
           partyLocation={partyLocation}
           position={campaignPosition}
           timelineEntries={livingWorld.timelineEntries ?? []}

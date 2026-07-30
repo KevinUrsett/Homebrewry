@@ -23,6 +23,11 @@ describe('campaign data snapshots', () => {
     expect(() => parseCampaignDataSnapshot({ schemaVersion: 4 })).toThrow('not a supported Homebrewry backup');
   });
 
+  it('keeps the saved current brew in campaign data for Drive sync', () => {
+    const snapshot = { ...createCampaignDataSnapshot([], [], [], '2026-07-30T12:00:00.000Z'), currentBrewId: 'brew-42' };
+    expect(parseCampaignDataSnapshot(JSON.parse(JSON.stringify(snapshot))).currentBrewId).toBe('brew-42');
+  });
+
   it('preserves structured custom monster data in schema v3 while safely migrating v2 entries', () => {
     const template: CatalogueEntry = {
       id: 'srd-monster',

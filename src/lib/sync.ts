@@ -26,6 +26,7 @@ const withConflict = (local: Brew, remote: { brew: Brew; file: { headRevisionId?
       title: remote.brew.title,
       content: remote.brew.content,
       createdAt: remote.brew.createdAt,
+      createdOn: remote.brew.createdOn,
       updatedAt: remote.brew.updatedAt,
       version: remote.brew.version,
       rendererSettings: remote.brew.rendererSettings

@@ -65,6 +65,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .brew-list-item strong { font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .brew-list-item span { color: #806c5a; font-size: .72rem; }
 .brew-meta { align-items: center; display: flex; gap: 6px; justify-content: space-between; }
+.brew-origin { color: #907962 !important; font-size: .64rem !important; letter-spacing: .02em; }
 .sync-badge { border-radius: 999px; font-size: .62rem !important; font-weight: 700; padding: 2px 5px; text-transform: uppercase; }
 .sync-synced { background: #d9ead6; color: #365b31 !important; }
 .sync-pending, .sync-local { background: #eee2c8; color: #6a522c !important; }

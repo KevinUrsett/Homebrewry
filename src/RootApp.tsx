@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import App from './App';
-import { createBrew, saveBrew, seedBrews } from './lib/brewStore';
+import { createBrew, getLivingWorldData, saveBrew, saveLivingWorldData, seedBrews } from './lib/brewStore';
 import { listEncounters } from './lib/encounterStore';
 import { listWorldbuildingEntries } from './lib/worldbuildingStore';
-import type { Brew } from './types';
+import type { Brew, IdeaDraft } from './types';
 import './landing-page.css';
 import './workspace-home-nav.css';
 
@@ -60,6 +60,9 @@ export default function RootApp() {
   const [brews, setBrews] = useState<Brew[]>([]);
   const [stats, setStats] = useState<LandingStats>({ encounters: 0, worldbuilding: 0 });
   const [loading, setLoading] = useState(true);
+  const [quickIdeaBrew, setQuickIdeaBrew] = useState<Brew | null>(null);
+  const [quickIdeaText, setQuickIdeaText] = useState('');
+  const [savingQuickIdea, setSavingQuickIdea] = useState(false);
   const [desktopNavigation, setDesktopNavigation] = useState<HTMLElement | null>(null);
   const [mobileNavigation, setMobileNavigation] = useState<HTMLElement | null>(null);
 
@@ -203,6 +206,28 @@ export default function RootApp() {
     openWorkspace('editor');
   };
 
+  const captureQuickIdea = async () => {
+    const text = quickIdeaText.trim();
+    if (!quickIdeaBrew || !text) return;
+    setSavingQuickIdea(true);
+    try {
+      const world = await getLivingWorldData();
+      const timestamp = new Date().toISOString();
+      const idea: IdeaDraft = {
+        id: crypto.randomUUID(),
+        brewId: quickIdeaBrew.id,
+        text,
+        createdAt: timestamp,
+        updatedAt: timestamp
+      };
+      await saveLivingWorldData({ ...world, ideaDrafts: [idea, ...(world.ideaDrafts ?? [])] });
+      setQuickIdeaBrew(null);
+      setQuickIdeaText('');
+    } finally {
+      setSavingQuickIdea(false);
+    }
+  };
+
   if (workspaceOpen) {
     const homeButton = (
       <button className="workspace-home-tab" onClick={() => void returnHome()} type="button">
@@ -268,16 +293,20 @@ export default function RootApp() {
         ) : (
           <div className="recent-brew-grid">
             {recentBrews.map((brew, index) => (
-              <button className={`recent-brew-card ${index === 0 ? 'is-featured' : ''}`} key={brew.id} onClick={() => void openBrew(brew)} type="button">
-                <span className="recent-brew-ornament" aria-hidden>◆</span>
-                <span className="recent-brew-time">Edited {relativeTime(brew.updatedAt)}</span>
-                <strong>{brew.title || 'Untitled Brew'}</strong>
-                <span className="recent-brew-excerpt">{plainExcerpt(brew.content) || 'An empty page waiting for its first idea.'}</span>
-                <span className="recent-brew-meta">
-                  <span>{wordCount(brew.content).toLocaleString()} words</span>
-                  <span>{brew.drive ? 'Drive linked' : 'Local'}</span>
-                </span>
-              </button>
+              <article className={`recent-brew-card ${index === 0 ? 'is-featured' : ''}`} key={brew.id}>
+                <button className="recent-brew-open" onClick={() => void openBrew(brew)} type="button">
+                  <span className="recent-brew-ornament" aria-hidden>◆</span>
+                  <span className="recent-brew-time">Edited {relativeTime(brew.updatedAt)}</span>
+                  <strong>{brew.title || 'Untitled Brew'}</strong>
+                  <span className="recent-brew-excerpt">{plainExcerpt(brew.content) || 'An empty page waiting for its first idea.'}</span>
+                  <span className="recent-brew-meta">
+                    <span>{wordCount(brew.content).toLocaleString()} words</span>
+                    <span>{brew.drive ? 'Drive linked' : 'Local'}</span>
+                  </span>
+                  <span className="recent-brew-origin">Created on: {brew.createdOn ?? 'Earlier version'}</span>
+                </button>
+                <button aria-label={`Capture an idea for ${brew.title || 'Untitled Brew'}`} className="recent-brew-idea-plus" onClick={() => { setQuickIdeaBrew(brew); setQuickIdeaText(''); }} type="button">+</button>
+              </article>
             ))}
             <button className="recent-brew-card new-brew-card" onClick={() => void createNew()} type="button">
               <span className="new-brew-plus" aria-hidden>+</span>
@@ -314,6 +343,19 @@ export default function RootApp() {
         <span>Homebrewry</span>
         <small>Your drafts stay available locally and can be backed up to Google Drive.</small>
       </footer>
+      {quickIdeaBrew && (
+        <div className="landing-idea-backdrop" role="presentation" onMouseDown={() => !savingQuickIdea && setQuickIdeaBrew(null)}>
+          <form className="landing-idea-dialog" onMouseDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); void captureQuickIdea(); }}>
+            <p className="landing-eyebrow">Quick capture</p>
+            <h2>{quickIdeaBrew.title || 'Untitled Brew'}</h2>
+            <textarea autoFocus onChange={(event) => setQuickIdeaText(event.target.value)} placeholder="Write it down before it gets away…" value={quickIdeaText} />
+            <div>
+              <button disabled={savingQuickIdea} onClick={() => setQuickIdeaBrew(null)} type="button">Cancel</button>
+              <button className="landing-primary" disabled={!quickIdeaText.trim() || savingQuickIdea} type="submit">{savingQuickIdea ? 'Saving…' : 'Save idea'}</button>
+            </div>
+          </form>
+        </div>
+      )}
     </main>
   );
 }

@@ -33,7 +33,7 @@ export type BrewAsset = {
 };
 
 export type ConflictSnapshot = {
-  remoteBrew: Pick<Brew, 'title' | 'content' | 'createdAt' | 'updatedAt' | 'version' | 'rendererSettings'>;
+  remoteBrew: Pick<Brew, 'title' | 'content' | 'createdAt' | 'createdOn' | 'updatedAt' | 'version' | 'rendererSettings'>;
   remoteRevisionId: string;
 };
 
@@ -42,6 +42,8 @@ export type Brew = {
   title: string;
   content: string;
   createdAt: string;
+  /** A concise device class recorded when this brew was created. */
+  createdOn?: string;
   updatedAt: string;
   version: number;
   rendererSettings: RendererSettings;
@@ -186,6 +188,15 @@ export type TimelineEntry = {
   updatedAt: string;
 };
 
+/** A private capture linked to a brew until the DM deliberately creates it. */
+export type IdeaDraft = {
+  id: string;
+  brewId: string;
+  text: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type CurrentStateField = {
   value: WorldStateValue;
   eventId: string;
@@ -206,6 +217,7 @@ export type LivingWorldData = {
   entityReferences: EntityReference[];
   worldEvents: WorldEvent[];
   timelineEntries?: TimelineEntry[];
+  ideaDrafts?: IdeaDraft[];
 };
 
 export const worldbuildingKinds = [
@@ -268,6 +280,8 @@ export type CampaignDataSnapshot = {
   worldEvents: WorldEvent[];
   /** Optional to retain compatibility with existing schema-5 Drive files. */
   timelineEntries?: TimelineEntry[];
+  /** Optional to retain compatibility with existing campaign backups. */
+  ideaDrafts?: IdeaDraft[];
 };
 
 export type CampaignDataConflict = {

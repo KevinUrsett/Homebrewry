@@ -88,14 +88,15 @@ export function createLivingWorldData(): LivingWorldData {
     entities: [],
     entityReferences: [],
     worldEvents: [],
-    timelineEntries: []
+    timelineEntries: [],
+    ideaDrafts: []
   };
 }
 
 export async function getLivingWorldData(): Promise<LivingWorldData> {
   const database = await getDatabase();
   const stored = await database.get(LIVING_WORLD_STORE_NAME, 'living-world') as LivingWorldData | undefined;
-  return stored ? { ...stored, timelineEntries: stored.timelineEntries ?? [] } : createLivingWorldData();
+  return stored ? { ...stored, timelineEntries: stored.timelineEntries ?? [], ideaDrafts: stored.ideaDrafts ?? [] } : createLivingWorldData();
 }
 
 export async function saveLivingWorldData(data: LivingWorldData): Promise<CampaignDataSyncMetadata> {
@@ -112,6 +113,7 @@ export function createBrew(title = 'Untitled Brew'): Brew {
     title,
     content: starterContent,
     createdAt: now,
+    createdOn: creationDeviceLabel(),
     updatedAt: now,
     version: 1,
     rendererSettings: {
@@ -119,6 +121,17 @@ export function createBrew(title = 'Untitled Brew'): Brew {
       parchmentTone: 'warm'
     }
   };
+}
+
+export function creationDeviceLabel(): string {
+  const userAgent = typeof navigator === 'undefined' ? '' : navigator.userAgent;
+  if (/iPhone/i.test(userAgent)) return 'iPhone';
+  if (/iPad/i.test(userAgent)) return 'iPad';
+  if (/Android/i.test(userAgent)) return 'Android device';
+  if (/Windows/i.test(userAgent)) return 'Windows PC';
+  if (/Macintosh|Mac OS/i.test(userAgent)) return 'Mac';
+  if (/Linux/i.test(userAgent)) return 'Linux PC';
+  return 'This device';
 }
 
 export async function listBrews(): Promise<Brew[]> {
@@ -264,7 +277,8 @@ export async function replaceCampaignData(
       entities: snapshot.entities,
       entityReferences: snapshot.entityReferences,
       worldEvents: snapshot.worldEvents,
-      timelineEntries: snapshot.timelineEntries ?? []
+      timelineEntries: snapshot.timelineEntries ?? [],
+      ideaDrafts: snapshot.ideaDrafts ?? []
     } satisfies LivingWorldData),
     metadataStore.put(metadata)
   ]);

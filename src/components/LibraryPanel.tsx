@@ -66,6 +66,7 @@ export function LibraryPanel({
               <span>{formatUpdatedAt(brew.updatedAt)}</span>
               <span className={`sync-badge sync-${brew.syncState ?? 'local'}`}>{syncLabel[brew.syncState ?? 'local']}</span>
             </span>
+            <span className="brew-origin">Created on: {brew.createdOn ?? 'Earlier version'}</span>
           </button>
         ))}
       </div>

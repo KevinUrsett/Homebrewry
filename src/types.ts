@@ -202,6 +202,8 @@ export type CampaignMapNode = {
   label: string;
   kind: 'note' | 'entity';
   entityId?: string;
+  /** Optional brew source for a map note loaded from a brew. */
+  brewId?: string;
   x: number;
   y: number;
   createdAt: string;

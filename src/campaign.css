@@ -7,6 +7,7 @@
 .campaign-hero-grid span, .campaign-card > h2 { color: #806c5a; font-size: .7rem; letter-spacing: .08em; margin: 0; text-transform: uppercase; }
 .campaign-hero-grid strong { color: #5d2f26; display: block; font-family: Georgia, serif; font-size: 1.12rem; margin: 8px 0; }
 .campaign-hero-grid small { color: #725d48; display: block; line-height: 1.35; }
+.campaign-current-brew select { background: #f7f0df; border: 1px solid #cdb795; border-radius: 5px; color: #493329; font: 700 .88rem "Bookinsanity", Georgia, serif; margin: 8px 0; max-width: 100%; padding: 7px; width: 100%; }
 .campaign-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .campaign-card { display: grid; gap: 8px; min-height: 150px; }
 .campaign-card > h2 { color: #5d2f26; font-family: "Scaly Sans", Inter, sans-serif; font-weight: 800; }
@@ -15,7 +16,7 @@
 .campaign-card span { color: #806c5a; font-size: .68rem; text-transform: capitalize; }
 .campaign-card strong { font-size: .88rem; }
 .campaign-card p { color: #806c5a; font-size: .8rem; }
-@media (max-width: 720px) { .campaign-hero-grid, .campaign-grid { grid-template-columns: 1fr; } .campaign-page { padding: 18px 14px; } }
+@media (max-width: 720px) { .campaign-hero-grid, .campaign-grid { grid-template-columns: 1fr; } .campaign-page { padding: 18px 14px; } .campaign-current-brew select { font-size: 16px; } }
 .campaign-timeline { background: #fffaf0; border: 1px solid #d8c9ae; border-radius: 10px; box-shadow: 0 8px 22px rgb(48 31 18 / 8%); margin-top: 16px; padding: clamp(16px, 3vw, 28px); }
 .campaign-timeline > header { align-items: end; display: flex; gap: 14px; justify-content: space-between; }
 .campaign-timeline h2 { color: #5d2f26; font-family: "Nodesto Caps Condensed", Georgia, serif; font-size: 2.1rem; line-height: .9; margin: 0; }

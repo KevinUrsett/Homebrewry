@@ -49,6 +49,18 @@ describe('derived campaign position', () => {
     expect(deriveCampaignPosition([first, second], [inactive, active])).toMatchObject({ brewId: 'second', activeEncounterId: active.id, headingPath: ['Sund'] });
   });
 
+  it('honors the saved current brew over encounters in other brews', () => {
+    const firstEncounter = encounter('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'not-started');
+    const activeElsewhere = encounter('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'active');
+    const first = { ...brew(`[[encounter:${firstEncounter.id}|First]]`), id: 'first' };
+    const second = { ...brew(`[[encounter:${activeElsewhere.id}|Second]]`), id: 'second' };
+    expect(deriveCampaignPosition([first, second], [firstEncounter, activeElsewhere], 'first')).toMatchObject({
+      brewId: 'first',
+      activeEncounterId: null,
+      nextEncounterId: firstEncounter.id
+    });
+  });
+
   it('inherits a linked location from the selected encounter section', () => {
     const active = encounter('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'active');
     const locationId = 'c674b91f-94c8-5c80-9d1d-31bef50bc779';

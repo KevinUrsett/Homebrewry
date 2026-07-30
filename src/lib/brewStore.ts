@@ -279,7 +279,8 @@ export async function replaceCampaignData(
       worldEvents: snapshot.worldEvents,
       timelineEntries: snapshot.timelineEntries ?? [],
       ideaDrafts: snapshot.ideaDrafts ?? [],
-      ...(snapshot.campaignMap ? { campaignMap: snapshot.campaignMap } : {})
+      ...(snapshot.campaignMap ? { campaignMap: snapshot.campaignMap } : {}),
+      ...(snapshot.currentBrewId ? { currentBrewId: snapshot.currentBrewId } : {})
     } satisfies LivingWorldData),
     metadataStore.put(metadata)
   ]);

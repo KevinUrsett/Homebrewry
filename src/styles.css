@@ -75,7 +75,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .library-actions .danger-button { border-color: #a85a4d; color: #8a2f27; }
 
 .main-panes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: 0; min-width: 0; }
-.editor-pane { background: #fffdf7; border-right: 1px solid #d4c7b1; display: flex; flex-direction: column; min-height: 0; }
+.editor-pane { background: #f7edd7; border-right: 1px solid #d4c7b1; display: flex; flex-direction: column; min-height: 0; }
 .editor-toolbar { align-items: center; background: #f5ecdc; border-bottom: 1px solid #d8c9ae; display: flex; flex-wrap: wrap; gap: 4px; min-height: 43px; padding: 5px 8px; }
 .editor-toolbar button { background: #fffaf0; border: 1px solid #d1c0a5; border-radius: 5px; color: #4d392d; font-size: .76rem; min-height: 27px; padding: 4px 7px; }
 .editor-toolbar button:hover { background: #eadbbf; }
@@ -93,17 +93,19 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .find-replace button { background: #5d2f26; border: 0; border-radius: 5px; color: white; font-size: .76rem; padding: 6px 8px; }
 .title-input { border: 0; border-bottom: 1px solid #e1d5c0; color: #37261d; font-family: Georgia, serif; font-size: 1.45rem; font-weight: 700; padding: 18px 20px 12px; width: 100%; }
 .markdown-editor { color: #34271f; flex: 1; min-height: 500px; min-width: 0; overflow: hidden; }
+.markdown-editor .cm-editor, .markdown-editor .cm-scroller { background: transparent; }
 .markdown-editor .cm-editor { height: 100%; }
 .markdown-editor .cm-scroller { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: .85rem; line-height: 1.65; overflow: auto; }
-.markdown-editor .cm-content { min-height: 100%; padding: 20px; }
+/* Keep the paper on CodeMirror's moving content rather than behind its scroll area. */
+.markdown-editor .cm-content { background: linear-gradient(rgb(255 253 247 / 64%), rgb(255 253 247 / 64%)), #f7edd7 url('/parchment-texture.webp') center top / 768px auto repeat; min-height: 100%; padding: 20px; }
 .markdown-editor .cm-focused { outline: none; }
 .markdown-editor .cm-reference-chip { background: #f1dfb3; border: 1px solid #c8a563; border-radius: 999px; color: #5d3528; cursor: text; font-family: Inter, sans-serif; font-size: .82em; font-weight: 800; letter-spacing: .01em; padding: 1px 6px; }
 
 .preview-pane { background: #29333d; container-type: inline-size; min-height: 0; min-width: 0; overflow: auto; padding: clamp(14px, 2.5vw, 30px); }
 .preview-canvas { margin: 0 auto; max-width: 210mm; width: 100%; }
 .brew-book { display: grid; gap: clamp(16px, 2.5vw, 28px); justify-items: center; }
-.brew-preview { background: #f7f0df; box-shadow: 0 14px 34px rgb(8 14 20 / 38%); box-sizing: border-box; color: #1f1812; font-family: "Bookinsanity", Georgia, "Times New Roman", serif; font-size: .86rem; line-height: 1.4; min-height: min(1123px, 141.4cqw); padding: clamp(28px, 5.1cqw, 58px); position: relative; width: 100%; }
-.brew-book.tone-light .brew-preview { background: #fffdf5; }
+.brew-preview { background: #f7f0df url('/parchment-texture.webp') center / 768px auto repeat; box-shadow: 0 14px 34px rgb(8 14 20 / 38%); box-sizing: border-box; color: #1f1812; font-family: "Bookinsanity", Georgia, "Times New Roman", serif; font-size: .86rem; line-height: 1.4; min-height: min(1123px, 141.4cqw); padding: clamp(28px, 5.1cqw, 58px); position: relative; width: 100%; }
+.brew-book.tone-light .brew-preview { background-color: #fffdf5; }
 .brew-preview h1, .brew-preview h2, .brew-preview h3, .brew-preview h4 { color: var(--brew-accent); font-weight: 700; line-height: 1.15; scroll-margin-top: 18px; }
 .brew-preview h1, .brew-preview h2 { font-family: "Nodesto Caps Condensed", Georgia, serif; letter-spacing: .025em; }
 .brew-preview h1 { border-bottom: 3px solid var(--brew-accent); font-size: 2.8rem; margin: 0 0 .35em; }

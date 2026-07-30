@@ -29,6 +29,45 @@ afterEach(() => {
 });
 
 describe('WorldbuildingPanel', () => {
+  it('browses reviewed reference suggestions and can add one directly', async () => {
+    const onCreateCuratedReferences = vi.fn();
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push({ container, root });
+
+    await act(async () => {
+      root.render(
+        <WorldbuildingPanel
+          catalogue={new Map()}
+          catalogueCategories={[]}
+          entries={[entry]}
+          onCreate={vi.fn()}
+          onCreateCuratedReferences={onCreateCuratedReferences}
+          onCreateType={vi.fn()}
+          onCreateCatalogueReference={vi.fn()}
+          onCreateWorldbuildingReference={vi.fn()}
+          onDelete={vi.fn()}
+          onReferenceOpen={vi.fn()}
+          onSelect={vi.fn()}
+          onUpdate={vi.fn()}
+          onWorldbuildingOpen={vi.fn()}
+          selectedId={entry.id}
+          syncState="synced"
+          types={[]}
+          worldbuilding={new Map([[entry.id, entry]])}
+        />
+      );
+    });
+
+    const suggestions = Array.from(container.querySelectorAll('button')).find((button) => button.textContent?.includes('To create'));
+    await act(async () => suggestions?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    const addBelentor = container.querySelector<HTMLButtonElement>('[aria-label="Create Belentor"]');
+    expect(addBelentor).not.toBeNull();
+    await act(async () => addBelentor?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(onCreateCuratedReferences).toHaveBeenCalledWith([expect.objectContaining({ name: 'Belentor' })]);
+  });
+
   it('opens selected entries in preview mode and saves only through explicit Edit mode', async () => {
     const onUpdate = vi.fn();
     const container = document.createElement('div');

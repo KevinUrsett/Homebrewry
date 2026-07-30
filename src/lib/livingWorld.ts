@@ -51,7 +51,7 @@ export const partyEntityId = 'party:default';
 
 export function createTimelineEntry(
   data: LivingWorldData,
-  input: Pick<TimelineEntry, 'lane' | 'status' | 'title' | 'when' | 'notes' | 'entityIds' | 'date' | 'worldbuildingId' | 'encounterId' | 'brewId' | 'sectionId'>,
+  input: Pick<TimelineEntry, 'lane' | 'status' | 'title' | 'when' | 'notes' | 'entityIds' | 'date' | 'worldbuildingId' | 'parentId' | 'encounterId' | 'brewId' | 'sectionId'>,
   timestamp = new Date().toISOString(),
   createId: () => string = () => crypto.randomUUID()
 ): TimelineEntry {

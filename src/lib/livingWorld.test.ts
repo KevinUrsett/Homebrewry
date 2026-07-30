@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Encounter, WorldEvent } from '../types';
-import { appendWorldEvent, createCampaignEntity, recordCombatCompletion, recordManualStateChange, synchroniseLivingWorld, synchroniseWorldbuildingEntities } from './livingWorld';
+import { appendWorldEvent, createCampaignEntity, createTimelineEntry, recordCombatCompletion, recordManualStateChange, saveTimelineEntry, synchroniseLivingWorld, synchroniseWorldbuildingEntities } from './livingWorld';
 import { createWorldbuildingEntry } from './worldbuilding';
 
 describe('Living World entities and events', () => {
@@ -69,6 +69,15 @@ describe('Living World entities and events', () => {
     expect(alive.worldEvents).toHaveLength(2);
     expect(alive.worldEvents[0]?.changes[0]).toMatchObject({ previousValue: null, nextValue: 'dead' });
     expect(alive.worldEvents[1]?.changes[0]).toMatchObject({ previousValue: 'dead', nextValue: 'alive' });
+  });
+
+  it('keeps a planned story node attached to its chosen parent', () => {
+    const base = { id: 'living-world' as const, campaignId: 'campaign-1', entities: [], entityReferences: [], worldEvents: [], timelineEntries: [] };
+    const root = createTimelineEntry(base, { lane: 'main', status: 'planned', title: 'Reach Sund', when: '', notes: '', entityIds: [] }, '2026-07-30T12:00:00.000Z', () => 'root');
+    const withRoot = saveTimelineEntry(base, root);
+    const branch = createTimelineEntry(withRoot, { lane: 'quest', status: 'planned', title: 'Find the hidden tunnel', when: '', notes: '', entityIds: [], parentId: root.id }, '2026-07-30T12:01:00.000Z', () => 'branch');
+
+    expect(branch).toMatchObject({ id: 'branch', parentId: 'root', order: 1 });
   });
 
   it('records a linked NPC at 0 HP as dead when combat ends', () => {

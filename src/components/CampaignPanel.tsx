@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import type { CampaignPosition, DerivedPartyLocation } from '../lib/campaignProgress';
 import { belentorMonths, compareBelentorDates, formatBelentorDate } from '../lib/belentorCalendar';
 import { CampaignMapPanel } from './CampaignMapPanel';
@@ -27,13 +27,36 @@ type CampaignPanelProps = {
   onOpenEncounter: (encounter: Encounter) => void;
   onOpenEntity: (entity: CampaignEntity) => void;
   onSetCurrentBrew: (brewId: string | null) => void;
-  onOpenWorldbuildingEntry: (entryId: string) => void;
   timelineDraftSeed?: TimelineDraftSeed | null;
   onTimelineDraftSeedApplied?: () => void;
   onSaveTimelineEntry: (entry: TimelineEntry | Omit<TimelineEntry, 'id' | 'campaignId' | 'order' | 'createdAt' | 'updatedAt'>) => void;
   onDeleteTimelineEntry: (entryId: string) => void;
   onSaveCampaignMap: (map: CampaignMap) => void;
 };
+
+type TimelineDraft = {
+  lane: TimelineLane;
+  title: string;
+  notes: string;
+  dateEra: BelentorEra;
+  dateYear: string;
+  dateMonth: BelentorMonth;
+  dateDay: string;
+  parentId: string;
+  referenceEntityId: string;
+};
+
+const emptyDraft = (lane: TimelineLane = 'main'): TimelineDraft => ({
+  lane,
+  title: '',
+  notes: '',
+  dateEra: 'AA',
+  dateYear: '',
+  dateMonth: 'Din',
+  dateDay: '',
+  parentId: '',
+  referenceEntityId: ''
+});
 
 const entityLabel = (entity: CampaignEntity) => entity.kind === 'npc' ? 'NPC' : entity.kind;
 const timelineDateLabel = (entry: TimelineEntry) => entry.date ? formatBelentorDate(entry.date) : entry.when;
@@ -47,20 +70,31 @@ function orderTimeline(entries: readonly TimelineEntry[]) {
   });
 }
 
-export function CampaignPanel({ position, partyLocation, brews, encounters, entities, currentStateByEntityId, worldEvents, timelineEntries, campaignMap, entityReferences, worldbuildingEntries, currentBrewId, onOpenEncounter, onOpenEntity, onSetCurrentBrew, onOpenWorldbuildingEntry, timelineDraftSeed, onTimelineDraftSeedApplied, onSaveTimelineEntry, onDeleteTimelineEntry, onSaveCampaignMap }: CampaignPanelProps) {
+export function CampaignPanel({ position, partyLocation, brews, encounters, entities, currentStateByEntityId, worldEvents, timelineEntries, campaignMap, entityReferences, worldbuildingEntries, currentBrewId, onOpenEncounter, onOpenEntity, onSetCurrentBrew, timelineDraftSeed, onTimelineDraftSeedApplied, onSaveTimelineEntry, onDeleteTimelineEntry, onSaveCampaignMap }: CampaignPanelProps) {
   const [laneFilter, setLaneFilter] = useState<TimelineLane | 'all'>('all');
-  const [statusFilter, setStatusFilter] = useState<TimelineStatus | 'all'>('all');
-  const [draft, setDraft] = useState({ lane: 'main' as TimelineLane, status: 'planned' as TimelineStatus, title: '', when: '', notes: '', entityIds: [] as string[], dateEra: 'AA' as BelentorEra, dateYear: '', dateMonth: 'Din' as BelentorMonth, dateDay: '', worldbuildingId: '', encounterId: '' });
-  useEffect(() => {
-    if (!timelineDraftSeed) return;
-    setDraft((current) => ({
-      ...current,
-      title: timelineDraftSeed.title ?? current.title,
-      entityIds: timelineDraftSeed.entityIds ?? current.entityIds,
-      worldbuildingId: timelineDraftSeed.worldbuildingId ?? ''
-    }));
-    onTimelineDraftSeedApplied?.();
-  }, [onTimelineDraftSeedApplied, timelineDraftSeed]);
+  const [draft, setDraft] = useState<TimelineDraft>(() => emptyDraft());
+  const [referenceQuery, setReferenceQuery] = useState('');
+  const [saveNotice, setSaveNotice] = useState('');
+  const entityById = useMemo(() => new Map(entities.map((entity) => [entity.id, entity])), [entities]);
+  const orderedTimelineEntries = useMemo(() => orderTimeline(timelineEntries), [timelineEntries]);
+  const timelineById = useMemo(() => new Map(orderedTimelineEntries.map((entry) => [entry.id, entry])), [orderedTimelineEntries]);
+  const timeline = useMemo(() => orderedTimelineEntries.filter((entry) => laneFilter === 'all' || entry.lane === laneFilter), [laneFilter, orderedTimelineEntries]);
+  const childrenByParent = useMemo(() => {
+    const children = new Map<string, TimelineEntry[]>();
+    for (const entry of orderedTimelineEntries) {
+      if (!entry.parentId || !timelineById.has(entry.parentId)) continue;
+      children.set(entry.parentId, [...(children.get(entry.parentId) ?? []), entry]);
+    }
+    return children;
+  }, [orderedTimelineEntries, timelineById]);
+  const rootEntries = useMemo(() => orderedTimelineEntries.filter((entry) => !entry.parentId || !timelineById.has(entry.parentId)), [orderedTimelineEntries, timelineById]);
+  const referenceCandidates = useMemo(() => {
+    const query = referenceQuery.trim().toLocaleLowerCase();
+    return entities
+      .filter((entity) => !query || `${entity.name} ${entity.aliases.join(' ')} ${entity.kind}`.toLocaleLowerCase().includes(query))
+      .slice(0, 8);
+  }, [entities, referenceQuery]);
+  const selectedReference = draft.referenceEntityId ? entityById.get(draft.referenceEntityId) : undefined;
   const brew = brews.find((item) => item.id === currentBrewId) ?? brews.find((item) => item.id === position?.brewId);
   const active = encounters.find((item) => item.id === position?.activeEncounterId);
   const previous = encounters.find((item) => item.id === position?.previousEncounterId);
@@ -68,22 +102,49 @@ export function CampaignPanel({ position, partyLocation, brews, encounters, enti
   const activeQuests = entities.filter((entity) => entity.kind === 'quest' && !['complete', 'completed', 'failed'].includes(String(currentStateByEntityId.get(entity.id)?.fields.status?.value ?? 'active').toLowerCase()));
   const notable = entities.filter((entity) => entity.kind === 'npc' || entity.kind === 'faction').filter((entity) => currentStateByEntityId.get(entity.id)?.fields.status?.value !== 'dead').slice(0, 8);
   const recentEvents = [...worldEvents].sort((left, right) => right.occurredAt.localeCompare(left.occurredAt)).slice(0, 8);
-  const orderedTimelineEntries = useMemo(() => orderTimeline(timelineEntries), [timelineEntries]);
-  const timeline = useMemo(() => orderedTimelineEntries.filter((entry) => (laneFilter === 'all' || entry.lane === laneFilter) && (statusFilter === 'all' || entry.status === statusFilter)), [laneFilter, statusFilter, orderedTimelineEntries]);
-  const entitiesById = new Map(entities.map((entity) => [entity.id, entity]));
-  const encounterById = new Map(encounters.map((encounter) => [encounter.id, encounter]));
-  const visualEvents = useMemo(() => [
-    ...orderedTimelineEntries.map((entry) => ({ id: `timeline:${entry.id}`, lane: entry.lane, status: entry.status, title: entry.title, subtitle: timelineDateLabel(entry) || entry.status, system: false })),
-    ...worldEvents.map((event) => ({ id: `event:${event.id}`, lane: 'main' as const, status: 'past' as const, title: event.type.replaceAll('.', ' '), subtitle: new Date(event.occurredAt).toLocaleString(), system: true }))
-  ], [orderedTimelineEntries, worldEvents]);
+
+  useEffect(() => {
+    if (!timelineDraftSeed) return;
+    const seededEntity = timelineDraftSeed.entityIds?.find((id) => entityById.has(id));
+    setDraft((current) => ({ ...current, title: timelineDraftSeed.title ?? current.title, referenceEntityId: seededEntity ?? current.referenceEntityId }));
+    onTimelineDraftSeedApplied?.();
+  }, [entityById, onTimelineDraftSeedApplied, timelineDraftSeed]);
+
   const submitTimeline = () => {
-    if (!draft.title.trim()) return;
+    if (!draft.title.trim()) {
+      setSaveNotice('Give the story node a title first.');
+      return;
+    }
     const year = Number(draft.dateYear);
     const day = Number(draft.dateDay);
-    const date = Number.isInteger(year) && year >= 0 && Number.isInteger(day) && day >= 1 && day <= 30 ? { era: draft.dateEra, year, month: draft.dateMonth, day } : undefined;
-    onSaveTimelineEntry({ ...draft, when: date ? formatBelentorDate(date) : '', date, worldbuildingId: draft.worldbuildingId || undefined, encounterId: draft.encounterId || undefined });
-    setDraft({ lane: draft.lane, status: 'planned', title: '', when: '', notes: '', entityIds: [], dateEra: 'AA', dateYear: '', dateMonth: 'Din', dateDay: '', worldbuildingId: '', encounterId: '' });
+    const date = Number.isInteger(year) && year >= 0 && Number.isInteger(day) && day >= 1 && day <= 30
+      ? { era: draft.dateEra, year, month: draft.dateMonth, day }
+      : undefined;
+    const entity = draft.referenceEntityId ? entityById.get(draft.referenceEntityId) : undefined;
+    onSaveTimelineEntry({
+      lane: draft.lane,
+      status: 'planned',
+      title: draft.title,
+      when: date ? formatBelentorDate(date) : '',
+      date,
+      notes: draft.notes,
+      entityIds: entity ? [entity.id] : [],
+      parentId: draft.parentId || undefined,
+      ...(entity?.source.kind === 'worldbuilding' ? { worldbuildingId: entity.source.id } : {})
+    });
+    setSaveNotice(`Added “${draft.title.trim()}”.`);
+    setDraft(emptyDraft(draft.lane));
+    setReferenceQuery('');
   };
+
+  const renderTree = (entries: readonly TimelineEntry[], depth = 0): ReactNode => entries.map((entry) => {
+    const reference = entry.entityIds.map((id) => entityById.get(id)).find(Boolean);
+    const children = childrenByParent.get(entry.id) ?? [];
+    return <li className={`story-tree-item lane-${entry.lane}`} key={entry.id} style={{ '--story-depth': depth } as CSSProperties}>
+      <div className="story-tree-node"><span className="story-tree-dot" /><strong>{entry.title}</strong>{timelineDateLabel(entry) && <small>{timelineDateLabel(entry)}</small>}{reference && <em>{reference.name}</em>}</div>
+      {children.length > 0 && <ol className="story-tree-children">{renderTree(children, depth + 1)}</ol>}
+    </li>;
+  });
 
   return <main className="campaign-page" aria-label="Campaign dashboard">
     <header className="campaign-page-header"><div><p className="eyebrow">Generated campaign state</p><h1>Campaign</h1><p>Current status assembled from encounters, explicit links, and World Events.</p></div></header>
@@ -98,21 +159,20 @@ export function CampaignPanel({ position, partyLocation, brews, encounters, enti
       <article className="campaign-card"><h2>Important entities</h2>{notable.length ? notable.map((entity) => <button key={entity.id} onClick={() => onOpenEntity(entity)} type="button"><span>{entityLabel(entity)} · {String(currentStateByEntityId.get(entity.id)?.fields.status?.value ?? 'unknown')}</span><strong>{entity.name}</strong></button>) : <p>No confirmed NPCs or factions yet.</p>}</article>
       <article className="campaign-card"><h2>Recent world events</h2>{recentEvents.length ? recentEvents.map((event) => <div key={event.id}><strong>{event.type.replaceAll('.', ' ')}</strong><span>{new Date(event.occurredAt).toLocaleString()}</span></div>) : <p>No structured world events yet.</p>}</article>
     </section>
-    <CampaignMapPanel
-      brews={brews}
-      campaignMap={campaignMap}
-      currentStateByEntityId={currentStateByEntityId}
-      entities={entities}
-      entityReferences={entityReferences}
-      worldbuildingEntries={worldbuildingEntries}
-      onSave={onSaveCampaignMap}
-    />
-    <section className="campaign-timeline" aria-label="Campaign timeline">
-      <header><div><p className="eyebrow">World progression</p><h2>Timeline</h2><small>Manual story beats live alongside read-only structured World Events.</small></div><div className="timeline-filters"><select aria-label="Timeline lane" onChange={(event) => setLaneFilter(event.target.value as TimelineLane | 'all')} value={laneFilter}><option value="all">All stories</option><option value="main">Main campaign</option><option value="quest">Quest / side story</option><option value="backstory">Character backstory</option></select><select aria-label="Timeline status" onChange={(event) => setStatusFilter(event.target.value as TimelineStatus | 'all')} value={statusFilter}><option value="all">All statuses</option><option value="planned">Planned</option><option value="current">Current</option><option value="past">Past</option></select></div></header>
-      <div className="timeline-branch-actions" aria-label="Create timeline branch"><button className={draft.lane === 'main' ? 'is-selected' : ''} onClick={() => setDraft({ ...draft, lane: 'main' })} type="button">+ Main node</button><button className={draft.lane === 'quest' ? 'is-selected' : ''} onClick={() => setDraft({ ...draft, lane: 'quest' })} type="button">+ Side-quest branch</button><button className={draft.lane === 'backstory' ? 'is-selected' : ''} onClick={() => setDraft({ ...draft, lane: 'backstory' })} type="button">+ Backstory branch</button></div>
-      <div className="timeline-create"><select aria-label="New timeline lane" onChange={(event) => setDraft({ ...draft, lane: event.target.value as TimelineLane })} value={draft.lane}><option value="main">Main campaign</option><option value="quest">Quest / side story</option><option value="backstory">Character backstory</option></select><select aria-label="New timeline status" onChange={(event) => setDraft({ ...draft, status: event.target.value as TimelineStatus })} value={draft.status}><option value="planned">Planned</option><option value="current">Current</option><option value="past">Past</option></select><input aria-label="Timeline event title" onChange={(event) => setDraft({ ...draft, title: event.target.value })} placeholder="Story beat" value={draft.title} /><div className="timeline-date-fields" aria-label="Belentor calendar date"><label>Era<select aria-label="Belentor era" onChange={(event) => setDraft({ ...draft, dateEra: event.target.value as BelentorEra })} value={draft.dateEra}><option value="AA">AA · After Ascension</option><option value="BA">BA · Before Ascension</option></select></label><label>Year<input aria-label="Belentor year" inputMode="numeric" min="0" onChange={(event) => setDraft({ ...draft, dateYear: event.target.value })} placeholder="Year" type="number" value={draft.dateYear} /></label><label>Month<select aria-label="Belentor month" onChange={(event) => setDraft({ ...draft, dateMonth: event.target.value as BelentorMonth })} value={draft.dateMonth}>{belentorMonths.map((month) => <option key={month.name} value={month.name}>{month.star ? `${month.name} · ${month.star}` : month.name}</option>)}</select></label><label>Day<input aria-label="Belentor day" inputMode="numeric" max="30" min="1" onChange={(event) => setDraft({ ...draft, dateDay: event.target.value })} placeholder="Day" type="number" value={draft.dateDay} /></label></div><textarea aria-label="Timeline notes" onChange={(event) => setDraft({ ...draft, notes: event.target.value })} placeholder="Private context or outcome" value={draft.notes} /><label>Links<select multiple aria-label="Linked timeline entities" onChange={(event) => setDraft({ ...draft, entityIds: [...event.currentTarget.selectedOptions].map((option) => option.value) })} value={draft.entityIds}>{entities.map((entity) => <option key={entity.id} value={entity.id}>{entity.name}</option>)}</select></label><label>Encounter<select aria-label="Linked timeline encounter" onChange={(event) => setDraft({ ...draft, encounterId: event.target.value })} value={draft.encounterId}><option value="">No encounter link</option>{encounters.map((encounter) => <option key={encounter.id} value={encounter.id}>{encounter.name}</option>)}</select></label><button className="primary-button" onClick={submitTimeline} type="button">Add to timeline</button></div>
-      <section className="visual-timeline" aria-label="Visual campaign timeline"><div className="visual-timeline-heading"><h3>Campaign tree</h3><span>Main campaign <i className="visual-main" /> Quest <i className="visual-quest" /> Backstory <i className="visual-backstory" /></span></div>{visualEvents.length ? <div className="campaign-tree"><div className="campaign-tree-columns">{visualEvents.map((event) => <div className={`tree-column lane-${event.lane}`} key={event.id}><span className="tree-connector" /><div className={`tree-node ${event.system ? 'is-system' : ''}`}><i /><strong>{event.title}</strong><span>{event.subtitle}</span>{event.system && <small>World Event</small>}</div></div>)}</div></div> : <p>Create a story beat or complete a structured action to see progression here.</p>}</section>
-      <div className="timeline-list">{timeline.map((entry) => { const encounter = entry.encounterId ? encounterById.get(entry.encounterId) : undefined; return <article className={`timeline-entry lane-${entry.lane} status-${entry.status}`} key={entry.id}><div className="timeline-entry-meta"><span>{entry.lane === 'main' ? 'Main campaign' : entry.lane === 'quest' ? 'Quest / side story' : 'Character backstory'}</span><b>{entry.status}</b></div><div><h3>{entry.title}</h3>{timelineDateLabel(entry) && <p className="timeline-when">{timelineDateLabel(entry)}</p>}{entry.notes && <p>{entry.notes}</p>}{entry.entityIds.length > 0 && <p className="timeline-links">{entry.entityIds.flatMap((id) => { const entity = entitiesById.get(id); return entity ? [<button key={id} onClick={() => onOpenEntity(entity)} type="button">{entity.name}</button>] : []; })}</p>}{encounter && <button className="timeline-encounter-link" onClick={() => onOpenEncounter(encounter)} type="button">Open {encounter.name}</button>}{entry.worldbuildingId && <button className="timeline-encounter-link" onClick={() => onOpenWorldbuildingEntry(entry.worldbuildingId!)} type="button">Open Worldbuilding entry</button>}</div><button className="quiet-danger" onClick={() => onDeleteTimelineEntry(entry.id)} type="button">Remove</button></article>; })}</div>
+    <CampaignMapPanel brews={brews} campaignMap={campaignMap} currentStateByEntityId={currentStateByEntityId} entities={entities} entityReferences={entityReferences} worldbuildingEntries={worldbuildingEntries} onSave={onSaveCampaignMap} />
+    <section className="campaign-timeline" aria-label="Story timeline">
+      <header><div><p className="eyebrow">Story planning</p><h2>Timeline</h2><small>Plot the main story and its parallel narratives. World Events stay separate below.</small></div><div className="timeline-filters"><select aria-label="Timeline story filter" onChange={(event) => setLaneFilter(event.target.value as TimelineLane | 'all')} value={laneFilter}><option value="all">All narratives</option><option value="main">Main campaign</option><option value="quest">Quest / side story</option><option value="backstory">Character backstory</option></select></div></header>
+      <div className="timeline-branch-actions" aria-label="Choose story type"><button className={draft.lane === 'main' ? 'is-selected' : ''} onClick={() => setDraft({ ...draft, lane: 'main' })} type="button">Main story</button><button className={draft.lane === 'quest' ? 'is-selected' : ''} onClick={() => setDraft({ ...draft, lane: 'quest' })} type="button">Side story</button><button className={draft.lane === 'backstory' ? 'is-selected' : ''} onClick={() => setDraft({ ...draft, lane: 'backstory' })} type="button">Backstory</button></div>
+      <div className="timeline-planner">
+        <label>Story node<input aria-label="Timeline event title" onChange={(event) => setDraft({ ...draft, title: event.target.value })} placeholder="What happens?" value={draft.title} /></label>
+        <label>Attach to<select aria-label="Timeline parent node" onChange={(event) => setDraft({ ...draft, parentId: event.target.value })} value={draft.parentId}><option value="">Start a new narrative</option>{orderedTimelineEntries.map((entry) => <option key={entry.id} value={entry.id}>{`${entry.lane === 'main' ? 'Main' : entry.lane === 'quest' ? 'Side' : 'Backstory'} · ${entry.title}`}</option>)}</select></label>
+        <label className="timeline-reference-search">Reference<input aria-label="Search timeline references" onChange={(event) => setReferenceQuery(event.target.value)} placeholder="Search Worldbuilding…" value={referenceQuery} />{selectedReference ? <div className="timeline-reference-selected"><span>{selectedReference.name}</span><button aria-label="Clear selected timeline reference" onClick={() => { setDraft({ ...draft, referenceEntityId: '' }); setReferenceQuery(''); }} type="button">Clear</button></div> : referenceQuery.trim() && <div className="timeline-reference-results">{referenceCandidates.length ? referenceCandidates.map((entity) => <button key={entity.id} onClick={() => { setDraft({ ...draft, referenceEntityId: entity.id }); setReferenceQuery(entity.name); }} type="button"><strong>{entity.name}</strong><small>{entityLabel(entity)}</small></button>) : <span>No confirmed references found.</span>}</div>}</label>
+        <div className="timeline-date-fields" aria-label="Optional Belentor calendar date"><label>Era<select aria-label="Belentor era" onChange={(event) => setDraft({ ...draft, dateEra: event.target.value as BelentorEra })} value={draft.dateEra}><option value="AA">AA · After Ascension</option><option value="BA">BA · Before Ascension</option></select></label><label>Year<input aria-label="Belentor year" inputMode="numeric" min="0" onChange={(event) => setDraft({ ...draft, dateYear: event.target.value })} placeholder="Optional" type="number" value={draft.dateYear} /></label><label>Month<select aria-label="Belentor month" onChange={(event) => setDraft({ ...draft, dateMonth: event.target.value as BelentorMonth })} value={draft.dateMonth}>{belentorMonths.map((month) => <option key={month.name} value={month.name}>{month.star ? `${month.name} · ${month.star}` : month.name}</option>)}</select></label><label>Day<input aria-label="Belentor day" inputMode="numeric" max="30" min="1" onChange={(event) => setDraft({ ...draft, dateDay: event.target.value })} placeholder="Optional" type="number" value={draft.dateDay} /></label></div>
+        <label className="timeline-notes">Notes<textarea aria-label="Timeline notes" onChange={(event) => setDraft({ ...draft, notes: event.target.value })} placeholder="Private context, a possible outcome, or questions to explore." value={draft.notes} /></label>
+        <div className="timeline-submit"><button className="primary-button" onClick={submitTimeline} type="button">Add story node</button>{saveNotice && <span aria-live="polite">{saveNotice}</span>}</div>
+      </div>
+      <section className="visual-timeline" aria-label="Story tree"><div className="visual-timeline-heading"><h3>Story tree</h3><span>Main <i className="visual-main" /> Side story <i className="visual-quest" /> Backstory <i className="visual-backstory" /></span></div>{rootEntries.length ? <ol className="story-tree">{renderTree(rootEntries)}</ol> : <p>Add a story node to begin planning.</p>}</section>
+      <div className="timeline-list">{timeline.map((entry) => { const parent = entry.parentId ? timelineById.get(entry.parentId) : undefined; const reference = entry.entityIds.map((id) => entityById.get(id)).find(Boolean); return <article className={`timeline-entry lane-${entry.lane} status-${entry.status}`} key={entry.id}><div className="timeline-entry-meta"><span>{entry.lane === 'main' ? 'Main campaign' : entry.lane === 'quest' ? 'Quest / side story' : 'Character backstory'}</span><b>{entry.status}</b></div><div><h3>{entry.title}</h3>{timelineDateLabel(entry) && <p className="timeline-when">{timelineDateLabel(entry)}</p>}{parent && <p className="timeline-parent">Attached to: {parent.title}</p>}{reference && <p className="timeline-reference">Reference: {reference.name}</p>}{entry.notes && <p>{entry.notes}</p>}</div><button className="quiet-danger" onClick={() => onDeleteTimelineEntry(entry.id)} type="button">Remove</button></article>; })}</div>
       <div className="timeline-system-events"><h3>Structured World Events</h3>{recentEvents.length ? recentEvents.map((event) => <article key={event.id}><strong>{event.type.replaceAll('.', ' ')}</strong><span>{new Date(event.occurredAt).toLocaleString()} · {event.source.kind}</span></article>) : <p>No structured world events yet.</p>}</div>
     </section>
   </main>;

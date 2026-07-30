@@ -1567,10 +1567,6 @@ export default function App() {
             const entry = worldbuildingEntries.find((item) => item.id === source.id);
             if (entry) openWorldbuilding(entry);
           }}
-          onOpenWorldbuildingEntry={(entryId) => {
-            const entry = worldbuildingEntries.find((item) => item.id === entryId);
-            if (entry) openWorldbuilding(entry);
-          }}
           onSetCurrentBrew={setCurrentCampaignBrew}
           partyLocation={partyLocation}
           position={campaignPosition}

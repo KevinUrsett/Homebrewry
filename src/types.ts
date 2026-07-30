@@ -181,6 +181,8 @@ export type TimelineEntry = {
   date?: BelentorDate;
   /** Optional source Worldbuilding entry for a timeline beat authored from that entry. */
   worldbuildingId?: string;
+  /** Optional story node this beat branches from. Timeline nodes never change campaign state. */
+  parentId?: string;
   encounterId?: string;
   brewId?: string;
   sectionId?: string;

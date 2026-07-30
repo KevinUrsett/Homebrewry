@@ -172,7 +172,10 @@ export function CampaignPanel({ position, partyLocation, brews, encounters, enti
     <div><button className="primary-button" onClick={saveNode} type="button">Save</button><button onClick={() => setNodeEditor(null)} type="button">Cancel</button>{nodeEditor.id && <button className="quiet-danger" onClick={() => { onDeleteTimelineEntry(nodeEditor.id!); setNodeEditor(null); }} type="button">Remove</button>}</div>
   </div>;
 
-  const renderNodeControls = (entry: TimelineEntry) => <div className="story-node-controls"><button aria-label={`Continue from ${entry.title}`} onClick={() => openNewNode(entry.id, entry.lane, 'right')} type="button">+</button><button aria-label={`Add side story from ${entry.title}`} onClick={() => openNewNode(entry.id, 'quest', 'top')} type="button">+</button><button aria-label={`Add backstory from ${entry.title}`} onClick={() => openNewNode(entry.id, 'backstory', 'bottom')} type="button">+</button></div>;
+  const renderNodeControls = (entry: TimelineEntry) => {
+    const hasContinuation = (childrenByParent.get(entry.id) ?? []).some((child) => child.lane === entry.lane);
+    return <div className="story-node-controls">{hasContinuation ? <span aria-hidden="true" className="story-node-continuation" /> : <button aria-label={`Continue from ${entry.title}`} className="story-node-control-right" onClick={() => openNewNode(entry.id, entry.lane, 'right')} type="button">+</button>}<button aria-label={`Add side story from ${entry.title}`} className="story-node-control-top" onClick={() => openNewNode(entry.id, 'quest', 'top')} type="button">+</button><button aria-label={`Add backstory from ${entry.title}`} className="story-node-control-bottom" onClick={() => openNewNode(entry.id, 'backstory', 'bottom')} type="button">+</button></div>;
+  };
 
   const renderBranch = (entry: TimelineEntry) => {
     const children = (childrenByParent.get(entry.id) ?? []).filter((child) => child.lane !== 'main');

@@ -40,10 +40,13 @@ function referencedEncounters(brew: Brew, byId: ReadonlyMap<string, Encounter>) 
  */
 export function deriveCampaignPosition(
   brews: readonly Brew[],
-  encounters: readonly Encounter[]
+  encounters: readonly Encounter[],
+  currentBrewId?: string
 ): CampaignPosition | null {
   const byId = new Map(encounters.map((encounter) => [encounter.id.toLowerCase(), encounter]));
-  const candidates = brews.flatMap((brew) => referencedEncounters(brew, byId).map((item, index, items) => ({ brew, ...item, index, items })));
+  const selectedBrew = currentBrewId ? brews.find((brew) => brew.id === currentBrewId) : undefined;
+  const sourceBrews = selectedBrew ? [selectedBrew] : brews;
+  const candidates = sourceBrews.flatMap((brew) => referencedEncounters(brew, byId).map((item, index, items) => ({ brew, ...item, index, items })));
   const active = candidates.find((candidate) => candidate.encounter.status === 'active');
   const selected = active ?? [...candidates]
     .filter((candidate) => candidate.encounter.status === 'completed')

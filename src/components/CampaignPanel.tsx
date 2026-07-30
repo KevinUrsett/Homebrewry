@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CampaignPosition, DerivedPartyLocation } from '../lib/campaignProgress';
-import { belentorMonths, compareBelentorDates, formatBelentorDate } from '../lib/belentorCalendar';
+import { compareBelentorDates, formatBelentorDate } from '../lib/belentorCalendar';
 import { CampaignMapPanel } from './CampaignMapPanel';
-import type { BelentorEra, BelentorMonth, Brew, CampaignEntity, CampaignMap, Encounter, EntityCurrentState, EntityReference, TimelineEntry, TimelineLane, TimelineStatus, WorldEvent, WorldbuildingEntry } from '../types';
+import type { Brew, CampaignEntity, CampaignMap, Encounter, EntityCurrentState, EntityReference, TimelineEntry, TimelineLane, TimelineStatus, WorldEvent, WorldbuildingEntry } from '../types';
 import '../campaign.css';
 
 export type TimelineDraftSeed = {
@@ -34,28 +34,21 @@ type CampaignPanelProps = {
   onSaveCampaignMap: (map: CampaignMap) => void;
 };
 
-type TimelineDraft = {
+type StoryNodeEditor = {
+  id?: string;
   lane: TimelineLane;
+  parentId?: string;
+  placement: 'right' | 'top' | 'bottom';
   title: string;
   notes: string;
-  dateEra: BelentorEra;
-  dateYear: string;
-  dateMonth: BelentorMonth;
-  dateDay: string;
-  parentId: string;
-  referenceEntityId: string;
 };
 
-const emptyDraft = (lane: TimelineLane = 'main'): TimelineDraft => ({
+const emptyNodeEditor = (lane: TimelineLane = 'main', parentId?: string, placement: StoryNodeEditor['placement'] = 'right'): StoryNodeEditor => ({
   lane,
   title: '',
   notes: '',
-  dateEra: 'AA',
-  dateYear: '',
-  dateMonth: 'Din',
-  dateDay: '',
-  parentId: '',
-  referenceEntityId: ''
+  parentId,
+  placement
 });
 
 const entityLabel = (entity: CampaignEntity) => entity.kind === 'npc' ? 'NPC' : entity.kind;
@@ -71,9 +64,7 @@ function orderTimeline(entries: readonly TimelineEntry[]) {
 }
 
 export function CampaignPanel({ position, partyLocation, brews, encounters, entities, currentStateByEntityId, worldEvents, timelineEntries, campaignMap, entityReferences, worldbuildingEntries, currentBrewId, onOpenEncounter, onOpenEntity, onSetCurrentBrew, timelineDraftSeed, onTimelineDraftSeedApplied, onSaveTimelineEntry, onDeleteTimelineEntry, onSaveCampaignMap }: CampaignPanelProps) {
-  const [draft, setDraft] = useState<TimelineDraft>(() => emptyDraft());
-  const [referenceQuery, setReferenceQuery] = useState('');
-  const [saveNotice, setSaveNotice] = useState('');
+  const [nodeEditor, setNodeEditor] = useState<StoryNodeEditor | null>(null);
   const entityById = useMemo(() => new Map(entities.map((entity) => [entity.id, entity])), [entities]);
   const orderedTimelineEntries = useMemo(() => orderTimeline(timelineEntries), [timelineEntries]);
   const timelineById = useMemo(() => new Map(orderedTimelineEntries.map((entry) => [entry.id, entry])), [orderedTimelineEntries]);
@@ -85,14 +76,22 @@ export function CampaignPanel({ position, partyLocation, brews, encounters, enti
     }
     return children;
   }, [orderedTimelineEntries, timelineById]);
-  const mainStory = useMemo(() => orderedTimelineEntries.filter((entry) => entry.lane === 'main'), [orderedTimelineEntries]);
-  const referenceCandidates = useMemo(() => {
-    const query = referenceQuery.trim().toLocaleLowerCase();
-    return entities
-      .filter((entity) => !query || `${entity.name} ${entity.aliases.join(' ')} ${entity.kind}`.toLocaleLowerCase().includes(query))
-      .slice(0, 8);
-  }, [entities, referenceQuery]);
-  const selectedReference = draft.referenceEntityId ? entityById.get(draft.referenceEntityId) : undefined;
+  const mainStory = useMemo(() => {
+    const mainNodes = orderedTimelineEntries.filter((entry) => entry.lane === 'main');
+    const mainById = new Map(mainNodes.map((entry) => [entry.id, entry]));
+    const children = new Map<string, TimelineEntry[]>();
+    for (const entry of mainNodes) {
+      if (!entry.parentId || !mainById.has(entry.parentId)) continue;
+      children.set(entry.parentId, [...(children.get(entry.parentId) ?? []), entry]);
+    }
+    const flattened: TimelineEntry[] = [];
+    const append = (entry: TimelineEntry) => {
+      flattened.push(entry);
+      for (const child of children.get(entry.id) ?? []) append(child);
+    };
+    for (const entry of mainNodes) if (!entry.parentId || !mainById.has(entry.parentId)) append(entry);
+    return flattened;
+  }, [orderedTimelineEntries]);
   const brew = brews.find((item) => item.id === currentBrewId) ?? brews.find((item) => item.id === position?.brewId);
   const active = encounters.find((item) => item.id === position?.activeEncounterId);
   const previous = encounters.find((item) => item.id === position?.previousEncounterId);
@@ -103,49 +102,41 @@ export function CampaignPanel({ position, partyLocation, brews, encounters, enti
 
   useEffect(() => {
     if (!timelineDraftSeed) return;
-    const seededEntity = timelineDraftSeed.entityIds?.find((id) => entityById.has(id));
-    setDraft((current) => ({ ...current, title: timelineDraftSeed.title ?? current.title, referenceEntityId: seededEntity ?? current.referenceEntityId }));
+    setNodeEditor(emptyNodeEditor('main', mainStory.at(-1)?.id, 'right'));
+    setNodeEditor((current) => current ? { ...current, title: timelineDraftSeed.title ?? current.title } : current);
     onTimelineDraftSeedApplied?.();
-  }, [entityById, onTimelineDraftSeedApplied, timelineDraftSeed]);
+  }, [mainStory, onTimelineDraftSeedApplied, timelineDraftSeed]);
 
-  const submitTimeline = () => {
-    if (!draft.title.trim()) {
-      setSaveNotice('Give the story node a title first.');
-      return;
-    }
-    if (draft.lane !== 'main' && !draft.parentId) {
-      setSaveNotice('Attach side stories and backstories to a story node.');
-      return;
-    }
-    const year = Number(draft.dateYear);
-    const day = Number(draft.dateDay);
-    const date = Number.isInteger(year) && year >= 0 && Number.isInteger(day) && day >= 1 && day <= 30
-      ? { era: draft.dateEra, year, month: draft.dateMonth, day }
-      : undefined;
-    const entity = draft.referenceEntityId ? entityById.get(draft.referenceEntityId) : undefined;
-    onSaveTimelineEntry({
-      lane: draft.lane,
-      status: 'planned',
-      title: draft.title,
-      when: date ? formatBelentorDate(date) : '',
-      date,
-      notes: draft.notes,
-      entityIds: entity ? [entity.id] : [],
-      parentId: draft.parentId || undefined,
-      ...(entity?.source.kind === 'worldbuilding' ? { worldbuildingId: entity.source.id } : {})
-    });
-    setSaveNotice(`Added “${draft.title.trim()}”.`);
-    setDraft(emptyDraft(draft.lane));
-    setReferenceQuery('');
+  const openNewNode = (parentId: string, lane: TimelineLane, placement: StoryNodeEditor['placement']) => {
+    setNodeEditor(emptyNodeEditor(lane, parentId, placement));
   };
 
+  const openExistingNode = (entry: TimelineEntry) => {
+    setNodeEditor({ id: entry.id, lane: entry.lane, parentId: entry.parentId, placement: entry.lane === 'main' ? 'right' : entry.lane === 'quest' ? 'top' : 'bottom', title: entry.title, notes: entry.notes });
+  };
+
+  const saveNode = () => {
+    if (!nodeEditor?.title.trim()) return;
+    if (nodeEditor.id) {
+      const existing = timelineById.get(nodeEditor.id);
+      if (existing) onSaveTimelineEntry({ ...existing, title: nodeEditor.title, notes: nodeEditor.notes });
+    } else {
+      onSaveTimelineEntry({ lane: nodeEditor.lane, status: 'planned', title: nodeEditor.title, when: '', notes: nodeEditor.notes, entityIds: [], parentId: nodeEditor.parentId });
+    }
+    setNodeEditor(null);
+  };
+
+  const renderNodeEditor = () => nodeEditor && <div className="story-node-editor"><input aria-label="Story node title" autoFocus onChange={(event) => setNodeEditor({ ...nodeEditor, title: event.target.value })} placeholder="Name this node" value={nodeEditor.title} /><textarea aria-label="Story node information" onChange={(event) => setNodeEditor({ ...nodeEditor, notes: event.target.value })} placeholder="Information, possible outcomes, or questions…" value={nodeEditor.notes} /><div><button className="primary-button" onClick={saveNode} type="button">Save</button><button onClick={() => setNodeEditor(null)} type="button">Cancel</button>{nodeEditor.id && <button className="quiet-danger" onClick={() => { onDeleteTimelineEntry(nodeEditor.id!); setNodeEditor(null); }} type="button">Remove</button>}</div></div>;
+
+  const renderNodeControls = (entry: TimelineEntry) => <div className="story-node-controls"><button aria-label={`Continue from ${entry.title}`} onClick={() => openNewNode(entry.id, entry.lane, 'right')} type="button">+</button><button aria-label={`Add side story from ${entry.title}`} onClick={() => openNewNode(entry.id, 'quest', 'top')} type="button">+</button><button aria-label={`Add backstory from ${entry.title}`} onClick={() => openNewNode(entry.id, 'backstory', 'bottom')} type="button">+</button></div>;
+
   const renderBranch = (entry: TimelineEntry) => {
-    const reference = entry.entityIds.map((id) => entityById.get(id)).find(Boolean);
     const children = (childrenByParent.get(entry.id) ?? []).filter((child) => child.lane !== 'main');
+    const pendingNode = nodeEditor && !nodeEditor.id && nodeEditor.parentId === entry.id ? <div className={`story-branch story-pending-node lane-${nodeEditor.lane}`}>{renderNodeEditor()}</div> : null;
     return <div className={`story-branch lane-${entry.lane}`} key={entry.id}>
       <span className="story-branch-connector" />
-      <div className="story-branch-node"><strong>{entry.title}</strong>{timelineDateLabel(entry) && <small>{timelineDateLabel(entry)}</small>}{reference && <em>{reference.name}</em>}</div>
-      {children.length > 0 && <div className="story-branch-children">{children.map(renderBranch)}</div>}
+      <div className="story-node-shell">{nodeEditor?.id === entry.id ? renderNodeEditor() : <button className="story-branch-node" onClick={() => openExistingNode(entry)} type="button"><strong>{entry.title}</strong>{timelineDateLabel(entry) && <small>{timelineDateLabel(entry)}</small>}</button>}{renderNodeControls(entry)}</div>
+      {(children.length > 0 || pendingNode) && <div className="story-branch-children">{pendingNode}{children.map(renderBranch)}</div>}
     </div>;
   };
 
@@ -164,17 +155,8 @@ export function CampaignPanel({ position, partyLocation, brews, encounters, enti
     </section>
     <CampaignMapPanel brews={brews} campaignMap={campaignMap} currentStateByEntityId={currentStateByEntityId} entities={entities} entityReferences={entityReferences} worldbuildingEntries={worldbuildingEntries} onSave={onSaveCampaignMap} />
     <section className="campaign-timeline" aria-label="Story timeline">
-      <header><div><p className="eyebrow">Story planning</p><h2>Timeline</h2><small>Plot the main story in the centre, with parallel narratives branching from it.</small></div></header>
-      <div className="timeline-branch-actions" aria-label="Choose story type"><button className={draft.lane === 'main' ? 'is-selected' : ''} onClick={() => setDraft({ ...draft, lane: 'main' })} type="button">Main story</button><button className={draft.lane === 'quest' ? 'is-selected' : ''} onClick={() => setDraft({ ...draft, lane: 'quest' })} type="button">Side story</button><button className={draft.lane === 'backstory' ? 'is-selected' : ''} onClick={() => setDraft({ ...draft, lane: 'backstory' })} type="button">Backstory</button></div>
-      <div className="timeline-planner">
-        <label>Story node<input aria-label="Timeline event title" onChange={(event) => setDraft({ ...draft, title: event.target.value })} placeholder="What happens?" value={draft.title} /></label>
-        <label>Attach to<select aria-label="Timeline parent node" onChange={(event) => setDraft({ ...draft, parentId: event.target.value })} value={draft.parentId}><option value="">Start a new narrative</option>{orderedTimelineEntries.map((entry) => <option key={entry.id} value={entry.id}>{`${entry.lane === 'main' ? 'Main' : entry.lane === 'quest' ? 'Side' : 'Backstory'} · ${entry.title}`}</option>)}</select></label>
-        <label className="timeline-reference-search">Reference<input aria-label="Search timeline references" onChange={(event) => setReferenceQuery(event.target.value)} placeholder="Search Worldbuilding…" value={referenceQuery} />{selectedReference ? <div className="timeline-reference-selected"><span>{selectedReference.name}</span><button aria-label="Clear selected timeline reference" onClick={() => { setDraft({ ...draft, referenceEntityId: '' }); setReferenceQuery(''); }} type="button">Clear</button></div> : referenceQuery.trim() && <div className="timeline-reference-results">{referenceCandidates.length ? referenceCandidates.map((entity) => <button key={entity.id} onClick={() => { setDraft({ ...draft, referenceEntityId: entity.id }); setReferenceQuery(entity.name); }} type="button"><strong>{entity.name}</strong><small>{entityLabel(entity)}</small></button>) : <span>No confirmed references found.</span>}</div>}</label>
-        <div className="timeline-date-fields" aria-label="Optional Belentor calendar date"><label>Era<select aria-label="Belentor era" onChange={(event) => setDraft({ ...draft, dateEra: event.target.value as BelentorEra })} value={draft.dateEra}><option value="AA">AA · After Ascension</option><option value="BA">BA · Before Ascension</option></select></label><label>Year<input aria-label="Belentor year" inputMode="numeric" min="0" onChange={(event) => setDraft({ ...draft, dateYear: event.target.value })} placeholder="Optional" type="number" value={draft.dateYear} /></label><label>Month<select aria-label="Belentor month" onChange={(event) => setDraft({ ...draft, dateMonth: event.target.value as BelentorMonth })} value={draft.dateMonth}>{belentorMonths.map((month) => <option key={month.name} value={month.name}>{month.star ? `${month.name} · ${month.star}` : month.name}</option>)}</select></label><label>Day<input aria-label="Belentor day" inputMode="numeric" max="30" min="1" onChange={(event) => setDraft({ ...draft, dateDay: event.target.value })} placeholder="Optional" type="number" value={draft.dateDay} /></label></div>
-        <label className="timeline-notes">Notes<textarea aria-label="Timeline notes" onChange={(event) => setDraft({ ...draft, notes: event.target.value })} placeholder="Private context, a possible outcome, or questions to explore." value={draft.notes} /></label>
-        <div className="timeline-submit"><button className="primary-button" onClick={submitTimeline} type="button">Add story node</button>{saveNotice && <span aria-live="polite">{saveNotice}</span>}</div>
-      </div>
-      <section className="visual-timeline" aria-label="Horizontal story tree"><div className="visual-timeline-heading"><h3>Story tree</h3><span>Main <i className="visual-main" /> Side story <i className="visual-quest" /> Backstory <i className="visual-backstory" /></span></div>{mainStory.length ? <div className="story-tree-scroll"><div className="story-horizontal-tree">{mainStory.map((entry) => { const reference = entry.entityIds.map((id) => entityById.get(id)).find(Boolean); const branches = (childrenByParent.get(entry.id) ?? []).filter((child) => child.lane !== 'main'); return <div className="story-main-column" key={entry.id}><div className="story-branch-stack story-branch-above">{branches.filter((branch) => branch.lane === 'quest').map(renderBranch)}</div><div className="story-main-node"><span className="story-main-dot" /><strong>{entry.title}</strong>{timelineDateLabel(entry) && <small>{timelineDateLabel(entry)}</small>}{reference && <em>{reference.name}</em>}<button className="quiet-danger" onClick={() => onDeleteTimelineEntry(entry.id)} type="button">Remove</button></div><div className="story-branch-stack story-branch-below">{branches.filter((branch) => branch.lane === 'backstory').map(renderBranch)}</div></div>; })}</div></div> : <p>Add a main story node to begin planning.</p>}</section>
+      <header><div><p className="eyebrow">Story planning</p><h2>Timeline</h2><small>Use the + controls on a node: right continues its story, top adds a side story, and bottom adds backstory.</small></div></header>
+      <section className="visual-timeline" aria-label="Horizontal story tree"><div className="visual-timeline-heading"><h3>Story tree</h3><span>Main <i className="visual-main" /> Side story <i className="visual-quest" /> Backstory <i className="visual-backstory" /></span></div>{mainStory.length ? <div className="story-tree-scroll"><div className="story-horizontal-tree">{mainStory.flatMap((entry) => { const branches = (childrenByParent.get(entry.id) ?? []).filter((child) => child.lane !== 'main'); const column = <div className="story-main-column" key={entry.id}><div className="story-branch-stack story-branch-above">{branches.filter((branch) => branch.lane === 'quest').map(renderBranch)}{nodeEditor && !nodeEditor.id && nodeEditor.parentId === entry.id && nodeEditor.placement === 'top' && <div className="story-branch lane-quest">{renderNodeEditor()}</div>}</div><div className="story-node-shell">{nodeEditor?.id === entry.id ? renderNodeEditor() : <button className="story-main-node" onClick={() => openExistingNode(entry)} type="button"><span className="story-main-dot" /><strong>{entry.title}</strong>{timelineDateLabel(entry) && <small>{timelineDateLabel(entry)}</small>}</button>}{renderNodeControls(entry)}</div><div className="story-branch-stack story-branch-below">{nodeEditor && !nodeEditor.id && nodeEditor.parentId === entry.id && nodeEditor.placement === 'bottom' && <div className="story-branch lane-backstory">{renderNodeEditor()}</div>}{branches.filter((branch) => branch.lane === 'backstory').map(renderBranch)}</div></div>; const rightEditor = nodeEditor && !nodeEditor.id && nodeEditor.parentId === entry.id && nodeEditor.placement === 'right' ? <div className="story-main-column story-main-editor" key={`${entry.id}:new`}><div className="story-node-shell">{renderNodeEditor()}</div></div> : []; return [column, rightEditor]; })}</div></div> : <div className="story-empty"><p>Add the first main story node to begin planning.</p>{nodeEditor ? renderNodeEditor() : <button className="primary-button" onClick={() => setNodeEditor(emptyNodeEditor())} type="button">+ Main story node</button>}</div>}</section>
       <div className="timeline-system-events"><h3>Structured World Events</h3>{recentEvents.length ? recentEvents.map((event) => <article key={event.id}><strong>{event.type.replaceAll('.', ' ')}</strong><span>{new Date(event.occurredAt).toLocaleString()} · {event.source.kind}</span></article>) : <p>No structured world events yet.</p>}</div>
     </section>
   </main>;

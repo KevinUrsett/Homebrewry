@@ -218,6 +218,8 @@ export type LivingWorldData = {
   worldEvents: WorldEvent[];
   timelineEntries?: TimelineEntry[];
   ideaDrafts?: IdeaDraft[];
+  /** Deliberately selected campaign brew, independent from the editor tab. */
+  currentBrewId?: string;
 };
 
 export const worldbuildingKinds = [
@@ -282,6 +284,8 @@ export type CampaignDataSnapshot = {
   timelineEntries?: TimelineEntry[];
   /** Optional to retain compatibility with existing campaign backups. */
   ideaDrafts?: IdeaDraft[];
+  /** Optional manual campaign brew selection. */
+  currentBrewId?: string;
 };
 
 export type CampaignDataConflict = {

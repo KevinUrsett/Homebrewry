@@ -278,7 +278,8 @@ export async function replaceCampaignData(
       entityReferences: snapshot.entityReferences,
       worldEvents: snapshot.worldEvents,
       timelineEntries: snapshot.timelineEntries ?? [],
-      ideaDrafts: snapshot.ideaDrafts ?? []
+      ideaDrafts: snapshot.ideaDrafts ?? [],
+      ...(snapshot.currentBrewId ? { currentBrewId: snapshot.currentBrewId } : {})
     } satisfies LivingWorldData),
     metadataStore.put(metadata)
   ]);

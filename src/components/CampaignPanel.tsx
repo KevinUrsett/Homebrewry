@@ -22,9 +22,11 @@ type CampaignPanelProps = {
   currentStateByEntityId: ReadonlyMap<string, EntityCurrentState>;
   worldEvents: readonly WorldEvent[];
   timelineEntries: readonly TimelineEntry[];
+  currentBrewId?: string;
   onOpenEncounter: (encounter: Encounter) => void;
   onOpenEntity: (entity: CampaignEntity) => void;
   onOpenBrewSection: (brewId: string, sectionId?: string) => void;
+  onSetCurrentBrew: (brewId: string | null) => void;
   onOpenWorldbuildingEntry: (entryId: string) => void;
   timelineDraftSeed?: TimelineDraftSeed | null;
   onTimelineDraftSeedApplied?: () => void;
@@ -44,7 +46,7 @@ function orderTimeline(entries: readonly TimelineEntry[]) {
   });
 }
 
-export function CampaignPanel({ position, partyLocation, brews, encounters, entities, currentStateByEntityId, worldEvents, timelineEntries, onOpenEncounter, onOpenEntity, onOpenBrewSection, onOpenWorldbuildingEntry, timelineDraftSeed, onTimelineDraftSeedApplied, onSaveTimelineEntry, onDeleteTimelineEntry }: CampaignPanelProps) {
+export function CampaignPanel({ position, partyLocation, brews, encounters, entities, currentStateByEntityId, worldEvents, timelineEntries, currentBrewId, onOpenEncounter, onOpenEntity, onOpenBrewSection, onSetCurrentBrew, onOpenWorldbuildingEntry, timelineDraftSeed, onTimelineDraftSeedApplied, onSaveTimelineEntry, onDeleteTimelineEntry }: CampaignPanelProps) {
   const [laneFilter, setLaneFilter] = useState<TimelineLane | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<TimelineStatus | 'all'>('all');
   const [draft, setDraft] = useState({ lane: 'main' as TimelineLane, status: 'planned' as TimelineStatus, title: '', when: '', notes: '', entityIds: [] as string[], dateEra: 'AA' as BelentorEra, dateYear: '', dateMonth: 'Din' as BelentorMonth, dateDay: '', worldbuildingId: '', encounterId: '', brewId: '', sectionId: '' });
@@ -60,7 +62,7 @@ export function CampaignPanel({ position, partyLocation, brews, encounters, enti
     }));
     onTimelineDraftSeedApplied?.();
   }, [onTimelineDraftSeedApplied, timelineDraftSeed]);
-  const brew = brews.find((item) => item.id === position?.brewId);
+  const brew = brews.find((item) => item.id === currentBrewId) ?? brews.find((item) => item.id === position?.brewId);
   const draftBrew = brews.find((item) => item.id === draft.brewId);
   const draftSections = useMemo(() => draftBrew ? getOutline(draftBrew.content) : [], [draftBrew]);
   const active = encounters.find((item) => item.id === position?.activeEncounterId);
@@ -89,7 +91,7 @@ export function CampaignPanel({ position, partyLocation, brews, encounters, enti
   return <main className="campaign-page" aria-label="Campaign dashboard">
     <header className="campaign-page-header"><div><p className="eyebrow">Generated campaign state</p><h1>Campaign</h1><p>Current status assembled from encounters, explicit links, and World Events.</p></div></header>
     <section className="campaign-hero-grid">
-      <article><span>Current brew</span><strong>{brew?.title ?? 'No encounter-linked brew'}</strong><small>{position?.headingPath.join(' › ') || 'No current section'}</small></article>
+      <article className="campaign-current-brew"><span>Current brew</span><select aria-label="Current campaign brew" onChange={(event) => onSetCurrentBrew(event.target.value || null)} value={currentBrewId ?? ''}><option value="">Automatic from encounter flow</option>{brews.map((item) => <option key={item.id} value={item.id}>{item.title || 'Untitled Brew'}</option>)}</select><small>{currentBrewId ? (position?.brewId === brew?.id ? position?.headingPath.join(' › ') || 'No current section' : 'Saved campaign selection') : position?.headingPath.join(' › ') || 'No current section'}</small></article>
       <article><span>Party location</span><strong>{partyLocation?.name ?? 'Not established'}</strong><small>{partyLocation ? (partyLocation.source === 'manual' ? 'Manual override' : 'Derived from current section') : 'Link a location in the current section or set an override.'}</small></article>
       <article><span>Campaign now</span><strong>{active ? `Active: ${active.name}` : previous ? `After: ${previous.name}` : 'Opening position'}</strong><small>{next ? `Next: ${next.name}` : 'No required encounter is queued.'}</small></article>
     </section>

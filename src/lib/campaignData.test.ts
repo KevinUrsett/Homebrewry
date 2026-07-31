@@ -4,6 +4,7 @@ import { createCustomCatalogueCategory, createCustomCatalogueEntry, createCustom
 import type { CatalogueEntry } from '../catalogue/types';
 import { createEncounter, createPartyMember } from './encounters';
 import { createWorldbuildingEntry, createWorldbuildingType } from './worldbuilding';
+import { createBlankPlotBoard } from './plotBoard';
 
 describe('campaign data snapshots', () => {
   it('validates a versioned Drive snapshot before it is used locally', () => {
@@ -26,6 +27,19 @@ describe('campaign data snapshots', () => {
   it('keeps the saved current brew in campaign data for Drive sync', () => {
     const snapshot = { ...createCampaignDataSnapshot([], [], [], '2026-07-30T12:00:00.000Z'), currentBrewId: 'brew-42' };
     expect(parseCampaignDataSnapshot(JSON.parse(JSON.stringify(snapshot))).currentBrewId).toBe('brew-42');
+  });
+
+  it('keeps a manual plot board separate from legacy timeline entries', () => {
+    const timestamp = '2026-07-31T08:00:00.000Z';
+    const board = createBlankPlotBoard(timestamp);
+    const phase = { id: 'opening', title: 'Opening', order: 0, createdAt: timestamp, updatedAt: timestamp };
+    const lane = { id: 'main', title: 'Main story', tone: 'main' as const, order: 0, createdAt: timestamp, updatedAt: timestamp };
+    const beat = { id: 'beat-1', laneId: lane.id, phaseId: phase.id, title: 'The party accepts the mission', notes: '', status: 'planned' as const, entityIds: [], order: 0, createdAt: timestamp, updatedAt: timestamp };
+    const snapshot = { ...createCampaignDataSnapshot([], [], [], timestamp), plotBoard: { ...board, phases: [phase], lanes: [lane], beats: [beat] }, timelineEntries: [{ id: 'legacy', campaignId: 'default-campaign', lane: 'main' as const, status: 'past' as const, title: 'Existing timeline event', when: '', order: 0, notes: '', entityIds: [], createdAt: timestamp, updatedAt: timestamp }] };
+
+    const parsed = parseCampaignDataSnapshot(JSON.parse(JSON.stringify(snapshot)));
+    expect(parsed.plotBoard?.beats).toEqual([beat]);
+    expect(parsed.timelineEntries).toHaveLength(1);
   });
 
   it('preserves structured custom monster data in schema v3 while safely migrating v2 entries', () => {

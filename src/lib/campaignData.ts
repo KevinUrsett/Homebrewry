@@ -4,6 +4,7 @@ import type {
   CampaignDataSyncMetadata,
   CampaignEntity,
   CampaignMap,
+  PlotBoard,
   EntityReference,
   Encounter,
   IdeaDraft,
@@ -270,7 +271,7 @@ function parseTimelineEntry(value: unknown, campaignId: string): TimelineEntry {
   if (value.lane !== 'main' && value.lane !== 'quest' && value.lane !== 'backstory') throw new Error('Campaign data has an invalid timeline lane.');
   if (value.status !== 'planned' && value.status !== 'current' && value.status !== 'past') throw new Error('Campaign data has an invalid timeline status.');
   if (value.date !== undefined && !isBelentorDate(value.date)) throw new Error('Campaign data has an invalid Belentor timeline date.');
-  return { id: requiredString(value.id, 'timeline ID'), campaignId, lane: value.lane, status: value.status, title: requiredString(value.title, 'timeline title'), when: requiredString(value.when, 'timeline date'), order: nullableNumber(value.order, 'timeline order') ?? 0, notes: requiredString(value.notes, 'timeline notes'), entityIds: requiredStringArray(value.entityIds, 'timeline entity IDs'), ...(value.date === undefined ? {} : { date: value.date }), ...(value.worldbuildingId === undefined ? {} : { worldbuildingId: requiredString(value.worldbuildingId, 'timeline Worldbuilding ID') }), ...(value.encounterId === undefined ? {} : { encounterId: requiredString(value.encounterId, 'timeline encounter ID') }), ...(value.brewId === undefined ? {} : { brewId: requiredString(value.brewId, 'timeline brew ID') }), ...(value.sectionId === undefined ? {} : { sectionId: requiredString(value.sectionId, 'timeline section ID') }), createdAt: requiredString(value.createdAt, 'timeline creation time'), updatedAt: requiredString(value.updatedAt, 'timeline update time') };
+  return { id: requiredString(value.id, 'timeline ID'), campaignId, lane: value.lane, status: value.status, title: requiredString(value.title, 'timeline title'), when: requiredString(value.when, 'timeline date'), order: nullableNumber(value.order, 'timeline order') ?? 0, notes: requiredString(value.notes, 'timeline notes'), entityIds: requiredStringArray(value.entityIds, 'timeline entity IDs'), ...(value.date === undefined ? {} : { date: value.date }), ...(value.worldbuildingId === undefined ? {} : { worldbuildingId: requiredString(value.worldbuildingId, 'timeline Worldbuilding ID') }), ...(value.parentId === undefined ? {} : { parentId: requiredString(value.parentId, 'timeline parent ID') }), ...(value.encounterId === undefined ? {} : { encounterId: requiredString(value.encounterId, 'timeline encounter ID') }), ...(value.brewId === undefined ? {} : { brewId: requiredString(value.brewId, 'timeline brew ID') }), ...(value.sectionId === undefined ? {} : { sectionId: requiredString(value.sectionId, 'timeline section ID') }), createdAt: requiredString(value.createdAt, 'timeline creation time'), updatedAt: requiredString(value.updatedAt, 'timeline update time') };
 }
 
 function parseIdeaDraft(value: unknown): IdeaDraft {
@@ -307,6 +308,30 @@ function parseCampaignMap(value: unknown): CampaignMap {
     return { id: requiredString(link.id, 'campaign map link ID'), sourceId: requiredString(link.sourceId, 'campaign map link source'), targetId: requiredString(link.targetId, 'campaign map link target'), label: requiredString(link.label, 'campaign map link label'), createdAt: requiredString(link.createdAt, 'campaign map link creation time') };
   });
   return { nodes, links, updatedAt: requiredString(value.updatedAt, 'campaign map update time') };
+}
+
+function parsePlotBoard(value: unknown): PlotBoard {
+  if (!isRecord(value) || !Array.isArray(value.phases) || !Array.isArray(value.lanes) || !Array.isArray(value.beats) || !Array.isArray(value.links)) throw new Error('Campaign data has an invalid plot board.');
+  const phases = value.phases.map((phase) => {
+    if (!isRecord(phase)) throw new Error('Campaign data has an invalid plot board phase.');
+    return { id: requiredString(phase.id, 'plot board phase ID'), title: requiredString(phase.title, 'plot board phase title'), order: nullableNumber(phase.order, 'plot board phase order') ?? 0, createdAt: requiredString(phase.createdAt, 'plot board phase creation time'), updatedAt: requiredString(phase.updatedAt, 'plot board phase update time') };
+  });
+  const lanes = value.lanes.map((lane) => {
+    if (!isRecord(lane) || !['main', 'side', 'character', 'secret'].includes(String(lane.tone))) throw new Error('Campaign data has an invalid plot board lane.');
+    return { id: requiredString(lane.id, 'plot board lane ID'), title: requiredString(lane.title, 'plot board lane title'), tone: lane.tone as PlotBoard['lanes'][number]['tone'], order: nullableNumber(lane.order, 'plot board lane order') ?? 0, createdAt: requiredString(lane.createdAt, 'plot board lane creation time'), updatedAt: requiredString(lane.updatedAt, 'plot board lane update time') };
+  });
+  const phaseIds = new Set(phases.map((phase) => phase.id));
+  const laneIds = new Set(lanes.map((lane) => lane.id));
+  const beats = value.beats.map((beat) => {
+    if (!isRecord(beat) || !laneIds.has(String(beat.laneId)) || !phaseIds.has(String(beat.phaseId)) || !['seed', 'planned', 'active', 'resolved'].includes(String(beat.status)) || !Array.isArray(beat.entityIds)) throw new Error('Campaign data has an invalid plot board beat.');
+    return { id: requiredString(beat.id, 'plot board beat ID'), laneId: requiredString(beat.laneId, 'plot board beat lane'), phaseId: requiredString(beat.phaseId, 'plot board beat phase'), title: requiredString(beat.title, 'plot board beat title'), notes: requiredString(beat.notes, 'plot board beat notes'), status: beat.status as PlotBoard['beats'][number]['status'], entityIds: requiredStringArray(beat.entityIds, 'plot board beat entity IDs'), order: nullableNumber(beat.order, 'plot board beat order') ?? 0, createdAt: requiredString(beat.createdAt, 'plot board beat creation time'), updatedAt: requiredString(beat.updatedAt, 'plot board beat update time') };
+  });
+  const beatIds = new Set(beats.map((beat) => beat.id));
+  const links = value.links.map((link) => {
+    if (!isRecord(link) || !beatIds.has(String(link.sourceBeatId)) || !beatIds.has(String(link.targetBeatId))) throw new Error('Campaign data has an invalid plot board link.');
+    return { id: requiredString(link.id, 'plot board link ID'), sourceBeatId: requiredString(link.sourceBeatId, 'plot board link source'), targetBeatId: requiredString(link.targetBeatId, 'plot board link target'), label: requiredString(link.label, 'plot board link label'), createdAt: requiredString(link.createdAt, 'plot board link creation time') };
+  });
+  return { phases, lanes, beats, links, updatedAt: requiredString(value.updatedAt, 'plot board update time') };
 }
 
 /** Validates untrusted Drive JSON before it can replace any local campaign records. */
@@ -354,6 +379,7 @@ export function parseCampaignDataSnapshot(value: unknown): CampaignDataSnapshot 
     ...(Array.isArray(value.timelineEntries) ? { timelineEntries: value.timelineEntries.map((entry) => parseTimelineEntry(entry, campaignId)) } : {}),
     ...(Array.isArray(value.ideaDrafts) ? { ideaDrafts: value.ideaDrafts.map(parseIdeaDraft) } : {}),
     ...(value.campaignMap === undefined ? {} : { campaignMap: parseCampaignMap(value.campaignMap) }),
+    ...(value.plotBoard === undefined ? {} : { plotBoard: parsePlotBoard(value.plotBoard) }),
     ...(value.currentBrewId === undefined ? {} : { currentBrewId: requiredString(value.currentBrewId, 'current brew ID') })
   };
 }
@@ -367,7 +393,7 @@ export function createCampaignDataSnapshot(
   customCatalogueCategories: CustomCatalogueCategory[] = [],
   worldbuildingTypes: WorldbuildingType[] = [],
   brews: Brew[] = [],
-  livingWorld: Pick<CampaignDataSnapshot, 'campaignId' | 'entities' | 'entityReferences' | 'worldEvents' | 'timelineEntries' | 'ideaDrafts' | 'campaignMap' | 'currentBrewId'> = {
+  livingWorld: Pick<CampaignDataSnapshot, 'campaignId' | 'entities' | 'entityReferences' | 'worldEvents' | 'timelineEntries' | 'ideaDrafts' | 'campaignMap' | 'plotBoard' | 'currentBrewId'> = {
     // The current app has one campaign companion file per Drive account.
     // A later multi-campaign migration can replace this file-scoped identity.
     campaignId: 'default-campaign',
@@ -393,6 +419,7 @@ export function createCampaignDataSnapshot(
     ...(livingWorld.timelineEntries?.length ? { timelineEntries: [...livingWorld.timelineEntries] } : {}),
     ...(livingWorld.ideaDrafts?.length ? { ideaDrafts: [...livingWorld.ideaDrafts] } : {}),
     ...(livingWorld.campaignMap ? { campaignMap: livingWorld.campaignMap } : {}),
+    ...(livingWorld.plotBoard ? { plotBoard: livingWorld.plotBoard } : {}),
     ...(livingWorld.currentBrewId ? { currentBrewId: livingWorld.currentBrewId } : {})
   };
 }
@@ -410,6 +437,7 @@ export function hasCampaignData(snapshot: CampaignDataSnapshot): boolean {
     || Boolean(snapshot.timelineEntries?.length)
     || Boolean(snapshot.ideaDrafts?.length)
     || Boolean(snapshot.campaignMap)
+    || Boolean(snapshot.plotBoard)
     || Boolean(snapshot.currentBrewId);
 }
 
@@ -470,6 +498,7 @@ export function keepBothCampaignData(
     ...(remote.timelineEntries || local.timelineEntries ? { timelineEntries: [...(remote.timelineEntries ?? []), ...(local.timelineEntries ?? []).filter((entry) => !(remote.timelineEntries ?? []).some((remoteEntry) => remoteEntry.id === entry.id))] } : {}),
     ...(remote.ideaDrafts || local.ideaDrafts ? { ideaDrafts: [...(remote.ideaDrafts ?? []), ...(local.ideaDrafts ?? []).filter((idea) => !(remote.ideaDrafts ?? []).some((remoteIdea) => remoteIdea.id === idea.id))] } : {}),
     ...(remote.campaignMap || local.campaignMap ? { campaignMap: remote.campaignMap ?? local.campaignMap } : {}),
+    ...(remote.plotBoard || local.plotBoard ? { plotBoard: remote.plotBoard ?? local.plotBoard } : {}),
     ...(remote.currentBrewId || local.currentBrewId ? { currentBrewId: remote.currentBrewId ?? local.currentBrewId } : {})
   };
 }

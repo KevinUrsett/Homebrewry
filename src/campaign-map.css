@@ -20,7 +20,7 @@
 .campaign-mindmap-surface { height: 680px; min-height: 100%; min-width: 100%; position: relative; width: 1100px; }
 .campaign-mindmap-lines { height: 100%; inset: 0; overflow: visible; pointer-events: none; position: absolute; width: 100%; }
 .campaign-mindmap-lines path { fill: none; stroke: #9b7852; stroke-linecap: round; stroke-width: .28; }
-.campaign-mindmap-lines text { fill: #765c45; font: 1.55px "Scaly Sans", sans-serif; paint-order: stroke; stroke: #f2e6d0; stroke-width: .55px; text-anchor: middle; }
+.campaign-mindmap-lines text { display: none; }
 .campaign-mindmap-lines .campaign-mindmap-drag-line { stroke: #73382e; stroke-dasharray: 1.2 1; stroke-width: .5; }
 .campaign-mindmap-node { background: #fffaf0; border: 1px solid #b99a73; border-left: 5px solid #72538a; border-radius: 6px; box-shadow: 0 4px 12px rgb(49 29 15 / 18%); color: #39291f; min-width: 142px; position: absolute; transform: translate(-50%, -50%); width: 164px; z-index: 2; }
 .campaign-mindmap-node.tone-entity { border-left-color: #82533e; }

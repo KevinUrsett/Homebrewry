@@ -225,6 +225,58 @@ export type CampaignMap = {
   updatedAt: string;
 };
 
+export type PlotBeatStatus = 'seed' | 'planned' | 'active' | 'resolved';
+
+/** A named column in the campaign's manual narrative outline. */
+export type PlotBoardPhase = {
+  id: string;
+  title: string;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** A named narrative thread, displayed as one row in the Plot Board. */
+export type PlotBoardLane = {
+  id: string;
+  title: string;
+  tone: 'main' | 'side' | 'character' | 'secret';
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** A DM-authored plot beat. It never alters World State or campaign position. */
+export type PlotBoardBeat = {
+  id: string;
+  laneId: string;
+  phaseId: string;
+  title: string;
+  notes: string;
+  status: PlotBeatStatus;
+  entityIds: string[];
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PlotBoardLink = {
+  id: string;
+  sourceBeatId: string;
+  targetBeatId: string;
+  label: string;
+  createdAt: string;
+};
+
+/** A deliberately empty, manual campaign-narrative outline. */
+export type PlotBoard = {
+  phases: PlotBoardPhase[];
+  lanes: PlotBoardLane[];
+  beats: PlotBoardBeat[];
+  links: PlotBoardLink[];
+  updatedAt: string;
+};
+
 export type CurrentStateField = {
   value: WorldStateValue;
   eventId: string;
@@ -247,6 +299,7 @@ export type LivingWorldData = {
   timelineEntries?: TimelineEntry[];
   ideaDrafts?: IdeaDraft[];
   campaignMap?: CampaignMap;
+  plotBoard?: PlotBoard;
   /** Deliberately selected campaign brew, independent from the editor tab. */
   currentBrewId?: string;
 };
@@ -314,6 +367,7 @@ export type CampaignDataSnapshot = {
   /** Optional to retain compatibility with existing campaign backups. */
   ideaDrafts?: IdeaDraft[];
   campaignMap?: CampaignMap;
+  plotBoard?: PlotBoard;
   /** Optional manual campaign brew selection. */
   currentBrewId?: string;
 };

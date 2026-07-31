@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { CataloguePanel } from './components/CataloguePanel';
-import { CampaignPanel, type TimelineDraftSeed } from './components/CampaignPanel';
+import { CampaignPanel, type PlotBeatDraftSeed } from './components/CampaignPanel';
 import { BrewPreview } from './components/BrewPreview';
 import { EncounterPanel } from './components/EncounterPanel';
 import { EditorPane } from './components/EditorPane';
@@ -33,7 +33,7 @@ import { createAsset, listAssets, replaceAssets, saveAsset } from './lib/assetSt
 import { syncAssets } from './lib/assetSync';
 import { createCampaignDataSnapshot } from './lib/campaignData';
 import { deriveCampaignPosition, derivePartyLocation } from './lib/campaignProgress';
-import { createTimelineEntry, deleteTimelineEntry, partyEntityId, recordCombatCompletion, recordManualStateChange, recordPartyLocation, saveTimelineEntry, synchroniseLivingWorld } from './lib/livingWorld';
+import { partyEntityId, recordCombatCompletion, recordManualStateChange, recordPartyLocation, synchroniseLivingWorld } from './lib/livingWorld';
 import { projectCurrentState } from './lib/worldState';
 import { keepBothCampaignDataVersions, keepDriveCampaignData, overwriteDriveCampaignData, syncCampaignData, type CampaignDataSyncResult } from './lib/campaignSync';
 import { keepBothVersions, resolveWithDriveVersion } from './lib/conflicts';
@@ -69,7 +69,7 @@ import { createCustomCatalogueCategory, createCustomCatalogueEntry, normaliseCus
 import { findCatalogueEntryByName, formatCatalogueReference } from './catalogue/references';
 import { formatWorldbuildingReference } from './lib/worldbuildingReferences';
 import { catalogueCategoryLabel, catalogueCategoryLabels, type CatalogueCategory, type CatalogueEntry, type CustomCatalogueCategory, type CustomCatalogueEntry } from './catalogue/types';
-import type { Brew, BrewAsset, CampaignDataSyncMetadata, CampaignMap, Encounter, IdeaDraft, LivingWorldData, MobileSection, PartyMember, PrivateMonsterSyncMetadata, TimelineEntry, ViewMode, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from './types';
+import type { Brew, BrewAsset, CampaignDataSyncMetadata, CampaignMap, Encounter, IdeaDraft, LivingWorldData, MobileSection, PartyMember, PlotBoard, PrivateMonsterSyncMetadata, ViewMode, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from './types';
 
 const mobileLabels: Record<MobileSection, string> = {
   library: 'Brews',
@@ -105,7 +105,7 @@ export default function App() {
   const [catalogueError, setCatalogueError] = useState<string | null>(null);
   const [catalogueOpen, setCatalogueOpen] = useState(false);
   const [campaignOpen, setCampaignOpen] = useState(false);
-  const [timelineDraftSeed, setTimelineDraftSeed] = useState<TimelineDraftSeed | null>(null);
+  const [plotBeatDraftSeed, setPlotBeatDraftSeed] = useState<PlotBeatDraftSeed | null>(null);
   const [privateMonsterImportOpen, setPrivateMonsterImportOpen] = useState(false);
   const [catalogueSelection, setCatalogueSelection] = useState<CatalogueEntry | null>(null);
   const [encounters, setEncounters] = useState<Encounter[]>([]);
@@ -628,26 +628,18 @@ export default function App() {
     void saveLivingWorldData(next).then((metadata) => noteCampaignDataSaved(metadata, `${entity.name} restored`)).catch(() => setSaveState('NPC restoration save failed'));
   };
 
-  const saveTimeline = (entry: TimelineEntry | Omit<TimelineEntry, 'id' | 'campaignId' | 'order' | 'createdAt' | 'updatedAt'>) => {
-    const nextEntry = 'id' in entry ? entry : createTimelineEntry(livingWorld, entry);
-    const next = saveTimelineEntry(livingWorld, nextEntry);
-    campaignRecordsRef.current = { ...campaignRecordsRef.current, livingWorld: next };
-    setLivingWorld(next);
-    void saveLivingWorldData(next).then((metadata) => noteCampaignDataSaved(metadata, 'Timeline updated')).catch(() => setSaveState('Timeline save failed'));
-  };
-
-  const removeTimeline = (entryId: string) => {
-    const next = deleteTimelineEntry(livingWorld, entryId);
-    campaignRecordsRef.current = { ...campaignRecordsRef.current, livingWorld: next };
-    setLivingWorld(next);
-    void saveLivingWorldData(next).then((metadata) => noteCampaignDataSaved(metadata, 'Timeline entry removed')).catch(() => setSaveState('Timeline delete failed'));
-  };
-
   const saveCampaignMap = (campaignMap: CampaignMap) => {
     const next = { ...livingWorld, campaignMap };
     campaignRecordsRef.current = { ...campaignRecordsRef.current, livingWorld: next };
     setLivingWorld(next);
     void saveLivingWorldData(next).then((metadata) => noteCampaignDataSaved(metadata, 'Campaign board updated')).catch(() => setSaveState('Campaign board save failed'));
+  };
+
+  const savePlotBoard = (plotBoard: PlotBoard) => {
+    const next = { ...livingWorld, plotBoard };
+    campaignRecordsRef.current = { ...campaignRecordsRef.current, livingWorld: next };
+    setLivingWorld(next);
+    void saveLivingWorldData(next).then((metadata) => noteCampaignDataSaved(metadata, 'Plot board updated')).catch(() => setSaveState('Plot board save failed'));
   };
 
   const setCurrentCampaignBrew = (brewId: string | null) => {
@@ -660,8 +652,8 @@ export default function App() {
       .catch(() => setSaveState('Current campaign brew save failed'));
   };
 
-  const openTimelineComposer = (seed: TimelineDraftSeed) => {
-    setTimelineDraftSeed(seed);
+  const openPlotBeatComposer = (seed: PlotBeatDraftSeed) => {
+    setPlotBeatDraftSeed(seed);
     setCampaignOpen(true);
     setCatalogueOpen(false);
     setEncountersOpen(false);
@@ -669,20 +661,19 @@ export default function App() {
     setMobileSection('campaign');
   };
 
-  const createTimelineEventFromBrew = () => {
+  const createPlotBeatFromBrew = () => {
     if (!activeBrew) return;
     const selection = editorRef.current?.getSelection() ?? selectionRef.current;
     const selectedText = activeBrew.content.slice(selection.start, selection.end).replace(/[#*_`\[\]]/g, '').replace(/\s+/g, ' ').trim();
-    openTimelineComposer({
+    openPlotBeatComposer({
       title: selectedText || activeBrew.title
     });
   };
 
-  const createTimelineEventFromWorldbuilding = (entry: WorldbuildingEntry, entity?: { id: string }) => {
-    openTimelineComposer({
+  const createPlotBeatFromWorldbuilding = (entry: WorldbuildingEntry, entity?: { id: string }) => {
+    openPlotBeatComposer({
       title: entry.name,
-      entityIds: entity ? [entity.id] : [],
-      worldbuildingId: entry.id
+      entityIds: entity ? [entity.id] : []
     });
   };
 
@@ -902,6 +893,7 @@ export default function App() {
         timelineEntries: result.data.timelineEntries ?? [],
         ideaDrafts: result.data.ideaDrafts ?? [],
         ...(result.data.campaignMap ? { campaignMap: result.data.campaignMap } : {}),
+        ...(result.data.plotBoard ? { plotBoard: result.data.plotBoard } : {}),
         ...(result.data.currentBrewId ? { currentBrewId: result.data.currentBrewId } : {})
       });
       setEncounterSelectedId((current) => result.data.encounters.some((encounter) => encounter.id === current) ? current : result.data.encounters[0]?.id ?? null);
@@ -923,6 +915,7 @@ export default function App() {
         timelineEntries: result.data.timelineEntries ?? [],
         ideaDrafts: result.data.ideaDrafts ?? [],
         ...(result.data.campaignMap ? { campaignMap: result.data.campaignMap } : {}),
+        ...(result.data.plotBoard ? { plotBoard: result.data.plotBoard } : {}),
         ...(result.data.currentBrewId ? { currentBrewId: result.data.currentBrewId } : {})
       }
     };
@@ -1555,6 +1548,7 @@ export default function App() {
         <CampaignPanel
           brews={brews}
           campaignMap={livingWorld.campaignMap}
+          plotBoard={livingWorld.plotBoard}
           currentBrewId={livingWorld.currentBrewId}
           currentStateByEntityId={currentStateByEntityId}
           encounters={encounters}
@@ -1570,12 +1564,10 @@ export default function App() {
           onSetCurrentBrew={setCurrentCampaignBrew}
           partyLocation={partyLocation}
           position={campaignPosition}
-          timelineEntries={livingWorld.timelineEntries ?? []}
-          timelineDraftSeed={timelineDraftSeed}
-          onTimelineDraftSeedApplied={() => setTimelineDraftSeed(null)}
-          onSaveTimelineEntry={saveTimeline}
-          onDeleteTimelineEntry={removeTimeline}
+          plotBeatDraftSeed={plotBeatDraftSeed}
+          onPlotBeatDraftSeedApplied={() => setPlotBeatDraftSeed(null)}
           onSaveCampaignMap={saveCampaignMap}
+          onSavePlotBoard={savePlotBoard}
           worldEvents={livingWorld.worldEvents}
           worldbuildingEntries={worldbuildingEntries}
         />
@@ -1644,7 +1636,7 @@ export default function App() {
           onCreateCatalogueReference={createCatalogueReference}
           onCreateWorldbuildingReference={createWorldbuildingReference}
           onCreateCuratedReferences={createCuratedReferences}
-          onCreateTimelineEvent={createTimelineEventFromWorldbuilding}
+          onCreatePlotBeat={createPlotBeatFromWorldbuilding}
           onDelete={deleteWorldbuilding}
           onEncounterOpen={(encounterId) => {
             const encounter = encounters.find((item) => item.id === encounterId);
@@ -1685,7 +1677,7 @@ export default function App() {
               findValue={findValue}
               findVisible={findVisible}
               onContentChange={updateContent}
-              onCreateTimelineEvent={createTimelineEventFromBrew}
+              onCreatePlotBeat={createPlotBeatFromBrew}
               onFindChange={setFindValue}
               onImageUpload={(file) => void uploadImage(file)}
               onInsert={insertText}

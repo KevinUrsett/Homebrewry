@@ -16,15 +16,20 @@ type CampaignMapPanelProps = {
 
 type NodeMeta = { notes: string };
 type DisplayNode = CampaignMapNode & { subtitle: string; notes: string; tone: 'entity' | 'note' };
-type PositionedNode = DisplayNode & { left: number; top: number; depth: number };
-type MindMapLayout = {
-  nodes: PositionedNode[];
-  width: number;
-  height: number;
-  primaryLinkIds: Set<string>;
+
+type FreeformMindMapProps = {
+  nodes: readonly DisplayNode[];
+  links: readonly CampaignMapLink[];
+  selectedId: string | null;
+  onAddConnected: (nodeId: string) => void;
+  onConnect: (sourceId: string, targetId: string) => void;
+  onMove: (nodeId: string, x: number, y: number) => void;
+  onMoveEnd: () => void;
+  onSelect: (nodeId: string) => void;
 };
 
 const NODE_META_PREFIX = '__homebrewry_node_meta__:';
+const clamp = (value: number, minimum: number, maximum: number) => Math.max(minimum, Math.min(maximum, value));
 const isNodeMetaLink = (link: CampaignMapLink) => link.sourceId === link.targetId && link.label.startsWith(NODE_META_PREFIX);
 
 function readNodeMeta(links: readonly CampaignMapLink[], nodeId: string): NodeMeta {
@@ -41,147 +46,107 @@ function readNodeMeta(links: readonly CampaignMapLink[], nodeId: string): NodeMe
 function writeNodeMeta(links: readonly CampaignMapLink[], nodeId: string, meta: NodeMeta, timestamp: string): CampaignMapLink[] {
   return [
     ...links.filter((link) => !(link.sourceId === nodeId && isNodeMetaLink(link))),
-    {
-      id: crypto.randomUUID(),
-      sourceId: nodeId,
-      targetId: nodeId,
-      label: `${NODE_META_PREFIX}${JSON.stringify(meta)}`,
-      createdAt: timestamp
-    }
+    { id: crypto.randomUUID(), sourceId: nodeId, targetId: nodeId, label: `${NODE_META_PREFIX}${JSON.stringify(meta)}`, createdAt: timestamp }
   ];
 }
 
-function createMindMapLayout(nodes: readonly DisplayNode[], links: readonly CampaignMapLink[]): MindMapLayout {
-  if (!nodes.length) return { nodes: [], width: 760, height: 480, primaryLinkIds: new Set() };
-  const nodeIds = new Set(nodes.map((node) => node.id));
-  const visibleLinks = links.filter((link) => !isNodeMetaLink(link) && nodeIds.has(link.sourceId) && nodeIds.has(link.targetId) && link.sourceId !== link.targetId);
-  const primaryParent = new Map<string, CampaignMapLink>();
-  for (const link of visibleLinks) if (!primaryParent.has(link.targetId)) primaryParent.set(link.targetId, link);
-  const primaryLinkIds = new Set([...primaryParent.values()].map((link) => link.id));
-  const children = new Map<string, string[]>();
-  for (const link of primaryParent.values()) children.set(link.sourceId, [...(children.get(link.sourceId) ?? []), link.targetId]);
-  const nodeOrder = new Map(nodes.map((node, index) => [node.id, index]));
-  for (const list of children.values()) list.sort((left, right) => (nodeOrder.get(left) ?? 0) - (nodeOrder.get(right) ?? 0));
-  const roots = nodes.filter((node) => !primaryParent.has(node.id)).map((node) => node.id);
-  if (!roots.length) roots.push(nodes[0].id);
-  const placed = new Map<string, { left: number; top: number; depth: number }>();
-  let cursorY = 72;
-  let maximumDepth = 0;
-  const place = (nodeId: string, depth: number, ancestors: Set<string>): number => {
-    const existing = placed.get(nodeId);
-    if (existing) return existing.top;
-    maximumDepth = Math.max(maximumDepth, depth);
-    const safeChildren = (children.get(nodeId) ?? []).filter((childId) => !ancestors.has(childId));
-    let top: number;
-    if (!safeChildren.length) {
-      top = cursorY;
-      cursorY += 96;
-    } else {
-      const nextAncestors = new Set(ancestors);
-      nextAncestors.add(nodeId);
-      const childTops = safeChildren.map((childId) => place(childId, depth + 1, nextAncestors));
-      top = (childTops[0] + childTops[childTops.length - 1]) / 2;
-    }
-    placed.set(nodeId, { left: 116 + depth * 228, top, depth });
-    return top;
-  };
-  for (const rootId of roots) {
-    place(rootId, 0, new Set());
-    cursorY += 48;
-  }
-  for (const node of nodes) if (!placed.has(node.id)) {
-    place(node.id, 0, new Set());
-    cursorY += 48;
-  }
-  return {
-    nodes: nodes.map((node) => ({ ...node, ...(placed.get(node.id) ?? { left: 116, top: cursorY, depth: 0 }) })),
-    width: Math.max(760, 332 + maximumDepth * 228),
-    height: Math.max(480, cursorY + 32),
-    primaryLinkIds
-  };
-}
-
-type MindMapCanvasProps = {
-  nodes: readonly DisplayNode[];
-  links: readonly CampaignMapLink[];
-  selectedId: string | null;
-  onAddChild: (parentId: string) => void;
-  onReparent: (nodeId: string, parentId: string) => void;
-  onSelect: (nodeId: string) => void;
-};
-
-function MindMapCanvas({ nodes, links, selectedId, onAddChild, onReparent, onSelect }: MindMapCanvasProps) {
-  const layout = useMemo(() => createMindMapLayout(nodes, links), [nodes, links]);
-  const nodeById = useMemo(() => new Map(layout.nodes.map((node) => [node.id, node])), [layout.nodes]);
+function FreeformMindMap({ nodes, links, selectedId, onAddConnected, onConnect, onMove, onMoveEnd, onSelect }: FreeformMindMapProps) {
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [linkingSourceId, setLinkingSourceId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
-  const updateDrag = (event: PointerEvent<HTMLDivElement>) => {
-    if (!draggingId || !surfaceRef.current) return;
-    const bounds = surfaceRef.current.getBoundingClientRect();
-    setPointer({ x: event.clientX - bounds.left, y: event.clientY - bounds.top });
-    const element = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-mindmap-node-id]');
-    const targetId = element?.dataset.mindmapNodeId;
-    setDropTargetId(targetId && targetId !== draggingId ? targetId : null);
-  };
-  const finishDrag = () => {
-    if (draggingId && dropTargetId) onReparent(draggingId, dropTargetId);
-    setDraggingId(null);
-    setDropTargetId(null);
-    setPointer(null);
-  };
-  const cancelDrag = () => {
-    setDraggingId(null);
-    setDropTargetId(null);
-    setPointer(null);
-  };
+  const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
   const visibleLinks = links.filter((link) => !isNodeMetaLink(link));
-  const draggingNode = draggingId ? nodeById.get(draggingId) : undefined;
+
+  const pointerPosition = (event: PointerEvent<HTMLElement>) => {
+    const bounds = surfaceRef.current?.getBoundingClientRect();
+    if (!bounds) return null;
+    return {
+      x: clamp(((event.clientX - bounds.left) / bounds.width) * 100, 0, 100),
+      y: clamp(((event.clientY - bounds.top) / bounds.height) * 100, 0, 100)
+    };
+  };
+
+  const updateInteraction = (event: PointerEvent<HTMLDivElement>) => {
+    const position = pointerPosition(event);
+    if (!position) return;
+    if (draggingId) onMove(draggingId, clamp(position.x, 3, 97), clamp(position.y, 5, 95));
+    if (linkingSourceId) {
+      setPointer(position);
+      const element = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-mindmap-node-id]');
+      const targetId = element?.dataset.mindmapNodeId;
+      setDropTargetId(targetId && targetId !== linkingSourceId ? targetId : null);
+    }
+  };
+
+  const finishInteraction = () => {
+    if (draggingId) onMoveEnd();
+    if (linkingSourceId && dropTargetId) onConnect(linkingSourceId, dropTargetId);
+    setDraggingId(null);
+    setLinkingSourceId(null);
+    setDropTargetId(null);
+    setPointer(null);
+  };
+
+  const cancelInteraction = () => {
+    if (draggingId) onMoveEnd();
+    setDraggingId(null);
+    setLinkingSourceId(null);
+    setDropTargetId(null);
+    setPointer(null);
+  };
+
+  const linkingSource = linkingSourceId ? nodeById.get(linkingSourceId) : undefined;
+
   return <div className="campaign-mindmap-viewport"><div
-    className={`campaign-mindmap-surface ${draggingId ? 'is-reparenting' : ''}`}
-    onPointerCancel={cancelDrag}
-    onPointerLeave={cancelDrag}
-    onPointerMove={updateDrag}
-    onPointerUp={finishDrag}
+    className={`campaign-mindmap-surface ${draggingId ? 'is-moving' : ''} ${linkingSourceId ? 'is-linking' : ''}`}
+    onPointerCancel={cancelInteraction}
+    onPointerMove={updateInteraction}
+    onPointerUp={finishInteraction}
     ref={surfaceRef}
-    style={{ height: `${layout.height}px`, width: `${layout.width}px` }}
   >
-    <svg aria-hidden="true" className="campaign-mindmap-lines" height={layout.height} width={layout.width}>
+    <svg aria-hidden="true" className="campaign-mindmap-lines" preserveAspectRatio="none" viewBox="0 0 100 100">
       {visibleLinks.map((link) => {
         const source = nodeById.get(link.sourceId);
         const target = nodeById.get(link.targetId);
         if (!source || !target) return null;
-        const startX = source.left + 82;
-        const endX = target.left - 82;
-        const control = Math.max(42, Math.abs(endX - startX) * 0.42);
-        return <g className={layout.primaryLinkIds.has(link.id) ? 'is-primary' : 'is-secondary'} key={link.id}>
-          <path d={`M ${startX} ${source.top} C ${startX + control} ${source.top}, ${endX - control} ${target.top}, ${endX} ${target.top}`} />
-          {link.label && link.label !== 'branch' && <text x={(startX + endX) / 2} y={(source.top + target.top) / 2 - 5}>{link.label}</text>}
+        const bend = Math.max(4, Math.abs(target.x - source.x) * 0.42);
+        const direction = target.x >= source.x ? 1 : -1;
+        return <g key={link.id}>
+          <path d={`M ${source.x} ${source.y} C ${source.x + bend * direction} ${source.y}, ${target.x - bend * direction} ${target.y}, ${target.x} ${target.y}`} />
+          {link.label && link.label !== 'branch' && <text x={(source.x + target.x) / 2} y={(source.y + target.y) / 2 - 1}>{link.label}</text>}
         </g>;
       })}
-      {draggingNode && pointer && <path className="campaign-mindmap-drag-line" d={`M ${draggingNode.left} ${draggingNode.top} C ${draggingNode.left + 60} ${draggingNode.top}, ${pointer.x - 60} ${pointer.y}, ${pointer.x} ${pointer.y}`} />}
+      {linkingSource && pointer && <path className="campaign-mindmap-drag-line" d={`M ${linkingSource.x} ${linkingSource.y} C ${linkingSource.x + 8} ${linkingSource.y}, ${pointer.x - 8} ${pointer.y}, ${pointer.x} ${pointer.y}`} />}
     </svg>
-    {layout.nodes.map((node) => {
+    {nodes.map((node) => {
       const selected = selectedId === node.id;
       return <article
         className={`campaign-mindmap-node tone-${node.tone} ${selected ? 'is-selected' : ''} ${dropTargetId === node.id ? 'is-drop-target' : ''}`}
-        data-depth={node.depth}
         data-mindmap-node-id={node.id}
         key={node.id}
-        style={{ left: `${node.left}px`, top: `${node.top}px` }}
+        style={{ left: `${node.x}%`, top: `${node.y}%` }}
       >
         <button className="campaign-mindmap-node-main" onClick={() => onSelect(node.id)} type="button">
           <strong>{node.label}</strong><span>{node.subtitle}</span>{node.notes && <small aria-label="Has notes">Notes</small>}
         </button>
-        {selected && <button aria-label={`Add child to ${node.label}`} className="campaign-mindmap-add-child" onClick={() => onAddChild(node.id)} type="button">+</button>}
-        {selected && <button aria-label={`Move ${node.label} under another node`} className="campaign-mindmap-reparent-handle" onPointerDown={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          event.currentTarget.setPointerCapture(event.pointerId);
-          setDraggingId(node.id);
-          setPointer({ x: node.left, y: node.top });
-        }} type="button">⠿</button>}
+        {selected && <div className="campaign-mindmap-node-controls">
+          <button aria-label={`Move ${node.label}`} className="campaign-mindmap-move-handle" onPointerDown={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            event.currentTarget.setPointerCapture(event.pointerId);
+            setDraggingId(node.id);
+          }} type="button">⠿</button>
+          <button aria-label={`Add a connected node to ${node.label}`} className="campaign-mindmap-add-child" onClick={() => onAddConnected(node.id)} type="button">+</button>
+          <button aria-label={`Connect ${node.label} to another node`} className="campaign-mindmap-connect-handle" onPointerDown={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            event.currentTarget.setPointerCapture(event.pointerId);
+            setLinkingSourceId(node.id);
+            setPointer({ x: node.x, y: node.y });
+          }} type="button">●</button>
+        </div>}
       </article>;
     })}
   </div></div>;
@@ -206,10 +171,10 @@ export function CampaignMapPanel({ brews, campaignMap, currentStateByEntityId, e
     setSelectedId((current) => current && campaignMap?.nodes.some((node) => node.id === current) ? current : null);
   }, [campaignMap]);
 
-  const replaceDraft = (next: CampaignMap) => {
+  const replaceDraft = (next: CampaignMap, save = true) => {
     draftRef.current = next;
     setDraft(next);
-    onSave(next);
+    if (save) onSave(next);
   };
   const visibleLinks = useMemo(() => (draft?.links ?? []).filter((link) => !isNodeMetaLink(link)), [draft?.links]);
   const entityByWorldbuildingId = useMemo(() => new Map(entities.flatMap((entity) => entity.source.kind === 'worldbuilding' ? [[entity.source.id.toLowerCase(), entity] as const] : [])), [entities]);
@@ -240,20 +205,33 @@ export function CampaignMapPanel({ brews, campaignMap, currentStateByEntityId, e
     setSelectedNotes(readNodeMeta(current.links, nodeId).notes);
     if (focusTitle) requestAnimationFrame(() => { titleInputRef.current?.focus(); titleInputRef.current?.select(); });
   };
-  const createNode = (label: string, parentId?: string, entity?: CampaignEntity) => {
+
+  const suggestedPosition = (current: CampaignMap, connectedToId?: string) => {
+    const connectedTo = connectedToId ? current.nodes.find((node) => node.id === connectedToId) : undefined;
+    if (connectedTo) {
+      const connections = current.links.filter((link) => !isNodeMetaLink(link) && (link.sourceId === connectedTo.id || link.targetId === connectedTo.id)).length;
+      const angle = ((connections % 6) - 2.5) * 0.42;
+      return { x: clamp(connectedTo.x + Math.cos(angle) * 18, 6, 94), y: clamp(connectedTo.y + Math.sin(angle) * 22, 8, 92) };
+    }
+    const index = current.nodes.length;
+    return { x: 14 + (index % 4) * 23, y: 16 + (Math.floor(index / 4) % 4) * 22 };
+  };
+
+  const createNode = (label: string, connectedToId?: string, entity?: CampaignEntity) => {
     const current = draftRef.current;
     if (!current) return;
     const timestamp = new Date().toISOString();
+    const position = suggestedPosition(current, connectedToId);
     const node: CampaignMapNode = {
       id: crypto.randomUUID(), label, kind: entity ? 'entity' : 'note', ...(entity ? { entityId: entity.id } : {}),
-      x: 50, y: 50, createdAt: timestamp, updatedAt: timestamp
+      x: position.x, y: position.y, createdAt: timestamp, updatedAt: timestamp
     };
-    const links = parentId ? [...current.links, { id: crypto.randomUUID(), sourceId: parentId, targetId: node.id, label: 'branch', createdAt: timestamp }] : current.links;
+    const links = connectedToId ? [...current.links, { id: crypto.randomUUID(), sourceId: connectedToId, targetId: node.id, label: 'branch', createdAt: timestamp }] : current.links;
     replaceDraft({ ...current, nodes: [...current.nodes, node], links, updatedAt: timestamp });
     selectNode(node.id, true);
   };
   const addRoot = () => createNode('New idea');
-  const addChild = (parentId = selectedId ?? undefined) => createNode('New idea', parentId);
+  const addConnected = (nodeId = selectedId ?? undefined) => createNode('New idea', nodeId);
   const addSibling = () => createNode('New idea', selectedParentLink?.sourceId);
   const addEntity = (id = entityId) => {
     const entity = entities.find((item) => item.id === id);
@@ -274,6 +252,19 @@ export function CampaignMapPanel({ brews, campaignMap, currentStateByEntityId, e
       updatedAt: timestamp
     });
   };
+  const connectNodes = (sourceId: string, targetId: string) => {
+    const current = draftRef.current;
+    if (!current || sourceId === targetId || current.links.some((link) => !isNodeMetaLink(link) && ((link.sourceId === sourceId && link.targetId === targetId) || (link.sourceId === targetId && link.targetId === sourceId)))) return;
+    const timestamp = new Date().toISOString();
+    replaceDraft({ ...current, links: [...current.links, { id: crypto.randomUUID(), sourceId, targetId, label: 'related to', createdAt: timestamp }], updatedAt: timestamp });
+  };
+  const moveNode = (nodeId: string, x: number, y: number) => {
+    const current = draftRef.current;
+    if (!current) return;
+    const timestamp = new Date().toISOString();
+    replaceDraft({ ...current, nodes: current.nodes.map((node) => node.id === nodeId ? { ...node, x, y, updatedAt: timestamp } : node), updatedAt: timestamp }, false);
+  };
+  const saveMovedMap = () => { if (draftRef.current) onSave(draftRef.current); };
   const removeLink = (linkId: string) => {
     const current = draftRef.current;
     if (!current) return;
@@ -282,28 +273,7 @@ export function CampaignMapPanel({ brews, campaignMap, currentStateByEntityId, e
   const detachSelected = () => {
     const current = draftRef.current;
     if (!current || !selectedId) return;
-    replaceDraft({ ...current, links: current.links.filter((link) => isNodeMetaLink(link) || link.targetId !== selectedId), updatedAt: new Date().toISOString() });
-  };
-  const isDescendant = (candidateParentId: string, nodeId: string, links: readonly CampaignMapLink[]) => {
-    const children = new Map<string, string[]>();
-    for (const link of links) if (!isNodeMetaLink(link)) children.set(link.sourceId, [...(children.get(link.sourceId) ?? []), link.targetId]);
-    const pending = [...(children.get(nodeId) ?? [])];
-    const visited = new Set<string>();
-    while (pending.length) {
-      const current = pending.shift()!;
-      if (current === candidateParentId) return true;
-      if (visited.has(current)) continue;
-      visited.add(current);
-      pending.push(...(children.get(current) ?? []));
-    }
-    return false;
-  };
-  const reparentNode = (nodeId: string, parentId: string) => {
-    const current = draftRef.current;
-    if (!current || nodeId === parentId || isDescendant(parentId, nodeId, current.links)) return;
-    const timestamp = new Date().toISOString();
-    const linksWithoutOldParent = current.links.filter((link) => isNodeMetaLink(link) || link.targetId !== nodeId);
-    replaceDraft({ ...current, links: [...linksWithoutOldParent, { id: crypto.randomUUID(), sourceId: parentId, targetId: nodeId, label: 'branch', createdAt: timestamp }], updatedAt: timestamp });
+    replaceDraft({ ...current, links: current.links.filter((link) => isNodeMetaLink(link) || (link.sourceId !== selectedId && link.targetId !== selectedId)), updatedAt: new Date().toISOString() });
   };
   const removeSelected = () => {
     const current = draftRef.current;
@@ -312,28 +282,29 @@ export function CampaignMapPanel({ brews, campaignMap, currentStateByEntityId, e
     replaceDraft({ ...current, nodes: current.nodes.filter((node) => node.id !== selectedId), links: current.links.filter((link) => link.sourceId !== selectedId && link.targetId !== selectedId), updatedAt: timestamp });
     setSelectedId(null);
   };
+
   const loadReferenceCluster = () => {
     const current = draftRef.current;
     if (!current || !loadSourceId) return;
     const timestamp = new Date().toISOString();
     const nodes = [...current.nodes];
     const links = [...current.links];
-    const ensureEntity = (entity: CampaignEntity) => {
+    const ensureEntity = (entity: CampaignEntity, x: number, y: number) => {
       const existing = nodes.find((node) => node.entityId === entity.id);
       if (existing) return existing;
-      const node: CampaignMapNode = { id: crypto.randomUUID(), label: entity.name, kind: 'entity', entityId: entity.id, x: 50, y: 50, createdAt: timestamp, updatedAt: timestamp };
+      const node: CampaignMapNode = { id: crypto.randomUUID(), label: entity.name, kind: 'entity', entityId: entity.id, x, y, createdAt: timestamp, updatedAt: timestamp };
       nodes.push(node);
       return node;
     };
-    const ensureNote = (label: string) => {
+    const ensureNote = (label: string, x = 50, y = 50) => {
       const existing = nodes.find((node) => node.kind === 'note' && node.label === label);
       if (existing) return existing;
-      const node: CampaignMapNode = { id: crypto.randomUUID(), label, kind: 'note', x: 50, y: 50, createdAt: timestamp, updatedAt: timestamp };
+      const node: CampaignMapNode = { id: crypto.randomUUID(), label, kind: 'note', x, y, createdAt: timestamp, updatedAt: timestamp };
       nodes.push(node);
       return node;
     };
     const ensureLink = (sourceId: string, targetId: string, label: string) => {
-      if (sourceId === targetId || links.some((link) => !isNodeMetaLink(link) && link.sourceId === sourceId && link.targetId === targetId)) return;
+      if (sourceId === targetId || links.some((link) => !isNodeMetaLink(link) && ((link.sourceId === sourceId && link.targetId === targetId) || (link.sourceId === targetId && link.targetId === sourceId)))) return;
       links.push({ id: crypto.randomUUID(), sourceId, targetId, label, createdAt: timestamp });
     };
     let source: CampaignMapNode;
@@ -348,43 +319,47 @@ export function CampaignMapPanel({ brews, campaignMap, currentStateByEntityId, e
       const entry = worldbuildingEntries.find((item) => item.id === loadSourceId);
       const origin = entry ? entityByWorldbuildingId.get(entry.id.toLowerCase()) : undefined;
       if (!entry || !origin) return;
-      source = ensureEntity(origin);
+      source = ensureEntity(origin, 50, 50);
       targets = worldbuildingReferenceMatches(entry.notes).flatMap((reference) => {
         const target = entityByWorldbuildingId.get(reference.id);
         return target ? [target] : [];
       });
     }
-    targets.forEach((entity) => ensureLink(source.id, ensureEntity(entity).id, loadKind === 'brew' ? 'references' : 'links to'));
+    targets.forEach((entity, index) => {
+      const angle = (Math.PI * 2 * index) / Math.max(1, targets.length);
+      const target = ensureEntity(entity, clamp(source.x + Math.cos(angle) * 24, 7, 93), clamp(source.y + Math.sin(angle) * 30, 9, 91));
+      ensureLink(source.id, target.id, loadKind === 'brew' ? 'references' : 'links to');
+    });
     replaceDraft({ ...current, nodes, links, updatedAt: timestamp });
     selectNode(source.id);
   };
   const createBoard = () => replaceDraft(createBlankCampaignMap());
 
   return <section className="campaign-map-section" aria-label="Campaign map">
-    <header><div><p className="eyebrow">Connections and planning</p><h2>Campaign map</h2><small>A compact mind map for campaign relationships, secrets and ideas.</small></div></header>
-    {!draft ? <div className="campaign-map-empty"><h3>Create a campaign mind map</h3><p>Start empty, then build branches manually or add selected campaign references.</p><button className="primary-button" onClick={createBoard} type="button">Start map</button></div> : <>
+    <header><div><p className="eyebrow">Connections and planning</p><h2>Campaign map</h2><small>A flexible mind map for campaign relationships, secrets and ideas.</small></div></header>
+    {!draft ? <div className="campaign-map-empty"><h3>Create a campaign mind map</h3><p>Start empty, then place and connect only the nodes you need.</p><button className="primary-button" onClick={createBoard} type="button">Start map</button></div> : <>
       <div className="campaign-mindmap-toolbar" role="toolbar" aria-label="Mind map tools">
-        <button onClick={addRoot} type="button">+ Root</button><button disabled={!selectedId} onClick={() => addChild()} type="button">+ Child</button><button disabled={!selectedId} onClick={addSibling} type="button">+ Sibling</button><button disabled={!selectedParentLink} onClick={detachSelected} type="button">Detach</button><button className="quiet-danger" disabled={!selectedId} onClick={removeSelected} type="button">Delete node</button>
+        <button onClick={addRoot} type="button">+ Root</button><button disabled={!selectedId} onClick={() => addConnected()} type="button">+ Connected</button><button disabled={!selectedId} onClick={addSibling} type="button">+ Sibling</button><button disabled={!selectedConnections.length} onClick={detachSelected} type="button">Remove all links</button><button className="quiet-danger" disabled={!selectedId} onClick={removeSelected} type="button">Delete node</button>
       </div>
-      <div className="campaign-mindmap-add-existing"><label>Add world item<select onChange={(event) => setEntityId(event.target.value)} value={entityId}><option value="">Choose entity</option>{entities.filter((entity) => !draft.nodes.some((node) => node.entityId === entity.id)).map((entity) => <option key={entity.id} value={entity.id}>{entity.name}</option>)}</select></label><button disabled={!entityId} onClick={() => addEntity()} type="button">Add {selectedId ? 'as child' : 'as root'}</button></div>
+      <div className="campaign-mindmap-add-existing"><label>Add world item<select onChange={(event) => setEntityId(event.target.value)} value={entityId}><option value="">Choose entity</option>{entities.filter((entity) => !draft.nodes.some((node) => node.entityId === entity.id)).map((entity) => <option key={entity.id} value={entity.id}>{entity.name}</option>)}</select></label><button disabled={!entityId} onClick={() => addEntity()} type="button">Add {selectedId ? 'connected' : 'as root'}</button></div>
       <details className="campaign-mindmap-imports"><summary>Import references</summary>
         <div className="campaign-map-brew-tools"><label>From brew<select onChange={(event) => { setReferenceBrewId(event.target.value); setReferencedEntityId(''); }} value={referenceBrewId}><option value="">Choose brew</option>{brews.map((brew) => <option key={brew.id} value={brew.id}>{brew.title || 'Untitled Brew'}</option>)}</select></label><label>Referenced item<select disabled={!referenceBrewId} onChange={(event) => setReferencedEntityId(event.target.value)} value={referencedEntityId}><option value="">Choose a reference</option>{referencedEntities.map((entity) => <option key={entity.id} value={entity.id}>{entity.name}</option>)}</select></label><button disabled={!referencedEntityId} onClick={() => addEntity(referencedEntityId)} type="button">Add item</button></div>
-        <div className="campaign-map-load-tools"><label>Load references from<select onChange={(event) => { setLoadKind(event.target.value as 'brew' | 'worldbuilding'); setLoadSourceId(''); }} value={loadKind}><option value="brew">Brew</option><option value="worldbuilding">Worldbuilding</option></select></label><label>{loadKind === 'brew' ? 'Brew' : 'Worldbuilding entry'}<select onChange={(event) => setLoadSourceId(event.target.value)} value={loadSourceId}><option value="">Choose source</option>{loadKind === 'brew' ? brews.map((brew) => <option key={brew.id} value={brew.id}>{brew.title || 'Untitled Brew'}</option>) : worldbuildingEntries.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}</option>)}</select></label><button disabled={!loadSourceId} onClick={loadReferenceCluster} type="button">Load branch</button></div>
+        <div className="campaign-map-load-tools"><label>Load references from<select onChange={(event) => { setLoadKind(event.target.value as 'brew' | 'worldbuilding'); setLoadSourceId(''); }} value={loadKind}><option value="brew">Brew</option><option value="worldbuilding">Worldbuilding</option></select></label><label>{loadKind === 'brew' ? 'Brew' : 'Worldbuilding entry'}<select onChange={(event) => setLoadSourceId(event.target.value)} value={loadSourceId}><option value="">Choose source</option>{loadKind === 'brew' ? brews.map((brew) => <option key={brew.id} value={brew.id}>{brew.title || 'Untitled Brew'}</option>) : worldbuildingEntries.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}</option>)}</select></label><button disabled={!loadSourceId} onClick={loadReferenceCluster} type="button">Load cluster</button></div>
       </details>
-      <div className="campaign-mindmap-workspace"><MindMapCanvas links={visibleLinks} nodes={boardNodes} onAddChild={addChild} onReparent={reparentNode} onSelect={selectNode} selectedId={selectedId} />
+      <div className="campaign-mindmap-workspace"><FreeformMindMap links={visibleLinks} nodes={boardNodes} onAddConnected={addConnected} onConnect={connectNodes} onMove={moveNode} onMoveEnd={saveMovedMap} onSelect={selectNode} selectedId={selectedId} />
         <aside className="campaign-mindmap-inspector">{selectedNode ? <>
           <div><p className="eyebrow">Selected node</p><h3>{selectedLabel || selectedNode.label}</h3></div>
           <label>Title<input ref={titleInputRef} onChange={(event) => setSelectedLabel(event.target.value)} value={selectedLabel} /></label>
           <label>Notes<textarea onChange={(event) => setSelectedNotes(event.target.value)} placeholder="Context, secrets, unresolved questions…" value={selectedNotes} /></label>
           <button className="primary-button" disabled={!selectedLabel.trim()} onClick={saveSelectedNode} type="button">Save node</button>
-          <section className="campaign-mindmap-connections"><div><strong>Connections</strong><small>Drag the dotted handle onto another node to change its parent.</small></div>
+          <section className="campaign-mindmap-connections"><div><strong>Connections</strong><small>Use the dotted handle to move. Drag the round handle onto any node to add another connection.</small></div>
             {!selectedConnections.length ? <p>No connections.</p> : selectedConnections.map((link) => {
               const otherId = link.sourceId === selectedId ? link.targetId : link.sourceId;
               const other = draft.nodes.find((node) => node.id === otherId);
-              return <div className="campaign-mindmap-connection" key={link.id}><span>{link.sourceId === selectedId ? 'Child' : 'Parent'} · {other?.label ?? 'Unknown node'}{link.label && link.label !== 'branch' ? ` · ${link.label}` : ''}</span><button onClick={() => removeLink(link.id)} type="button">Remove</button></div>;
+              return <div className="campaign-mindmap-connection" key={link.id}><span>{other?.label ?? 'Unknown node'}{link.label && link.label !== 'branch' ? ` · ${link.label}` : ''}</span><button onClick={() => removeLink(link.id)} type="button">Remove</button></div>;
             })}
           </section>
-        </> : <div className="campaign-mindmap-inspector-empty"><strong>Select a node</strong><p>Edit its title and notes, add children, or drag it under another node.</p></div>}</aside>
+        </> : <div className="campaign-mindmap-inspector-empty"><strong>Select a node</strong><p>Edit it, drag it anywhere, or connect it to several other nodes.</p></div>}</aside>
       </div>
     </>}
   </section>;

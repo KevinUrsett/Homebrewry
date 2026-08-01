@@ -33,6 +33,7 @@ declare global {
 }
 
 let scriptPromise: Promise<void> | null = null;
+let sessionAccessToken: string | null = null;
 
 function getClientId() {
   return import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() ?? '';
@@ -40,6 +41,10 @@ function getClientId() {
 
 export function isGoogleConfigured() {
   return Boolean(getClientId());
+}
+
+export function getDriveAccessToken() {
+  return sessionAccessToken;
 }
 
 function loadGoogleIdentity() {
@@ -60,6 +65,8 @@ function loadGoogleIdentity() {
 }
 
 export async function requestDriveAccess() {
+  if (sessionAccessToken) return sessionAccessToken;
+
   const clientId = getClientId();
   if (!clientId) {
     throw new Error('Google Drive is not configured. Add VITE_GOOGLE_CLIENT_ID in the hosting environment.');
@@ -78,12 +85,11 @@ export async function requestDriveAccess() {
           reject(new Error(response.error_description ?? response.error ?? 'Google access was not granted.'));
           return;
         }
+        sessionAccessToken = response.access_token;
         resolve(response.access_token);
       }
     });
 
-    // Set the prompt both on initialization and on the request. This avoids a
-    // browser reusing the previous Google session without showing its chooser.
     client?.requestAccessToken({ prompt: DRIVE_AUTH_PROMPT });
   });
 }

@@ -43,11 +43,8 @@ export async function saveBrewToDrive(accessToken: string, brew: Brew): Promise<
       && brew.version === 1
       && new Date(brew.createdAt).getTime() > new Date(brew.drive.lastSyncedAt).getTime()
   );
-  const candidate = looksLikeDuplicate
-    ? (() => {
-        const { drive: _drive, conflict: _conflict, ...fork } = brew;
-        return { ...fork, syncState: 'pending' as const };
-      })()
+  const candidate: Brew = looksLikeDuplicate
+    ? { ...brew, drive: undefined, conflict: undefined, syncState: 'pending' }
     : brew;
   const file = await uploadBrew(accessToken, candidate, candidate.drive?.revisionId);
   return asSynced(candidate, file);

@@ -2,6 +2,7 @@ const GOOGLE_IDENTITY_URL = 'https://accounts.google.com/gsi/client';
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 
 const DRIVE_AUTH_PROMPT = 'select_account consent';
+export const DRIVE_AUTH_EXPIRED_EVENT = 'homebrewry-drive-auth-expired';
 
 type TokenResponse = {
   access_token?: string;
@@ -47,6 +48,11 @@ export function getDriveAccessToken() {
   return sessionAccessToken;
 }
 
+export function invalidateDriveAccessToken() {
+  sessionAccessToken = null;
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(DRIVE_AUTH_EXPIRED_EVENT));
+}
+
 function loadGoogleIdentity() {
   if (window.google) return Promise.resolve();
   if (scriptPromise) return scriptPromise;
@@ -64,8 +70,9 @@ function loadGoogleIdentity() {
   return scriptPromise;
 }
 
-export async function requestDriveAccess() {
-  if (sessionAccessToken) return sessionAccessToken;
+export async function requestDriveAccess(options: { force?: boolean } = {}) {
+  if (sessionAccessToken && !options.force) return sessionAccessToken;
+  if (options.force) sessionAccessToken = null;
 
   const clientId = getClientId();
   if (!clientId) {

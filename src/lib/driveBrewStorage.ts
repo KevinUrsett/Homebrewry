@@ -1,5 +1,6 @@
 import type { Brew } from '../types';
 import { listRemoteBrews, uploadBrew } from './googleDrive';
+import { getDriveAccessToken, invalidateDriveAccessToken } from './googleIdentity';
 
 const DRIVE_API = 'https://www.googleapis.com/drive/v3';
 
@@ -54,8 +55,9 @@ export async function deleteBrewFromDrive(accessToken: string, brew: Brew): Prom
   if (!brew.drive?.fileId) return;
   const response = await fetch(`${DRIVE_API}/files/${encodeURIComponent(brew.drive.fileId)}`, {
     method: 'DELETE',
-    headers: { Authorization: `Bearer ${accessToken}` }
+    headers: { Authorization: `Bearer ${getDriveAccessToken() ?? accessToken}` }
   });
+  if (response.status === 401) invalidateDriveAccessToken();
   if (!response.ok && response.status !== 404) {
     throw new Error(`Google Drive deletion failed (${response.status}).`);
   }

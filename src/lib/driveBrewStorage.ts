@@ -38,8 +38,19 @@ export async function loadBrewsFromDrive(accessToken: string): Promise<Brew[]> {
 }
 
 export async function saveBrewToDrive(accessToken: string, brew: Brew): Promise<Brew> {
-  const file = await uploadBrew(accessToken, brew, brew.drive?.revisionId);
-  return asSynced(brew, file);
+  const looksLikeDuplicate = Boolean(
+    brew.drive
+      && brew.version === 1
+      && new Date(brew.createdAt).getTime() > new Date(brew.drive.lastSyncedAt).getTime()
+  );
+  const candidate = looksLikeDuplicate
+    ? (() => {
+        const { drive: _drive, conflict: _conflict, ...fork } = brew;
+        return { ...fork, syncState: 'pending' as const };
+      })()
+    : brew;
+  const file = await uploadBrew(accessToken, candidate, candidate.drive?.revisionId);
+  return asSynced(candidate, file);
 }
 
 export async function deleteBrewFromDrive(accessToken: string, brew: Brew): Promise<void> {

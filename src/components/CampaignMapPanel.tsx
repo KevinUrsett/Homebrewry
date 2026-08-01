@@ -276,6 +276,7 @@ export function CampaignMapPanel({ brews, campaignMap, currentStateByEntityId, e
     };
   });
   const selectedNode = activeNodes.find((node) => node.id === selectedId);
+  const selectedNodeWorldbuilding = selectedNode?.entityId ? worldbuildingByEntityId.get(selectedNode.entityId) ?? null : null;
   const selectedConnections = selectedId ? visibleLinks.filter((link) => link.sourceId === selectedId || link.targetId === selectedId) : [];
   const selectedParentLink = selectedId ? visibleLinks.find((link) => link.targetId === selectedId) : undefined;
 
@@ -336,10 +337,6 @@ export function CampaignMapPanel({ brews, campaignMap, currentStateByEntityId, e
     setSelectedId(nodeId);
     setSelectedLabel(node.label);
     setSelectedNotes(readNodeMeta(current.links, nodeId, fallbackMapId).notes);
-    if (node.entityId) {
-      const entry = worldbuildingByEntityId.get(node.entityId);
-      if (entry) setSelectedWorldbuildingId(entry.id);
-    }
     if (focusTitle) requestAnimationFrame(() => { titleInputRef.current?.focus(); titleInputRef.current?.select(); });
   };
 
@@ -542,7 +539,7 @@ export function CampaignMapPanel({ brews, campaignMap, currentStateByEntityId, e
             })}
           </section>
         </> : <div className="campaign-mindmap-inspector-empty"><strong>Select a node</strong><p>Edit it, drag it anywhere, or connect it to several other nodes.</p></div>}</aside>
-        <section className="campaign-map-worldbuilding-notes" aria-label="Selected Worldbuilding notes"><div><p className="eyebrow">Worldbuilding entry</p><h3>{selectedWorldbuilding?.name ?? 'No entry selected'}</h3></div><textarea aria-label="Worldbuilding notes preview" placeholder="Select an entry above to preview its notes." readOnly value={selectedWorldbuilding?.notes ?? ''} /></section></div>
+        <section className="campaign-map-worldbuilding-notes" aria-label="Selected node Worldbuilding notes"><div><p className="eyebrow">Selected node source</p><h3>{selectedNodeWorldbuilding?.name ?? (selectedNode ? 'No Worldbuilding entry' : 'No node selected')}</h3></div><textarea aria-label="Selected node Worldbuilding notes preview" placeholder={selectedNode ? 'This node is not linked to a Worldbuilding entry.' : 'Select a map node to preview its Worldbuilding notes.'} readOnly value={selectedNodeWorldbuilding?.notes ?? ''} /></section></div>
       </div>
     </>}
   </section>;

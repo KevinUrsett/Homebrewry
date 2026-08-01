@@ -1,6 +1,8 @@
 import { openDB } from 'idb';
 import type { CatalogueEntry, CustomCatalogueCategory } from '../catalogue/types';
 import type { Brew, CampaignDataSnapshot, CampaignDataSyncMetadata, Encounter, LivingWorldData, PartyMember, PrivateMonsterSyncMetadata, WorldbuildingEntry, WorldbuildingType } from '../types';
+import { deleteBrewFromDrive, saveBrewToDrive } from './driveBrewStorage';
+import { getDriveAccessToken } from './googleIdentity';
 
 const DATABASE_NAME = 'homebrewry';
 const STORE_NAME = 'brews';
@@ -120,18 +122,20 @@ export async function listBrews(): Promise<Brew[]> {
   return brews.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 }
 
-/**
- * Brews are deliberately not restored from the device cache at startup.
- * Google Drive is the source of truth and may validly contain no brews.
- */
+/** Returns only the Drive-confirmed cache. No template is ever generated. */
 export async function seedBrews(): Promise<Brew[]> {
-  return [];
+  return listBrews();
 }
 
-/** Stores a Drive-confirmed brew as a device cache only. */
+/** Saves to Drive first, then refreshes the device cache. */
 export async function saveBrew(brew: Brew): Promise<void> {
+  const accessToken = getDriveAccessToken();
+  if (!accessToken) throw new Error('Connect Google Drive before saving a brew.');
+
+  const saved = await saveBrewToDrive(accessToken, brew);
+  Object.assign(brew, saved);
   const database = await getDatabase();
-  await database.put(STORE_NAME, brew);
+  await database.put(STORE_NAME, saved);
 }
 
 /** Replaces, rather than merges, the device cache with the Drive result. */
@@ -145,7 +149,12 @@ export async function replaceBrews(brews: Brew[]): Promise<void> {
 }
 
 export async function deleteBrew(id: string): Promise<void> {
+  const accessToken = getDriveAccessToken();
+  if (!accessToken) throw new Error('Connect Google Drive before deleting a brew.');
+
   const database = await getDatabase();
+  const stored = await database.get(STORE_NAME, id) as Brew | undefined;
+  if (stored) await deleteBrewFromDrive(accessToken, stored);
   await database.delete(STORE_NAME, id);
 }
 

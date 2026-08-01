@@ -1,6 +1,8 @@
 import { openDB } from 'idb';
 import type { CatalogueEntry, CustomCatalogueCategory } from '../catalogue/types';
 import type { Brew, CampaignDataSnapshot, CampaignDataSyncMetadata, Encounter, LivingWorldData, PartyMember, PrivateMonsterSyncMetadata, WorldbuildingEntry, WorldbuildingType } from '../types';
+import { deleteBrewFromDrive, saveBrewToDrive } from './driveBrewStorage';
+import { getDriveAccessToken } from './googleIdentity';
 
 const DATABASE_NAME = 'homebrewry';
 const STORE_NAME = 'brews';
@@ -16,27 +18,8 @@ export const CUSTOM_CATALOGUE_CATEGORY_STORE_NAME = 'custom-catalogue-categories
 export const WORLDBUILDING_TYPE_STORE_NAME = 'worldbuilding-types';
 export const LIVING_WORLD_STORE_NAME = 'living-world';
 
-const starterContent = `# The Ashen Road
-
-*A travel encounter for characters of 3rd level.*
-
-## The road ahead
-
-The old imperial road disappears beneath drifts of pale ash. At dusk, a bell rings once from the ruins ahead.
-
-> ##### A warning in the wind
-> The ash is warm. Any creature that spends an hour exposed to the open road notices faint whispers in a language it almost understands.
-
-## Encounter: Ashbound scout
-
-| Armor Class | Hit Points | Speed |
-| --- | --- | --- |
-| 14 (leather) | 27 (5d8 + 5) | 30 ft. |
-
-### Tactics
-
-The scout fires from cover, then offers a bargain: carry a sealed letter to the next settlement, or leave the road before nightfall.
-`;
+const brewDriveById = new Map<string, NonNullable<Brew['drive']>>();
+const brewSaveQueues = new Map<string, Promise<void>>();
 
 export const getDatabase = () =>
   openDB(DATABASE_NAME, 11, {
@@ -111,7 +94,7 @@ export function createBrew(title = 'Untitled Brew'): Brew {
   return {
     id: crypto.randomUUID(),
     title,
-    content: starterContent,
+    content: '',
     createdAt: now,
     createdOn: creationDeviceLabel(),
     updatedAt: now,
@@ -119,7 +102,8 @@ export function createBrew(title = 'Untitled Brew'): Brew {
     rendererSettings: {
       accentColor: '#7a2f27',
       parchmentTone: 'warm'
-    }
+    },
+    syncState: 'pending'
   };
 }
 
@@ -136,36 +120,71 @@ export function creationDeviceLabel(): string {
 
 export async function listBrews(): Promise<Brew[]> {
   const database = await getDatabase();
-  const brews = await database.getAll(STORE_NAME);
-
+  const brews = await database.getAll(STORE_NAME) as Brew[];
+  for (const brew of brews) {
+    if (brew.drive) brewDriveById.set(brew.id, brew.drive);
+  }
   return brews.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 }
 
+/** Returns only the Drive-confirmed cache. No template is ever generated. */
 export async function seedBrews(): Promise<Brew[]> {
-  const existing = await listBrews();
-  if (existing.length > 0) return existing;
-
-  const sample = createBrew('The Ashen Road');
-  await saveBrew(sample);
-  return [sample];
+  return listBrews();
 }
 
+/** Saves to Drive first, then refreshes the device cache. */
 export async function saveBrew(brew: Brew): Promise<void> {
-  const database = await getDatabase();
-  await database.put(STORE_NAME, brew);
+  const prior = brewSaveQueues.get(brew.id) ?? Promise.resolve();
+  const task = prior.catch(() => undefined).then(async () => {
+    const accessToken = getDriveAccessToken();
+    if (!accessToken) throw new Error('Connect Google Drive before saving a brew.');
+
+    const knownDrive = brew.drive ?? brewDriveById.get(brew.id);
+    const candidate = knownDrive ? { ...brew, drive: knownDrive } : brew;
+    const saved = await saveBrewToDrive(accessToken, candidate);
+    Object.assign(brew, saved);
+    if (saved.drive) brewDriveById.set(saved.id, saved.drive);
+    const database = await getDatabase();
+    await database.put(STORE_NAME, saved);
+  });
+  brewSaveQueues.set(brew.id, task);
+  try {
+    await task;
+  } finally {
+    if (brewSaveQueues.get(brew.id) === task) brewSaveQueues.delete(brew.id);
+  }
 }
 
+/** Replaces, rather than merges, the device cache with the Drive result. */
 export async function replaceBrews(brews: Brew[]): Promise<void> {
   const database = await getDatabase();
   const transaction = database.transaction(STORE_NAME, 'readwrite');
 
+  await transaction.store.clear();
+  brewDriveById.clear();
+  for (const brew of brews) {
+    if (brew.drive) brewDriveById.set(brew.id, brew.drive);
+  }
   await Promise.all(brews.map((brew) => transaction.store.put(brew)));
   await transaction.done;
 }
 
 export async function deleteBrew(id: string): Promise<void> {
+  const accessToken = getDriveAccessToken();
+  if (!accessToken) throw new Error('Connect Google Drive before deleting a brew.');
+
+  const pending = brewSaveQueues.get(id);
+  if (pending) await pending.catch(() => undefined);
   const database = await getDatabase();
+  const stored = await database.get(STORE_NAME, id) as Brew | undefined;
+  if (stored) await deleteBrewFromDrive(accessToken, stored);
   await database.delete(STORE_NAME, id);
+  brewDriveById.delete(id);
+  brewSaveQueues.delete(id);
+  const remaining = await database.count(STORE_NAME);
+  if (remaining === 0 && typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('homebrewry-brews-empty'));
+  }
 }
 
 export function createCampaignDataSyncMetadata(): CampaignDataSyncMetadata {

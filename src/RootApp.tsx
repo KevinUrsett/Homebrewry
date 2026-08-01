@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import App from './App';
-import { createBrew, getLivingWorldData, saveBrew, saveLivingWorldData, seedBrews } from './lib/brewStore';
+import { createBrew, getLivingWorldData, replaceBrews, saveBrew, saveLivingWorldData } from './lib/brewStore';
+import { loadBrewsFromDrive } from './lib/driveBrewStorage';
 import { listEncounters } from './lib/encounterStore';
+import { isGoogleConfigured, requestDriveAccess } from './lib/googleIdentity';
 import { listWorldbuildingEntries } from './lib/worldbuildingStore';
 import type { Brew, IdeaDraft } from './types';
 import './landing-page.css';
@@ -57,28 +59,56 @@ function wordCount(content: string) {
 export default function RootApp() {
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [pendingDestination, setPendingDestination] = useState<WorkspaceDestination | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [driveStatus, setDriveStatus] = useState('Google Drive is required to open and save your brews.');
   const [brews, setBrews] = useState<Brew[]>([]);
   const [stats, setStats] = useState<LandingStats>({ encounters: 0, worldbuilding: 0 });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [quickIdeaBrew, setQuickIdeaBrew] = useState<Brew | null>(null);
   const [quickIdeaText, setQuickIdeaText] = useState('');
   const [savingQuickIdea, setSavingQuickIdea] = useState(false);
   const [desktopNavigation, setDesktopNavigation] = useState<HTMLElement | null>(null);
   const [mobileNavigation, setMobileNavigation] = useState<HTMLElement | null>(null);
 
-  const loadLandingData = async () => {
-    const [storedBrews, encounters, worldbuilding] = await Promise.all([
-      seedBrews(),
+  const loadLandingData = async (token: string) => {
+    const [driveBrews, encounters, worldbuilding] = await Promise.all([
+      loadBrewsFromDrive(token),
       listEncounters(),
       listWorldbuildingEntries()
     ]);
-    setBrews(storedBrews);
+    await replaceBrews(driveBrews);
+    setBrews(driveBrews);
     setStats({ encounters: encounters.length, worldbuilding: worldbuilding.length });
   };
 
+  const connectDrive = async () => {
+    if (loading) return;
+    setLoading(true);
+    setDriveStatus('Connecting to Google Drive…');
+    try {
+      const token = await requestDriveAccess();
+      setAccessToken(token);
+      setDriveStatus('Loading your brews from Google Drive…');
+      await loadLandingData(token);
+      setDriveStatus('Google Drive connected. All brew saves now go to Drive.');
+    } catch (error) {
+      setDriveStatus(error instanceof Error ? error.message : 'Google Drive connection failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    void loadLandingData().finally(() => setLoading(false));
-  }, []);
+    const handleEmptyLibrary = () => {
+      setWorkspaceOpen(false);
+      setPendingDestination(null);
+      if (!accessToken) return;
+      setLoading(true);
+      void loadLandingData(accessToken).finally(() => setLoading(false));
+    };
+    window.addEventListener('homebrewry-brews-empty', handleEmptyLibrary);
+    return () => window.removeEventListener('homebrewry-brews-empty', handleEmptyLibrary);
+  }, [accessToken]);
 
   useEffect(() => {
     if (!workspaceOpen) {
@@ -141,6 +171,31 @@ export default function RootApp() {
   }, [workspaceOpen]);
 
   useEffect(() => {
+    if (!workspaceOpen || !accessToken) return;
+    let cancelled = false;
+    let frame = 0;
+    let attempts = 0;
+
+    const connectWorkspaceDrive = () => {
+      if (cancelled || attempts > 180) return;
+      attempts += 1;
+      const button = document.querySelector<HTMLButtonElement>('.cloud-controls button');
+      if (!button) {
+        frame = window.requestAnimationFrame(connectWorkspaceDrive);
+        return;
+      }
+      const label = button.textContent?.trim() ?? '';
+      if (label === 'Connect Drive' || label === 'Reconnect Drive') button.click();
+    };
+
+    frame = window.requestAnimationFrame(connectWorkspaceDrive);
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+    };
+  }, [accessToken, workspaceOpen]);
+
+  useEffect(() => {
     if (!workspaceOpen || !pendingDestination) return;
 
     let cancelled = false;
@@ -177,6 +232,7 @@ export default function RootApp() {
   );
 
   const openWorkspace = (destination: WorkspaceDestination) => {
+    if (!accessToken || !brews.length) return;
     setPendingDestination(destination);
     setWorkspaceOpen(true);
   };
@@ -184,22 +240,24 @@ export default function RootApp() {
   const returnHome = async () => {
     setWorkspaceOpen(false);
     setPendingDestination(null);
+    if (!accessToken) return;
     setLoading(true);
     try {
-      await loadLandingData();
+      await loadLandingData(accessToken);
     } finally {
       setLoading(false);
     }
   };
 
   const openBrew = async (brew: Brew) => {
-    const touched = { ...brew, updatedAt: new Date().toISOString() };
+    const touched = { ...brew, updatedAt: new Date().toISOString(), syncState: 'pending' as const };
     await saveBrew(touched);
     setBrews((current) => [touched, ...current.filter((candidate) => candidate.id !== brew.id)]);
     openWorkspace('editor');
   };
 
   const createNew = async () => {
+    if (!accessToken) return;
     const brew = createBrew();
     await saveBrew(brew);
     setBrews((current) => [brew, ...current]);
@@ -208,7 +266,7 @@ export default function RootApp() {
 
   const captureQuickIdea = async () => {
     const text = quickIdeaText.trim();
-    if (!quickIdeaBrew || !text) return;
+    if (!accessToken || !quickIdeaBrew || !text) return;
     setSavingQuickIdea(true);
     try {
       const world = await getLivingWorldData();
@@ -245,6 +303,29 @@ export default function RootApp() {
     );
   }
 
+  if (!accessToken) {
+    return (
+      <main className="landing-page">
+        <header className="landing-header">
+          <div className="landing-brand" aria-label="Homebrewry"><span aria-hidden>✦</span><strong>Homebrewry</strong></div>
+        </header>
+        <section className="landing-hero">
+          <div className="landing-hero-copy">
+            <p className="landing-eyebrow">Drive-first storage</p>
+            <h1>Connect Drive to open your campaign library.</h1>
+            <p className="landing-intro">Homebrewry no longer creates or saves brews only on this device. Google Drive is required before a brew can be created, edited, imported, or deleted.</p>
+            <div className="landing-hero-actions">
+              <button className="landing-primary" disabled={loading || !isGoogleConfigured()} onClick={() => void connectDrive()} type="button">{loading ? 'Connecting…' : 'Connect Google Drive'}</button>
+            </div>
+            <p aria-live="polite">{driveStatus}</p>
+          </div>
+          <div className="landing-tome" aria-hidden><div className="landing-tome-cover"><span>✦</span><strong>Homebrewry</strong><small>Campaign Codex</small></div><div className="landing-tome-pages" /></div>
+        </section>
+        <footer className="landing-footer"><span>Homebrewry</span><small>Google Drive is the source of truth. Device storage is used only as a temporary cache.</small></footer>
+      </main>
+    );
+  }
+
   return (
     <main className="landing-page">
       <header className="landing-header">
@@ -252,22 +333,23 @@ export default function RootApp() {
           <span aria-hidden>✦</span>
           <strong>Homebrewry</strong>
         </div>
-        <button className="landing-library-button" onClick={() => openWorkspace('library')} type="button">
-          Open workspace
+        <button className="landing-library-button" disabled={!brews.length} onClick={() => openWorkspace('library')} type="button">
+          {brews.length ? 'Open workspace' : 'No brews yet'}
         </button>
       </header>
 
       <section className="landing-hero">
         <div className="landing-hero-copy">
           <p className="landing-eyebrow">Your campaign workshop</p>
-          <h1>Pick up where the story left off.</h1>
+          <h1>{brews.length ? 'Pick up where the story left off.' : 'Your Drive library is empty.'}</h1>
           <p className="landing-intro">
-            Write polished brews, prepare encounters, and keep the people and places of your world close at hand.
+            {brews.length ? 'Write polished brews, prepare encounters, and keep the people and places of your world close at hand.' : 'Create a blank brew when you are ready. No starter document will be generated.'}
           </p>
           <div className="landing-hero-actions">
-            <button className="landing-primary" onClick={() => void createNew()} type="button">Create a new brew</button>
-            <button className="landing-secondary" onClick={() => openWorkspace('library')} type="button">Browse all brews</button>
+            <button className="landing-primary" disabled={loading} onClick={() => void createNew()} type="button">Create a new brew</button>
+            <button className="landing-secondary" disabled={!brews.length} onClick={() => openWorkspace('library')} type="button">Browse all brews</button>
           </div>
+          <p aria-live="polite">{driveStatus}</p>
         </div>
         <div className="landing-tome" aria-hidden>
           <div className="landing-tome-cover">
@@ -285,11 +367,11 @@ export default function RootApp() {
             <p className="landing-eyebrow">Continue writing</p>
             <h2>Recent brews</h2>
           </div>
-          <button onClick={() => openWorkspace('library')} type="button">View library <span aria-hidden>→</span></button>
+          <button disabled={!brews.length} onClick={() => openWorkspace('library')} type="button">View library <span aria-hidden>→</span></button>
         </div>
 
         {loading ? (
-          <div className="landing-loading">Opening your local library…</div>
+          <div className="landing-loading">Loading your Google Drive library…</div>
         ) : (
           <div className="recent-brew-grid">
             {recentBrews.map((brew, index) => (
@@ -301,7 +383,7 @@ export default function RootApp() {
                   <span className="recent-brew-excerpt">{plainExcerpt(brew.content) || 'An empty page waiting for its first idea.'}</span>
                   <span className="recent-brew-meta">
                     <span>{wordCount(brew.content).toLocaleString()} words</span>
-                    <span>{brew.drive ? 'Drive linked' : 'Local'}</span>
+                    <span>{brew.drive ? 'Saved to Drive' : 'Pending Drive save'}</span>
                   </span>
                   <span className="recent-brew-origin">Created on: {brew.createdOn ?? 'Earlier version'}</span>
                 </button>
@@ -311,7 +393,7 @@ export default function RootApp() {
             <button className="recent-brew-card new-brew-card" onClick={() => void createNew()} type="button">
               <span className="new-brew-plus" aria-hidden>+</span>
               <strong>Start a new brew</strong>
-              <span>Create a fresh document with the campaign-ready editor.</span>
+              <span>Create a blank document saved directly to Google Drive.</span>
             </button>
           </div>
         )}
@@ -321,9 +403,9 @@ export default function RootApp() {
             <p className="landing-eyebrow">At a glance</p>
             <h2>Your campaign library</h2>
             <div className="landing-stats">
-              <button onClick={() => openWorkspace('library')} type="button"><strong>{brews.length}</strong><span>Brews</span></button>
-              <button onClick={() => openWorkspace('encounters')} type="button"><strong>{stats.encounters}</strong><span>Encounters</span></button>
-              <button onClick={() => openWorkspace('worldbuilding')} type="button"><strong>{stats.worldbuilding}</strong><span>World entries</span></button>
+              <button disabled={!brews.length} onClick={() => openWorkspace('library')} type="button"><strong>{brews.length}</strong><span>Brews</span></button>
+              <button disabled={!brews.length} onClick={() => openWorkspace('encounters')} type="button"><strong>{stats.encounters}</strong><span>Encounters</span></button>
+              <button disabled={!brews.length} onClick={() => openWorkspace('worldbuilding')} type="button"><strong>{stats.worldbuilding}</strong><span>World entries</span></button>
               <div><strong>{totalWords.toLocaleString()}</strong><span>Words written</span></div>
             </div>
           </div>
@@ -331,9 +413,9 @@ export default function RootApp() {
           <div className="landing-tool-panel">
             <p className="landing-eyebrow">Quick access</p>
             <div className="landing-tool-list">
-              <button onClick={() => openWorkspace('encounters')} type="button"><span aria-hidden>⚔</span><div><strong>Prepare an encounter</strong><small>Build and run initiative-ready combats.</small></div><b aria-hidden>→</b></button>
-              <button onClick={() => openWorkspace('worldbuilding')} type="button"><span aria-hidden>⌘</span><div><strong>Open worldbuilding</strong><small>Return to your people, factions, and places.</small></div><b aria-hidden>→</b></button>
-              <button onClick={() => openWorkspace('catalogue')} type="button"><span aria-hidden>◇</span><div><strong>Browse the catalogue</strong><small>Find creatures and reusable references.</small></div><b aria-hidden>→</b></button>
+              <button disabled={!brews.length} onClick={() => openWorkspace('encounters')} type="button"><span aria-hidden>⚔</span><div><strong>Prepare an encounter</strong><small>Build and run initiative-ready combats.</small></div><b aria-hidden>→</b></button>
+              <button disabled={!brews.length} onClick={() => openWorkspace('worldbuilding')} type="button"><span aria-hidden>⌘</span><div><strong>Open worldbuilding</strong><small>Return to your people, factions, and places.</small></div><b aria-hidden>→</b></button>
+              <button disabled={!brews.length} onClick={() => openWorkspace('catalogue')} type="button"><span aria-hidden>◇</span><div><strong>Browse the catalogue</strong><small>Find creatures and reusable references.</small></div><b aria-hidden>→</b></button>
             </div>
           </div>
         </section>
@@ -341,7 +423,7 @@ export default function RootApp() {
 
       <footer className="landing-footer">
         <span>Homebrewry</span>
-        <small>Your drafts stay available locally and can be backed up to Google Drive.</small>
+        <small>Google Drive is required for brew storage. This device keeps only a replaceable cache.</small>
       </footer>
       {quickIdeaBrew && (
         <div className="landing-idea-backdrop" role="presentation" onMouseDown={() => !savingQuickIdea && setQuickIdeaBrew(null)}>

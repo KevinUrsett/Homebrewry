@@ -156,6 +156,10 @@ export async function deleteBrew(id: string): Promise<void> {
   const stored = await database.get(STORE_NAME, id) as Brew | undefined;
   if (stored) await deleteBrewFromDrive(accessToken, stored);
   await database.delete(STORE_NAME, id);
+  const remaining = await database.count(STORE_NAME);
+  if (remaining === 0 && typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('homebrewry-brews-empty'));
+  }
 }
 
 export function createCampaignDataSyncMetadata(): CampaignDataSyncMetadata {

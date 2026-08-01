@@ -1,4 +1,5 @@
 import type { Brew, BrewAsset, CampaignDataSnapshot, DriveMetadata, PrivateMonsterCatalogueSnapshot } from '../types';
+import { getDriveAccessToken, invalidateDriveAccessToken } from './googleIdentity';
 
 const DRIVE_API = 'https://www.googleapis.com/drive/v3';
 const DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
@@ -35,25 +36,31 @@ export type RemotePrivateMonsterCatalogue = {
   data: unknown;
 };
 
+function currentAccessToken(fallback: string) {
+  return getDriveAccessToken() ?? fallback;
+}
+
+function throwDriveError(response: Response, message: string): never {
+  if (response.status === 401) invalidateDriveAccessToken();
+  throw new Error(`${message} (${response.status}).`);
+}
+
 async function driveRequest<T>(accessToken: string, url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: `Bearer ${currentAccessToken(accessToken)}`,
       ...init?.headers
     }
   });
 
-  if (!response.ok) {
-    throw new Error(`Google Drive request failed (${response.status}).`);
-  }
-
+  if (!response.ok) throwDriveError(response, 'Google Drive request failed');
   return response.json() as Promise<T>;
 }
 
 async function driveBlobRequest(accessToken: string, url: string): Promise<Blob> {
-  const response = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-  if (!response.ok) throw new Error(`Google Drive asset request failed (${response.status}).`);
+  const response = await fetch(url, { headers: { Authorization: `Bearer ${currentAccessToken(accessToken)}` } });
+  if (!response.ok) throwDriveError(response, 'Google Drive asset request failed');
   return response.blob();
 }
 

@@ -53,7 +53,7 @@ export async function syncBrews(accessToken: string, brews: Brew[]): Promise<Syn
         conflicts += 1;
         continue;
       }
-      synced.push(asSynced({ ...remote.brew, id: local.id }, remote.file));
+      synced.push(asSynced({ ...remote.brew, id: remote.brew.id || local.id }, remote.file));
       changes += 1;
       continue;
     }
@@ -74,19 +74,15 @@ export async function syncBrews(accessToken: string, brews: Brew[]): Promise<Syn
   }
 
   for (const remote of remoteById.values()) {
-    const imported: Brew = {
+    const imported: Brew = asSynced({
       ...remote.brew,
-      id: crypto.randomUUID(),
-      drive: {
-        fileId: remote.file.id,
-        revisionId: remote.file.headRevisionId ?? '',
-        lastSyncedAt: new Date().toISOString()
-      },
-      syncState: 'synced'
-    };
+      id: remote.brew.id || remote.file.id
+    }, remote.file);
     synced.push(imported);
     changes += 1;
   }
+
+  synced.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 
   if (conflicts) return { brews: synced, state: 'conflict', detail: `${conflicts} sync conflict${conflicts === 1 ? '' : 's'} need attention` };
   return { brews: synced, state: 'synced', detail: changes ? `Drive synced (${changes} updated)` : 'Drive is up to date' };

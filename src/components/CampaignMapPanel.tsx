@@ -234,7 +234,14 @@ export function CampaignMapPanel({ brews, campaignMap, currentStateByEntityId, e
   const activeNodeIds = useMemo(() => new Set(activeNodes.map((node) => node.id)), [activeNodes]);
   const visibleLinks = useMemo(() => (draft?.links ?? []).filter((link) => !isInternalLink(link) && activeNodeIds.has(link.sourceId) && activeNodeIds.has(link.targetId)), [activeNodeIds, draft?.links]);
   const entityByWorldbuildingId = useMemo(() => new Map(entities.flatMap((entity) => entity.source.kind === 'worldbuilding' ? [[entity.source.id.toLowerCase(), entity] as const] : [])), [entities]);
-  const worldbuildingByEntityId = useMemo(() => new Map(entities.flatMap((entity) => entity.source.kind === 'worldbuilding' ? [[entity.id, worldbuildingEntries.find((entry) => entry.id.toLowerCase() === entity.source.id.toLowerCase())] as const] : []).filter((item): item is readonly [string, WorldbuildingEntry] => Boolean(item[1]))), [entities, worldbuildingEntries]);
+  const worldbuildingByEntityId = useMemo(() => {
+    const entryById = new Map(worldbuildingEntries.map((entry) => [entry.id.toLowerCase(), entry]));
+    return new Map(entities.flatMap((entity) => {
+      if (entity.source.kind !== 'worldbuilding') return [];
+      const entry = entryById.get(entity.source.id.toLowerCase());
+      return entry ? [[entity.id, entry] as const] : [];
+    }));
+  }, [entities, worldbuildingEntries]);
   const referencedEntities = useMemo(() => {
     const ids = new Set(entityReferences.flatMap((reference) => reference.source.kind === 'brew' && reference.source.brewId === referenceBrewId ? [reference.entityId] : []));
     return entities.filter((entity) => ids.has(entity.id) && !activeNodes.some((node) => node.entityId === entity.id));
@@ -419,9 +426,9 @@ export function CampaignMapPanel({ brews, campaignMap, currentStateByEntityId, e
     setSelectedId(null);
   };
 
-  const loadWorldbuildingEntry = (withConnections: boolean) => {
+  const loadWorldbuildingEntry = (withConnections: boolean, entryId = selectedWorldbuildingId) => {
     const current = draftRef.current;
-    const entry = worldbuildingEntries.find((item) => item.id === selectedWorldbuildingId);
+    const entry = worldbuildingEntries.find((item) => item.id === entryId);
     if (!current || !entry) return;
     const timestamp = new Date().toISOString();
     const nodes = [...current.nodes];
@@ -454,6 +461,7 @@ export function CampaignMapPanel({ brews, campaignMap, currentStateByEntityId, e
       });
     }
     replaceDraft({ ...current, nodes, links, updatedAt: timestamp });
+    setSelectedWorldbuildingId(entry.id);
     selectNode(source.id);
   };
 
@@ -461,8 +469,7 @@ export function CampaignMapPanel({ brews, campaignMap, currentStateByEntityId, e
     const current = draftRef.current;
     if (!current || !loadSourceId) return;
     if (loadKind === 'worldbuilding') {
-      setSelectedWorldbuildingId(loadSourceId);
-      requestAnimationFrame(() => loadWorldbuildingEntry(true));
+      loadWorldbuildingEntry(true, loadSourceId);
       return;
     }
     const brew = brews.find((item) => item.id === loadSourceId);

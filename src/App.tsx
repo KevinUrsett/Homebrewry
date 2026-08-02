@@ -1741,7 +1741,11 @@ export default function App() {
             onInsertAtSection={insertPendingAtSection}
             onNavigate={(item) => {
               if (!window.matchMedia('(max-width: 820px)').matches) {
-                document.getElementById(item.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                const target = getOutlineLocations(activeBrew.content).find((location) => location.id === item.id);
+                if (target && (viewMode === 'split' || viewMode === 'editor')) editorRef.current?.scrollTo(target.from);
+                if (viewMode === 'split' || viewMode === 'preview') {
+                  document.getElementById(item.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
                 return;
               }
               const target = getOutlineLocations(activeBrew.content).find((location) => location.id === item.id);

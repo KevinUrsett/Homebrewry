@@ -1,6 +1,8 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { EditorState } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
+import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import { tags } from '@lezer/highlight';
 import {
   Decoration,
   EditorView,
@@ -17,6 +19,7 @@ import type { WorldbuildingKind, WorldbuildingType } from '../types';
 export type MarkdownEditorHandle = {
   getSelection: () => { start: number; end: number };
   focus: (position?: number) => void;
+  scrollTo: (position: number) => void;
 };
 
 type MarkdownEditorProps = {
@@ -85,6 +88,20 @@ const referenceDecorations = ViewPlugin.fromClass(class {
   decorations: (value) => value.decorations
 });
 
+const markdownHighlightStyle = HighlightStyle.define([
+  { tag: tags.heading1, color: '#7a2f27', fontWeight: '800' },
+  { tag: tags.heading2, color: '#8a4a2c', fontWeight: '800' },
+  { tag: [tags.heading3, tags.heading4, tags.heading5, tags.heading6], color: '#8b642f', fontWeight: '700' },
+  { tag: tags.strong, color: '#4f2c25', fontWeight: '800' },
+  { tag: tags.emphasis, color: '#6d4b72', fontStyle: 'italic' },
+  { tag: tags.link, color: '#2f6473', textDecoration: 'underline' },
+  { tag: tags.url, color: '#397b87' },
+  { tag: tags.monospace, color: '#755326', backgroundColor: '#eadfca' },
+  { tag: tags.quote, color: '#687547', fontStyle: 'italic' },
+  { tag: [tags.list, tags.meta], color: '#a05a32' },
+  { tag: tags.contentSeparator, color: '#a05a32', fontWeight: '700' }
+]);
+
 export function MarkdownEditor({
   content,
   onChange,
@@ -118,6 +135,11 @@ export function MarkdownEditor({
       if (!view) return;
       if (typeof position === 'number') view.dispatch({ selection: { anchor: position }, scrollIntoView: true });
       view.focus();
+    },
+    scrollTo: (position) => {
+      const view = viewRef.current;
+      if (!view) return;
+      view.dispatch({ effects: EditorView.scrollIntoView(position, { y: 'start', yMargin: 16 }) });
     }
   }), []);
 
@@ -128,6 +150,7 @@ export function MarkdownEditor({
         doc: initialContentRef.current,
         extensions: [
           markdown(),
+          syntaxHighlighting(markdownHighlightStyle),
           EditorView.lineWrapping,
           EditorView.contentAttributes.of({ 'aria-label': ariaLabel }),
           referenceDecorations,

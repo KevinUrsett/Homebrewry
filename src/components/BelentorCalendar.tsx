@@ -5,12 +5,16 @@ import {
   deleteCalendarEvent,
   loadCalendarEvents,
   saveCalendarEvent,
+  saveCalendarToDrive,
+  stageCalendarView,
   type BelentorCalendarEvent,
-  type CalendarEventKind
+  type CalendarEventKind,
+  type CalendarView
 } from '../lib/calendarEventStore';
 import type { WorldbuildingEntry } from '../types';
 import '../belentor-calendar.css';
 import '../belentor-calendar-events.css';
+import '../belentor-calendar-save.css';
 
 type BelentorMonth = {
   name: string;
@@ -83,6 +87,13 @@ function eventDateLabel(event: BelentorCalendarEvent) {
   return event.annual ? `${date} · every year` : `${date}, ${event.year} AA`;
 }
 
+function formatSavedTime(value?: string) {
+  if (!value) return '';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 export function BelentorCalendar() {
   const [monthIndex, setMonthIndex] = useState(0);
   const [year, setYear] = useState(641);
@@ -93,6 +104,8 @@ export function BelentorCalendar() {
   const [worldbuildingQuery, setWorldbuildingQuery] = useState('');
   const [status, setStatus] = useState('Loading calendar entries…');
   const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<string | undefined>();
   const month = belentorMonths[monthIndex];
   const selectedTenDay = Math.floor((selectedDay - 1) / 10);
   const selectedDayWithinTenDay = ((selectedDay - 1) % 10) + 1;
@@ -111,6 +124,11 @@ export function BelentorCalendar() {
       .then(([calendar, entries]) => {
         if (cancelled) return;
         setEvents(calendar.events);
+        setMonthIndex(calendar.view.monthIndex);
+        setYear(calendar.view.year);
+        setSelectedDay(calendar.view.day);
+        setDirty(calendar.syncState === 'pending' || calendar.syncState === 'error');
+        setLastSavedAt(calendar.lastSavedAt);
         setStatus(calendar.status);
         setWorldbuildingEntries([...entries].sort((left, right) => left.name.localeCompare(right.name)));
       })
@@ -119,6 +137,16 @@ export function BelentorCalendar() {
       });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    if (!dirty) return undefined;
+    const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warnBeforeLeaving);
+    return () => window.removeEventListener('beforeunload', warnBeforeLeaving);
+  }, [dirty]);
 
   const selectedDateEvents = useMemo(
     () => events
@@ -147,29 +175,38 @@ export function BelentorCalendar() {
 
   const eventsForDay = (day: number) => events.filter((event) => event.monthIndex === monthIndex && event.day === day && occursInYear(event, year));
 
+  const stageView = (view: CalendarView) => {
+    setMonthIndex(view.monthIndex);
+    setYear(view.year);
+    setSelectedDay(view.day);
+    setDirty(true);
+    setStatus('Unsaved calendar changes.');
+    void stageCalendarView(view).catch((error) => {
+      setStatus(error instanceof Error ? error.message : 'Calendar date could not be staged.');
+    });
+  };
+
   const moveMonth = (direction: -1 | 1) => {
-    const next = monthIndex + direction;
-    if (next < 0) {
-      setMonthIndex(belentorMonths.length - 1);
-      setYear((current) => clampYear(current - 1));
-    } else if (next >= belentorMonths.length) {
-      setMonthIndex(0);
-      setYear((current) => clampYear(current + 1));
-    } else {
-      setMonthIndex(next);
+    let nextMonth = monthIndex + direction;
+    let nextYear = year;
+    if (nextMonth < 0) {
+      nextMonth = belentorMonths.length - 1;
+      nextYear = clampYear(year - 1);
+    } else if (nextMonth >= belentorMonths.length) {
+      nextMonth = 0;
+      nextYear = clampYear(year + 1);
     }
-    setSelectedDay(1);
+    stageView({ year: nextYear, monthIndex: nextMonth, day: 1 });
     setEventDraft(null);
   };
 
   const selectMonth = (index: number) => {
-    setMonthIndex(index);
-    setSelectedDay(1);
+    stageView({ year, monthIndex: index, day: 1 });
     setEventDraft(null);
   };
 
   const selectDay = (day: number) => {
-    setSelectedDay(day);
+    stageView({ year, monthIndex, day });
     if (eventDraft && !events.some((event) => event.id === eventDraft.id)) {
       setEventDraft((current) => current ? { ...current, year, monthIndex, day } : null);
     }
@@ -210,14 +247,16 @@ export function BelentorCalendar() {
     event.preventDefault();
     if (!eventDraft?.title.trim() || saving) return;
     setSaving(true);
-    setStatus('Saving calendar entry…');
+    setStatus('Applying calendar entry…');
+    const view = { year: eventDraft.year, monthIndex: eventDraft.monthIndex, day: eventDraft.day };
     try {
-      const result = await saveCalendarEvent(eventDraft);
+      const result = await saveCalendarEvent(eventDraft, view);
       setEvents(result.events);
+      setMonthIndex(result.view.monthIndex);
+      setYear(result.view.year);
+      setSelectedDay(result.view.day);
+      setDirty(true);
       setStatus(result.status);
-      setMonthIndex(eventDraft.monthIndex);
-      setYear(eventDraft.year);
-      setSelectedDay(eventDraft.day);
       setEventDraft(null);
     } finally {
       setSaving(false);
@@ -227,10 +266,11 @@ export function BelentorCalendar() {
   const removeEvent = async (event: BelentorCalendarEvent) => {
     if (!window.confirm(`Delete “${event.title}” from the calendar?`)) return;
     setSaving(true);
-    setStatus('Deleting calendar entry…');
+    setStatus('Removing calendar entry…');
     try {
-      const result = await deleteCalendarEvent(event.id);
+      const result = await deleteCalendarEvent(event.id, { year, monthIndex, day: selectedDay });
       setEvents(result.events);
+      setDirty(true);
       setStatus(result.status);
       if (eventDraft?.id === event.id) setEventDraft(null);
     } finally {
@@ -238,19 +278,53 @@ export function BelentorCalendar() {
     }
   };
 
+  const saveCalendar = async () => {
+    if (saving || !dirty) return;
+    setSaving(true);
+    setStatus('Saving calendar to Google Drive…');
+    try {
+      const result = await saveCalendarToDrive({ year, monthIndex, day: selectedDay });
+      setEvents(result.events);
+      setMonthIndex(result.view.monthIndex);
+      setYear(result.view.year);
+      setSelectedDay(result.view.day);
+      setDirty(result.syncState === 'pending' || result.syncState === 'error');
+      setLastSavedAt(result.lastSavedAt);
+      setStatus(result.status);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const refreshCalendar = async () => {
     if (saving) return;
+    if (dirty && !window.confirm('Discard unsaved calendar changes and reload the saved calendar?')) return;
     setSaving(true);
     setStatus('Refreshing calendar…');
     try {
-      const result = await loadCalendarEvents();
+      const result = await loadCalendarEvents({ discardPending: true });
       setEvents(result.events);
+      setMonthIndex(result.view.monthIndex);
+      setYear(result.view.year);
+      setSelectedDay(result.view.day);
+      setDirty(result.syncState === 'pending' || result.syncState === 'error');
+      setLastSavedAt(result.lastSavedAt);
       setStatus(result.status);
+      setEventDraft(null);
       setWorldbuildingEntries((await listWorldbuildingEntries()).sort((left, right) => left.name.localeCompare(right.name)));
     } finally {
       setSaving(false);
     }
   };
+
+  const savedTime = formatSavedTime(lastSavedAt);
+  const saveStateLabel = saving
+    ? '⟳ Working…'
+    : dirty
+      ? '● Unsaved calendar'
+      : savedTime
+        ? `✓ Saved ${savedTime}`
+        : 'No unsaved changes';
 
   return (
     <section className="belentor-calendar" aria-label="Calendar in Belentor">
@@ -274,12 +348,21 @@ export function BelentorCalendar() {
         </label>
         <label>
           Year AA
-          <input min="1" max="9999" onChange={(event) => { setYear(clampYear(Number(event.target.value))); setEventDraft(null); }} type="number" value={year} />
+          <input min="1" max="9999" onChange={(event) => { stageView({ year: clampYear(Number(event.target.value)), monthIndex, day: selectedDay }); setEventDraft(null); }} type="number" value={year} />
         </label>
         <button aria-label="Next month" onClick={() => moveMonth(1)} type="button">→</button>
         <button className="belentor-refresh-button" disabled={saving} onClick={() => void refreshCalendar()} type="button">Refresh entries</button>
       </div>
-      <p className="belentor-calendar-status" aria-live="polite">{status}</p>
+
+      <div className="belentor-calendar-save-bar">
+        <p className="belentor-calendar-status" aria-live="polite">{status}</p>
+        <div className="belentor-calendar-save-actions">
+          <span className={dirty ? 'is-unsaved' : 'is-saved'}>{saveStateLabel}</span>
+          <button className="belentor-save-button" disabled={saving || !dirty} onClick={() => void saveCalendar()} type="button">
+            {saving ? 'Saving…' : '💾 Save Calendar'}
+          </button>
+        </div>
+      </div>
 
       <div className="belentor-calendar-main">
         <section className="belentor-month-card" aria-label={`${monthTitle(month)}, ${year} AA`}>
@@ -420,7 +503,7 @@ export function BelentorCalendar() {
             </div>
           </section>
 
-          <footer><button disabled={saving} onClick={() => setEventDraft(null)} type="button">Cancel</button><button className="primary-button" disabled={saving || !eventDraft.title.trim()} type="submit">{saving ? 'Saving…' : 'Save calendar entry'}</button></footer>
+          <footer><button disabled={saving} onClick={() => setEventDraft(null)} type="button">Cancel</button><button className="primary-button" disabled={saving || !eventDraft.title.trim()} type="submit">{saving ? 'Applying…' : 'Apply calendar entry'}</button></footer>
         </form>
       )}
 

@@ -13,6 +13,12 @@ const CALENDAR_MIME_TYPE = 'application/vnd.homebrewry.calendar+json';
 export const calendarEventKinds = ['holiday', 'major-event', 'event', 'note'] as const;
 export type CalendarEventKind = (typeof calendarEventKinds)[number];
 
+export type CalendarView = {
+  year: number;
+  monthIndex: number;
+  day: number;
+};
+
 export type BelentorCalendarEvent = {
   id: string;
   title: string;
@@ -32,6 +38,7 @@ type CalendarSnapshot = {
   schemaVersion: 1;
   updatedAt: string;
   events: BelentorCalendarEvent[];
+  view: CalendarView;
 };
 
 type CalendarState = CalendarSnapshot & {
@@ -39,6 +46,8 @@ type CalendarState = CalendarSnapshot & {
   drive?: DriveMetadata;
   syncState: SyncState;
 };
+
+type StoredCalendarState = Omit<CalendarState, 'view'> & { view?: unknown };
 
 type DriveFile = {
   id: string;
@@ -54,9 +63,13 @@ type RemoteCalendar = {
 
 export type CalendarStoreResult = {
   events: BelentorCalendarEvent[];
+  view: CalendarView;
   status: string;
   syncState: SyncState;
+  lastSavedAt?: string;
 };
+
+const DEFAULT_VIEW: CalendarView = { year: 641, monthIndex: 0, day: 1 };
 
 const databasePromise = openDB(DATABASE_NAME, 1, {
   upgrade(database) {
@@ -64,8 +77,36 @@ const databasePromise = openDB(DATABASE_NAME, 1, {
   }
 });
 
+let mutationQueue: Promise<void> = Promise.resolve();
+
+function enqueueMutation<T>(work: () => Promise<T>): Promise<T> {
+  const result = mutationQueue.then(work, work);
+  mutationQueue = result.then(() => undefined, () => undefined);
+  return result;
+}
+
 function now() {
   return new Date().toISOString();
+}
+
+function clampView(view: CalendarView): CalendarView {
+  const year = Number.isFinite(view.year) ? Math.min(9999, Math.max(1, Math.trunc(view.year))) : DEFAULT_VIEW.year;
+  const monthIndex = Number.isFinite(view.monthIndex) ? Math.min(11, Math.max(0, Math.trunc(view.monthIndex))) : DEFAULT_VIEW.monthIndex;
+  const day = Number.isFinite(view.day) ? Math.min(30, Math.max(1, Math.trunc(view.day))) : DEFAULT_VIEW.day;
+  return { year, monthIndex, day };
+}
+
+function parseCalendarView(value: unknown): CalendarView {
+  if (!isRecord(value)) return { ...DEFAULT_VIEW };
+  return clampView({
+    year: typeof value.year === 'number' ? value.year : DEFAULT_VIEW.year,
+    monthIndex: typeof value.monthIndex === 'number' ? value.monthIndex : DEFAULT_VIEW.monthIndex,
+    day: typeof value.day === 'number' ? value.day : DEFAULT_VIEW.day
+  });
+}
+
+function sameView(left: CalendarView, right: CalendarView) {
+  return left.year === right.year && left.monthIndex === right.monthIndex && left.day === right.day;
 }
 
 function emptyState(): CalendarState {
@@ -74,6 +115,7 @@ function emptyState(): CalendarState {
     schemaVersion: 1,
     updatedAt: now(),
     events: [],
+    view: { ...DEFAULT_VIEW },
     syncState: 'local'
   };
 }
@@ -131,14 +173,19 @@ function parseSnapshot(value: unknown): CalendarSnapshot {
   return {
     schemaVersion: 1,
     updatedAt: value.updatedAt,
-    events: value.events.map(parseCalendarEvent)
+    events: value.events.map(parseCalendarEvent),
+    view: parseCalendarView(value.view)
   };
 }
 
 async function getState(): Promise<CalendarState> {
   const database = await databasePromise;
-  const stored = await database.get(STORE_NAME, RECORD_ID) as CalendarState | undefined;
-  return stored ?? emptyState();
+  const stored = await database.get(STORE_NAME, RECORD_ID) as StoredCalendarState | undefined;
+  if (!stored) return emptyState();
+  return {
+    ...stored,
+    view: parseCalendarView(stored.view)
+  };
 }
 
 async function putState(state: CalendarState) {
@@ -235,105 +282,154 @@ function visibleEvents(state: CalendarState) {
 }
 
 function result(state: CalendarState, status: string): CalendarStoreResult {
-  return { events: visibleEvents(state), status, syncState: state.syncState };
+  return {
+    events: visibleEvents(state),
+    view: state.view,
+    status,
+    syncState: state.syncState,
+    ...(state.drive?.lastSyncedAt ? { lastSavedAt: state.drive.lastSyncedAt } : {})
+  };
 }
 
-async function syncState(state: CalendarState): Promise<CalendarStoreResult> {
+export async function loadCalendarEvents(options: { discardPending?: boolean } = {}): Promise<CalendarStoreResult> {
+  await mutationQueue;
+  const state = await getState();
   const token = getDriveAccessToken();
-  if (!token || isLocalPreviewMode()) {
-    return result(state, isLocalPreviewMode() ? 'Preview calendar saved on this device.' : 'Calendar saved locally. Connect Drive to sync.');
+
+  if (isLocalPreviewMode()) {
+    return result(state, state.syncState === 'pending' ? 'Unsaved preview calendar changes.' : 'Preview calendar loaded from this device.');
+  }
+  if (!token) {
+    return result(state, state.syncState === 'pending' ? 'Unsaved calendar changes on this device.' : 'Login to Google Drive to load the calendar.');
   }
 
-  const remoteCalendars = await listRemoteCalendars(token);
-  const remote = remoteCalendars[0];
+  try {
+    const remote = (await listRemoteCalendars(token))[0];
+    if (!remote) {
+      return result(state, state.syncState === 'pending' ? 'Unsaved calendar changes on this device.' : 'No calendar has been saved to Google Drive yet.');
+    }
+    if (!options.discardPending && (state.syncState === 'pending' || state.syncState === 'error')) {
+      return result(state, 'Unsaved calendar changes on this device.');
+    }
 
-  if (!remote) {
-    const snapshot: CalendarSnapshot = { schemaVersion: 1, updatedAt: state.updatedAt, events: state.events };
-    const file = await uploadCalendar(token, snapshot);
     const synced: CalendarState = {
-      ...state,
-      drive: { fileId: file.id, revisionId: file.headRevisionId ?? '', lastSyncedAt: now() },
+      id: RECORD_ID,
+      ...remote.snapshot,
+      drive: { fileId: remote.file.id, revisionId: remote.file.headRevisionId ?? '', lastSyncedAt: remote.file.modifiedTime },
       syncState: 'synced'
     };
     await putState(synced);
-    return result(synced, 'Calendar saved to Google Drive.');
-  }
-
-  const shouldAdoptRemote = state.events.length === 0 && !state.drive;
-  const mergedEvents = shouldAdoptRemote ? remote.snapshot.events : mergeEvents(remote.snapshot.events, state.events);
-  const mergedChangedRemote = JSON.stringify(mergedEvents) !== JSON.stringify(remote.snapshot.events);
-  const snapshot: CalendarSnapshot = {
-    schemaVersion: 1,
-    updatedAt: mergedChangedRemote ? now() : remote.snapshot.updatedAt,
-    events: mergedEvents
-  };
-  const file = mergedChangedRemote ? await uploadCalendar(token, snapshot, remote.file) : remote.file;
-  const synced: CalendarState = {
-    id: RECORD_ID,
-    ...snapshot,
-    drive: { fileId: file.id, revisionId: file.headRevisionId ?? '', lastSyncedAt: now() },
-    syncState: 'synced'
-  };
-  await putState(synced);
-  return result(synced, mergedChangedRemote ? 'Calendar changes synced to Google Drive.' : 'Calendar loaded from Google Drive.');
-}
-
-export async function loadCalendarEvents(): Promise<CalendarStoreResult> {
-  const state = await getState();
-  try {
-    return await syncState(state);
+    return result(synced, 'Calendar loaded from Google Drive.');
   } catch (error) {
     const failed = { ...state, syncState: 'error' as const };
     await putState(failed);
-    return result(failed, error instanceof Error ? error.message : 'Calendar sync failed.');
+    return result(failed, error instanceof Error ? error.message : 'Calendar load failed.');
   }
 }
 
-export async function saveCalendarEvent(event: BelentorCalendarEvent): Promise<CalendarStoreResult> {
-  const state = await getState();
-  const timestamp = now();
-  const saved: BelentorCalendarEvent = {
-    ...event,
-    title: event.title.trim(),
-    notes: event.notes.trim(),
-    worldbuildingIds: [...new Set(event.worldbuildingIds)],
-    updatedAt: timestamp,
-    deletedAt: undefined
-  };
-  const next: CalendarState = {
-    ...state,
-    updatedAt: timestamp,
-    events: [saved, ...state.events.filter((item) => item.id !== saved.id)],
-    syncState: getDriveAccessToken() && !isLocalPreviewMode() ? 'pending' : 'local'
-  };
-  await putState(next);
-  try {
-    return await syncState(next);
-  } catch (error) {
-    const failed = { ...next, syncState: 'error' as const };
-    await putState(failed);
-    return result(failed, error instanceof Error ? error.message : 'Calendar sync failed.');
-  }
+export function stageCalendarView(view: CalendarView): Promise<CalendarStoreResult> {
+  return enqueueMutation(async () => {
+    const state = await getState();
+    const nextView = clampView(view);
+    if (sameView(state.view, nextView)) {
+      return result(state, state.syncState === 'pending' ? 'Unsaved calendar changes.' : 'Calendar date unchanged.');
+    }
+    const next: CalendarState = {
+      ...state,
+      view: nextView,
+      updatedAt: now(),
+      syncState: 'pending'
+    };
+    await putState(next);
+    return result(next, 'Unsaved calendar changes.');
+  });
 }
 
-export async function deleteCalendarEvent(id: string): Promise<CalendarStoreResult> {
-  const state = await getState();
-  const timestamp = now();
-  const events = state.events.map((event) => event.id === id
-    ? { ...event, updatedAt: timestamp, deletedAt: timestamp }
-    : event);
-  const next: CalendarState = {
-    ...state,
-    updatedAt: timestamp,
-    events,
-    syncState: getDriveAccessToken() && !isLocalPreviewMode() ? 'pending' : 'local'
-  };
-  await putState(next);
-  try {
-    return await syncState(next);
-  } catch (error) {
-    const failed = { ...next, syncState: 'error' as const };
-    await putState(failed);
-    return result(failed, error instanceof Error ? error.message : 'Calendar sync failed.');
-  }
+export function saveCalendarEvent(event: BelentorCalendarEvent, view?: CalendarView): Promise<CalendarStoreResult> {
+  return enqueueMutation(async () => {
+    const state = await getState();
+    const timestamp = now();
+    const saved: BelentorCalendarEvent = {
+      ...event,
+      title: event.title.trim(),
+      notes: event.notes.trim(),
+      worldbuildingIds: [...new Set(event.worldbuildingIds)],
+      updatedAt: timestamp,
+      deletedAt: undefined
+    };
+    const next: CalendarState = {
+      ...state,
+      updatedAt: timestamp,
+      events: [saved, ...state.events.filter((item) => item.id !== saved.id)],
+      view: view ? clampView(view) : state.view,
+      syncState: 'pending'
+    };
+    await putState(next);
+    return result(next, 'Calendar entry applied. Save Calendar to store it in Google Drive.');
+  });
+}
+
+export function deleteCalendarEvent(id: string, view?: CalendarView): Promise<CalendarStoreResult> {
+  return enqueueMutation(async () => {
+    const state = await getState();
+    const timestamp = now();
+    const events = state.events.map((event) => event.id === id
+      ? { ...event, updatedAt: timestamp, deletedAt: timestamp }
+      : event);
+    const next: CalendarState = {
+      ...state,
+      updatedAt: timestamp,
+      events,
+      view: view ? clampView(view) : state.view,
+      syncState: 'pending'
+    };
+    await putState(next);
+    return result(next, 'Calendar entry removed. Save Calendar to store the change in Google Drive.');
+  });
+}
+
+export function saveCalendarToDrive(view?: CalendarView): Promise<CalendarStoreResult> {
+  return enqueueMutation(async () => {
+    const state = await getState();
+    const timestamp = now();
+    const pending: CalendarState = {
+      ...state,
+      view: view ? clampView(view) : state.view,
+      updatedAt: timestamp,
+      syncState: 'pending'
+    };
+    await putState(pending);
+
+    if (isLocalPreviewMode()) {
+      const local: CalendarState = { ...pending, syncState: 'local' };
+      await putState(local);
+      return result(local, 'Preview calendar saved on this device.');
+    }
+
+    const token = getDriveAccessToken();
+    if (!token) return result(pending, 'Login to Google Drive before saving the calendar.');
+
+    try {
+      const remote = (await listRemoteCalendars(token))[0];
+      const snapshot: CalendarSnapshot = {
+        schemaVersion: 1,
+        updatedAt: timestamp,
+        events: remote ? mergeEvents(remote.snapshot.events, pending.events) : pending.events,
+        view: pending.view
+      };
+      const file = await uploadCalendar(token, snapshot, remote?.file);
+      const synced: CalendarState = {
+        id: RECORD_ID,
+        ...snapshot,
+        drive: { fileId: file.id, revisionId: file.headRevisionId ?? '', lastSyncedAt: file.modifiedTime || timestamp },
+        syncState: 'synced'
+      };
+      await putState(synced);
+      return result(synced, 'Calendar saved to Google Drive.');
+    } catch (error) {
+      const failed = { ...pending, syncState: 'error' as const };
+      await putState(failed);
+      return result(failed, error instanceof Error ? error.message : 'Calendar save failed.');
+    }
+  });
 }

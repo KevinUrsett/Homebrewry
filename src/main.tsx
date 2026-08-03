@@ -7,6 +7,7 @@ import RootApp from './RootApp';
 import { isLocalPreviewMode } from './lib/runtimeMode';
 import './fonts.css';
 import './styles.css';
+import './iphone-layout.css';
 
 registerSW({ immediate: true });
 

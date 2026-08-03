@@ -1,5 +1,8 @@
+import { isLocalPreviewMode } from './runtimeMode';
+
 const GOOGLE_IDENTITY_URL = 'https://accounts.google.com/gsi/client';
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const PREVIEW_ACCESS_TOKEN = 'homebrewry-local-preview';
 
 const DRIVE_AUTH_PROMPT = 'select_account consent';
 export const DRIVE_AUTH_EXPIRED_EVENT = 'homebrewry-drive-auth-expired';
@@ -41,14 +44,15 @@ function getClientId() {
 }
 
 export function isGoogleConfigured() {
-  return Boolean(getClientId());
+  return isLocalPreviewMode() || Boolean(getClientId());
 }
 
 export function getDriveAccessToken() {
-  return sessionAccessToken;
+  return isLocalPreviewMode() ? PREVIEW_ACCESS_TOKEN : sessionAccessToken;
 }
 
 export function invalidateDriveAccessToken() {
+  if (isLocalPreviewMode()) return;
   sessionAccessToken = null;
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(DRIVE_AUTH_EXPIRED_EVENT));
 }
@@ -71,6 +75,7 @@ function loadGoogleIdentity() {
 }
 
 export async function requestDriveAccess(options: { force?: boolean } = {}) {
+  if (isLocalPreviewMode()) return PREVIEW_ACCESS_TOKEN;
   if (sessionAccessToken && !options.force) return sessionAccessToken;
   if (options.force) sessionAccessToken = null;
 

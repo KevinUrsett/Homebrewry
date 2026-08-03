@@ -1,0 +1,434 @@
+.belentor-calendar-status {
+  color: #71553e;
+  font-size: .76rem;
+  margin: -4px 0 10px;
+  text-align: right;
+}
+
+.belentor-refresh-button {
+  white-space: nowrap;
+}
+
+.belentor-month-heading-actions {
+  align-items: stretch;
+  display: flex;
+  gap: 10px;
+}
+
+.belentor-month-heading-actions .primary-button {
+  background: #5d2f26;
+  border: 1px solid #5d2f26;
+  border-radius: 6px;
+  color: #fffaf0;
+  font-weight: 800;
+  padding: 9px 12px;
+}
+
+.belentor-day-row button.has-events {
+  box-shadow: inset 0 -3px #8b5d38;
+}
+
+.belentor-day-event-markers {
+  display: flex;
+  gap: 2px;
+  justify-content: center;
+  min-height: 6px;
+}
+
+.belentor-day-event-markers i {
+  border-radius: 999px;
+  display: block;
+  height: 5px;
+  width: 5px;
+}
+
+.belentor-day-event-markers .kind-holiday,
+.belentor-event-card.kind-holiday {
+  --calendar-kind: #8c5d22;
+}
+
+.belentor-day-event-markers .kind-major-event,
+.belentor-event-card.kind-major-event {
+  --calendar-kind: #7a2f27;
+}
+
+.belentor-day-event-markers .kind-event,
+.belentor-event-card.kind-event {
+  --calendar-kind: #5c527e;
+}
+
+.belentor-day-event-markers .kind-note,
+.belentor-event-card.kind-note {
+  --calendar-kind: #45665b;
+}
+
+.belentor-day-event-markers i {
+  background: var(--calendar-kind);
+}
+
+.belentor-selected-events {
+  border-top: 1px solid #d8c9ae;
+  display: grid;
+  gap: 12px;
+  padding-top: 17px;
+}
+
+.belentor-selected-events > header {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.belentor-selected-events h4 {
+  color: #4e2f24;
+  font-family: Georgia, serif;
+  font-size: 1.1rem;
+  margin: 2px 0 0;
+}
+
+.belentor-event-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.belentor-event-quick-actions button,
+.belentor-event-card-heading button {
+  background: #f7f0df;
+  border: 1px solid #c7ae88;
+  border-radius: 5px;
+  color: #4d392d;
+  font-size: .72rem;
+  padding: 6px 8px;
+}
+
+.belentor-event-list {
+  display: grid;
+  gap: 9px;
+}
+
+.belentor-event-card {
+  background: #fffaf0;
+  border: 1px solid #d8c9ae;
+  border-left: 5px solid var(--calendar-kind);
+  border-radius: 7px;
+  display: grid;
+  gap: 9px;
+  padding: 12px 13px;
+}
+
+.belentor-event-card-heading {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.belentor-event-card-heading > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.belentor-event-card-heading > div:last-child {
+  display: flex;
+  gap: 5px;
+}
+
+.belentor-event-card-heading span {
+  color: var(--calendar-kind);
+  font-size: .64rem;
+  font-weight: 900;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.belentor-event-card-heading strong {
+  color: #382b24;
+  font-family: Georgia, serif;
+  font-size: 1rem;
+}
+
+.belentor-event-card-heading small,
+.belentor-event-card p {
+  color: #715d4c;
+  font-size: .74rem;
+}
+
+.belentor-event-card p {
+  line-height: 1.5;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.belentor-linked-worldbuilding {
+  align-items: flex-start;
+  border-top: 1px solid #eadfce;
+  display: grid;
+  gap: 7px;
+  padding-top: 8px;
+}
+
+.belentor-linked-worldbuilding > span {
+  color: #806c5a;
+  font-size: .63rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.belentor-linked-worldbuilding > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.belentor-linked-worldbuilding strong {
+  background: #ede0c9;
+  border-radius: 999px;
+  color: #493329;
+  font-size: .68rem;
+  padding: 4px 8px;
+}
+
+.belentor-empty-date {
+  background: #f7f0df;
+  border: 1px dashed #cbb99d;
+  border-radius: 7px;
+  color: #806c5a;
+  margin: 0;
+  padding: 13px;
+}
+
+.belentor-event-editor {
+  background: #fffaf0;
+  border: 1px solid #b99464;
+  border-radius: 10px;
+  box-shadow: 0 14px 32px rgb(45 28 16 / 16%);
+  display: grid;
+  gap: 17px;
+  padding: clamp(16px, 3vw, 25px);
+}
+
+.belentor-event-editor > header {
+  align-items: flex-start;
+  border-bottom: 1px solid #d8c9ae;
+  display: flex;
+  gap: 15px;
+  justify-content: space-between;
+  padding-bottom: 12px;
+}
+
+.belentor-event-editor > header h3 {
+  color: #5d2f26;
+  font-family: Georgia, serif;
+  font-size: 1.45rem;
+  margin: 2px 0 0;
+}
+
+.belentor-event-editor > header > button {
+  background: transparent;
+  border: 0;
+  color: #71553e;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.belentor-event-fields {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.belentor-event-fields label {
+  color: #71553e;
+  display: grid;
+  font-size: .68rem;
+  font-weight: 900;
+  gap: 5px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.belentor-event-fields input,
+.belentor-event-fields select,
+.belentor-event-fields textarea,
+.belentor-worldbuilding-linker > input {
+  background: #fffdf7;
+  border: 1px solid #cbb99d;
+  border-radius: 6px;
+  color: #39291f;
+  min-width: 0;
+  padding: 9px;
+}
+
+.belentor-event-title-field {
+  grid-column: span 2;
+}
+
+.belentor-event-notes-field {
+  grid-column: 1 / -1;
+}
+
+.belentor-event-notes-field textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.belentor-event-repeat {
+  align-content: end;
+  align-items: center;
+  display: flex !important;
+  flex-direction: row;
+  gap: 8px !important;
+  padding-bottom: 9px;
+  text-transform: none !important;
+}
+
+.belentor-event-repeat input {
+  min-width: auto;
+}
+
+.belentor-worldbuilding-linker {
+  background: #f7f0df;
+  border: 1px solid #d8c9ae;
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.belentor-worldbuilding-linker h4 {
+  color: #4e2f24;
+  font-family: Georgia, serif;
+  margin: 2px 0 0;
+}
+
+.belentor-worldbuilding-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.belentor-worldbuilding-chips button {
+  background: #ead1a3;
+  border: 1px solid #c7a76d;
+  border-radius: 999px;
+  color: #4e3428;
+  font-size: .72rem;
+  padding: 5px 9px;
+}
+
+.belentor-worldbuilding-results {
+  display: grid;
+  gap: 5px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-height: 220px;
+  overflow: auto;
+}
+
+.belentor-worldbuilding-results button {
+  background: #fffaf0;
+  border: 1px solid #d4c2a6;
+  border-radius: 6px;
+  color: #493329;
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+  text-align: left;
+}
+
+.belentor-worldbuilding-results strong {
+  font-size: .76rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.belentor-worldbuilding-results span {
+  color: #806c5a;
+  font-size: .62rem;
+  text-transform: capitalize;
+}
+
+.belentor-worldbuilding-results p {
+  color: #806c5a;
+  font-size: .75rem;
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.belentor-event-editor > footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.belentor-event-editor > footer button {
+  background: #f7f0df;
+  border: 1px solid #ad9576;
+  border-radius: 5px;
+  color: #422f25;
+  padding: 9px 12px;
+}
+
+.belentor-event-editor > footer .primary-button {
+  background: #5d2f26;
+  border-color: #5d2f26;
+  color: #fffaf0;
+  font-weight: 800;
+}
+
+@media (max-width: 900px) {
+  .belentor-month-heading-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .belentor-event-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .belentor-worldbuilding-results {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .belentor-calendar-status {
+    text-align: left;
+  }
+
+  .belentor-selected-events > header,
+  .belentor-event-card-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .belentor-event-quick-actions,
+  .belentor-event-card-heading > div:last-child {
+    justify-content: flex-start;
+  }
+
+  .belentor-event-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .belentor-event-title-field,
+  .belentor-event-notes-field {
+    grid-column: auto;
+  }
+
+  .belentor-worldbuilding-results {
+    grid-template-columns: 1fr;
+  }
+
+  .belentor-event-editor > footer {
+    flex-direction: column-reverse;
+  }
+
+  .belentor-event-editor > footer button {
+    width: 100%;
+  }
+}

@@ -1,0 +1,79 @@
+.belentor-calendar-save-bar {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  margin: -4px 0 10px;
+  min-width: 0;
+}
+
+.belentor-calendar-save-bar .belentor-calendar-status {
+  flex: 1;
+  margin: 0;
+  min-width: 0;
+  text-align: left;
+}
+
+.belentor-calendar-save-actions {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 9px;
+}
+
+.belentor-calendar-save-actions > span {
+  border-radius: 999px;
+  font-size: .7rem;
+  font-weight: 800;
+  padding: 6px 9px;
+  white-space: nowrap;
+}
+
+.belentor-calendar-save-actions > span.is-unsaved {
+  background: #f1dfb8;
+  color: #72501f;
+}
+
+.belentor-calendar-save-actions > span.is-saved {
+  background: #dce8d5;
+  color: #385531;
+}
+
+.belentor-save-button {
+  background: #5d2f26;
+  border: 1px solid #5d2f26;
+  border-radius: 6px;
+  color: #fffaf0;
+  font-weight: 800;
+  min-height: 40px;
+  padding: 8px 13px;
+  white-space: nowrap;
+}
+
+.belentor-save-button:disabled {
+  cursor: not-allowed;
+  opacity: .48;
+}
+
+@media (max-width: 620px) {
+  .belentor-calendar-save-bar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .belentor-calendar-save-actions {
+    align-items: stretch;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .belentor-calendar-save-actions > span {
+    text-align: center;
+  }
+
+  .belentor-save-button {
+    min-height: 44px;
+    width: 100%;
+  }
+}

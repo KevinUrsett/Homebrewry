@@ -1,0 +1,262 @@
+.worldbuilding-view-switcher {
+  background: #eadfca;
+  border: 1px solid #c8b18d;
+  border-radius: 7px;
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+}
+
+.worldbuilding-view-switcher button {
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  color: #5a4435;
+  font-size: .77rem;
+  font-weight: 800;
+  padding: 7px 10px;
+}
+
+.worldbuilding-view-switcher button.is-selected {
+  background: #5d2f26;
+  color: #fff9ed;
+}
+
+.belentor-calendar {
+  display: grid;
+  flex: 1;
+  gap: 18px;
+  margin: 0 auto;
+  max-width: 1280px;
+  min-height: 0;
+  overflow: auto;
+  padding: 1px 1px 28px;
+  width: 100%;
+}
+
+.belentor-calendar-introduction {
+  align-items: end;
+  background: #fffaf0;
+  border: 1px solid #cbb99d;
+  box-shadow: 0 8px 22px rgb(45 28 16 / 12%);
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(220px, .75fr) minmax(0, 1.5fr);
+  padding: clamp(18px, 2.6vw, 30px);
+}
+
+.belentor-calendar-introduction h2,
+.belentor-month-heading h3,
+.belentor-year-overview h3,
+.belentor-calendar-reference h3 {
+  color: #5d2f26;
+  font-family: "Nodesto Caps Condensed", Georgia, serif;
+  letter-spacing: .025em;
+  margin: 0;
+}
+
+.belentor-calendar-introduction h2 { font-size: clamp(2rem, 4vw, 3rem); line-height: .95; }
+.belentor-calendar-introduction > p { color: #654e3b; line-height: 1.55; margin: 0; }
+
+.belentor-calendar-controls {
+  align-items: end;
+  background: #f7f0df;
+  border: 1px solid #cbb99d;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto minmax(210px, 1fr) minmax(105px, 150px) auto;
+  padding: 12px;
+}
+
+.belentor-calendar-controls label {
+  color: #71553e;
+  display: grid;
+  font-size: .68rem;
+  font-weight: 800;
+  gap: 5px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.belentor-calendar-controls select,
+.belentor-calendar-controls input,
+.belentor-calendar-controls > button {
+  background: #fffaf0;
+  border: 1px solid #bda88a;
+  border-radius: 5px;
+  color: #3e2d24;
+  min-height: 38px;
+  padding: 8px 10px;
+}
+
+.belentor-calendar-controls > button { font-size: 1.05rem; font-weight: 800; min-width: 42px; }
+
+.belentor-calendar-main {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) minmax(230px, 300px);
+  min-height: 0;
+}
+
+.belentor-month-card,
+.belentor-year-overview,
+.belentor-calendar-reference {
+  background: #fffdf7;
+  border: 1px solid #cbb99d;
+  box-shadow: 0 10px 28px rgb(45 28 16 / 12%);
+}
+
+.belentor-month-card { display: grid; min-width: 0; }
+
+.belentor-month-heading {
+  align-items: start;
+  border-bottom: 1px solid #d8c9ae;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: clamp(18px, 2.8vw, 28px);
+}
+
+.belentor-month-heading h3 { font-size: clamp(2.5rem, 5vw, 4rem); line-height: .85; }
+.belentor-season-marker { background: #ead1a3; border-radius: 999px; color: #653b2d; display: inline-block; font-size: .7rem; font-weight: 800; margin-top: 9px; padding: 5px 9px; text-transform: uppercase; }
+
+.belentor-star-card {
+  background: #f3e8d4;
+  border-left: 4px solid #c5963e;
+  display: grid;
+  gap: 4px;
+  max-width: 320px;
+  min-width: 190px;
+  padding: 10px 12px;
+}
+
+.belentor-star-card span,
+.belentor-selected-date span {
+  color: #806c5a;
+  font-size: .65rem;
+  font-weight: 800;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.belentor-star-card strong { color: #4e3428; font-family: Georgia, serif; line-height: 1.25; }
+
+.belentor-ten-day-calendar {
+  display: grid;
+  gap: 12px;
+  overflow-x: auto;
+  padding: clamp(16px, 2.5vw, 26px);
+}
+
+.belentor-ten-day-row {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 105px minmax(560px, 1fr);
+}
+
+.belentor-ten-day-label {
+  align-content: center;
+  color: #5e4635;
+  display: grid;
+  gap: 3px;
+}
+
+.belentor-ten-day-label strong { font-family: Georgia, serif; font-size: .84rem; }
+.belentor-ten-day-label span { color: #907b65; font-size: .66rem; }
+
+.belentor-day-row { display: grid; gap: 5px; grid-template-columns: repeat(10, minmax(48px, 1fr)); }
+
+.belentor-day-row button {
+  aspect-ratio: 1;
+  background: #f9f2e4;
+  border: 1px solid #d0bfa4;
+  border-radius: 5px;
+  color: #493329;
+  display: grid;
+  min-width: 48px;
+  place-content: center;
+  position: relative;
+}
+
+.belentor-day-row button:hover { background: #eee0c7; }
+.belentor-day-row button.is-selected { background: #5d2f26; border-color: #5d2f26; color: #fffaf0; box-shadow: 0 4px 12px rgb(65 31 24 / 25%); }
+.belentor-day-row button span { font-family: Georgia, serif; font-size: 1rem; font-weight: 700; }
+.belentor-day-row button small { bottom: 3px; color: #927b64; font-size: .55rem; position: absolute; right: 5px; }
+.belentor-day-row button.is-selected small { color: #e7d4b7; }
+
+.belentor-selected-date {
+  align-items: center;
+  background: #f3e8d4;
+  border-top: 1px solid #d8c9ae;
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  padding: 14px clamp(18px, 2.8vw, 28px);
+}
+
+.belentor-selected-date > div { display: grid; gap: 3px; }
+.belentor-selected-date strong { color: #4d3026; font-family: Georgia, serif; }
+.belentor-selected-date p { color: #725d48; font-size: .78rem; margin: 0; }
+
+.belentor-year-overview { display: flex; flex-direction: column; min-height: 0; }
+.belentor-year-overview header { border-bottom: 1px solid #d8c9ae; padding: 18px; }
+.belentor-year-overview h3 { font-size: 2rem; }
+.belentor-year-overview > div { display: grid; overflow: auto; padding: 7px; }
+
+.belentor-year-overview button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: #493329;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 26px minmax(0, 1fr);
+  padding: 9px;
+  text-align: left;
+}
+
+.belentor-year-overview button:hover { background: #f2e7d3; }
+.belentor-year-overview button.is-selected { background: #ead1a3; box-shadow: inset 3px 0 #7a2f27; }
+.belentor-year-overview button > span { color: #9a8066; font-size: .64rem; font-weight: 800; grid-row: 1 / span 2; }
+.belentor-year-overview button strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.belentor-year-overview button small { color: #806c5a; font-size: .64rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.belentor-calendar-reference {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(190px, .6fr) minmax(0, 1.4fr);
+  padding: clamp(18px, 2.6vw, 28px);
+}
+
+.belentor-calendar-reference h3 { font-size: 2rem; }
+.belentor-calendar-reference p { color: #725d48; margin: 6px 0 0; }
+.belentor-month-reference-list { display: grid; gap: 1px; }
+.belentor-month-reference-list article { border-bottom: 1px solid #dfd2bd; display: grid; gap: 12px; grid-template-columns: minmax(160px, 1fr) minmax(190px, 1fr); padding: 7px 4px; }
+.belentor-month-reference-list strong { color: #4e3428; }
+.belentor-month-reference-list span { color: #725d48; text-align: right; }
+
+@media (max-width: 900px) {
+  .worldbuilding-view-switcher { order: -1; width: 100%; }
+  .worldbuilding-view-switcher button { flex: 1; }
+  .belentor-calendar-introduction,
+  .belentor-calendar-main,
+  .belentor-calendar-reference { grid-template-columns: 1fr; }
+  .belentor-year-overview > div { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .belentor-year-overview button { min-width: 0; }
+}
+
+@media (max-width: 620px) {
+  .belentor-calendar { gap: 12px; overflow: visible; padding-bottom: 12px; }
+  .belentor-calendar-introduction { gap: 12px; }
+  .belentor-calendar-controls { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .belentor-calendar-controls label:last-of-type { grid-column: 1 / -1; grid-row: 2; }
+  .belentor-month-heading { align-items: stretch; flex-direction: column; }
+  .belentor-star-card { max-width: none; min-width: 0; }
+  .belentor-ten-day-row { grid-template-columns: 1fr; }
+  .belentor-ten-day-label { display: flex; justify-content: space-between; min-width: 560px; }
+  .belentor-selected-date { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .belentor-year-overview > div { grid-template-columns: 1fr; }
+  .belentor-month-reference-list article { grid-template-columns: 1fr; }
+  .belentor-month-reference-list span { text-align: left; }
+}

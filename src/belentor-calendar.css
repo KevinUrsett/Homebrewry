@@ -247,10 +247,60 @@
 }
 
 @media (max-width: 620px) {
-  .belentor-calendar { gap: 12px; overflow: visible; padding-bottom: 12px; }
+  .belentor-calendar {
+    gap: 12px;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+    padding-bottom: 12px;
+  }
+
+  .belentor-calendar > *,
+  .belentor-calendar-controls > * {
+    max-width: 100%;
+    min-width: 0;
+  }
+
   .belentor-calendar-introduction { gap: 12px; }
-  .belentor-calendar-controls { grid-template-columns: auto minmax(0, 1fr) auto; }
-  .belentor-calendar-controls label:last-of-type { grid-column: 1 / -1; grid-row: 2; }
+
+  .belentor-calendar-controls {
+    align-items: stretch;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: hidden;
+    width: 100%;
+  }
+
+  .belentor-calendar-controls > label:first-of-type {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .belentor-calendar-controls > button:first-of-type {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .belentor-calendar-controls > button:nth-of-type(2) {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .belentor-calendar-controls > label:last-of-type {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+
+  .belentor-calendar-controls > .belentor-refresh-button {
+    grid-column: 1 / -1;
+    grid-row: 4;
+  }
+
+  .belentor-calendar-controls select,
+  .belentor-calendar-controls input,
+  .belentor-calendar-controls > button {
+    width: 100%;
+  }
+
   .belentor-month-heading { align-items: stretch; flex-direction: column; }
   .belentor-star-card { max-width: none; min-width: 0; }
   .belentor-ten-day-row { grid-template-columns: 1fr; }

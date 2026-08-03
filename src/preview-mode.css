@@ -1,0 +1,17 @@
+.preview-local-mode .cloud-controls button {
+  display: none;
+}
+
+.preview-local-mode .cloud-controls::before {
+  background: #ead1a3;
+  border: 1px solid #c5963e;
+  border-radius: 999px;
+  color: #3b291f;
+  content: 'Preview · local only';
+  display: inline-block;
+  font-size: .7rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  padding: 5px 9px;
+  text-transform: uppercase;
+}

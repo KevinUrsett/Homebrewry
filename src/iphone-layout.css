@@ -24,6 +24,10 @@
     max-width: 100%;
   }
 
+  .belentor-selected-events {
+    padding: 17px 18px 18px;
+  }
+
   .belentor-event-editor {
     border-radius: 8px;
     gap: 12px;

@@ -5,6 +5,7 @@ import { DriveLoginControl } from './components/DriveLoginControl';
 import { MobileDriveTools } from './components/MobileDriveTools';
 import { MobileEditorKeyboardGuard } from './components/MobileEditorKeyboardGuard';
 import { MobileQuickMenuEnhancements } from './components/MobileQuickMenuEnhancements';
+import { MobileWritingMode } from './components/MobileWritingMode';
 import PreviewRootApp from './PreviewRootApp';
 import RootApp from './RootApp';
 import { isLocalPreviewMode } from './lib/runtimeMode';
@@ -14,6 +15,7 @@ import './iphone-layout.css';
 import './mobile-editor-viewport-fix.css';
 import './mobile-editor-keyboard.css';
 import './mobile-drive-tools.css';
+import './mobile-writing-mode.css';
 
 registerSW({ immediate: true });
 
@@ -26,6 +28,7 @@ createRoot(document.getElementById('root')!).render(
     <MobileEditorKeyboardGuard />
     <MobileQuickMenuEnhancements />
     <MobileDriveTools />
+    <MobileWritingMode />
     {!previewMode && <DriveLoginControl />}
   </StrictMode>
 );

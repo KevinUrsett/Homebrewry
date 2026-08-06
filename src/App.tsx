@@ -1784,8 +1784,7 @@ export default function App() {
                 <button onClick={() => { setFindVisible((visible) => !visible); setCaptureMenuOpen(false); }} type="button">Find</button>
               </div>
               <div className="mobile-writing-tool-group" aria-label="Formatting">
-                <button onClick={() => { insertText('## '); setCaptureMenuOpen(false); }} type="button">H2</button>
-                <button onClick={() => { insertText('**', '**'); setCaptureMenuOpen(false); }} type="button"><strong>B</strong></button>
+                <button onClick={() => { insertText('#### '); setCaptureMenuOpen(false); }} type="button">H4</button>
                 <button onClick={() => { insertText('_', '_'); setCaptureMenuOpen(false); }} type="button"><em>I</em></button>
                 <button onClick={() => { insertText('[', '](https://)'); setCaptureMenuOpen(false); }} type="button">Link</button>
               </div>

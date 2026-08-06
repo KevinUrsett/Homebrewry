@@ -49,7 +49,7 @@
     pointer-events: none;
     position: absolute !important;
     right: auto !important;
-    z-index: 45;
+    z-index: 48;
   }
 
   .app-shell.mobile-editor .mobile-capture-menu > * {

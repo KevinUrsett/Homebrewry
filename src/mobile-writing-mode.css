@@ -57,18 +57,34 @@
   }
 
   .app-shell.mobile-editor .mobile-outline-fab {
-    bottom: calc(12px + env(safe-area-inset-bottom));
-    position: absolute;
+    display: none !important;
+  }
+
+  .mobile-writing-launcher {
+    align-items: center;
+    appearance: none;
+    background: #7a3828;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    box-shadow: 0 5px 16px rgba(35, 22, 16, 0.34);
+    color: #fff7e8;
+    display: flex;
+    font: inherit;
+    font-size: 34px;
+    font-weight: 300;
+    height: 58px;
+    justify-content: center;
+    line-height: 1;
+    margin: 0;
+    padding: 0 0 4px;
+    position: fixed;
     right: 14px;
-    z-index: 47;
+    width: 58px;
+    z-index: 1000;
   }
 
-  .mobile-keyboard-open .app-shell.mobile-editor .mobile-outline-fab {
-    bottom: 12px;
-  }
-
-  .app-shell.mobile-editor .mobile-outline-fab[aria-expanded="true"] {
-    visibility: hidden;
+  .mobile-writing-launcher:active {
+    transform: scale(0.96);
   }
 
   .app-shell.mobile-editor .mobile-writing-tools {

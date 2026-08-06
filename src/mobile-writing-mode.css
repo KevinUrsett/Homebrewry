@@ -1,0 +1,135 @@
+@media (max-width: 820px) {
+  .mobile-keyboard-open .app-shell.mobile-editor .mobile-nav {
+    display: none !important;
+  }
+
+  .mobile-keyboard-open .app-shell.mobile-editor .workspace {
+    box-sizing: border-box;
+    padding-top: 48px;
+  }
+
+  .mobile-typing-nav {
+    align-items: stretch;
+    background: #38241d;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    height: 48px;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    z-index: 40;
+  }
+
+  .mobile-typing-nav button {
+    appearance: none;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    color: #f6ead5;
+    font: inherit;
+    font-size: 15px;
+    min-height: 48px;
+    padding: 0 8px;
+  }
+
+  .mobile-typing-nav button + button {
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .mobile-typing-nav .mobile-typing-done {
+    color: #e8bd5d;
+    font-weight: 700;
+  }
+
+  .app-shell.mobile-editor .mobile-capture-menu {
+    bottom: auto !important;
+    inset: 0;
+    pointer-events: none;
+    position: absolute !important;
+    right: auto !important;
+    z-index: 45;
+  }
+
+  .app-shell.mobile-editor .mobile-capture-menu > * {
+    pointer-events: auto;
+  }
+
+  .app-shell.mobile-editor .mobile-outline-fab {
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    position: absolute;
+    right: 14px;
+    z-index: 47;
+  }
+
+  .mobile-keyboard-open .app-shell.mobile-editor .mobile-outline-fab {
+    bottom: 12px;
+  }
+
+  .app-shell.mobile-editor .mobile-outline-fab[aria-expanded="true"] {
+    visibility: hidden;
+  }
+
+  .app-shell.mobile-editor .mobile-writing-tools {
+    background: #f5ecd9;
+    border: 1px solid rgba(69, 45, 31, 0.24);
+    border-radius: 22px 22px 0 0;
+    bottom: 0;
+    box-shadow: 0 -18px 44px rgba(35, 22, 16, 0.28);
+    box-sizing: border-box;
+    display: grid;
+    gap: 14px;
+    left: 0;
+    max-height: min(72%, calc(var(--mobile-visible-height, 100dvh) - 58px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 18px 18px max(20px, env(safe-area-inset-bottom));
+    position: absolute;
+    right: 0;
+    width: 100%;
+    z-index: 47;
+  }
+
+  .mobile-writing-sheet-header {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    order: -10;
+  }
+
+  .mobile-writing-sheet-header strong {
+    color: #3b281f;
+    font-size: 18px;
+  }
+
+  .mobile-writing-sheet-header button {
+    min-height: 40px;
+    padding-inline: 14px;
+  }
+
+  .app-shell.mobile-editor .mobile-writing-tool-group {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-shell.mobile-editor .mobile-writing-tool-group button {
+    min-height: 48px;
+    width: 100%;
+  }
+
+  .app-shell.mobile-editor .mobile-writing-sheet-backdrop {
+    appearance: none;
+    background: rgba(31, 20, 15, 0.38);
+    border: 0;
+    inset: 0;
+    padding: 0;
+    position: absolute;
+    z-index: 46;
+  }
+
+  .mobile-writing-sheet-open {
+    overflow: hidden;
+  }
+}

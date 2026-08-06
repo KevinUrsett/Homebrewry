@@ -16,19 +16,22 @@
     bottom: 12px;
   }
 
+  .app-shell.mobile-editor .markdown-editor .cm-editor,
   .app-shell.mobile-editor .markdown-editor .cm-scroller,
   .app-shell.mobile-editor .markdown-editor .cm-content,
   .app-shell.mobile-editor .markdown-editor .cm-line {
     font-size: 16px !important;
+    -webkit-text-size-adjust: 100%;
   }
 
   .app-shell.mobile-editor .markdown-editor .cm-scroller {
     line-height: 1.55;
     overscroll-behavior: contain;
-    scroll-padding-block: 28px 84px;
+    scroll-padding-block: 72px 112px;
+    touch-action: pan-y;
   }
 
   .app-shell.mobile-editor .markdown-editor .cm-content {
-    padding-bottom: max(92px, calc(28px + env(safe-area-inset-bottom)));
+    padding-bottom: max(112px, calc(40px + env(safe-area-inset-bottom)));
   }
 }

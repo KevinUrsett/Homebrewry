@@ -93,6 +93,7 @@ export function EditorPane({
       <input
         accept="image/jpeg,image/png,image/webp,image/gif"
         className="visually-hidden"
+        id="brew-image-input"
         onChange={(event) => {
           const file = event.target.files?.[0];
           if (file) onImageUpload(file);

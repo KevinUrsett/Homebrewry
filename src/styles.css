@@ -12,7 +12,7 @@ button, input, textarea, select { font: inherit; }
 button { cursor: pointer; }
 button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 3px solid #c5963e; outline-offset: 2px; }
 
-.app-shell { background: #e5ded0; display: flex; flex-direction: column; height: 100vh; height: 100dvh; min-height: 0; }
+.app-shell { background: #e5ded0; display: flex; flex-direction: column; height: 100vh; height: var(--app-height, 100dvh); min-height: 0; }
 
 .app-header {
   align-items: center;
@@ -490,6 +490,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .mobile-capture-menu { align-items: end; bottom: calc(16px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 8px; position: fixed; right: 14px; z-index: 8; }
   .mobile-outline-fab { align-items: center; background: #5d2f26; border: 1px solid #d0ad70; border-radius: 50%; box-shadow: 0 5px 16px rgb(40 22 13 / 35%); color: #fff8e9; display: flex; font: 400 1.55rem/1 Georgia, serif; height: 44px; justify-content: center; padding: 0 0 3px; width: 44px; }
   .mobile-capture-option { background: #f4e7ce; border: 1px solid #b78a59; border-radius: 999px; box-shadow: 0 4px 13px rgb(40 22 13 / 23%); color: #563127; font: 800 .73rem "Scaly Sans", Inter, sans-serif; letter-spacing: .04em; padding: 9px 13px; text-transform: uppercase; }
+  .mobile-writing-tools { background: #f4e7ce; border: 1px solid #b78a59; border-radius: 14px; box-shadow: 0 8px 24px rgb(40 22 13 / 30%); display: grid; gap: 7px; max-height: min(65dvh, 430px); max-width: calc(100vw - 28px); overflow: auto; padding: 9px; width: min(350px, calc(100vw - 28px)); }
+  .mobile-writing-tool-group { display: grid; gap: 5px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .mobile-writing-tool-group button { background: #fffaf0; border: 1px solid #d1c0a5; border-radius: 6px; color: #4d392d; font-size: .72rem; min-height: 38px; padding: 6px 4px; }
+  .mobile-writing-destinations { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mobile-writing-destinations button { border-color: #9c653d; font-weight: 800; }
   .workspace { display: block; flex: 1; min-height: 0; }
   .library-panel, .outline-panel, .editor-pane, .preview-pane { display: none; min-height: 0; }
   .main-panes { display: block; }
@@ -500,8 +505,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .app-shell.mobile-editor .workspace { display: flex; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; }
   .app-shell.mobile-editor .main-panes { display: flex; flex: 1; min-height: 0; }
   .app-shell.mobile-editor .editor-pane { flex: 1; min-height: 0; overflow: hidden; }
-  .editor-toolbar { gap: 5px; padding: 6px; }
-  .editor-toolbar button { font-size: .72rem; padding: 4px 6px; }
+  .app-shell.mobile-editor .app-header, .app-shell.mobile-editor .editor-toolbar, .app-shell.mobile-editor .title-input { display: none; }
   .toolbar-spacer { display: none; }
   .find-replace { grid-template-columns: 1fr 1fr; }
   .find-replace button { grid-column: 1 / -1; }

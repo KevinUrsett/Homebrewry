@@ -158,6 +158,23 @@ export default function App() {
   const privateMonsterSyncTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
+    const viewport = window.visualViewport;
+    const updateAppHeight = () => {
+      document.documentElement.style.setProperty('--app-height', `${viewport?.height ?? window.innerHeight}px`);
+    };
+    updateAppHeight();
+    viewport?.addEventListener('resize', updateAppHeight);
+    viewport?.addEventListener('scroll', updateAppHeight);
+    window.addEventListener('resize', updateAppHeight);
+    return () => {
+      viewport?.removeEventListener('resize', updateAppHeight);
+      viewport?.removeEventListener('scroll', updateAppHeight);
+      window.removeEventListener('resize', updateAppHeight);
+      document.documentElement.style.removeProperty('--app-height');
+    };
+  }, []);
+
+  useEffect(() => {
     Promise.all([
       seedBrews(),
       listAssets(),
@@ -1760,8 +1777,29 @@ export default function App() {
       {!ideasOpen && !campaignOpen && !catalogueOpen && !encountersOpen && !worldbuildingOpen && mobileSection === 'editor' && (
         <div className="mobile-capture-menu">
           {captureMenuOpen && <>
-            <button className="mobile-capture-option" onClick={() => { setCaptureMenuOpen(false); setMobileSection('outline'); }} type="button">Outline</button>
-            <button className="mobile-capture-option" onClick={openIdeas} type="button">My ideas</button>
+            <div className="mobile-writing-tools" aria-label="Writing tools">
+              <div className="mobile-writing-tool-group" aria-label="Formatting">
+                <button onClick={() => { insertText('#### '); setCaptureMenuOpen(false); }} type="button">H4</button>
+              </div>
+              <div className="mobile-writing-tool-group" aria-label="Insert blocks">
+                <button onClick={() => { insertText('\n:::note Note\n', '\n:::\n'); setCaptureMenuOpen(false); }} type="button">Note</button>
+                <button onClick={() => { insertText('\n```statblock\n', '\n```\n'); setCaptureMenuOpen(false); }} type="button">Stat block</button>
+                <button onClick={() => { insertText('\n```item\n', '\n```\n'); setCaptureMenuOpen(false); }} type="button">Item</button>
+                <button onClick={() => { insertText('\n```spell\n', '\n```\n'); setCaptureMenuOpen(false); }} type="button">Spell</button>
+                <button onClick={() => { insertText('\n:::pagebreak\n'); setCaptureMenuOpen(false); }} type="button">Page</button>
+                <button onClick={() => { document.getElementById('brew-image-input')?.click(); setCaptureMenuOpen(false); }} type="button">Image</button>
+              </div>
+              <div className="mobile-writing-tool-group" aria-label="Insert content">
+                <button onClick={() => { setCaptureMenuOpen(false); openCatalogue(); }} type="button">Reference</button>
+                <button onClick={() => { setCaptureMenuOpen(false); openEncounters(); }} type="button">Encounter</button>
+                <button onClick={() => { createPlotBeatFromBrew(); setCaptureMenuOpen(false); }} type="button">Plot beat</button>
+                <button onClick={() => { convertHomebreweryFormatting(); setCaptureMenuOpen(false); }} type="button">Convert HB</button>
+              </div>
+              <div className="mobile-writing-tool-group mobile-writing-destinations" aria-label="Editor panels">
+                <button onClick={() => { setCaptureMenuOpen(false); setMobileSection('outline'); }} type="button">Outline</button>
+                <button onClick={openIdeas} type="button">My ideas</button>
+              </div>
+            </div>
           </>}
           <button aria-expanded={captureMenuOpen} aria-label="Open writing tools" className="mobile-outline-fab" onClick={() => setCaptureMenuOpen((open) => !open)} type="button">+</button>
         </div>

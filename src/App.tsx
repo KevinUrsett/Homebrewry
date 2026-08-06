@@ -1778,15 +1778,8 @@ export default function App() {
         <div className="mobile-capture-menu">
           {captureMenuOpen && <>
             <div className="mobile-writing-tools" aria-label="Writing tools">
-              <div className="mobile-writing-tool-group" aria-label="History and search">
-                <button onClick={() => { undo(); setCaptureMenuOpen(false); }} type="button">Undo</button>
-                <button onClick={() => { redo(); setCaptureMenuOpen(false); }} type="button">Redo</button>
-                <button onClick={() => { setFindVisible((visible) => !visible); setCaptureMenuOpen(false); }} type="button">Find</button>
-              </div>
               <div className="mobile-writing-tool-group" aria-label="Formatting">
                 <button onClick={() => { insertText('#### '); setCaptureMenuOpen(false); }} type="button">H4</button>
-                <button onClick={() => { insertText('_', '_'); setCaptureMenuOpen(false); }} type="button"><em>I</em></button>
-                <button onClick={() => { insertText('[', '](https://)'); setCaptureMenuOpen(false); }} type="button">Link</button>
               </div>
               <div className="mobile-writing-tool-group" aria-label="Insert blocks">
                 <button onClick={() => { insertText('\n:::note Note\n', '\n:::\n'); setCaptureMenuOpen(false); }} type="button">Note</button>

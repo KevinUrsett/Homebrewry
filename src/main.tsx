@@ -8,6 +8,7 @@ import { isLocalPreviewMode } from './lib/runtimeMode';
 import './fonts.css';
 import './styles.css';
 import './iphone-layout.css';
+import './mobile-editor-viewport-fix.css';
 
 registerSW({ immediate: true });
 

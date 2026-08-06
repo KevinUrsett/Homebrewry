@@ -1,6 +1,7 @@
 @media (max-width: 820px) {
   .app-shell.mobile-editor {
-    max-height: var(--app-height, 100dvh);
+    height: var(--mobile-visible-height, 100dvh) !important;
+    max-height: var(--mobile-visible-height, 100dvh) !important;
     overflow: hidden;
     position: relative;
   }

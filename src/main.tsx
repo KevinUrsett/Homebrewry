@@ -4,6 +4,7 @@ import { registerSW } from 'virtual:pwa-register';
 import { DriveLoginControl } from './components/DriveLoginControl';
 import { MobileDriveTools } from './components/MobileDriveTools';
 import { MobileEditorKeyboardGuard } from './components/MobileEditorKeyboardGuard';
+import { MobileQuickMenuEnhancements } from './components/MobileQuickMenuEnhancements';
 import PreviewRootApp from './PreviewRootApp';
 import RootApp from './RootApp';
 import { isLocalPreviewMode } from './lib/runtimeMode';
@@ -23,6 +24,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AppRoot />
     <MobileEditorKeyboardGuard />
+    <MobileQuickMenuEnhancements />
     <MobileDriveTools />
     {!previewMode && <DriveLoginControl />}
   </StrictMode>

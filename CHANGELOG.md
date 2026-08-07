@@ -13,6 +13,9 @@
 
 ### Fixed
 
+- The mobile quick menu is trimmed to its useful actions, restores **Descr**, and removes Stat block, Item, Spell, Plot beat, and Convert HB.
+- Mobile outline scrubbing now accelerates non-linearly away from its centre while preserving fine control near it.
+- When iOS pans the layout viewport for the keyboard, the editor now fills the full usable visual viewport instead of leaving a dead strip at the bottom.
 - Long document outlines keep every row at its readable height and scroll independently on mobile instead of shrinking/cropping their labels.
 - The generic catalogue-reference parser now reserves encounter and Worldbuilding namespaces so those reference cards continue to render through their dedicated safe transforms.
 - Campaign-data schema version 4 stores custom catalogue categories and Worldbuilding type definitions while safely reading schema versions 1–3.

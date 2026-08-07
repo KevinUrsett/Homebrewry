@@ -1,28 +1,33 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-type EditorTextScale = 1 | 0.5 | 0.2;
-
 const storageKey = 'homebrewry-mobile-editor-text-scale';
-const scaleOptions: readonly EditorTextScale[] = [1, 0.5, 0.2];
+const minScale = 0.7;
+const maxScale = 1.3;
+const step = 0.05;
 
-function readSavedScale(): EditorTextScale {
+function clampScale(value: number) {
+  return Math.min(maxScale, Math.max(minScale, value));
+}
+
+function readSavedScale() {
   if (typeof window === 'undefined') return 1;
   try {
     const saved = Number(window.localStorage.getItem(storageKey));
-    return scaleOptions.includes(saved as EditorTextScale) ? saved as EditorTextScale : 1;
+    if (!Number.isFinite(saved) || saved < minScale || saved > maxScale) return 1;
+    return clampScale(saved);
   } catch {
     return 1;
   }
 }
 
-function applyScale(scale: EditorTextScale) {
+function applyScale(scale: number) {
   document.documentElement.style.setProperty('--mobile-editor-font-size', `${16 * scale}px`);
 }
 
 export function MobileEditorTextScale() {
   const [target, setTarget] = useState<HTMLElement | null>(null);
-  const [scale, setScale] = useState<EditorTextScale>(readSavedScale);
+  const [scale, setScale] = useState(readSavedScale);
 
   useEffect(() => {
     applyScale(scale);
@@ -46,26 +51,28 @@ export function MobileEditorTextScale() {
 
   if (!target) return null;
 
-  const chooseScale = (next: EditorTextScale) => {
-    setScale(next);
-    window.requestAnimationFrame(() => {
-      document.querySelector<HTMLButtonElement>('.mobile-outline-fab[aria-expanded="true"]')?.click();
-    });
-  };
+  const percentage = Math.round(scale * 100);
 
   return createPortal(
-    <div className="mobile-writing-tool-group mobile-editor-text-size" aria-label="Editor text size">
-      <span className="mobile-editor-text-size-label">Text size</span>
-      {scaleOptions.map((option) => (
-        <button
-          aria-pressed={scale === option}
-          key={option}
-          onClick={() => chooseScale(option)}
-          type="button"
-        >
-          {Math.round(option * 100)}%
-        </button>
-      ))}
+    <div className="mobile-editor-text-size" aria-label="Editor text size">
+      <div className="mobile-editor-text-size-heading">
+        <span>Text size</span>
+        <strong>{percentage}%</strong>
+      </div>
+      <input
+        aria-label="Editor text size"
+        max={maxScale}
+        min={minScale}
+        onChange={(event) => setScale(clampScale(Number(event.target.value)))}
+        step={step}
+        type="range"
+        value={scale}
+      />
+      <div className="mobile-editor-text-size-range" aria-hidden>
+        <span>70%</span>
+        <span>100%</span>
+        <span>130%</span>
+      </div>
     </div>,
     target
   );

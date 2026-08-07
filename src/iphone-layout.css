@@ -23,6 +23,15 @@
   }
 }
 
+@media (max-width: 820px) {
+  /* Fixed-position controls use the layout viewport on iOS. Add the amount
+     removed from the visual viewport by the keyboard so the + menu remains
+     immediately above the visible keyboard without scrolling the editor. */
+  .app-shell.mobile-editor .mobile-capture-menu {
+    bottom: calc(16px + env(safe-area-inset-bottom) + var(--mobile-visual-keyboard-inset, 0px));
+  }
+}
+
 @media (max-width: 620px) {
   .belentor-calendar,
   .belentor-calendar-main,

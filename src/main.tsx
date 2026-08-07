@@ -3,7 +3,12 @@ import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import { DriveLoginControl } from './components/DriveLoginControl';
 import { MobileCaptureDismiss } from './components/MobileCaptureDismiss';
+import { MobileContextTools } from './components/MobileContextTools';
+import { MobileEditorResume } from './components/MobileEditorResume';
 import { MobileEditorTextScale } from './components/MobileEditorTextScale';
+import { MobileFocusWriting } from './components/MobileFocusWriting';
+import { MobileNavigationHistory } from './components/MobileNavigationHistory';
+import { MobileRevisionHistory } from './components/MobileRevisionHistory';
 import { MobileVisualViewportInset } from './components/MobileVisualViewportInset';
 import { PreviewPositionSync } from './components/PreviewPositionSync';
 import PreviewRootApp from './PreviewRootApp';
@@ -13,6 +18,7 @@ import './fonts.css';
 import './styles.css';
 import './iphone-layout.css';
 import './mobile-editor-text-size.css';
+import './mobile-qol.css';
 
 registerSW({ immediate: true });
 
@@ -23,7 +29,12 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AppRoot />
     <MobileCaptureDismiss />
+    <MobileContextTools />
+    <MobileEditorResume />
     <MobileEditorTextScale />
+    <MobileFocusWriting />
+    <MobileNavigationHistory />
+    <MobileRevisionHistory />
     <MobileVisualViewportInset />
     <PreviewPositionSync />
     {!previewMode && <DriveLoginControl />}

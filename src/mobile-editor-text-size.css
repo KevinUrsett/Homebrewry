@@ -1,0 +1,35 @@
+@media (max-width: 820px) {
+  /* Keep the contenteditable host at 16px so iOS does not focus-zoom it.
+     Scale the rendered CodeMirror lines underneath that host instead. */
+  .app-shell.mobile-editor .markdown-editor .cm-content {
+    font-size: 16px !important;
+  }
+
+  .app-shell.mobile-editor .markdown-editor .cm-line {
+    font-size: var(--mobile-editor-font-size, 16px) !important;
+  }
+
+  .mobile-editor-text-size {
+    border-top: 1px solid #d1c0a5;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-top: 2px;
+    padding-top: 8px;
+  }
+
+  .mobile-editor-text-size-label {
+    color: #6f5a49;
+    font-size: .68rem;
+    font-weight: 800;
+    grid-column: 1 / -1;
+    letter-spacing: .05em;
+    padding: 0 2px;
+    text-transform: uppercase;
+  }
+
+  .mobile-writing-tool-group.mobile-editor-text-size button[aria-pressed='true'] {
+    background: #9c653d;
+    border-color: #7e4c2d;
+    color: #fffaf0;
+    font-weight: 800;
+  }
+}

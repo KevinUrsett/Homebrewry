@@ -1,0 +1,171 @@
+@media (max-width: 820px) {
+  .mobile-nav {
+    position: relative;
+    padding-left: 82px;
+  }
+
+  .mobile-history-controls {
+    align-items: stretch;
+    display: grid;
+    gap: 3px;
+    grid-template-columns: repeat(2, 33px);
+    left: 8px;
+    position: absolute;
+    top: 5px;
+  }
+
+  .mobile-history-controls button {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    color: #f3e6d2;
+    display: flex;
+    font-size: 1.45rem;
+    height: 42px;
+    justify-content: center;
+    line-height: 1;
+    padding: 0 0 3px;
+  }
+
+  .mobile-history-controls button:disabled {
+    opacity: .28;
+  }
+
+  html.mobile-focus-writing .app-shell.mobile-editor .mobile-nav {
+    display: none !important;
+  }
+
+  html.mobile-focus-writing .app-shell.mobile-editor .workspace {
+    flex: 1 1 0;
+  }
+
+  .mobile-context-tools {
+    border-bottom: 1px solid #d1c0a5;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    order: -20;
+    padding-bottom: 9px;
+  }
+
+  .mobile-context-label {
+    color: #6f5a49;
+    font-size: .68rem;
+    font-weight: 800;
+    grid-column: 1 / -1;
+    letter-spacing: .05em;
+    padding-inline: 2px;
+    text-transform: uppercase;
+  }
+
+  .mobile-writing-tools.has-editor-selection > .mobile-writing-tool-group:not(.mobile-context-tools):not(.mobile-editor-text-size):not(.mobile-revision-tools) {
+    display: none;
+  }
+
+  .mobile-revision-tools {
+    border-top: 1px solid #d1c0a5;
+    grid-template-columns: 1fr !important;
+    margin-top: 2px;
+    padding-top: 8px;
+  }
+
+  .mobile-revision-tools button {
+    font-weight: 800;
+  }
+
+  .mobile-revision-backdrop {
+    align-items: flex-end;
+    background: rgba(31, 20, 15, 0.4);
+    display: flex;
+    inset: 0;
+    position: fixed;
+    z-index: 1200;
+  }
+
+  .mobile-revision-sheet {
+    background: #f7f0df;
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -16px 42px rgba(35, 22, 16, 0.28);
+    display: grid;
+    gap: 12px;
+    max-height: min(76dvh, 620px);
+    overflow: hidden;
+    padding: 16px 16px max(18px, env(safe-area-inset-bottom));
+    width: 100%;
+  }
+
+  .mobile-revision-sheet > header {
+    align-items: start;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+  }
+
+  .mobile-revision-sheet > header div {
+    display: grid;
+    gap: 3px;
+  }
+
+  .mobile-revision-sheet > header strong {
+    color: #4e2f24;
+    font-family: Georgia, serif;
+    font-size: 1.15rem;
+  }
+
+  .mobile-revision-sheet > header small,
+  .mobile-revision-list p,
+  .mobile-revision-list article small {
+    color: #7a6654;
+    font-size: .72rem;
+    line-height: 1.35;
+  }
+
+  .mobile-revision-sheet > header button,
+  .mobile-revision-list article button {
+    background: #fffaf0;
+    border: 1px solid #bca789;
+    border-radius: 6px;
+    color: #533e31;
+    min-height: 40px;
+    padding: 7px 10px;
+  }
+
+  .mobile-revision-list {
+    display: grid;
+    gap: 7px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .mobile-revision-list article {
+    align-items: center;
+    background: #fffaf0;
+    border: 1px solid #d8c9ae;
+    border-radius: 8px;
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+    padding: 10px;
+  }
+
+  .mobile-revision-list article div {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .mobile-revision-list article strong {
+    color: #493329;
+    font-size: .82rem;
+  }
+
+  .mobile-revision-list article button {
+    flex: 0 0 auto;
+    font-size: .72rem;
+    font-weight: 800;
+  }
+
+  /* Outline navigation now lives on the dedicated scrubber above the + button. */
+  .mobile-writing-destinations button[hidden] {
+    display: none !important;
+  }
+}

@@ -11,25 +11,39 @@
 
   .mobile-editor-text-size {
     border-top: 1px solid #d1c0a5;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: grid;
+    gap: 7px;
     margin-top: 2px;
-    padding-top: 8px;
+    padding: 9px 2px 2px;
   }
 
-  .mobile-editor-text-size-label {
+  .mobile-editor-text-size-heading {
+    align-items: center;
     color: #6f5a49;
+    display: flex;
     font-size: .68rem;
     font-weight: 800;
-    grid-column: 1 / -1;
+    justify-content: space-between;
     letter-spacing: .05em;
-    padding: 0 2px;
     text-transform: uppercase;
   }
 
-  .mobile-writing-tool-group.mobile-editor-text-size button[aria-pressed='true'] {
-    background: #9c653d;
-    border-color: #7e4c2d;
-    color: #fffaf0;
-    font-weight: 800;
+  .mobile-editor-text-size-heading strong {
+    color: #5d2f26;
+    font-size: .72rem;
+  }
+
+  .mobile-editor-text-size input[type='range'] {
+    accent-color: #9c653d;
+    min-height: 32px;
+    width: 100%;
+  }
+
+  .mobile-editor-text-size-range {
+    color: #8a7565;
+    display: flex;
+    font-size: .62rem;
+    justify-content: space-between;
+    line-height: 1;
   }
 }

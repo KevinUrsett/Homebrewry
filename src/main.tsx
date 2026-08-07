@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import { DriveLoginControl } from './components/DriveLoginControl';
+import { MobileVisualViewportInset } from './components/MobileVisualViewportInset';
 import { PreviewPositionSync } from './components/PreviewPositionSync';
 import PreviewRootApp from './PreviewRootApp';
 import RootApp from './RootApp';
@@ -18,6 +19,7 @@ const AppRoot = previewMode ? PreviewRootApp : RootApp;
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AppRoot />
+    <MobileVisualViewportInset />
     <PreviewPositionSync />
     {!previewMode && <DriveLoginControl />}
   </StrictMode>

@@ -64,6 +64,14 @@ export function MobileOutlineScrubber() {
   const panelRef = useRef<HTMLElement | null>(null);
   const outlineListRef = useRef<HTMLDivElement | null>(null);
 
+  const activeIndex = useMemo(() => {
+    let index = -1;
+    outline.forEach((item, itemIndex) => {
+      if (item.position <= activePosition) index = itemIndex;
+    });
+    return index;
+  }, [activePosition, outline]);
+
   useEffect(() => {
     const refresh = () => {
       const mobile = window.matchMedia(MOBILE_BREAKPOINT).matches;
@@ -146,14 +154,6 @@ export function MobileOutlineScrubber() {
   useEffect(() => () => {
     if (scrollFrameRef.current !== null) window.cancelAnimationFrame(scrollFrameRef.current);
   }, []);
-
-  const activeIndex = useMemo(() => {
-    let index = -1;
-    outline.forEach((item, itemIndex) => {
-      if (item.position <= activePosition) index = itemIndex;
-    });
-    return index;
-  }, [activePosition, outline]);
 
   const openOutline = (continueGesture = false) => {
     const view = editorView();

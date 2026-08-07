@@ -163,4 +163,9 @@
     font-size: .72rem;
     font-weight: 800;
   }
+
+  /* Outline navigation now lives on the dedicated scrubber above the + button. */
+  .mobile-writing-destinations button[hidden] {
+    display: none !important;
+  }
 }

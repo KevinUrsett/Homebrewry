@@ -93,6 +93,7 @@ export default function App() {
   const [saveState, setSaveState] = useState('Loading local drafts…');
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [savingToDrive, setSavingToDrive] = useState(false);
   const [findVisible, setFindVisible] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [findValue, setFindValue] = useState('');
@@ -337,13 +338,17 @@ export default function App() {
   }, [activeBrew, loading]);
 
   const saveActiveBrewNow = async () => {
-    if (!activeBrew) return;
+    if (!activeBrew || savingToDrive || syncing) return;
     try {
-      setSaveState('Saving locally…');
+      setSavingToDrive(true);
+      setSaveState('Saving to Google Drive…');
       await saveBrew(activeBrew);
-      setSaveState('Saved locally');
-    } catch {
-      setSaveState('Local save failed');
+      setBrews((currentBrews) => currentBrews.map((brew) => brew.id === activeBrew.id ? { ...activeBrew } : brew));
+      setSaveState('Saved to Google Drive');
+    } catch (error) {
+      setSaveState(error instanceof Error ? error.message : 'Could not save to Google Drive');
+    } finally {
+      setSavingToDrive(false);
     }
   };
 
@@ -1799,6 +1804,11 @@ export default function App() {
               <div className="mobile-writing-tool-group mobile-writing-destinations" aria-label="Editor panels">
                 <button onClick={() => { setCaptureMenuOpen(false); setMobileSection('outline'); }} type="button">Outline</button>
                 <button onClick={openIdeas} type="button">My ideas</button>
+              </div>
+              <div className="mobile-writing-tool-group mobile-writing-save" aria-label="Drive save">
+                <button disabled={!accessToken || savingToDrive || syncing} onClick={() => { void saveActiveBrewNow(); setCaptureMenuOpen(false); }} type="button">
+                  {savingToDrive ? 'Saving…' : 'Save to Drive'}
+                </button>
               </div>
             </div>
           </>}

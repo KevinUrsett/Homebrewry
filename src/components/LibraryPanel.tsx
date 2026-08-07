@@ -57,6 +57,7 @@ export function LibraryPanel({
         {filtered.map((brew) => (
           <button
             className={`brew-list-item ${brew.id === activeId ? 'is-active' : ''}`}
+            data-brew-id={brew.id}
             key={brew.id}
             onClick={() => onSelect(brew.id)}
             type="button"

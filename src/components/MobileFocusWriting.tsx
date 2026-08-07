@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 
 const mobileEditorQuery = '(max-width: 820px)';
+const writingToolSelector = '.mobile-capture-menu, .mobile-outline-scrubber, .mobile-inline-outline, .mobile-inline-outline-backdrop';
 
 function isEditorFocused() {
   const active = document.activeElement;
@@ -9,7 +10,7 @@ function isEditorFocused() {
 
 function isWritingToolFocused() {
   const active = document.activeElement;
-  return active instanceof Element && Boolean(active.closest('.mobile-capture-menu'));
+  return active instanceof Element && Boolean(active.closest(writingToolSelector));
 }
 
 export function MobileFocusWriting() {
@@ -48,7 +49,7 @@ export function MobileFocusWriting() {
         apply();
         return;
       }
-      if (target.closest('.mobile-capture-menu')) return;
+      if (target.closest(writingToolSelector)) return;
       writing = false;
       apply();
     };

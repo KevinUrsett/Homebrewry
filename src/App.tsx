@@ -82,6 +82,11 @@ const mobileLabels: Record<MobileSection, string> = {
   worldbuilding: 'Worldbuilding'
 };
 
+type DriveSaveNotice = {
+  tone: 'saving' | 'success' | 'error';
+  message: string;
+};
+
 export default function App() {
   const [brews, setBrews] = useState<Brew[]>([]);
   const [assets, setAssets] = useState<BrewAsset[]>([]);
@@ -94,6 +99,7 @@ export default function App() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [savingToDrive, setSavingToDrive] = useState(false);
+  const [driveSaveNotice, setDriveSaveNotice] = useState<DriveSaveNotice | null>(null);
   const [findVisible, setFindVisible] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [findValue, setFindValue] = useState('');
@@ -290,6 +296,12 @@ export default function App() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!driveSaveNotice || driveSaveNotice.tone === 'saving') return;
+    const timer = window.setTimeout(() => setDriveSaveNotice(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [driveSaveNotice]);
+
   const activeBrew = useMemo(
     () => brews.find((brew) => brew.id === activeId) ?? null,
     [activeId, brews]
@@ -342,11 +354,17 @@ export default function App() {
     try {
       setSavingToDrive(true);
       setSaveState('Saving to Google Drive…');
+      setDriveSaveNotice({ tone: 'saving', message: 'Saving to Google Drive…' });
+      const token = accessToken ?? await requestDriveAccess();
+      setAccessToken(token);
       await saveBrew(activeBrew);
       setBrews((currentBrews) => currentBrews.map((brew) => brew.id === activeBrew.id ? { ...activeBrew } : brew));
       setSaveState('Saved to Google Drive');
+      setDriveSaveNotice({ tone: 'success', message: 'Saved to Google Drive' });
     } catch (error) {
-      setSaveState(error instanceof Error ? error.message : 'Could not save to Google Drive');
+      const message = error instanceof Error ? error.message : 'Could not save to Google Drive';
+      setSaveState(message);
+      setDriveSaveNotice({ tone: 'error', message });
     } finally {
       setSavingToDrive(false);
     }
@@ -1806,13 +1824,18 @@ export default function App() {
                 <button onClick={openIdeas} type="button">My ideas</button>
               </div>
               <div className="mobile-writing-tool-group mobile-writing-save" aria-label="Drive save">
-                <button disabled={!accessToken || savingToDrive || syncing} onClick={() => { void saveActiveBrewNow(); setCaptureMenuOpen(false); }} type="button">
+                <button disabled={savingToDrive || syncing} onClick={() => { void saveActiveBrewNow(); setCaptureMenuOpen(false); }} type="button">
                   {savingToDrive ? 'Saving…' : 'Save to Drive'}
                 </button>
               </div>
             </div>
           </>}
           <button aria-expanded={captureMenuOpen} aria-label="Open writing tools" className="mobile-outline-fab" onClick={() => setCaptureMenuOpen((open) => !open)} type="button">+</button>
+        </div>
+      )}
+      {driveSaveNotice && (
+        <div className={`drive-save-notice is-${driveSaveNotice.tone}`} role="status">
+          {driveSaveNotice.message}
         </div>
       )}
       {activeBrew.syncState === 'conflict' && activeBrew.conflict && (

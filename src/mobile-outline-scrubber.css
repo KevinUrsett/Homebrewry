@@ -7,7 +7,7 @@
     order: 0;
   }
 
-  .app-shell.mobile-editor .mobile-outline-scrubber {
+  .mobile-outline-scrubber {
     align-items: center;
     background: #4a382d;
     border: 1px solid #b9986d;
@@ -15,32 +15,30 @@
     box-shadow: 0 5px 16px rgb(40 22 13 / 28%);
     color: #fff8e9;
     display: grid;
-    flex: 0 0 auto;
     font: inherit;
     gap: 0;
     height: 48px;
     justify-items: center;
-    order: 1;
     padding: 4px 0 3px;
+    position: fixed;
+    right: 14px;
     touch-action: none;
+    transform: translateY(-50%);
     user-select: none;
     width: 44px;
+    z-index: 1302;
   }
 
-  .app-shell.mobile-editor .mobile-outline-scrubber > span {
+  .mobile-outline-scrubber > span {
     font-size: 1.05rem;
     line-height: 1;
   }
 
-  .app-shell.mobile-editor .mobile-outline-scrubber > small {
+  .mobile-outline-scrubber > small {
     color: #dfcaa7;
     font-size: .52rem;
     font-weight: 800;
     line-height: 1;
-  }
-
-  .app-shell.mobile-editor .mobile-outline-fab {
-    order: 2;
   }
 
   .mobile-inline-outline-backdrop {

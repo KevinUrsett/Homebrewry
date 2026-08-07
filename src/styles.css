@@ -495,6 +495,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .mobile-writing-tool-group button { background: #fffaf0; border: 1px solid #d1c0a5; border-radius: 6px; color: #4d392d; font-size: .72rem; min-height: 38px; padding: 6px 4px; }
   .mobile-writing-destinations { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .mobile-writing-destinations button { border-color: #9c653d; font-weight: 800; }
+  .mobile-writing-save { grid-template-columns: minmax(0, 1fr); }
+  .mobile-writing-save button { background: #5d2f26; border-color: #5d2f26; color: #fff8e9; font-weight: 800; }
+  .mobile-writing-save button:disabled { background: #a8947b; border-color: #a8947b; color: #f4e7ce; }
   .workspace { display: block; flex: 1; min-height: 0; }
   .library-panel, .outline-panel, .editor-pane, .preview-pane { display: none; min-height: 0; }
   .main-panes { display: block; }

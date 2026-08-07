@@ -7,32 +7,73 @@ function isEditorFocused() {
   return active instanceof Element && Boolean(active.closest('.app-shell.mobile-editor .cm-editor'));
 }
 
+function isWritingToolFocused() {
+  const active = document.activeElement;
+  return active instanceof Element && Boolean(active.closest('.mobile-capture-menu'));
+}
+
 export function MobileFocusWriting() {
   useEffect(() => {
-    const update = () => {
-      const active = window.matchMedia(mobileEditorQuery).matches && isEditorFocused();
-      document.documentElement.classList.toggle('mobile-focus-writing', active);
+    const viewport = window.visualViewport;
+    let writing = false;
+    let largestViewportHeight = Math.round(viewport?.height ?? window.innerHeight);
+
+    const apply = () => {
+      document.documentElement.classList.toggle(
+        'mobile-focus-writing',
+        writing && window.matchMedia(mobileEditorQuery).matches
+      );
     };
 
-    const handleFocusOut = () => window.setTimeout(update, 0);
+    const handleFocusIn = () => {
+      if (isEditorFocused()) writing = true;
+      if (!isEditorFocused() && !isWritingToolFocused() && !writing) writing = false;
+      apply();
+    };
+
+    const handleFocusOut = () => {
+      window.setTimeout(() => {
+        if (isEditorFocused() || isWritingToolFocused()) {
+          writing = true;
+          apply();
+        }
+      }, 0);
+    };
+
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
+      if (target.closest('.cm-editor')) {
+        writing = true;
+        apply();
+        return;
+      }
       if (target.closest('.mobile-capture-menu')) return;
-      if (!target.closest('.cm-editor')) document.documentElement.classList.remove('mobile-focus-writing');
+      writing = false;
+      apply();
     };
 
-    update();
-    document.addEventListener('focusin', update, true);
+    const handleViewportChange = () => {
+      const visibleHeight = Math.round(viewport?.height ?? window.innerHeight);
+      largestViewportHeight = Math.max(largestViewportHeight, visibleHeight);
+      const keyboardOpen = largestViewportHeight - visibleHeight > 90;
+      if (!keyboardOpen && !isEditorFocused() && !isWritingToolFocused()) writing = false;
+      apply();
+    };
+
+    handleViewportChange();
+    document.addEventListener('focusin', handleFocusIn, true);
     document.addEventListener('focusout', handleFocusOut, true);
     document.addEventListener('pointerdown', handlePointerDown, true);
-    window.addEventListener('resize', update);
+    viewport?.addEventListener('resize', handleViewportChange);
+    window.addEventListener('resize', handleViewportChange);
 
     return () => {
-      document.removeEventListener('focusin', update, true);
+      document.removeEventListener('focusin', handleFocusIn, true);
       document.removeEventListener('focusout', handleFocusOut, true);
       document.removeEventListener('pointerdown', handlePointerDown, true);
-      window.removeEventListener('resize', update);
+      viewport?.removeEventListener('resize', handleViewportChange);
+      window.removeEventListener('resize', handleViewportChange);
       document.documentElement.classList.remove('mobile-focus-writing');
     };
   }, []);

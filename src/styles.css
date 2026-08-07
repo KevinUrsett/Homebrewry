@@ -29,6 +29,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .brand-mark { color: #c5963e; font-size: 1.45rem; }
 .phase-badge { border: 1px solid #725d48; border-radius: 999px; color: #dfcead; font-family: Inter, sans-serif; font-size: .68rem; font-weight: 600; letter-spacing: .04em; padding: 3px 7px; text-transform: uppercase; }
 .save-indicator { color: #d9c9ab; font-size: .79rem; justify-self: end; }
+.drive-save-notice { background: #3a2b22; border: 1px solid #d0ad70; border-radius: 999px; box-shadow: 0 8px 22px rgb(40 22 13 / 32%); color: #fff8e9; font: 800 .76rem "Scaly Sans", Inter, sans-serif; left: 50%; max-width: calc(100vw - 44px); padding: 10px 14px; position: fixed; text-align: center; top: calc(env(safe-area-inset-top) + 14px); transform: translateX(-50%); z-index: 30; }
+.drive-save-notice.is-success { background: #365b31; border-color: #a8cf9c; }
+.drive-save-notice.is-error { background: #7a2f27; border-color: #e2a69f; }
 .cloud-controls button { background: #f7f0df; border: 1px solid #8f765b; border-radius: 5px; color: #382b24; font-size: .78rem; padding: 6px 9px; }
 .cloud-controls button:disabled { cursor: not-allowed; opacity: .55; }
 
@@ -498,6 +501,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .mobile-writing-save { grid-template-columns: minmax(0, 1fr); }
   .mobile-writing-save button { background: #5d2f26; border-color: #5d2f26; color: #fff8e9; font-weight: 800; }
   .mobile-writing-save button:disabled { background: #a8947b; border-color: #a8947b; color: #f4e7ce; }
+  .drive-save-notice { top: calc(env(safe-area-inset-top) + 12px); }
   .workspace { display: block; flex: 1; min-height: 0; }
   .library-panel, .outline-panel, .editor-pane, .preview-pane { display: none; min-height: 0; }
   .main-panes { display: block; }

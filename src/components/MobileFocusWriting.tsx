@@ -16,14 +16,15 @@ function isWritingToolFocused() {
 export function MobileFocusWriting() {
   useEffect(() => {
     const viewport = window.visualViewport;
+    const root = document.documentElement;
     let writing = false;
+    let keyboardOpen = false;
     let largestViewportHeight = Math.round(viewport?.height ?? window.innerHeight);
 
     const apply = () => {
-      document.documentElement.classList.toggle(
-        'mobile-focus-writing',
-        writing && window.matchMedia(mobileEditorQuery).matches
-      );
+      const mobile = window.matchMedia(mobileEditorQuery).matches;
+      root.classList.toggle('mobile-focus-writing', writing && mobile);
+      root.classList.toggle('mobile-keyboard-open', keyboardOpen && mobile);
     };
 
     const handleFocusIn = () => {
@@ -56,8 +57,16 @@ export function MobileFocusWriting() {
 
     const handleViewportChange = () => {
       const visibleHeight = Math.round(viewport?.height ?? window.innerHeight);
+      const visibleTop = Math.round(viewport?.offsetTop ?? 0);
       largestViewportHeight = Math.max(largestViewportHeight, visibleHeight);
-      const keyboardOpen = largestViewportHeight - visibleHeight > 90;
+      keyboardOpen = largestViewportHeight - visibleHeight > 90;
+
+      if (keyboardOpen) {
+        root.style.setProperty('--mobile-keyboard-top', `${visibleTop + visibleHeight}px`);
+      } else {
+        root.style.removeProperty('--mobile-keyboard-top');
+      }
+
       if (!keyboardOpen && !isEditorFocused() && !isWritingToolFocused()) writing = false;
       apply();
     };
@@ -67,6 +76,7 @@ export function MobileFocusWriting() {
     document.addEventListener('focusout', handleFocusOut, true);
     document.addEventListener('pointerdown', handlePointerDown, true);
     viewport?.addEventListener('resize', handleViewportChange);
+    viewport?.addEventListener('scroll', handleViewportChange);
     window.addEventListener('resize', handleViewportChange);
 
     return () => {
@@ -74,8 +84,10 @@ export function MobileFocusWriting() {
       document.removeEventListener('focusout', handleFocusOut, true);
       document.removeEventListener('pointerdown', handlePointerDown, true);
       viewport?.removeEventListener('resize', handleViewportChange);
+      viewport?.removeEventListener('scroll', handleViewportChange);
       window.removeEventListener('resize', handleViewportChange);
-      document.documentElement.classList.remove('mobile-focus-writing');
+      root.classList.remove('mobile-focus-writing', 'mobile-keyboard-open');
+      root.style.removeProperty('--mobile-keyboard-top');
     };
   }, []);
 

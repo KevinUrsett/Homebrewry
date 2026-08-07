@@ -9,12 +9,16 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
       manifest: {
+        id: '/',
         name: 'Homebrewry',
         short_name: 'Homebrewry',
         description: 'A local-first editor for D&D-style brew documents.',
+        start_url: '/',
+        scope: '/',
         theme_color: '#2c211b',
         background_color: '#f7f0df',
         display: 'standalone',
+        display_override: ['standalone'],
         icons: [
           {
             src: 'icon.svg',

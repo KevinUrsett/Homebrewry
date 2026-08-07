@@ -22,9 +22,9 @@ type DragState = {
 const MOBILE_BREAKPOINT = '(max-width: 820px)';
 const LEFT_GESTURE_THRESHOLD = 48;
 const SCROLL_DEAD_ZONE = 10;
-const SCROLL_SPEED_PER_PIXEL = 0.18;
-const MIN_SCROLL_SPEED = 1.2;
-const MAX_SCROLL_SPEED = 18;
+const SCROLL_SPEED_PER_PIXEL = 0.13;
+const MIN_SCROLL_SPEED = 1.1;
+const MAX_SCROLL_SPEED = 58;
 
 function editorView() {
   const editor = document.querySelector<HTMLElement>('.app-shell.mobile-editor .cm-editor');
@@ -193,7 +193,10 @@ export function MobileOutlineScrubber() {
 
     if (distance > 0 && scroller) {
       const direction = Math.sign(vertical);
-      const speed = Math.min(MAX_SCROLL_SPEED, MIN_SCROLL_SPEED + distance * SCROLL_SPEED_PER_PIXEL);
+      // Keep the centre precise, then accelerate sharply as the pointer moves
+      // farther from it. This makes long brews practical without losing the
+      // ability to nudge through nearby headings.
+      const speed = Math.min(MAX_SCROLL_SPEED, MIN_SCROLL_SPEED + Math.pow(distance, 1.38) * SCROLL_SPEED_PER_PIXEL);
       const maximum = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
       scroller.scrollTop = Math.max(0, Math.min(maximum, scroller.scrollTop + direction * speed));
     }

@@ -8,6 +8,7 @@ import { MobileEditorResume } from './components/MobileEditorResume';
 import { MobileEditorTextScale } from './components/MobileEditorTextScale';
 import { MobileFocusWriting } from './components/MobileFocusWriting';
 import { MobileNavigationHistory } from './components/MobileNavigationHistory';
+import { MobileOutlineScrubber } from './components/MobileOutlineScrubber';
 import { MobileRevisionHistory } from './components/MobileRevisionHistory';
 import { MobileVisualViewportInset } from './components/MobileVisualViewportInset';
 import { PreviewPositionSync } from './components/PreviewPositionSync';
@@ -19,6 +20,7 @@ import './styles.css';
 import './iphone-layout.css';
 import './mobile-editor-text-size.css';
 import './mobile-qol.css';
+import './mobile-outline-scrubber.css';
 
 registerSW({ immediate: true });
 
@@ -34,6 +36,7 @@ createRoot(document.getElementById('root')!).render(
     <MobileEditorTextScale />
     <MobileFocusWriting />
     <MobileNavigationHistory />
+    <MobileOutlineScrubber />
     <MobileRevisionHistory />
     <MobileVisualViewportInset />
     <PreviewPositionSync />

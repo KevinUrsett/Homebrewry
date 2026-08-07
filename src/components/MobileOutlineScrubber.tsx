@@ -12,13 +12,18 @@ type DragState = {
   pointerId: number;
   startX: number;
   startY: number;
-  lastY: number;
+  currentX: number;
+  currentY: number;
   moved: boolean;
+  scroller: HTMLElement;
 };
 
 const MOBILE_BREAKPOINT = '(max-width: 820px)';
 const LEFT_GESTURE_THRESHOLD = 48;
-const SCROLL_MULTIPLIER = 4.5;
+const SCROLL_DEAD_ZONE = 10;
+const SCROLL_SPEED_PER_PIXEL = 0.18;
+const MIN_SCROLL_SPEED = 1.2;
+const MAX_SCROLL_SPEED = 18;
 
 function editorView() {
   const editor = document.querySelector<HTMLElement>('.app-shell.mobile-editor .cm-editor');
@@ -54,6 +59,7 @@ export function MobileOutlineScrubber() {
   const [scrollPercent, setScrollPercent] = useState(0);
   const [viewport, setViewport] = useState(() => ({ top: 0, height: window.innerHeight }));
   const dragRef = useRef<DragState | null>(null);
+  const scrollFrameRef = useRef<number | null>(null);
   const panelRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -125,6 +131,10 @@ export function MobileOutlineScrubber() {
     return () => document.removeEventListener('pointerdown', handleOutsidePointer, true);
   }, [outlineOpen]);
 
+  useEffect(() => () => {
+    if (scrollFrameRef.current !== null) window.cancelAnimationFrame(scrollFrameRef.current);
+  }, []);
+
   const activeIndex = useMemo(() => {
     let index = -1;
     outline.forEach((item, itemIndex) => {
@@ -142,15 +152,47 @@ export function MobileOutlineScrubber() {
     setOutlineOpen(true);
   };
 
-  const scrollEditor = (deltaY: number) => {
-    const view = editorView();
-    if (!view) return;
-    const scroller = view.scrollDOM;
-    const maximum = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
-    scroller.scrollTop = Math.max(0, Math.min(maximum, scroller.scrollTop + deltaY * SCROLL_MULTIPLIER));
+  const stopContinuousScroll = () => {
+    if (scrollFrameRef.current !== null) {
+      window.cancelAnimationFrame(scrollFrameRef.current);
+      scrollFrameRef.current = null;
+    }
+  };
+
+  const continueScrolling = () => {
+    const drag = dragRef.current;
+    if (!drag) {
+      scrollFrameRef.current = null;
+      return;
+    }
+
+    const vertical = drag.currentY - drag.startY;
+    const distance = Math.abs(vertical) - SCROLL_DEAD_ZONE;
+
+    if (distance > 0) {
+      const direction = Math.sign(vertical);
+      const speed = Math.min(MAX_SCROLL_SPEED, MIN_SCROLL_SPEED + distance * SCROLL_SPEED_PER_PIXEL);
+      const maximum = Math.max(0, drag.scroller.scrollHeight - drag.scroller.clientHeight);
+      drag.scroller.scrollTop = Math.max(0, Math.min(maximum, drag.scroller.scrollTop + direction * speed));
+    }
+
+    scrollFrameRef.current = window.requestAnimationFrame(continueScrolling);
+  };
+
+  const startContinuousScroll = () => {
+    stopContinuousScroll();
+    scrollFrameRef.current = window.requestAnimationFrame(continueScrolling);
+  };
+
+  const endDrag = () => {
+    dragRef.current = null;
+    stopContinuousScroll();
   };
 
   const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const view = editorView();
+    if (!view) return;
+
     event.preventDefault();
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -158,9 +200,12 @@ export function MobileOutlineScrubber() {
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
-      lastY: event.clientY,
-      moved: false
+      currentX: event.clientX,
+      currentY: event.clientY,
+      moved: false,
+      scroller: view.scrollDOM
     };
+    startContinuousScroll();
   };
 
   const handlePointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
@@ -168,28 +213,33 @@ export function MobileOutlineScrubber() {
     if (!drag || drag.pointerId !== event.pointerId) return;
     event.preventDefault();
 
-    const horizontal = event.clientX - drag.startX;
-    const vertical = event.clientY - drag.startY;
+    drag.currentX = event.clientX;
+    drag.currentY = event.clientY;
+
+    const horizontal = drag.currentX - drag.startX;
+    const vertical = drag.currentY - drag.startY;
 
     if (horizontal <= -LEFT_GESTURE_THRESHOLD && Math.abs(horizontal) > Math.abs(vertical)) {
-      dragRef.current = null;
+      endDrag();
       try { event.currentTarget.releasePointerCapture(event.pointerId); } catch { /* pointer already released */ }
       openOutline();
       return;
     }
 
-    const deltaY = event.clientY - drag.lastY;
-    if (Math.abs(vertical) >= 5) drag.moved = true;
-    if (drag.moved && Math.abs(deltaY) > 0) scrollEditor(deltaY);
-    drag.lastY = event.clientY;
+    if (Math.abs(vertical) >= 5 || Math.abs(horizontal) >= 5) drag.moved = true;
   };
 
   const handlePointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
-    dragRef.current = null;
+    const moved = drag.moved;
+    endDrag();
     try { event.currentTarget.releasePointerCapture(event.pointerId); } catch { /* pointer already released */ }
-    if (!drag.moved) openOutline();
+    if (!moved) openOutline();
+  };
+
+  const handlePointerCancel = () => {
+    endDrag();
   };
 
   const navigateTo = (item: OutlineItem) => {
@@ -213,8 +263,8 @@ export function MobileOutlineScrubber() {
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
-          onPointerCancel={() => { dragRef.current = null; }}
-          title="Drag up/down to scroll · drag left for outline"
+          onPointerCancel={handlePointerCancel}
+          title="Hold above/below to keep scrolling · drag left for outline"
           type="button"
         >
           <span aria-hidden="true">☰</span>

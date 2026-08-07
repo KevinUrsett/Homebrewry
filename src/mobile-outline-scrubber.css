@@ -1,0 +1,139 @@
+@media (max-width: 820px) {
+  .app-shell.mobile-editor .mobile-capture-menu {
+    bottom: auto !important;
+  }
+
+  .app-shell.mobile-editor .mobile-writing-tools {
+    order: 0;
+  }
+
+  .app-shell.mobile-editor .mobile-outline-scrubber {
+    align-items: center;
+    background: #4a382d;
+    border: 1px solid #b9986d;
+    border-radius: 999px;
+    box-shadow: 0 5px 16px rgb(40 22 13 / 28%);
+    color: #fff8e9;
+    display: grid;
+    flex: 0 0 auto;
+    font: inherit;
+    gap: 0;
+    height: 48px;
+    justify-items: center;
+    order: 1;
+    padding: 4px 0 3px;
+    touch-action: none;
+    user-select: none;
+    width: 44px;
+  }
+
+  .app-shell.mobile-editor .mobile-outline-scrubber > span {
+    font-size: 1.05rem;
+    line-height: 1;
+  }
+
+  .app-shell.mobile-editor .mobile-outline-scrubber > small {
+    color: #dfcaa7;
+    font-size: .52rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .app-shell.mobile-editor .mobile-outline-fab {
+    order: 2;
+  }
+
+  .mobile-inline-outline-backdrop {
+    appearance: none;
+    background: rgba(31, 20, 15, 0.18);
+    border: 0;
+    left: 0;
+    padding: 0;
+    position: fixed;
+    right: 0;
+    width: 100%;
+    z-index: 1300;
+  }
+
+  .mobile-inline-outline {
+    background: #f7f0df;
+    border: 1px solid #b99464;
+    border-radius: 14px;
+    box-shadow: 0 15px 42px rgba(35, 22, 16, 0.3);
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    overflow: hidden;
+    position: fixed;
+    right: 70px;
+    width: min(320px, calc(100vw - 90px));
+    z-index: 1301;
+  }
+
+  .mobile-inline-outline > header {
+    align-items: center;
+    border-bottom: 1px solid #d8c9ae;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    padding: 11px 12px;
+  }
+
+  .mobile-inline-outline > header div {
+    display: grid;
+    gap: 2px;
+  }
+
+  .mobile-inline-outline > header strong {
+    color: #4e2f24;
+    font-family: Georgia, serif;
+    font-size: 1rem;
+  }
+
+  .mobile-inline-outline > header small {
+    color: #806c5a;
+    font-size: .65rem;
+  }
+
+  .mobile-inline-outline > header button {
+    background: #fffaf0;
+    border: 1px solid #bca789;
+    border-radius: 6px;
+    color: #533e31;
+    min-height: 36px;
+    padding: 6px 9px;
+  }
+
+  .mobile-inline-outline-list {
+    display: grid;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 6px;
+  }
+
+  .mobile-inline-outline-list > button {
+    background: transparent;
+    border: 0;
+    border-left: 3px solid transparent;
+    border-radius: 5px;
+    color: #493329;
+    font-size: .8rem;
+    min-height: 38px;
+    padding-bottom: 7px;
+    padding-right: 9px;
+    padding-top: 7px;
+    text-align: left;
+  }
+
+  .mobile-inline-outline-list > button.is-current {
+    background: #ead1a3;
+    border-left-color: #7a2f27;
+    font-weight: 800;
+  }
+
+  .mobile-inline-outline-list > p {
+    color: #806c5a;
+    font-size: .76rem;
+    margin: 12px;
+  }
+}

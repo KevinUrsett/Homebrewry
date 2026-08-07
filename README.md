@@ -54,6 +54,10 @@ Use **Image** in the editor toolbar to insert a local image. Supported types are
 
 Use **Import** in the brew library to paste source or select a `.md`, `.markdown`, or `.txt` file. Imports always create a new local brew and do not overwrite an existing one. Complete line-based Homebrewery `{{descriptive ... }}` and `{{note ... }}` wrappers are converted into safe callouts; incomplete wrappers are deliberately retained with a notice. Use **Convert HB** in the editor to apply the same reversible conversion to an already imported brew.
 
+## iPhone and iPad
+
+Homebrewry is configured as a standalone PWA. Install it with Safari’s **Share → Add to Home Screen** and open the installed app to remove Safari’s normal URL controls. A URL pill shown by Safari while using the browser is owned by iOS and cannot be removed by page CSS or JavaScript; the editor instead follows the visual viewport so the usable area stays filled while the keyboard is open. Apple documents the standalone-web-app metadata used here in [Configuring Web Applications](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/ConfiguringWebApplications/ConfiguringWebApplications.html).
+
 ## Catalogue and references
 
 The **Catalogue** tab provides a versioned offline reference for SRD 5.2.1 monsters, spells, items, rules, tables, classes, subclasses, species, backgrounds, and feats. It is part of the application bundle and does not add a Google permission or upload catalogue lookups to Drive.

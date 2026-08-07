@@ -160,7 +160,12 @@ export default function App() {
   useEffect(() => {
     const viewport = window.visualViewport;
     const updateAppHeight = () => {
-      document.documentElement.style.setProperty('--app-height', `${viewport?.height ?? window.innerHeight}px`);
+      // iOS can pan its layout viewport to keep the caret visible. In that
+      // state `visualViewport.height` alone leaves the lower part of the
+      // editor short by `offsetTop`, revealing an inert strip beneath it.
+      const visibleTop = viewport?.offsetTop ?? 0;
+      const visibleHeight = viewport?.height ?? window.innerHeight;
+      document.documentElement.style.setProperty('--app-height', `${Math.round(visibleTop + visibleHeight)}px`);
     };
     updateAppHeight();
     viewport?.addEventListener('resize', updateAppHeight);
@@ -1783,17 +1788,13 @@ export default function App() {
               </div>
               <div className="mobile-writing-tool-group" aria-label="Insert blocks">
                 <button onClick={() => { insertText('\n:::note Note\n', '\n:::\n'); setCaptureMenuOpen(false); }} type="button">Note</button>
-                <button onClick={() => { insertText('\n```statblock\n', '\n```\n'); setCaptureMenuOpen(false); }} type="button">Stat block</button>
-                <button onClick={() => { insertText('\n```item\n', '\n```\n'); setCaptureMenuOpen(false); }} type="button">Item</button>
-                <button onClick={() => { insertText('\n```spell\n', '\n```\n'); setCaptureMenuOpen(false); }} type="button">Spell</button>
+                <button onClick={() => { insertText('\n:::descriptive\n', '\n:::\n'); setCaptureMenuOpen(false); }} type="button">Descr</button>
                 <button onClick={() => { insertText('\n:::pagebreak\n'); setCaptureMenuOpen(false); }} type="button">Page</button>
                 <button onClick={() => { document.getElementById('brew-image-input')?.click(); setCaptureMenuOpen(false); }} type="button">Image</button>
               </div>
               <div className="mobile-writing-tool-group" aria-label="Insert content">
                 <button onClick={() => { setCaptureMenuOpen(false); openCatalogue(); }} type="button">Reference</button>
                 <button onClick={() => { setCaptureMenuOpen(false); openEncounters(); }} type="button">Encounter</button>
-                <button onClick={() => { createPlotBeatFromBrew(); setCaptureMenuOpen(false); }} type="button">Plot beat</button>
-                <button onClick={() => { convertHomebreweryFormatting(); setCaptureMenuOpen(false); }} type="button">Convert HB</button>
               </div>
               <div className="mobile-writing-tool-group mobile-writing-destinations" aria-label="Editor panels">
                 <button onClick={() => { setCaptureMenuOpen(false); setMobileSection('outline'); }} type="button">Outline</button>

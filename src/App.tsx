@@ -101,6 +101,7 @@ export default function App() {
   const [savingToDrive, setSavingToDrive] = useState(false);
   const [driveSaveNotice, setDriveSaveNotice] = useState<DriveSaveNotice | null>(null);
   const [findVisible, setFindVisible] = useState(false);
+  const [spellcheckEnabled, setSpellcheckEnabled] = useState(() => localStorage.getItem('homebrewry-spellcheck') !== 'off');
   const [importOpen, setImportOpen] = useState(false);
   const [findValue, setFindValue] = useState('');
   const [replaceValue, setReplaceValue] = useState('');

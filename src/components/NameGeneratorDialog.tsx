@@ -5,6 +5,7 @@ type NameGeneratorDialogProps = {
   actionLabel: string;
   onClose: () => void;
   onUse: (result: GeneratedName) => void;
+  onUseAll?: (results: readonly GeneratedName[]) => void;
 };
 
 const defaultOptions: NameGeneratorOptions = {
@@ -16,13 +17,14 @@ const defaultOptions: NameGeneratorOptions = {
   includeTitles: false
 };
 
-export function NameGeneratorDialog({ actionLabel, onClose, onUse }: NameGeneratorDialogProps) {
+export function NameGeneratorDialog({ actionLabel, onClose, onUse, onUseAll }: NameGeneratorDialogProps) {
   const [options, setOptions] = useState<NameGeneratorOptions>(defaultOptions);
+  const [count, setCount] = useState(6);
   const [results, setResults] = useState(() => generateNames(defaultOptions));
 
   const regenerate = (event?: FormEvent) => {
     event?.preventDefault();
-    setResults(generateNames(options));
+    setResults(generateNames(options, count));
   };
 
   return (
@@ -41,10 +43,13 @@ export function NameGeneratorDialog({ actionLabel, onClose, onUse }: NameGenerat
               {Object.entries(nameCategoryLabels).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
             </select>
           </label>
-          <label>Theme
+          <label className="name-generator-count">How many names
+            <input max="40" min="1" onChange={(event) => setCount(Math.max(1, Math.min(40, Number(event.target.value) || 1)))} type="number" value={count} />
+          </label>
+          <label className="name-generator-wide">Theme
             <input onChange={(event) => setOptions((current) => ({ ...current, theme: event.target.value }))} placeholder="Coastal trade city, old temple, wealthy family…" value={options.theme} />
           </label>
-          <label>Directional prefixes / suffixes
+          <label className="name-generator-wide">Directional prefixes / suffixes
             <input onChange={(event) => setOptions((current) => ({ ...current, affixes: event.target.value }))} placeholder="North, -hold, -lund" value={options.affixes} />
           </label>
           <div className="name-generator-options">
@@ -54,6 +59,7 @@ export function NameGeneratorDialog({ actionLabel, onClose, onUse }: NameGenerat
           </div>
           <button className="primary-button" type="submit">Generate names</button>
         </form>
+        {onUseAll && results.length > 1 && <button className="name-generator-insert-all" onClick={() => onUseAll(results)} type="button">Insert all as a Markdown list</button>}
         <div aria-live="polite" className="name-generator-results">
           {results.map((result) => (
             <button key={result.name} onClick={() => onUse(result)} type="button">

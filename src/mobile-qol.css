@@ -36,9 +36,6 @@
     display: none !important;
   }
 
-  html.mobile-focus-writing .app-shell.mobile-editor.mobile-top-menu-open .mobile-nav {
-    display: grid !important;
-  }
 
   html.mobile-focus-writing .app-shell.mobile-editor .workspace {
     flex: 1 1 0;

@@ -48,7 +48,7 @@ const qualities = ['Black', 'White', 'Deep', 'High', 'Pale', 'Old', 'Far', 'Low'
 const imagery = ['Boar', 'Skull', 'Wing', 'Tooth', 'Bloom', 'Sail', 'Step', 'Hare', 'Horn', 'Lantern', 'Root', 'Cairn', 'Bell', 'Crest', 'Hammer'];
 const collective = ['Syndicate', 'Company', 'Accord', 'Circle', 'League', 'Guard', 'Assembly', 'Consortium', 'Brotherhood', 'Covenant', 'Wardens', 'House', 'Fellowship'];
 const personTitles = ['Captain', 'Father', 'Lady', 'Lord', 'Marshal', 'Archivist', 'Archmage', 'Steward', 'Provost', 'Warden', 'Master of Keys'];
-const constructedStarts = ['Tev', 'Viel', 'Quin', 'Fer', 'Tsu', 'Saph', 'Eld', 'Val', 'Bel', 'Ilo', 'Mar', 'Doul', 'Caen', 'Huj', 'Juun', 'Or', 'Kyr', 'Ner', 'Aven', 'Brin', 'Cori', 'Drel', 'Esm', 'Fara', 'Galen', 'Hav', 'Iri', 'Jor', 'Kela', 'Lume', 'Mera', 'Navi', 'Oren', 'Pella', 'Ruva', 'Seli', 'Toren', 'Ulan', 'Vera', 'Ysen', 'Zara'];
+const constructedStarts = ['Tev', 'Viel', 'Quin', 'Fer', 'Tsu', 'Saph', 'Eld', 'Val', 'Bel', 'Ilo', 'Mar', 'Doul', 'Caen', 'Huj', 'Juun', 'Or', 'Kyr', 'Ner', 'Aven', 'Brin', 'Cori', 'Drel', 'Esm', 'Fara', 'Galen', 'Hav', 'Iri', 'Jor', 'Kela', 'Lume', 'Mera', 'Navi', 'Oren', 'Pella', 'Ruva', 'Seli', 'Toren', 'Ulan', 'Vera', 'Ysen', 'Zara', 'Ald', 'Beor', 'Catr', 'Dagn', 'Edr', 'Fjol', 'Gunn', 'Hald', 'Ivar', 'Jarek', 'Kost', 'Leof', 'Marek', 'Nikol', 'Oskar', 'Radom', 'Sven', 'Tomas', 'Ulrik', 'Vesna', 'Wulfr', 'Yar', 'Zden'];
 const professions = ['Aetherwright', 'Artificer', 'Boilermaker', 'Bridgewright', 'Cartwright', 'Chandler', 'Clockmaker', 'Coilkeeper', 'Copperwright', 'Dredger', 'Foundryman', 'Gearwright', 'Glassblower', 'Gravemason', 'Lamplighter', 'Lampwright', 'Lensmaker', 'Locksmith', 'Mason', 'Navigator', 'Rigger', 'Runesmith', 'Scribe', 'Signalman', 'Surveyor', 'Tanner', 'Tinkerer', 'Valvekeeper', 'Wardengraver', 'Weaver'];
 const easternFamilies = ['Arai', 'Bao', 'Chen', 'Cho', 'Han', 'Ishida', 'Kwon', 'Lin', 'Mori', 'Ngai', 'Ren', 'Sato', 'Shen', 'Tao', 'Yun'];
 const easternGiven = ['Aiko', 'Daichi', 'Hana', 'Jin', 'Kei', 'Mei', 'Nari', 'Riku', 'Sora', 'Yuna', 'Aya', 'Hiro', 'Jun', 'Min', 'Rin', 'Tae'];
@@ -57,7 +57,7 @@ const desertFamilies = ['al-Basir', 'al-Karim', 'al-Mazin', 'al-Nur', 'al-Rashid
 const doulmianGiven = ['Ackhun', 'Anahiri', 'Dunai', 'Elogtro', 'Inhio', 'Nivi', 'Shien', 'Vajun', 'Aresh', 'Hirin', 'Kavun', 'Oshai'];
 const doulmianFamilies = ['Aner', 'Besh', 'DunDun', 'Halor', 'Keth', 'Naram', 'Othin', 'Varai', 'Daro', 'Kiveth', 'Uru', 'Vesh'];
 
-const constructedEnds = ['ca', 'le', 'del', 'enk', 'rei', 'rin', 'or', 'en', 'ai', 'eth', 'ar', 'at', 'un', 'is', 'a', 'el', 'in', 'os', 'et', 'um', 'ia', 'on', 'ra', 'el', 'is'];
+const constructedEnds = ['ca', 'le', 'del', 'enk', 'rei', 'rin', 'or', 'en', 'ai', 'eth', 'ar', 'at', 'un', 'is', 'a', 'el', 'in', 'os', 'et', 'um', 'ia', 'on', 'ra', 'mir', 'islav', 'ena', 'ora', 'borg', 'frid', 'mund', 'ric', 'stan', 'vlad'];
 const secondaryStarts = ['Black', 'Green', 'River', 'White', 'Grain', 'Iron', 'Cword', 'Gold', 'Bright', 'Sable', 'Moss', 'Copper', 'Flint', 'Pale', 'Hearth', 'Marsh', 'Candle', 'Bell', 'Hollow', 'Ridge', 'Tide', 'Briar'];
 
 function pick<T>(items: readonly T[]): T {
@@ -118,7 +118,11 @@ function personName(options: NameGeneratorOptions): GeneratedName {
   if (options.culture === 'doulmian') {
     return { name: `${title}${pick(doulmianGiven)} ${pick(doulmianFamilies)}`, category: options.category, kind: 'character', style: 'constructed' };
   }
-  const compoundSurname = options.allowCompounds && Math.random() < 0.2;
+  const hasSurname = Math.random() < 0.01;
+  if (!hasSurname) {
+    return { name: `${title}${constructedName(options.culture)}`, category: options.category, kind: 'character', style: title ? 'formal' : 'constructed' };
+  }
+  const compoundSurname = options.allowCompounds && Math.random() < 0.15;
   const professionChance = options.culture === 'northern-guild' ? 0.84 : 0.62;
   const surname = Math.random() < professionChance
     ? pick(professions)

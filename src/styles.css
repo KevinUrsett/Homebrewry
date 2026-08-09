@@ -82,6 +82,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .editor-toolbar { align-items: center; background: #f5ecdc; border-bottom: 1px solid #d8c9ae; display: flex; flex-wrap: wrap; gap: 4px; min-height: 43px; padding: 5px 8px; }
 .editor-toolbar button { background: #fffaf0; border: 1px solid #d1c0a5; border-radius: 5px; color: #4d392d; font-size: .76rem; min-height: 27px; padding: 4px 7px; }
 .editor-toolbar button:hover { background: #eadbbf; }
+.editor-toolbar .spellcheck-toggle { font-weight: 800; }
+.editor-toolbar .spellcheck-toggle.is-enabled { background: #d9ead6; border-color: #79a570; color: #315c32; }
+.editor-toolbar .spellcheck-toggle.is-disabled { background: #f3e3db; border-color: #bd8a79; color: #783e31; }
 .editor-toolbar .editor-save-button { border-color: #8a5b3d; font-weight: 700; }
 .toolbar-spacer { flex: 1; }
 .toolbar-reference-menu { position: relative; }

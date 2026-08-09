@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { generateNames, nameCategoryLabels, type GeneratedName, type NameCategory, type NameGeneratorOptions } from '../lib/nameGenerator';
+import { generateNames, nameCategoryLabels, nameCultureLabels, type GeneratedName, type NameCategory, type NameCulture, type NameGeneratorOptions } from '../lib/nameGenerator';
 
 type NameGeneratorDialogProps = {
   actionLabel: string;
@@ -10,6 +10,7 @@ type NameGeneratorDialogProps = {
 
 const defaultOptions: NameGeneratorOptions = {
   category: 'settlement',
+  culture: 'belentoran',
   theme: '',
   affixes: '',
   allowDirections: false,
@@ -41,6 +42,11 @@ export function NameGeneratorDialog({ actionLabel, onClose, onUse, onUseAll }: N
           <label>Category
             <select onChange={(event) => setOptions((current) => ({ ...current, category: event.target.value as NameCategory }))} value={options.category}>
               {Object.entries(nameCategoryLabels).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+            </select>
+          </label>
+          <label>Cultural sound / custom
+            <select onChange={(event) => setOptions((current) => ({ ...current, culture: event.target.value as NameCulture }))} value={options.culture}>
+              {Object.entries(nameCultureLabels).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
             </select>
           </label>
           <label className="name-generator-count">How many names

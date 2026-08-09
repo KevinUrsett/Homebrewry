@@ -7,6 +7,7 @@ import { EditorPane } from './components/EditorPane';
 import { ImportDialog } from './components/ImportDialog';
 import { IdeasPanel } from './components/IdeasPanel';
 import { LibraryPanel } from './components/LibraryPanel';
+import { NameGeneratorDialog } from './components/NameGeneratorDialog';
 import { OutlinePanel } from './components/OutlinePanel';
 import { PrivateMonsterImportDialog } from './components/PrivateMonsterImportDialog';
 import { ReferenceDialog } from './components/ReferenceDialog';
@@ -68,6 +69,7 @@ import { loadCatalogue, toCatalogueMap } from './catalogue/catalogueData';
 import { createCustomCatalogueCategory, createCustomCatalogueEntry, normaliseCustomCatalogueEntry } from './catalogue/customEntries';
 import { findCatalogueEntryByName, formatCatalogueReference } from './catalogue/references';
 import { formatWorldbuildingReference } from './lib/worldbuildingReferences';
+import type { GeneratedName } from './lib/nameGenerator';
 import { catalogueCategoryLabel, catalogueCategoryLabels, type CatalogueCategory, type CatalogueEntry, type CustomCatalogueCategory, type CustomCatalogueEntry } from './catalogue/types';
 import type { Brew, BrewAsset, CampaignDataSyncMetadata, CampaignMap, Encounter, IdeaDraft, LivingWorldData, MobileSection, PartyMember, PlotBoard, PrivateMonsterSyncMetadata, ViewMode, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from './types';
 
@@ -126,6 +128,7 @@ export default function App() {
   const [worldbuildingOpen, setWorldbuildingOpen] = useState(false);
   const [ideasOpen, setIdeasOpen] = useState(false);
   const [captureMenuOpen, setCaptureMenuOpen] = useState(false);
+  const [nameGeneratorTarget, setNameGeneratorTarget] = useState<'editor' | 'worldbuilding' | null>(null);
   const [worldbuildingSelectedId, setWorldbuildingSelectedId] = useState<string | null>(null);
   const [campaignDataSync, setCampaignDataSync] = useState<CampaignDataSyncMetadata | null>(null);
   const [livingWorld, setLivingWorld] = useState<LivingWorldData>(() => ({
@@ -728,6 +731,21 @@ export default function App() {
     persistWorldbuildingEntry(entry);
     setWorldbuildingSelectedId(entry.id);
     return entry.id;
+  };
+
+  const useGeneratedName = (result: GeneratedName) => {
+    if (nameGeneratorTarget === 'editor') {
+      insertText(result.name);
+      setCaptureMenuOpen(false);
+      setSaveState(`Inserted “${result.name}”`);
+    } else if (nameGeneratorTarget === 'worldbuilding') {
+      const existing = findWorldbuildingEntryByName(worldbuildingEntries, result.name);
+      const entry = existing ?? createWorldbuildingEntry(result.name, result.kind);
+      if (!existing) persistWorldbuildingEntry(entry);
+      setWorldbuildingSelectedId(entry.id);
+      setSaveState(existing ? `Opened existing Worldbuilding entry “${entry.name}”` : `Created Worldbuilding entry “${entry.name}”`);
+    }
+    setNameGeneratorTarget(null);
   };
 
   const createWorldbuildingReference = (name: string, kind: WorldbuildingKind): string | null => {
@@ -1678,6 +1696,7 @@ export default function App() {
           hasDriveBackup={Boolean(campaignDataSync?.drive)}
           syncState={campaignDataSync?.syncState ?? 'local'}
           onCreate={createNewWorldbuildingEntry}
+          onOpenNameGenerator={() => setNameGeneratorTarget('worldbuilding')}
           onCreateType={createNewWorldbuildingType}
           onCreateCatalogueReference={createCatalogueReference}
           onCreateWorldbuildingReference={createWorldbuildingReference}
@@ -1821,6 +1840,7 @@ export default function App() {
               <div className="mobile-writing-tool-group" aria-label="Insert content">
                 <button onClick={() => { setCaptureMenuOpen(false); openCatalogue(); }} type="button">Reference</button>
                 <button onClick={() => { setCaptureMenuOpen(false); openEncounters(); }} type="button">Encounter</button>
+                <button onClick={() => { setCaptureMenuOpen(false); setNameGeneratorTarget('editor'); }} type="button">Name</button>
               </div>
               <div className="mobile-writing-tool-group mobile-writing-destinations" aria-label="Editor panels">
                 <button onClick={() => { setCaptureMenuOpen(false); setMobileSection('outline'); }} type="button">Outline</button>
@@ -1899,6 +1919,7 @@ export default function App() {
           </section>
         </div>
       )}
+      {nameGeneratorTarget && <NameGeneratorDialog actionLabel={nameGeneratorTarget === 'editor' ? 'Insert into brew' : 'Create Worldbuilding entry'} onClose={() => setNameGeneratorTarget(null)} onUse={useGeneratedName} />}
       {importOpen && <ImportDialog onClose={() => setImportOpen(false)} onImport={importBrew} />}
       {privateMonsterImportOpen && (
         <PrivateMonsterImportDialog

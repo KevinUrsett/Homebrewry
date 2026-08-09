@@ -82,6 +82,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .editor-toolbar { align-items: center; background: #f5ecdc; border-bottom: 1px solid #d8c9ae; display: flex; flex-wrap: wrap; gap: 4px; min-height: 43px; padding: 5px 8px; }
 .editor-toolbar button { background: #fffaf0; border: 1px solid #d1c0a5; border-radius: 5px; color: #4d392d; font-size: .76rem; min-height: 27px; padding: 4px 7px; }
 .editor-toolbar button:hover { background: #eadbbf; }
+.editor-toolbar .spellcheck-toggle { font-weight: 800; }
+.editor-toolbar .spellcheck-toggle.is-enabled { background: #d9ead6; border-color: #79a570; color: #315c32; }
+.editor-toolbar .spellcheck-toggle.is-disabled { background: #f3e3db; border-color: #bd8a79; color: #783e31; }
 .editor-toolbar .editor-save-button { border-color: #8a5b3d; font-weight: 700; }
 .toolbar-spacer { flex: 1; }
 .toolbar-reference-menu { position: relative; }
@@ -102,7 +105,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 /* Keep the paper on CodeMirror's moving content rather than behind its scroll area. */
 .markdown-editor .cm-content { background: linear-gradient(rgb(255 253 247 / 64%), rgb(255 253 247 / 64%)), #f7edd7 url('/parchment-texture.webp') center top / 768px auto repeat; min-height: 100%; padding: 20px; }
 .markdown-editor .cm-focused { outline: none; }
-.markdown-editor .cm-reference-chip { background: #f1dfb3; border: 1px solid #c8a563; border-radius: 999px; color: #5d3528; cursor: text; font-family: Inter, sans-serif; font-size: .82em; font-weight: 800; letter-spacing: .01em; padding: 1px 6px; }
+/* Ordinary references stay part of the prose in Edit; encounter links retain their card-like marker. */
+.markdown-editor .cm-inline-reference { color: inherit; font: inherit; }
+.markdown-editor .cm-encounter-reference-chip { background: #f1dfb3; border: 1px solid #c8a563; border-radius: 999px; color: #5d3528; cursor: text; font-family: Inter, sans-serif; font-size: .82em; font-weight: 800; letter-spacing: .01em; padding: 1px 6px; }
 
 .preview-pane { background: #29333d; container-type: inline-size; min-height: 0; min-width: 0; overflow: auto; padding: clamp(14px, 2.5vw, 30px); }
 .preview-canvas { margin: 0 auto; max-width: 210mm; width: 100%; }
@@ -117,6 +122,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .brew-preview h3 { font-size: 1.22rem; margin: 1.25em 0 .35em; }
 .brew-preview h4 { font-family: Inter, sans-serif; font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; }
 .brew-preview p { margin: .65em 0; }
+/* Book-style paragraphs begin with an indented first line, except after headings and blocks. */
+.brew-preview p + p { text-indent: 1em; }
 .brew-preview em { color: #5c4434; }
 .brew-preview blockquote { background: #ead9b8; border-left: 5px solid var(--brew-accent); margin: 1.15em 0; padding: 10px 15px; }
 .brew-preview blockquote p { margin: .25em 0; }

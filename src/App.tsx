@@ -101,6 +101,7 @@ export default function App() {
   const [savingToDrive, setSavingToDrive] = useState(false);
   const [driveSaveNotice, setDriveSaveNotice] = useState<DriveSaveNotice | null>(null);
   const [findVisible, setFindVisible] = useState(false);
+  const [spellcheckEnabled, setSpellcheckEnabled] = useState(() => localStorage.getItem('homebrewry-spellcheck') !== 'off');
   const [importOpen, setImportOpen] = useState(false);
   const [findValue, setFindValue] = useState('');
   const [replaceValue, setReplaceValue] = useState('');
@@ -1752,6 +1753,8 @@ export default function App() {
               onSelectionChange={(selection) => { selectionRef.current = selection; }}
               onTitleChange={(title) => updateActiveBrew((brew) => ({ ...brew, title }))}
               onToggleFind={() => setFindVisible((visible) => !visible)}
+              spellcheckEnabled={spellcheckEnabled}
+              onToggleSpellcheck={() => setSpellcheckEnabled((current) => { const next = !current; localStorage.setItem('homebrewry-spellcheck', next ? 'on' : 'off'); return next; })}
               onUndo={undo}
               replaceValue={replaceValue}
               title={activeBrew.title}
@@ -1822,6 +1825,11 @@ export default function App() {
               <div className="mobile-writing-tool-group mobile-writing-destinations" aria-label="Editor panels">
                 <button onClick={() => { setCaptureMenuOpen(false); setMobileSection('outline'); }} type="button">Outline</button>
                 <button onClick={openIdeas} type="button">My ideas</button>
+              </div>
+              <div className="mobile-writing-tool-group mobile-writing-destinations" aria-label="Editor settings">
+                <button aria-pressed={spellcheckEnabled} onClick={() => setSpellcheckEnabled((current) => { const next = !current; localStorage.setItem('homebrewry-spellcheck', next ? 'on' : 'off'); return next; })} type="button">
+                  Spellcheck: {spellcheckEnabled ? 'On' : 'Off'}
+                </button>
               </div>
               <div className="mobile-writing-tool-group mobile-writing-save" aria-label="Drive save">
                 <button disabled={savingToDrive || syncing} onClick={() => { void saveActiveBrewNow(); setCaptureMenuOpen(false); }} type="button">

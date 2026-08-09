@@ -1824,6 +1824,11 @@ export default function App() {
                 <button onClick={() => { setCaptureMenuOpen(false); setMobileSection('outline'); }} type="button">Outline</button>
                 <button onClick={openIdeas} type="button">My ideas</button>
               </div>
+              <div className="mobile-writing-tool-group mobile-writing-destinations" aria-label="Editor settings">
+                <button aria-pressed={spellcheckEnabled} onClick={() => setSpellcheckEnabled((current) => { const next = !current; localStorage.setItem('homebrewry-spellcheck', next ? 'on' : 'off'); return next; })} type="button">
+                  Spellcheck: {spellcheckEnabled ? 'On' : 'Off'}
+                </button>
+              </div>
               <div className="mobile-writing-tool-group mobile-writing-save" aria-label="Drive save">
                 <button disabled={savingToDrive || syncing} onClick={() => { void saveActiveBrewNow(); setCaptureMenuOpen(false); }} type="button">
                   {savingToDrive ? 'Saving…' : 'Save to Drive'}

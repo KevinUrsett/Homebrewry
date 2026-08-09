@@ -109,7 +109,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .brew-book { display: grid; gap: clamp(16px, 2.5vw, 28px); justify-items: center; }
 .brew-preview { background: #f7f0df url('/parchment-texture.webp') center / 768px auto repeat; box-shadow: 0 14px 34px rgb(8 14 20 / 38%); box-sizing: border-box; color: #1f1812; font-family: "Bookinsanity", Georgia, "Times New Roman", serif; font-size: .86rem; line-height: 1.4; min-height: min(1123px, 141.4cqw); padding: clamp(28px, 5.1cqw, 58px); position: relative; width: 100%; }
 .brew-book.tone-light .brew-preview { background-color: #fffdf5; }
-.brew-preview h1, .brew-preview h2, .brew-preview h3, .brew-preview h4 { color: var(--brew-accent); font-weight: 700; line-height: 1.15; scroll-margin-top: 18px; }
+.brew-preview h1, .brew-preview h2, .brew-preview h3, .brew-preview h4, .brew-preview h6 { color: var(--brew-accent); font-weight: 700; line-height: 1.15; scroll-margin-top: 18px; }
+.brew-preview h6 { border-bottom: 1px solid color-mix(in srgb, var(--brew-accent), #fff 35%); }
 .brew-preview h1, .brew-preview h2 { font-family: "Nodesto Caps Condensed", Georgia, serif; letter-spacing: .025em; }
 .brew-preview h1 { border-bottom: 3px solid var(--brew-accent); font-size: 2.8rem; margin: 0 0 .35em; }
 .brew-preview h2 { border-bottom: 1px solid color-mix(in srgb, var(--brew-accent), #fff 35%); font-size: 1.9rem; margin: 1.4em 0 .45em; }

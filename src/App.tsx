@@ -93,7 +93,7 @@ export default function App() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('split');
-  const [mobileSection, setMobileSection] = useState<MobileSection>('editor');
+  const [mobileSection, setMobileSection] = useState<MobileSection>('preview');
   const [mobileTopMenuOpen, setMobileTopMenuOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [saveState, setSaveState] = useState('Loading local drafts…');
@@ -1712,7 +1712,7 @@ export default function App() {
             onSelect={(id) => {
               setActiveId(id);
               setPendingInsertion(null);
-              setMobileSection('editor');
+              setMobileSection('preview');
             }}
             query={query}
           />

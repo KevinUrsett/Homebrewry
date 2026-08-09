@@ -87,11 +87,11 @@ export async function requestDriveAccess(options: { force?: boolean } = {}) {
   await loadGoogleIdentity();
   if (!window.google) throw new Error('Google Identity Services is unavailable.');
 
-  return new Promise<string>((resolve, reject) => {
+  const requestToken = (prompt: string) => new Promise<string>((resolve, reject) => {
     const client = window.google?.accounts.oauth2.initTokenClient({
       client_id: clientId,
       scope: DRIVE_SCOPE,
-      prompt: DRIVE_AUTH_PROMPT,
+      prompt,
       callback: (response) => {
         if (!response.access_token) {
           reject(new Error(response.error_description ?? response.error ?? 'Google access was not granted.'));
@@ -102,6 +102,14 @@ export async function requestDriveAccess(options: { force?: boolean } = {}) {
       }
     });
 
-    client?.requestAccessToken({ prompt: DRIVE_AUTH_PROMPT });
+    client?.requestAccessToken({ prompt });
   });
+
+  if (options.force) return requestToken(DRIVE_AUTH_PROMPT);
+
+  try {
+    return await requestToken('');
+  } catch {
+    return requestToken(DRIVE_AUTH_PROMPT);
+  }
 }

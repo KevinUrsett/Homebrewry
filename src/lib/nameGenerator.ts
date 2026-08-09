@@ -49,13 +49,13 @@ const imagery = ['Boar', 'Skull', 'Wing', 'Tooth', 'Bloom', 'Sail', 'Step', 'Har
 const collective = ['Syndicate', 'Company', 'Accord', 'Circle', 'League', 'Guard', 'Assembly', 'Consortium', 'Brotherhood', 'Covenant', 'Wardens', 'House', 'Fellowship'];
 const personTitles = ['Captain', 'Father', 'Lady', 'Lord', 'Marshal', 'Archivist', 'Archmage', 'Steward', 'Provost', 'Warden', 'Master of Keys'];
 const constructedStarts = ['Tev', 'Viel', 'Quin', 'Fer', 'Tsu', 'Saph', 'Eld', 'Val', 'Bel', 'Ilo', 'Mar', 'Doul', 'Caen', 'Huj', 'Juun', 'Or', 'Kyr', 'Ner', 'Aven', 'Brin', 'Cori', 'Drel', 'Esm', 'Fara', 'Galen', 'Hav', 'Iri', 'Jor', 'Kela', 'Lume', 'Mera', 'Navi', 'Oren', 'Pella', 'Ruva', 'Seli', 'Toren', 'Ulan', 'Vera', 'Ysen', 'Zara'];
-const professions = ['Aetherwright', 'Gearwright', 'Lensmaker', 'Runesmith', 'Coilkeeper', 'Lampwright', 'Wardengraver', 'Glassblower', 'Bridgewright', 'Signalman', 'Boilermaker', 'Cartwright', 'Clockmaker', 'Foundry', 'Tanner', 'Weaver', 'Mason', 'Locksmith', 'Scribe', 'Chandler'];
-const easternFamilies = ['Arai', 'Bao', 'Chen', 'Han', 'Kwon', 'Lin', 'Mori', 'Ren', 'Shen', 'Sato'];
-const easternGiven = ['Aiko', 'Daichi', 'Hana', 'Jin', 'Kei', 'Mei', 'Nari', 'Riku', 'Sora', 'Yuna'];
-const desertGiven = ['Amin', 'Dariya', 'Farid', 'Jamal', 'Nadira', 'Qasim', 'Rami', 'Sahra', 'Tariq', 'Zahra'];
-const desertFamilies = ['al-Basir', 'al-Karim', 'al-Mazin', 'al-Nur', 'al-Rashid', 'al-Sahir', 'al-Veyr', 'al-Zahir'];
-const doulmianGiven = ['Ackhun', 'Anahiri', 'Dunai', 'Elogtro', 'Inhio', 'Nivi', 'Shien', 'Vajun'];
-const doulmianFamilies = ['Aner', 'Besh', 'DunDun', 'Halor', 'Keth', 'Naram', 'Othin', 'Varai'];
+const professions = ['Aetherwright', 'Artificer', 'Boilermaker', 'Bridgewright', 'Cartwright', 'Chandler', 'Clockmaker', 'Coilkeeper', 'Copperwright', 'Dredger', 'Foundryman', 'Gearwright', 'Glassblower', 'Gravemason', 'Lamplighter', 'Lampwright', 'Lensmaker', 'Locksmith', 'Mason', 'Navigator', 'Rigger', 'Runesmith', 'Scribe', 'Signalman', 'Surveyor', 'Tanner', 'Tinkerer', 'Valvekeeper', 'Wardengraver', 'Weaver'];
+const easternFamilies = ['Arai', 'Bao', 'Chen', 'Cho', 'Han', 'Ishida', 'Kwon', 'Lin', 'Mori', 'Ngai', 'Ren', 'Sato', 'Shen', 'Tao', 'Yun'];
+const easternGiven = ['Aiko', 'Daichi', 'Hana', 'Jin', 'Kei', 'Mei', 'Nari', 'Riku', 'Sora', 'Yuna', 'Aya', 'Hiro', 'Jun', 'Min', 'Rin', 'Tae'];
+const desertGiven = ['Amin', 'Dariya', 'Farid', 'Jamal', 'Nadira', 'Qasim', 'Rami', 'Sahra', 'Tariq', 'Zahra', 'Ayla', 'Bashir', 'Hadi', 'Laleh', 'Mahir', 'Samira'];
+const desertFamilies = ['al-Basir', 'al-Karim', 'al-Mazin', 'al-Nur', 'al-Rashid', 'al-Sahir', 'al-Veyr', 'al-Zahir', 'al-Hamid', 'al-Miraj', 'al-Qadir', 'al-Safin'];
+const doulmianGiven = ['Ackhun', 'Anahiri', 'Dunai', 'Elogtro', 'Inhio', 'Nivi', 'Shien', 'Vajun', 'Aresh', 'Hirin', 'Kavun', 'Oshai'];
+const doulmianFamilies = ['Aner', 'Besh', 'DunDun', 'Halor', 'Keth', 'Naram', 'Othin', 'Varai', 'Daro', 'Kiveth', 'Uru', 'Vesh'];
 
 const constructedEnds = ['ca', 'le', 'del', 'enk', 'rei', 'rin', 'or', 'en', 'ai', 'eth', 'ar', 'at', 'un', 'is', 'a', 'el', 'in', 'os', 'et', 'um', 'ia', 'on', 'ra', 'el', 'is'];
 const secondaryStarts = ['Black', 'Green', 'River', 'White', 'Grain', 'Iron', 'Cword', 'Gold', 'Bright', 'Sable', 'Moss', 'Copper', 'Flint', 'Pale', 'Hearth', 'Marsh', 'Candle', 'Bell', 'Hollow', 'Ridge', 'Tide', 'Briar'];
@@ -119,7 +119,8 @@ function personName(options: NameGeneratorOptions): GeneratedName {
     return { name: `${title}${pick(doulmianGiven)} ${pick(doulmianFamilies)}`, category: options.category, kind: 'character', style: 'constructed' };
   }
   const compoundSurname = options.allowCompounds && Math.random() < 0.2;
-  const surname = Math.random() < 0.62
+  const professionChance = options.culture === 'northern-guild' ? 0.84 : 0.62;
+  const surname = Math.random() < professionChance
     ? pick(professions)
     : compoundSurname
       ? compound(options)

@@ -172,19 +172,9 @@ export function MarkdownEditor({
               if (!(event instanceof MouseEvent)) return false;
               if (!latestRef.current.onCreateWorldbuildingReference && !latestRef.current.onCreateCatalogueReference) return false;
               const selection = editor.state.selection.main;
-              let from = selection.from;
-              let to = selection.to;
-              if (from === to) {
-                const position = editor.posAtCoords({ x: event.clientX, y: event.clientY });
-                const word = position === null ? null : editor.state.wordAt(position);
-                if (!word) return false;
-                from = word.from;
-                to = word.to;
-                // A right-clicked word is a selection too. This keeps the
-                // reference replacement anchored to the word rather than
-                // inserting a token at the old cursor position.
-                editor.dispatch({ selection: { anchor: from, head: to } });
-              }
+              if (selection.from === selection.to) return false;
+              const from = selection.from;
+              const to = selection.to;
               const name = normalizeWorldbuildingName(editor.state.sliceDoc(from, to));
               if (!name) return false;
               event.preventDefault();

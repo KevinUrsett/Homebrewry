@@ -214,7 +214,11 @@ export function MarkdownEditor({
       view.destroy();
       viewRef.current = null;
     };
-  }, [ariaLabel, spellcheckEnabled]);
+  }, [ariaLabel]);
+
+  useEffect(() => {
+    viewRef.current?.contentDOM.setAttribute('spellcheck', spellcheckEnabled ? 'true' : 'false');
+  }, [spellcheckEnabled]);
 
   useEffect(() => {
     const view = viewRef.current;

@@ -92,7 +92,7 @@ export function EditorPane({
         <button className="editor-save-button" onClick={onSave} type="button">Save</button>
         <button onClick={onUndo} type="button">Undo</button>
         <button onClick={onRedo} type="button">Redo</button>
-        <button aria-pressed={spellcheckEnabled} onClick={onToggleSpellcheck} type="button">Spellcheck</button>
+        <button aria-pressed={spellcheckEnabled} className={`spellcheck-toggle ${spellcheckEnabled ? 'is-enabled' : 'is-disabled'}`} onClick={onToggleSpellcheck} type="button">Spellcheck: {spellcheckEnabled ? 'On' : 'Off'}</button>
         <button onClick={onToggleFind} type="button">Find</button>
       </div>
       <input

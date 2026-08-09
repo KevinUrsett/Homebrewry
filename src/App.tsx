@@ -1753,6 +1753,8 @@ export default function App() {
               onSelectionChange={(selection) => { selectionRef.current = selection; }}
               onTitleChange={(title) => updateActiveBrew((brew) => ({ ...brew, title }))}
               onToggleFind={() => setFindVisible((visible) => !visible)}
+              spellcheckEnabled={spellcheckEnabled}
+              onToggleSpellcheck={() => setSpellcheckEnabled((current) => { const next = !current; localStorage.setItem('homebrewry-spellcheck', next ? 'on' : 'off'); return next; })}
               onUndo={undo}
               replaceValue={replaceValue}
               title={activeBrew.title}

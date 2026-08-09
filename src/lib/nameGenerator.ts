@@ -29,18 +29,18 @@ export const nameCategoryLabels: Record<NameCategory, string> = {
   political: 'Political entity'
 };
 
-const defaultSuffixes = ['hold', 'keep', 'hall', 'port', 'quay', 'lund', 'wall', 'guard', 'link'];
+const defaultSuffixes = ['hold', 'keep', 'hall', 'town', 'port', 'quay', 'lund', 'wall', 'guard', 'link', 'mere', 'ford', 'wick', 'stead', 'mark', 'watch', 'croft', 'haven'];
 const directions = ['North', 'South', 'East', 'West'];
-const structures = ['Gate', 'Hall', 'Keep', 'Bridge', 'Crown', 'Archive', 'Watch'];
-const geography = ['River', 'Hill', 'Shore', 'Wood', 'Lake', 'Marsh', 'Vale', 'Reach'];
-const materials = ['Iron', 'Glass', 'Stone', 'Grain', 'Ivory', 'Copper'];
-const qualities = ['Black', 'White', 'Deep', 'High', 'Pale', 'Old', 'Far'];
-const imagery = ['Boar', 'Skull', 'Wing', 'Tooth', 'Bloom', 'Sail', 'Step'];
-const collective = ['Syndicate', 'Company', 'Accord', 'Circle', 'League', 'Guard', 'Assembly'];
-const personTitles = ['Captain', 'Father', 'Lady', 'Lord', 'Marshal', 'Archivist', 'Archmage'];
-const constructedStarts = ['Tev', 'Viel', 'Quin', 'Fer', 'Tsu', 'Saph', 'Eld', 'Val', 'Bel', 'Ilo', 'Mar', 'Doul', 'Caen', 'Huj', 'Juun', 'Or', 'Kyr', 'Ner'];
-const constructedEnds = ['ca', 'le', 'del', 'enk', 'rei', 'rin', 'or', 'en', 'ai', 'eth', 'ar', 'at', 'un', 'is'];
-const secondaryStarts = ['Black', 'Green', 'River', 'White', 'Grain', 'Iron', 'Cword', 'Gold', 'Bright', 'Sable'];
+const structures = ['Gate', 'Hall', 'Keep', 'Bridge', 'Crown', 'Archive', 'Watch', 'Market', 'Spire', 'Mill', 'Crossing', 'Vault', 'Court', 'Beacon', 'Step'];
+const geography = ['River', 'Hill', 'Shore', 'Wood', 'Lake', 'Marsh', 'Vale', 'Reach', 'Fen', 'Down', 'Moor', 'Dell', 'Bay', 'Cape', 'Field', 'Cleft', 'Ridge'];
+const materials = ['Iron', 'Glass', 'Stone', 'Grain', 'Ivory', 'Copper', 'Clay', 'Amber', 'Ash', 'Flint', 'Pearl', 'Bronze', 'Salt', 'Slate'];
+const qualities = ['Black', 'White', 'Deep', 'High', 'Pale', 'Old', 'Far', 'Low', 'Red', 'Grey', 'Still', 'Hollow', 'Wide', 'Last', 'Golden'];
+const imagery = ['Boar', 'Skull', 'Wing', 'Tooth', 'Bloom', 'Sail', 'Step', 'Hare', 'Horn', 'Lantern', 'Root', 'Cairn', 'Bell', 'Crest', 'Hammer'];
+const collective = ['Syndicate', 'Company', 'Accord', 'Circle', 'League', 'Guard', 'Assembly', 'Consortium', 'Brotherhood', 'Covenant', 'Wardens', 'House', 'Fellowship'];
+const personTitles = ['Captain', 'Father', 'Lady', 'Lord', 'Marshal', 'Archivist', 'Archmage', 'Steward', 'Provost', 'Warden', 'Master of Keys'];
+const constructedStarts = ['Tev', 'Viel', 'Quin', 'Fer', 'Tsu', 'Saph', 'Eld', 'Val', 'Bel', 'Ilo', 'Mar', 'Doul', 'Caen', 'Huj', 'Juun', 'Or', 'Kyr', 'Ner', 'Aven', 'Brin', 'Cori', 'Drel', 'Esm', 'Fara', 'Galen', 'Hav', 'Iri', 'Jor', 'Kela', 'Lume', 'Mera', 'Navi', 'Oren', 'Pella', 'Ruva', 'Seli', 'Toren', 'Ulan', 'Vera', 'Ysen', 'Zara'];
+const constructedEnds = ['ca', 'le', 'del', 'enk', 'rei', 'rin', 'or', 'en', 'ai', 'eth', 'ar', 'at', 'un', 'is', 'a', 'el', 'in', 'os', 'et', 'um', 'ia', 'on', 'ra', 'el', 'is'];
+const secondaryStarts = ['Black', 'Green', 'River', 'White', 'Grain', 'Iron', 'Cword', 'Gold', 'Bright', 'Sable', 'Moss', 'Copper', 'Flint', 'Pale', 'Hearth', 'Marsh', 'Candle', 'Bell', 'Hollow', 'Ridge', 'Tide', 'Briar'];
 
 function pick<T>(items: readonly T[]): T {
   return items[Math.floor(Math.random() * items.length)]!;
@@ -49,13 +49,13 @@ function pick<T>(items: readonly T[]): T {
 function normaliseTheme(theme: string): string[] {
   const value = theme.toLocaleLowerCase();
   const words: string[] = [];
-  if (/(sea|coast|ocean|ship|harbour|harbor|sail)/.test(value)) words.push('Tide', 'Coral', 'Sail', 'Quay', 'Brine');
-  if (/(forest|wood|tree|grove)/.test(value)) words.push('Wood', 'Briar', 'Moss', 'Oak', 'Thorn');
-  if (/(mountain|stone|mine|cave)/.test(value)) words.push('Stone', 'Flint', 'Peak', 'Hollow', 'Crag');
-  if (/(desert|sand|sun|heat)/.test(value)) words.push('Dune', 'Amber', 'Sere', 'Salt', 'Ember');
-  if (/(cold|winter|ice|snow)/.test(value)) words.push('Frost', 'Pine', 'Rime', 'White', 'Hearth');
-  if (/(relig|temple|faith|holy)/.test(value)) words.push('Candle', 'Bell', 'Ash', 'Star', 'Vigil');
-  if (/(trade|merchant|market|gold)/.test(value)) words.push('Coin', 'Ledger', 'Gold', 'Grain', 'Caravan');
+  if (/(sea|coast|ocean|ship|harbour|harbor|sail)/.test(value)) words.push('Tide', 'Coral', 'Sail', 'Quay', 'Brine', 'Anchor', 'Gull', 'Reef');
+  if (/(forest|wood|tree|grove)/.test(value)) words.push('Wood', 'Briar', 'Moss', 'Oak', 'Thorn', 'Fern', 'Hollow', 'Root');
+  if (/(mountain|stone|mine|cave)/.test(value)) words.push('Stone', 'Flint', 'Peak', 'Hollow', 'Crag', 'Slate', 'Echo', 'Cairn');
+  if (/(desert|sand|sun|heat)/.test(value)) words.push('Dune', 'Amber', 'Sere', 'Salt', 'Ember', 'Mirage', 'Ochre', 'Wind');
+  if (/(cold|winter|ice|snow)/.test(value)) words.push('Frost', 'Pine', 'Rime', 'White', 'Hearth', 'Glacier', 'Still', 'Fir');
+  if (/(relig|temple|faith|holy)/.test(value)) words.push('Candle', 'Bell', 'Ash', 'Star', 'Vigil', 'Chapel', 'Morrow', 'Reliquary');
+  if (/(trade|merchant|market|gold)/.test(value)) words.push('Coin', 'Ledger', 'Gold', 'Grain', 'Caravan', 'Scale', 'Wagon', 'Silk');
   return words;
 }
 

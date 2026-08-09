@@ -89,7 +89,8 @@ export async function syncBrews(accessToken: string, brews: Brew[]): Promise<Syn
 }
 
 export async function overwriteDriveBrew(accessToken: string, brew: Brew): Promise<Brew> {
-  if (!brew.drive) throw new Error('This brew has no Drive copy to overwrite.');
+  // Omitting the expected revision deliberately makes manual Save authoritative.
+  // uploadBrew also creates a Drive file for brews that have not been synced yet.
   const file = await uploadBrew(accessToken, brew);
   return asSynced(brew, file);
 }

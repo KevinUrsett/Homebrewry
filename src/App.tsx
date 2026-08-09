@@ -94,7 +94,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('split');
   const [mobileSection, setMobileSection] = useState<MobileSection>('preview');
-  const [mobileTopMenuOpen, setMobileTopMenuOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [saveState, setSaveState] = useState('Loading local drafts…');
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -1491,7 +1490,7 @@ export default function App() {
   const renderedBrew = previewBrew ?? activeBrew;
 
   return (
-    <div className={`app-shell mobile-${mobileSection}${mobileTopMenuOpen ? ' mobile-top-menu-open' : ''}`}>
+    <div className={`app-shell mobile-${mobileSection}`}>
       <header className="app-header">
         <div className="brand-lockup">
           <span className="brand-mark" aria-hidden>✦</span>
@@ -1544,7 +1543,6 @@ export default function App() {
             className={mobileSection === section ? 'is-selected' : ''}
             key={section}
             onClick={() => {
-              setMobileTopMenuOpen(false);
               if (section === 'catalogue') {
                 openCatalogue();
                 return;
@@ -1832,16 +1830,6 @@ export default function App() {
               </div>
             </div>
           </>}
-          <button
-            aria-expanded={mobileTopMenuOpen}
-            aria-label={mobileTopMenuOpen ? 'Hide top menu' : 'Show top menu'}
-            className="mobile-top-menu-button"
-            onClick={() => setMobileTopMenuOpen((open) => !open)}
-            title={mobileTopMenuOpen ? 'Hide menu' : 'Show menu'}
-            type="button"
-          >
-            ☰
-          </button>
           <button aria-expanded={captureMenuOpen} aria-label="Open writing tools" className="mobile-outline-fab" onClick={() => setCaptureMenuOpen((open) => !open)} type="button">+</button>
         </div>
       )}

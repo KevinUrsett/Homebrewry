@@ -55,7 +55,7 @@ class ReferenceChip extends WidgetType {
 
   toDOM() {
     const element = document.createElement('span');
-    element.className = 'cm-reference-chip';
+    element.className = this.kind === 'encounter' ? 'cm-reference-chip cm-encounter-reference-chip' : 'cm-reference-chip cm-inline-reference';
     element.setAttribute('aria-label', `${this.kind} reference: ${this.label}`);
     element.title = `${this.kind} reference`;
     element.textContent = this.label;

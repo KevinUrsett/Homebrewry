@@ -490,6 +490,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .cloud-controls { justify-self: end; }
   .save-indicator { font-size: .72rem; }
   .mobile-nav { background: #3a2b22; display: grid; gap: 3px; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 5px 8px; }
+  /* Safari overlays its browser controls above the editor; reserve space only when this temporary menu is open. */
+  .app-shell.mobile-editor.mobile-top-menu-open .mobile-nav { padding-top: max(calc(env(safe-area-inset-top) + 5px), 58px); }
   .mobile-nav button { font-size: .64rem; line-height: 1.1; min-height: 30px; padding: 6px 2px; white-space: normal; }
   .mobile-capture-menu { align-items: end; bottom: calc(16px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 8px; position: fixed; right: 14px; z-index: 8; }
   .mobile-outline-fab { align-items: center; background: #5d2f26; border: 1px solid #d0ad70; border-radius: 50%; box-shadow: 0 5px 16px rgb(40 22 13 / 35%); color: #fff8e9; display: flex; font: 400 1.55rem/1 Georgia, serif; height: 44px; justify-content: center; padding: 0 0 3px; width: 44px; }

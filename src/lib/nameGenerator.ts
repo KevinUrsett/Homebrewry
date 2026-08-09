@@ -60,8 +60,18 @@ const doulmianFamilies = ['Aner', 'Besh', 'DunDun', 'Halor', 'Keth', 'Naram', 'O
 const constructedEnds = ['ca', 'le', 'del', 'enk', 'rei', 'rin', 'or', 'en', 'ai', 'eth', 'ar', 'at', 'un', 'is', 'a', 'el', 'in', 'os', 'et', 'um', 'ia', 'on', 'ra', 'mir', 'islav', 'ena', 'ora', 'borg', 'frid', 'mund', 'ric', 'stan', 'vlad'];
 const secondaryStarts = ['Black', 'Green', 'River', 'White', 'Grain', 'Iron', 'Cword', 'Gold', 'Bright', 'Sable', 'Moss', 'Copper', 'Flint', 'Pale', 'Hearth', 'Marsh', 'Candle', 'Bell', 'Hollow', 'Ridge', 'Tide', 'Briar'];
 
+const recentSurnames: string[] = [];
+
 function pick<T>(items: readonly T[]): T {
   return items[Math.floor(Math.random() * items.length)]!;
+}
+
+function uniqueSurname(create: () => string): string {
+  let surname = create();
+  for (let attempt = 0; attempt < 80 && recentSurnames.includes(surname); attempt += 1) surname = create();
+  recentSurnames.push(surname);
+  if (recentSurnames.length > 100) recentSurnames.shift();
+  return surname;
 }
 
 function normaliseTheme(theme: string): string[] {
@@ -109,26 +119,26 @@ function compound(options: NameGeneratorOptions): string {
 function personName(options: NameGeneratorOptions): GeneratedName {
   const title = options.includeTitles && Math.random() < 0.45 ? `${pick(personTitles)} ` : '';
   if (options.culture === 'eastern-court') {
-    return { name: `${title}${pick(easternFamilies)} ${pick(easternGiven)}`, category: options.category, kind: 'character', style: 'constructed' };
+    return { name: `${title}${uniqueSurname(() => pick(easternFamilies))} ${pick(easternGiven)}`, category: options.category, kind: 'character', style: 'constructed' };
   }
   if (options.culture === 'desert-court') {
     const lineage = Math.random() < 0.35 ? ` ibn ${pick(desertGiven)}` : '';
-    return { name: `${title}${pick(desertGiven)} ${pick(desertFamilies)}${lineage}`, category: options.category, kind: 'character', style: 'formal' };
+    return { name: `${title}${pick(desertGiven)} ${uniqueSurname(() => pick(desertFamilies))}${lineage}`, category: options.category, kind: 'character', style: 'formal' };
   }
   if (options.culture === 'doulmian') {
-    return { name: `${title}${pick(doulmianGiven)} ${pick(doulmianFamilies)}`, category: options.category, kind: 'character', style: 'constructed' };
+    return { name: `${title}${pick(doulmianGiven)} ${uniqueSurname(() => pick(doulmianFamilies))}`, category: options.category, kind: 'character', style: 'constructed' };
   }
-  const hasSurname = Math.random() < 0.01;
+  const hasSurname = Math.random() < 0.99;
   if (!hasSurname) {
     return { name: `${title}${constructedName(options.culture)}`, category: options.category, kind: 'character', style: title ? 'formal' : 'constructed' };
   }
   const compoundSurname = options.allowCompounds && Math.random() < 0.15;
   const professionChance = options.culture === 'northern-guild' ? 0.84 : 0.62;
-  const surname = Math.random() < professionChance
+  const surname = uniqueSurname(() => Math.random() < professionChance
     ? pick(professions)
     : compoundSurname
       ? compound(options)
-      : `${pick(secondaryStarts)}${pick(['wood', 'leeves', 'del', 'ward', 'mere', 'rock', 'vale', 'croft'])}`;
+      : `${pick(secondaryStarts)}${pick(['wood', 'leeves', 'del', 'ward', 'mere', 'rock', 'vale', 'croft'])}`);
   return { name: `${title}${constructedName(options.culture)} ${surname}`, category: options.category, kind: 'character', style: compoundSurname ? 'compound' : title ? 'formal' : 'constructed' };
 }
 

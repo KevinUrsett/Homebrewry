@@ -33,6 +33,7 @@ type MarkdownEditorProps = {
   customCatalogueCategories?: readonly CustomCatalogueCategory[];
   ariaLabel?: string;
   compact?: boolean;
+  spellcheckEnabled?: boolean;
 };
 
 type ReferenceMenu = {
@@ -113,6 +114,7 @@ export function MarkdownEditor({
   customCatalogueCategories = [],
   ariaLabel = 'Markdown source',
   compact = false,
+  spellcheckEnabled = true,
   ref
 }: MarkdownEditorProps & { ref?: Ref<MarkdownEditorHandle> }) {
   const parentRef = useRef<HTMLDivElement>(null);
@@ -152,7 +154,7 @@ export function MarkdownEditor({
           markdown(),
           syntaxHighlighting(markdownHighlightStyle),
           EditorView.lineWrapping,
-          EditorView.contentAttributes.of({ 'aria-label': ariaLabel }),
+          EditorView.contentAttributes.of({ 'aria-label': ariaLabel, spellcheck: spellcheckEnabled ? 'true' : 'false' }),
           referenceDecorations,
           EditorView.updateListener.of((update) => {
             if (update.docChanged) latestRef.current.onChange(update.state.doc.toString());
@@ -212,7 +214,7 @@ export function MarkdownEditor({
       view.destroy();
       viewRef.current = null;
     };
-  }, [ariaLabel]);
+  }, [ariaLabel, spellcheckEnabled]);
 
   useEffect(() => {
     const view = viewRef.current;

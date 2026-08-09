@@ -358,8 +358,11 @@ export default function App() {
       setDriveSaveNotice({ tone: 'saving', message: 'Saving to Google Drive…' });
       const token = accessToken ?? await requestDriveAccess();
       setAccessToken(token);
-      await saveBrew(activeBrew);
-      setBrews((currentBrews) => currentBrews.map((brew) => brew.id === activeBrew.id ? { ...activeBrew } : brew));
+      // Manual Save is intentional: create or overwrite this brew's Drive file
+      // without the conflict check used by Refresh & sync.
+      const savedBrew = await overwriteDriveBrew(token, activeBrew);
+      await saveBrew(savedBrew);
+      setBrews((currentBrews) => currentBrews.map((brew) => brew.id === savedBrew.id ? savedBrew : brew));
       setSaveState('Saved to Google Drive');
       setDriveSaveNotice({ tone: 'success', message: 'Saved to Google Drive' });
     } catch (error) {

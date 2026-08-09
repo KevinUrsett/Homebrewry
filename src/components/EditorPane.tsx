@@ -29,6 +29,8 @@ type EditorPaneProps = {
   onUndo: () => void;
   onRedo: () => void;
   onToggleFind: () => void;
+  spellcheckEnabled: boolean;
+  onToggleSpellcheck: () => void;
   onFindChange: (value: string) => void;
   onReplaceChange: (value: string) => void;
   onReplaceAll: () => void;
@@ -60,6 +62,8 @@ export function EditorPane({
   onUndo,
   onRedo,
   onToggleFind,
+  spellcheckEnabled,
+  onToggleSpellcheck,
   onFindChange,
   onReplaceChange,
   onReplaceAll,
@@ -88,6 +92,7 @@ export function EditorPane({
         <button className="editor-save-button" onClick={onSave} type="button">Save</button>
         <button onClick={onUndo} type="button">Undo</button>
         <button onClick={onRedo} type="button">Redo</button>
+        <button aria-pressed={spellcheckEnabled} onClick={onToggleSpellcheck} type="button">Spellcheck</button>
         <button onClick={onToggleFind} type="button">Find</button>
       </div>
       <input
@@ -120,6 +125,7 @@ export function EditorPane({
       <MarkdownEditor
         content={content}
         onChange={onContentChange}
+        spellcheckEnabled={spellcheckEnabled}
         customCatalogueCategories={customCatalogueCategories}
         onCreateCatalogueReference={onCreateCatalogueReference}
         onCreateWorldbuildingReference={onCreateWorldbuildingReference}

@@ -102,7 +102,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 /* Keep the paper on CodeMirror's moving content rather than behind its scroll area. */
 .markdown-editor .cm-content { background: linear-gradient(rgb(255 253 247 / 64%), rgb(255 253 247 / 64%)), #f7edd7 url('/parchment-texture.webp') center top / 768px auto repeat; min-height: 100%; padding: 20px; }
 .markdown-editor .cm-focused { outline: none; }
-.markdown-editor .cm-reference-chip { background: #f1dfb3; border: 1px solid #c8a563; border-radius: 999px; color: #5d3528; cursor: text; font-family: Inter, sans-serif; font-size: .82em; font-weight: 800; letter-spacing: .01em; padding: 1px 6px; }
+/* Ordinary references stay part of the prose in Edit; encounter links retain their card-like marker. */
+.markdown-editor .cm-inline-reference { color: inherit; font: inherit; }
+.markdown-editor .cm-encounter-reference-chip { background: #f1dfb3; border: 1px solid #c8a563; border-radius: 999px; color: #5d3528; cursor: text; font-family: Inter, sans-serif; font-size: .82em; font-weight: 800; letter-spacing: .01em; padding: 1px 6px; }
 
 .preview-pane { background: #29333d; container-type: inline-size; min-height: 0; min-width: 0; overflow: auto; padding: clamp(14px, 2.5vw, 30px); }
 .preview-canvas { margin: 0 auto; max-width: 210mm; width: 100%; }

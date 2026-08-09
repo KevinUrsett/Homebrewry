@@ -117,6 +117,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .brew-preview h3 { font-size: 1.22rem; margin: 1.25em 0 .35em; }
 .brew-preview h4 { font-family: Inter, sans-serif; font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; }
 .brew-preview p { margin: .65em 0; }
+/* Book-style paragraphs begin with an indented first line, except after headings and blocks. */
+.brew-preview p + p { text-indent: 1em; }
 .brew-preview em { color: #5c4434; }
 .brew-preview blockquote { background: #ead9b8; border-left: 5px solid var(--brew-accent); margin: 1.15em 0; padding: 10px 15px; }
 .brew-preview blockquote p { margin: .25em 0; }

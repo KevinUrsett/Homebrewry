@@ -1,9 +1,11 @@
 import type { WorldbuildingKind } from '../types';
 
 export type NameCategory = 'person' | 'settlement' | 'region' | 'faction' | 'deity' | 'object' | 'event' | 'political';
+export type NameCulture = 'belentoran' | 'doulmian' | 'eastern-court' | 'desert-court' | 'northern-guild';
 
 export type NameGeneratorOptions = {
   category: NameCategory;
+  culture: NameCulture;
   theme: string;
   affixes: string;
   allowDirections: boolean;
@@ -16,6 +18,14 @@ export type GeneratedName = {
   category: NameCategory;
   kind: WorldbuildingKind;
   style: 'constructed' | 'compound' | 'formal';
+};
+
+export const nameCultureLabels: Record<NameCulture, string> = {
+  belentoran: 'Belentoran mixed',
+  doulmian: 'Doulmian',
+  'eastern-court': 'Eastern court · family first',
+  'desert-court': 'Desert court · lineage names',
+  'northern-guild': 'Northern guild · trade surnames'
 };
 
 export const nameCategoryLabels: Record<NameCategory, string> = {
@@ -39,6 +49,14 @@ const imagery = ['Boar', 'Skull', 'Wing', 'Tooth', 'Bloom', 'Sail', 'Step', 'Har
 const collective = ['Syndicate', 'Company', 'Accord', 'Circle', 'League', 'Guard', 'Assembly', 'Consortium', 'Brotherhood', 'Covenant', 'Wardens', 'House', 'Fellowship'];
 const personTitles = ['Captain', 'Father', 'Lady', 'Lord', 'Marshal', 'Archivist', 'Archmage', 'Steward', 'Provost', 'Warden', 'Master of Keys'];
 const constructedStarts = ['Tev', 'Viel', 'Quin', 'Fer', 'Tsu', 'Saph', 'Eld', 'Val', 'Bel', 'Ilo', 'Mar', 'Doul', 'Caen', 'Huj', 'Juun', 'Or', 'Kyr', 'Ner', 'Aven', 'Brin', 'Cori', 'Drel', 'Esm', 'Fara', 'Galen', 'Hav', 'Iri', 'Jor', 'Kela', 'Lume', 'Mera', 'Navi', 'Oren', 'Pella', 'Ruva', 'Seli', 'Toren', 'Ulan', 'Vera', 'Ysen', 'Zara'];
+const professions = ['Aetherwright', 'Gearwright', 'Lensmaker', 'Runesmith', 'Coilkeeper', 'Lampwright', 'Wardengraver', 'Glassblower', 'Bridgewright', 'Signalman', 'Boilermaker', 'Cartwright', 'Clockmaker', 'Foundry', 'Tanner', 'Weaver', 'Mason', 'Locksmith', 'Scribe', 'Chandler'];
+const easternFamilies = ['Arai', 'Bao', 'Chen', 'Han', 'Kwon', 'Lin', 'Mori', 'Ren', 'Shen', 'Sato'];
+const easternGiven = ['Aiko', 'Daichi', 'Hana', 'Jin', 'Kei', 'Mei', 'Nari', 'Riku', 'Sora', 'Yuna'];
+const desertGiven = ['Amin', 'Dariya', 'Farid', 'Jamal', 'Nadira', 'Qasim', 'Rami', 'Sahra', 'Tariq', 'Zahra'];
+const desertFamilies = ['al-Basir', 'al-Karim', 'al-Mazin', 'al-Nur', 'al-Rashid', 'al-Sahir', 'al-Veyr', 'al-Zahir'];
+const doulmianGiven = ['Ackhun', 'Anahiri', 'Dunai', 'Elogtro', 'Inhio', 'Nivi', 'Shien', 'Vajun'];
+const doulmianFamilies = ['Aner', 'Besh', 'DunDun', 'Halor', 'Keth', 'Naram', 'Othin', 'Varai'];
+
 const constructedEnds = ['ca', 'le', 'del', 'enk', 'rei', 'rin', 'or', 'en', 'ai', 'eth', 'ar', 'at', 'un', 'is', 'a', 'el', 'in', 'os', 'et', 'um', 'ia', 'on', 'ra', 'el', 'is'];
 const secondaryStarts = ['Black', 'Green', 'River', 'White', 'Grain', 'Iron', 'Cword', 'Gold', 'Bright', 'Sable', 'Moss', 'Copper', 'Flint', 'Pale', 'Hearth', 'Marsh', 'Candle', 'Bell', 'Hollow', 'Ridge', 'Tide', 'Briar'];
 
@@ -59,7 +77,10 @@ function normaliseTheme(theme: string): string[] {
   return words;
 }
 
-function constructedName(): string {
+function constructedName(culture: NameCulture = 'belentoran'): string {
+  if (culture === 'doulmian') return `${pick(doulmianGiven)}${Math.random() < 0.45 ? pick(['a', 'en', 'or', 'i']) : ''}`;
+  if (culture === 'eastern-court') return pick(easternGiven);
+  if (culture === 'desert-court') return pick(desertGiven);
   const start = pick(constructedStarts);
   const end = pick(constructedEnds);
   return start.endsWith(end[0]!) ? `${start}${end.slice(1)}` : `${start}${end}`;
@@ -86,58 +107,72 @@ function compound(options: NameGeneratorOptions): string {
 }
 
 function personName(options: NameGeneratorOptions): GeneratedName {
-  const surname = options.allowCompounds && Math.random() < 0.55
-    ? compound(options)
-    : `${pick(secondaryStarts)}${pick(['wood', 'leeves', 'del', 'ward', 'mere', 'rock'])}`;
-  const title = options.includeTitles && Math.random() < 0.55 ? `${pick(personTitles)} ` : '';
-  return { name: `${title}${constructedName()} ${surname}`, category: options.category, kind: 'character', style: title ? 'formal' : 'constructed' };
+  const title = options.includeTitles && Math.random() < 0.45 ? `${pick(personTitles)} ` : '';
+  if (options.culture === 'eastern-court') {
+    return { name: `${title}${pick(easternFamilies)} ${pick(easternGiven)}`, category: options.category, kind: 'character', style: 'constructed' };
+  }
+  if (options.culture === 'desert-court') {
+    const lineage = Math.random() < 0.35 ? ` ibn ${pick(desertGiven)}` : '';
+    return { name: `${title}${pick(desertGiven)} ${pick(desertFamilies)}${lineage}`, category: options.category, kind: 'character', style: 'formal' };
+  }
+  if (options.culture === 'doulmian') {
+    return { name: `${title}${pick(doulmianGiven)} ${pick(doulmianFamilies)}`, category: options.category, kind: 'character', style: 'constructed' };
+  }
+  const surname = Math.random() < 0.62
+    ? pick(professions)
+    : options.allowCompounds && Math.random() < 0.2
+      ? compound(options)
+      : `${pick(secondaryStarts)}${pick(['wood', 'leeves', 'del', 'ward', 'mere', 'rock', 'vale', 'croft'])}`;
+  return { name: `${title}${constructedName(options.culture)} ${surname}`, category: options.category, kind: 'character', style: surname === compound(options) ? 'compound' : title ? 'formal' : 'constructed' };
 }
 
 function settlementName(options: NameGeneratorOptions): GeneratedName {
-  const base = options.allowCompounds && Math.random() < 0.6 ? compound(options) : constructedName();
-  const affix = pick(suffixes(options.affixes));
-  const directed = options.allowDirections && Math.random() < 0.4 ? `${pick(requestedDirections(options.affixes))}${base}` : `${base}${affix}`;
-  return { name: directed, category: options.category, kind: 'town', style: options.allowCompounds ? 'compound' : 'constructed' };
+  const isCompound = options.allowCompounds && Math.random() < 0.28;
+  const base = isCompound ? compound(options) : constructedName(options.culture);
+  const hasSuffix = Math.random() < 0.52;
+  const plain = hasSuffix ? `${base}${pick(suffixes(options.affixes))}` : base;
+  const name = options.allowDirections && Math.random() < 0.24 ? `${pick(requestedDirections(options.affixes))} ${plain}` : plain;
+  return { name, category: options.category, kind: 'town', style: isCompound ? 'compound' : 'constructed' };
 }
 
 function regionName(options: NameGeneratorOptions): GeneratedName {
-  if (options.allowCompounds && Math.random() < 0.6) {
+  if (options.allowCompounds && Math.random() < 0.32) {
     const first = pick([...normaliseTheme(options.theme), ...qualities, ...materials]);
     const shape = pick(['Reach', 'March', 'Stretch', 'Coast', 'Plains', 'Hollows']);
     return { name: `The ${first} ${shape}`, category: options.category, kind: 'region', style: 'formal' };
   }
-  return { name: `${constructedName()} ${pick(['Reach', 'Vale', 'March', 'Coast'])}`, category: options.category, kind: 'region', style: 'constructed' };
+  return { name: `${constructedName(options.culture)} ${pick(['Reach', 'Vale', 'March', 'Coast'])}`, category: options.category, kind: 'region', style: 'constructed' };
 }
 
 function factionName(options: NameGeneratorOptions): GeneratedName {
-  const symbol = options.allowCompounds ? compound(options) : constructedName();
-  const form = Math.random() < 0.5 ? `The ${symbol} ${pick(collective)}` : `Order of the ${symbol}`;
+  const symbol = options.allowCompounds && Math.random() < 0.45 ? compound(options) : constructedName(options.culture);
+  const form = Math.random() < 0.5 ? `The ${symbol} ${pick(collective)}` : Math.random() < 0.5 ? `Order of the ${symbol}` : `House ${symbol}`;
   return { name: form, category: options.category, kind: 'faction', style: options.allowCompounds ? 'compound' : 'formal' };
 }
 
 function deityName(options: NameGeneratorOptions): GeneratedName {
-  const name = constructedName();
+  const name = constructedName(options.culture);
   const epithet = options.includeTitles ? `, ${pick(['Keeper of Gates', 'Mother of the Far Road', 'The Patient Flame', 'Warden of Names'])}` : '';
   return { name: `${name}${epithet}`, category: options.category, kind: 'deity', style: 'constructed' };
 }
 
 function objectName(options: NameGeneratorOptions): GeneratedName {
-  const name = options.allowCompounds ? `The ${compound(options)}` : `The ${constructedName()} ${pick(['Key', 'Crown', 'Ledger', 'Lantern', 'Spear'])}`;
+  const name = options.allowCompounds ? `The ${compound(options)}` : `The ${constructedName(options.culture)} ${pick(['Key', 'Crown', 'Ledger', 'Lantern', 'Spear'])}`;
   return { name, category: options.category, kind: 'item', style: options.allowCompounds ? 'compound' : 'formal' };
 }
 
 function eventName(options: NameGeneratorOptions): GeneratedName {
   const name = options.allowCompounds
     ? `The ${compound(options)} ${pick(['Treaty', 'Riot', 'Accord', 'Crossing', 'Feast'])}`
-    : `The ${constructedName()} ${pick(['Accord', 'Year', 'Crossing'])}`;
+    : `The ${constructedName(options.culture)} ${pick(['Accord', 'Year', 'Crossing'])}`;
   return { name, category: options.category, kind: 'event', style: 'formal' };
 }
 
 function politicalName(options: NameGeneratorOptions): GeneratedName {
   const government = pick(['Kingdom', 'Monarchy', 'Republic', 'Empire', 'Principality']);
   const name = government === 'Empire' && Math.random() < 0.5
-    ? `The ${constructedName()} Empire`
-    : `${government} of ${constructedName()}`;
+    ? `The ${constructedName(options.culture)} Empire`
+    : `${government} of ${constructedName(options.culture)}`;
   return { name, category: options.category, kind: 'faction', style: 'formal' };
 }
 

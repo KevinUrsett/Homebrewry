@@ -748,6 +748,14 @@ export default function App() {
     setNameGeneratorTarget(null);
   };
 
+  const useGeneratedNames = (results: readonly GeneratedName[]) => {
+    if (nameGeneratorTarget !== 'editor') return;
+    insertText(results.map((result) => `- ${result.name}`).join('\n'));
+    setCaptureMenuOpen(false);
+    setNameGeneratorTarget(null);
+    setSaveState(`Inserted ${results.length} generated names`);
+  };
+
   const createWorldbuildingReference = (name: string, kind: WorldbuildingKind): string | null => {
     const selectedText = name;
     const entry = findWorldbuildingEntryByName(worldbuildingEntries, name) ?? createWorldbuildingEntry(name, kind);
@@ -1919,7 +1927,7 @@ export default function App() {
           </section>
         </div>
       )}
-      {nameGeneratorTarget && <NameGeneratorDialog actionLabel={nameGeneratorTarget === 'editor' ? 'Insert into brew' : 'Create Worldbuilding entry'} onClose={() => setNameGeneratorTarget(null)} onUse={useGeneratedName} />}
+      {nameGeneratorTarget && <NameGeneratorDialog actionLabel={nameGeneratorTarget === 'editor' ? 'Insert into brew' : 'Create Worldbuilding entry'} onClose={() => setNameGeneratorTarget(null)} onUse={useGeneratedName} onUseAll={nameGeneratorTarget === 'editor' ? useGeneratedNames : undefined} />}
       {importOpen && <ImportDialog onClose={() => setImportOpen(false)} onImport={importBrew} />}
       {privateMonsterImportOpen && (
         <PrivateMonsterImportDialog

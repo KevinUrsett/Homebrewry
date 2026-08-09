@@ -118,12 +118,13 @@ function personName(options: NameGeneratorOptions): GeneratedName {
   if (options.culture === 'doulmian') {
     return { name: `${title}${pick(doulmianGiven)} ${pick(doulmianFamilies)}`, category: options.category, kind: 'character', style: 'constructed' };
   }
+  const compoundSurname = options.allowCompounds && Math.random() < 0.2;
   const surname = Math.random() < 0.62
     ? pick(professions)
-    : options.allowCompounds && Math.random() < 0.2
+    : compoundSurname
       ? compound(options)
       : `${pick(secondaryStarts)}${pick(['wood', 'leeves', 'del', 'ward', 'mere', 'rock', 'vale', 'croft'])}`;
-  return { name: `${title}${constructedName(options.culture)} ${surname}`, category: options.category, kind: 'character', style: surname === compound(options) ? 'compound' : title ? 'formal' : 'constructed' };
+  return { name: `${title}${constructedName(options.culture)} ${surname}`, category: options.category, kind: 'character', style: compoundSurname ? 'compound' : title ? 'formal' : 'constructed' };
 }
 
 function settlementName(options: NameGeneratorOptions): GeneratedName {
@@ -145,9 +146,10 @@ function regionName(options: NameGeneratorOptions): GeneratedName {
 }
 
 function factionName(options: NameGeneratorOptions): GeneratedName {
-  const symbol = options.allowCompounds && Math.random() < 0.45 ? compound(options) : constructedName(options.culture);
+  const isCompound = options.allowCompounds && Math.random() < 0.45;
+  const symbol = isCompound ? compound(options) : constructedName(options.culture);
   const form = Math.random() < 0.5 ? `The ${symbol} ${pick(collective)}` : Math.random() < 0.5 ? `Order of the ${symbol}` : `House ${symbol}`;
-  return { name: form, category: options.category, kind: 'faction', style: options.allowCompounds ? 'compound' : 'formal' };
+  return { name: form, category: options.category, kind: 'faction', style: isCompound ? 'compound' : 'formal' };
 }
 
 function deityName(options: NameGeneratorOptions): GeneratedName {
@@ -157,15 +159,17 @@ function deityName(options: NameGeneratorOptions): GeneratedName {
 }
 
 function objectName(options: NameGeneratorOptions): GeneratedName {
-  const name = options.allowCompounds ? `The ${compound(options)}` : `The ${constructedName(options.culture)} ${pick(['Key', 'Crown', 'Ledger', 'Lantern', 'Spear'])}`;
-  return { name, category: options.category, kind: 'item', style: options.allowCompounds ? 'compound' : 'formal' };
+  const isCompound = options.allowCompounds && Math.random() < 0.35;
+  const name = isCompound ? `The ${compound(options)}` : `The ${constructedName(options.culture)} ${pick(['Key', 'Crown', 'Ledger', 'Lantern', 'Spear'])}`;
+  return { name, category: options.category, kind: 'item', style: isCompound ? 'compound' : 'formal' };
 }
 
 function eventName(options: NameGeneratorOptions): GeneratedName {
-  const name = options.allowCompounds
+  const isCompound = options.allowCompounds && Math.random() < 0.35;
+  const name = isCompound
     ? `The ${compound(options)} ${pick(['Treaty', 'Riot', 'Accord', 'Crossing', 'Feast'])}`
     : `The ${constructedName(options.culture)} ${pick(['Accord', 'Year', 'Crossing'])}`;
-  return { name, category: options.category, kind: 'event', style: 'formal' };
+  return { name, category: options.category, kind: 'event', style: isCompound ? 'compound' : 'formal' };
 }
 
 function politicalName(options: NameGeneratorOptions): GeneratedName {

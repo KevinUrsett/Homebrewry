@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { EditorView } from '@codemirror/view';
 
 type OutlineItem = {
+  id?: string;
   level: number;
   title: string;
   position: number;
@@ -15,9 +16,11 @@ type DragState = {
   currentX: number;
   currentY: number;
   moved: boolean;
-  mode: 'editor' | 'outline';
-  editorScroller: HTMLElement;
+  mode: 'content' | 'outline';
+  contentScroller: HTMLElement;
 };
+
+type ContentMode = 'editor' | 'preview';
 
 const MOBILE_BREAKPOINT = '(max-width: 820px)';
 const LEFT_GESTURE_THRESHOLD = 48;
@@ -48,12 +51,25 @@ function readOutline(view: EditorView): OutlineItem[] {
   return headings;
 }
 
+function readPreviewOutline(pane: HTMLElement): OutlineItem[] {
+  const paneRect = pane.getBoundingClientRect();
+  return Array.from(pane.querySelectorAll<HTMLElement>('.brew-preview h1, .brew-preview h2, .brew-preview h3, .brew-preview h4, .brew-preview h5, .brew-preview h6'))
+    .map((heading) => ({
+      id: heading.id,
+      level: Number(heading.tagName.slice(1)),
+      title: heading.textContent?.trim() ?? '',
+      position: pane.scrollTop + heading.getBoundingClientRect().top - paneRect.top
+    }))
+    .filter((item) => item.title);
+}
+
 function closeWritingTools() {
   document.querySelector<HTMLButtonElement>('.mobile-outline-fab[aria-expanded="true"]')?.click();
 }
 
 export function MobileOutlineScrubber() {
   const [target, setTarget] = useState<HTMLElement | null>(null);
+  const [contentMode, setContentMode] = useState<ContentMode | null>(null);
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [outline, setOutline] = useState<OutlineItem[]>([]);
   const [activePosition, setActivePosition] = useState(0);
@@ -75,10 +91,15 @@ export function MobileOutlineScrubber() {
   useEffect(() => {
     const refresh = () => {
       const mobile = window.matchMedia(MOBILE_BREAKPOINT).matches;
+      const preview = mobile
+        ? document.querySelector<HTMLElement>('.app-shell.mobile-preview .preview-pane')
+        : null;
       const menu = mobile
         ? document.querySelector<HTMLElement>('.app-shell.mobile-editor .mobile-capture-menu')
         : null;
-      setTarget(menu);
+
+      setTarget(preview ?? menu);
+      setContentMode(preview ? 'preview' : menu ? 'editor' : null);
 
       menu?.querySelectorAll<HTMLButtonElement>('.mobile-writing-destinations button').forEach((button) => {
         if (button.textContent?.trim() === 'Outline') button.hidden = true;
@@ -112,9 +133,8 @@ export function MobileOutlineScrubber() {
   }, []);
 
   useEffect(() => {
-    const view = editorView();
-    if (!view) return undefined;
-    const scroller = view.scrollDOM;
+    const scroller = contentMode === 'editor' ? editorView()?.scrollDOM : target;
+    if (!scroller) return undefined;
 
     const updateScrollPercent = () => {
       const maximum = Math.max(1, scroller.scrollHeight - scroller.clientHeight);
@@ -124,7 +144,7 @@ export function MobileOutlineScrubber() {
     updateScrollPercent();
     scroller.addEventListener('scroll', updateScrollPercent, { passive: true });
     return () => scroller.removeEventListener('scroll', updateScrollPercent);
-  }, [target]);
+  }, [contentMode, target]);
 
   useEffect(() => {
     if (!outlineOpen) return undefined;
@@ -156,11 +176,18 @@ export function MobileOutlineScrubber() {
   }, []);
 
   const openOutline = (continueGesture = false) => {
-    const view = editorView();
-    if (!view) return;
-    closeWritingTools();
-    setOutline(readOutline(view));
-    setActivePosition(view.state.selection.main.head);
+    if (contentMode === 'editor') {
+      const view = editorView();
+      if (!view) return;
+      closeWritingTools();
+      setOutline(readOutline(view));
+      setActivePosition(view.state.selection.main.head);
+    } else if (contentMode === 'preview' && target) {
+      setOutline(readPreviewOutline(target));
+      setActivePosition(target.scrollTop);
+    } else {
+      return;
+    }
     setOutlineOpen(true);
 
     if (continueGesture) {
@@ -189,7 +216,7 @@ export function MobileOutlineScrubber() {
 
     const vertical = drag.currentY - drag.startY;
     const distance = Math.abs(vertical) - SCROLL_DEAD_ZONE;
-    const scroller = drag.mode === 'outline' ? outlineListRef.current : drag.editorScroller;
+    const scroller = drag.mode === 'outline' ? outlineListRef.current : drag.contentScroller;
 
     if (distance > 0 && scroller) {
       const direction = Math.sign(vertical);
@@ -215,8 +242,8 @@ export function MobileOutlineScrubber() {
   };
 
   const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
-    const view = editorView();
-    if (!view) return;
+    const scroller = contentMode === 'editor' ? editorView()?.scrollDOM : target;
+    if (!scroller) return;
 
     event.preventDefault();
     event.stopPropagation();
@@ -228,8 +255,8 @@ export function MobileOutlineScrubber() {
       currentX: event.clientX,
       currentY: event.clientY,
       moved: false,
-      mode: outlineOpen ? 'outline' : 'editor',
-      editorScroller: view.scrollDOM
+      mode: outlineOpen ? 'outline' : 'content',
+      contentScroller: scroller
     };
     startContinuousScroll();
   };
@@ -246,7 +273,7 @@ export function MobileOutlineScrubber() {
     const vertical = drag.currentY - drag.startY;
 
     if (
-      drag.mode === 'editor'
+      drag.mode === 'content'
       && horizontal <= -LEFT_GESTURE_THRESHOLD
       && Math.abs(horizontal) > Math.abs(vertical)
     ) {
@@ -271,13 +298,19 @@ export function MobileOutlineScrubber() {
   };
 
   const navigateTo = (item: OutlineItem) => {
-    const view = editorView();
-    if (!view) return;
-    view.dispatch({
-      selection: { anchor: item.position },
-      effects: EditorView.scrollIntoView(item.position, { y: 'start', yMargin: 28 })
-    });
-    view.focus();
+    if (contentMode === 'editor') {
+      const view = editorView();
+      if (!view) return;
+      view.dispatch({
+        selection: { anchor: item.position },
+        effects: EditorView.scrollIntoView(item.position, { y: 'start', yMargin: 28 })
+      });
+      view.focus();
+    } else if (contentMode === 'preview' && target) {
+      target.scrollTo({ top: Math.max(0, item.position - 18), behavior: 'smooth' });
+    } else {
+      return;
+    }
     setActivePosition(item.position);
     setOutlineOpen(false);
   };
@@ -288,14 +321,14 @@ export function MobileOutlineScrubber() {
     <>
       {target && createPortal(
         <button
-          aria-label="Scroll brew or drag left for outline"
+          aria-label={`Scroll ${contentMode === 'preview' ? 'preview' : 'brew'} or drag left for outline`}
           className="mobile-outline-scrubber"
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerCancel}
           style={{ top: `${Math.round(scrubberTop)}px` }}
-          title="Hold above/below to keep scrolling · drag left for outline"
+          title="Hold above or below to keep scrolling · drag left for outline"
           type="button"
         >
           <span aria-hidden="true">☰</span>
@@ -328,7 +361,7 @@ export function MobileOutlineScrubber() {
             <header>
               <div>
                 <strong>Outline</strong>
-                <small>Keep holding the scrubber to scroll</small>
+                <small>Hold to scroll · drag left for this outline</small>
               </div>
               <button onPointerDown={(event) => event.preventDefault()} onClick={() => setOutlineOpen(false)} type="button">Close</button>
             </header>

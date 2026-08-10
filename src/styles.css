@@ -514,9 +514,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .app-shell.mobile-preview .workspace { display: flex; flex: 1; min-height: 0; overflow: hidden; }
   .app-shell.mobile-preview .main-panes, .app-shell.mobile-preview .preview-pane { flex: 1; min-height: 0; }
   .app-shell.mobile-preview .preview-pane { overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
-  .mobile-preview-scroller { align-items: center; background: #4a382d; border: 2px solid #d0ad70; border-radius: 999px; box-shadow: 0 6px 18px rgb(40 22 13 / 34%); color: #fff8e9; display: grid; font: inherit; gap: 1px; height: 64px; justify-items: center; padding: 6px 0 5px; position: fixed; right: 10px; touch-action: none; transform: translateY(-50%); user-select: none; width: 60px; z-index: 1302; }
-  .mobile-preview-scroller > span { font-size: 1.35rem; line-height: 1; }
-  .mobile-preview-scroller > small { color: #dfcaa7; font-size: .64rem; font-weight: 800; line-height: 1; }
   .app-shell.mobile-outline .workspace { display: flex; flex: 1; min-height: 0; overflow: hidden; }
   .app-shell.mobile-outline .outline-panel { flex: 1; min-height: 0; overflow: hidden; }
   .app-shell.mobile-editor .workspace { display: flex; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; }

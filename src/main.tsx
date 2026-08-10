@@ -9,7 +9,6 @@ import { MobileEditorTextScale } from './components/MobileEditorTextScale';
 import { MobileFocusWriting } from './components/MobileFocusWriting';
 import { MobileNavigationHistory } from './components/MobileNavigationHistory';
 import { MobileOutlineScrubber } from './components/MobileOutlineScrubber';
-import { MobilePreviewScroller } from './components/MobilePreviewScroller';
 import { MobileRevisionHistory } from './components/MobileRevisionHistory';
 import { MobileVisualViewportInset } from './components/MobileVisualViewportInset';
 import { PreviewPositionSync } from './components/PreviewPositionSync';
@@ -38,7 +37,6 @@ createRoot(document.getElementById('root')!).render(
     <MobileFocusWriting />
     <MobileNavigationHistory />
     <MobileOutlineScrubber />
-    <MobilePreviewScroller />
     <MobileRevisionHistory />
     <MobileVisualViewportInset />
     <PreviewPositionSync />

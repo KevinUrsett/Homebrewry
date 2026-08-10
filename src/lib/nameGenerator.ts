@@ -45,11 +45,11 @@ export const nameCategoryLabels: Record<NameCategory, string> = {
 
 const defaultSuffixes = ['hold', 'keep', 'hall', 'town', 'port', 'quay', 'lund', 'wall', 'guard', 'link', 'mere', 'ford', 'wick', 'stead', 'mark', 'watch', 'croft', 'haven'];
 const directions = ['North', 'South', 'East', 'West'];
-const structures = ['Gate', 'Hall', 'Keep', 'Bridge', 'Crown', 'Archive', 'Watch', 'Market', 'Spire', 'Mill', 'Crossing', 'Vault', 'Court', 'Beacon', 'Step'];
-const geography = ['River', 'Hill', 'Shore', 'Wood', 'Lake', 'Marsh', 'Vale', 'Reach', 'Fen', 'Down', 'Moor', 'Dell', 'Bay', 'Cape', 'Field', 'Cleft', 'Ridge'];
-const materials = ['Iron', 'Glass', 'Stone', 'Grain', 'Ivory', 'Copper', 'Clay', 'Amber', 'Ash', 'Flint', 'Pearl', 'Bronze', 'Salt', 'Slate'];
-const qualities = ['Black', 'White', 'Deep', 'High', 'Pale', 'Old', 'Far', 'Low', 'Red', 'Grey', 'Still', 'Hollow', 'Wide', 'Last', 'Golden'];
-const imagery = ['Boar', 'Skull', 'Wing', 'Tooth', 'Bloom', 'Sail', 'Step', 'Hare', 'Horn', 'Lantern', 'Root', 'Cairn', 'Bell', 'Crest', 'Hammer'];
+const structures = ['Gate', 'Hall', 'Keep', 'Bridge', 'Crown', 'Archive', 'Watch', 'Market', 'Spire', 'Mill', 'Crossing', 'Vault', 'Court', 'Beacon', 'Step', 'Tower', 'Quarry', 'Crane', 'Foundry', 'Lock', 'Furnace', 'Chapel', 'Signal', 'Toll', 'Causeway'];
+const geography = ['River', 'Hill', 'Shore', 'Wood', 'Lake', 'Marsh', 'Vale', 'Reach', 'Fen', 'Down', 'Moor', 'Dell', 'Bay', 'Cape', 'Field', 'Cleft', 'Ridge', 'Gully', 'Heath', 'Hollow', 'Ford', 'Weald', 'Brink', 'Cairn', 'Reef', 'Mire', 'Crag'];
+const materials = ['Iron', 'Glass', 'Stone', 'Grain', 'Ivory', 'Copper', 'Clay', 'Amber', 'Ash', 'Flint', 'Pearl', 'Bronze', 'Salt', 'Slate', 'Brass', 'Soot', 'Coal', 'Tin', 'Lead', 'Silk', 'Tallow', 'Cinder', 'Bone', 'Velvet', 'Moss'];
+const qualities = ['Black', 'White', 'Deep', 'High', 'Pale', 'Old', 'Far', 'Low', 'Red', 'Grey', 'Still', 'Hollow', 'Wide', 'Last', 'Golden', 'Crooked', 'Quiet', 'Blind', 'Laughing', 'Sour', 'Brisk', 'Mournful', 'Half', 'Blue', 'Burnt', 'Ragged'];
+const imagery = ['Boar', 'Skull', 'Wing', 'Tooth', 'Bloom', 'Sail', 'Step', 'Hare', 'Horn', 'Lantern', 'Root', 'Cairn', 'Bell', 'Crest', 'Hammer', 'Moth', 'Rook', 'Eel', 'Adder', 'Crow', 'Fox', 'Mule', 'Thistle', 'Kettle', 'Needle', 'Whistle', 'Chain'];
 const collective = ['Syndicate', 'Company', 'Accord', 'Circle', 'League', 'Guard', 'Assembly', 'Consortium', 'Brotherhood', 'Covenant', 'Wardens', 'House', 'Fellowship'];
 const personTitles = ['Captain', 'Father', 'Lady', 'Lord', 'Marshal', 'Archivist', 'Archmage', 'Steward', 'Provost', 'Warden', 'Master of Keys'];
 const constructedStarts = ['Tev', 'Viel', 'Quin', 'Fer', 'Tsu', 'Saph', 'Eld', 'Val', 'Bel', 'Ilo', 'Mar', 'Doul', 'Caen', 'Huj', 'Juun', 'Or', 'Kyr', 'Ner', 'Aven', 'Brin', 'Cori', 'Drel', 'Esm', 'Fara', 'Galen', 'Hav', 'Iri', 'Jor', 'Kela', 'Lume', 'Mera', 'Navi', 'Oren', 'Pella', 'Ruva', 'Seli', 'Toren', 'Ulan', 'Vera', 'Ysen', 'Zara', 'Ald', 'Beor', 'Catr', 'Dagn', 'Edr', 'Fjol', 'Gunn', 'Hald', 'Ivar', 'Jarek', 'Kost', 'Leof', 'Marek', 'Nikol', 'Oskar', 'Radom', 'Sven', 'Tomas', 'Ulrik', 'Vesna', 'Wulfr', 'Yar', 'Zden'];
@@ -62,7 +62,8 @@ const doulmianGiven = ['Ackhun', 'Anahiri', 'Dunai', 'Elogtro', 'Inhio', 'Nivi',
 const doulmianFamilies = ['Aner', 'Besh', 'DunDun', 'Halor', 'Keth', 'Naram', 'Othin', 'Varai', 'Daro', 'Kiveth', 'Uru', 'Vesh', 'Avari', 'Belor', 'Cesh', 'Dunvar', 'Eshar', 'Farin', 'Gaveth', 'Horan', 'Iver', 'Jash', 'Kavor', 'Leth', 'Moran', 'Nesh', 'Orin', 'Pavar', 'Qesh', 'Ravin', 'Sethar', 'Tovin', 'Uvar', 'Valesh', 'Weth', 'Xorin', 'Yavar', 'Zeth', 'Anuvar', 'Beshar', 'Cavor', 'Darev', 'Eshun', 'Favar', 'Gorun'];
 
 const constructedEnds = ['ca', 'le', 'del', 'enk', 'rei', 'rin', 'or', 'en', 'ai', 'eth', 'ar', 'at', 'un', 'is', 'a', 'el', 'in', 'os', 'et', 'um', 'ia', 'on', 'ra', 'mir', 'islav', 'ena', 'ora', 'borg', 'frid', 'mund', 'ric', 'stan', 'vlad'];
-const secondaryStarts = ['Black', 'Green', 'River', 'White', 'Grain', 'Iron', 'Cword', 'Gold', 'Bright', 'Sable', 'Moss', 'Copper', 'Flint', 'Pale', 'Hearth', 'Marsh', 'Candle', 'Bell', 'Hollow', 'Ridge', 'Tide', 'Briar'];
+const secondaryStarts = ['Black', 'Green', 'River', 'White', 'Grain', 'Iron', 'Cword', 'Gold', 'Bright', 'Sable', 'Moss', 'Copper', 'Flint', 'Pale', 'Hearth', 'Marsh', 'Candle', 'Bell', 'Hollow', 'Ridge', 'Tide', 'Briar', 'Hail', 'Low', 'Stone', 'Whit', 'Gal', 'Drift', 'Flock', 'Fair', 'Blood', 'Red', 'Quill', 'Ink', 'Soot', 'Brass', 'Cinder', 'Moth', 'Rook', 'Adder', 'Tallow', 'Thistle', 'Kettle', 'Crab', 'Rattle', 'Hush', 'Pike', 'Crow', 'Sour', 'Mire'];
+const surnameEnds = ['wood', 'leeves', 'del', 'ward', 'mere', 'rock', 'vale', 'croft', 'break', 'heel', 'helm', 'lock', 'bale', 'filer', 'tree', 'wing', 'wick', 'hand', 'well', 'veil', 'thrasher', 'hollow', 'thorn', 'step', 'binder', 'hook', 'brand', 'knell', 'gallows', 'cap', 'graft', 'song', 'shank', 'muzzle', 'lash', 'mender', 'shutter', 'reed', 'grin', 'spoke'];
 
 const recentSurnames: string[] = [];
 
@@ -148,7 +149,7 @@ function personName(options: NameGeneratorOptions): GeneratedName {
     ? pick(professions)
     : compoundSurname
       ? compound(options)
-      : `${pick(secondaryStarts)}${pick(['wood', 'leeves', 'del', 'ward', 'mere', 'rock', 'vale', 'croft'])}`);
+      : `${pick(secondaryStarts)}${pick(surnameEnds)}`);
   const givenName = constructedName(options.culture, options.preferAlliteration ? surname[0] : undefined);
   return { name: `${title}${givenName} ${surname}`, category: options.category, kind: 'character', style: compoundSurname ? 'compound' : title ? 'formal' : 'constructed', givenName, surname };
 }

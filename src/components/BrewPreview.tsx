@@ -64,6 +64,13 @@ function previewUrlTransform(url: string): string {
   return catalogueReferenceFromUrl(url) || encounterReferenceFromUrl(url) || worldbuildingReferenceFromUrl(url) ? url : defaultUrlTransform(url);
 }
 
+// Custom references use a pipe between their stable id and display label. In a
+// GFM table that pipe is otherwise treated as another table-cell boundary
+// before the custom reference plugins get a chance to process it.
+function escapeReferenceSeparators(content: string): string {
+  return content.replace(/\[\[([a-z][a-z0-9-]*:[0-9a-f-]+)\\?\|([^\]\r\n]+)\]\]/gi, '[[\$1\\|\$2]]');
+}
+
 function CatalogueReferenceLink({
   children,
   entry,
@@ -217,7 +224,7 @@ function MarkdownRenderer({ content, getId, assets, catalogue, catalogueCategori
         }
       }}
     >
-      {content}
+      {escapeReferenceSeparators(content)}
     </ReactMarkdown>
   );
 }

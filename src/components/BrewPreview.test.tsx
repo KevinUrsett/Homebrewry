@@ -153,6 +153,31 @@ describe('BrewPreview', () => {
     expect(onWorldbuildingOpen).toHaveBeenCalledWith(worldbuildingEntry);
   });
 
+  it('keeps a Worldbuilding reference inside its Markdown table cell', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push({ container, root });
+    const tableBrew = {
+      ...brew,
+      content: `| Date | Traveller | Detail |\n|---|---|---|\n| 19 Unri | [[world:${worldbuildingEntry.id}|Sund]] | Passed north |`
+    };
+
+    await act(async () => {
+      root.render(
+        <BrewPreview
+          brew={tableBrew}
+          onWorldbuildingOpen={vi.fn()}
+          worldbuilding={new Map([[worldbuildingEntry.id, worldbuildingEntry]])}
+        />
+      );
+    });
+
+    const row = container.querySelector('tbody tr');
+    expect(row?.querySelectorAll('td')).toHaveLength(3);
+    expect(row?.querySelector('.worldbuilding-reference-link')?.textContent).toBe('Sund');
+  });
+
   it('keeps a Worldbuilding popover actionable for quick notes and removal', async () => {
     const onAddWorldbuildingNote = vi.fn();
     const onDeleteWorldbuildingReference = vi.fn();

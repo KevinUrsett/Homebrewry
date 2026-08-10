@@ -614,3 +614,30 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .brew-preview { box-shadow: none; break-after: page; min-height: 297mm; padding: 18mm 17mm 18mm; width: 210mm; }
   .brew-preview:last-child { break-after: auto; }
 }
+
+
+.ai-edit-backdrop { align-items: center; background: rgb(28 18 13 / 62%); display: flex; inset: 0; justify-content: center; padding: 18px; position: fixed; z-index: 50; }
+.ai-edit-dialog { background: #fffaf0; border: 2px solid #b99464; border-radius: 10px; box-shadow: 0 18px 54px rgb(25 13 8 / 38%); color: #3d2b22; display: grid; gap: 14px; max-height: min(760px, calc(100dvh - 36px)); max-width: 720px; overflow: auto; padding: 22px; width: min(720px, 100%); }
+.ai-edit-dialog header { align-items: start; border-bottom: 1px solid #d8c9ae; display: flex; justify-content: space-between; padding-bottom: 12px; }
+.ai-edit-dialog h2 { color: #642e25; font-family: "Nodesto Caps Condensed", Georgia, serif; font-size: 2rem; line-height: 1; margin: 2px 0 0; }
+.ai-edit-close { align-items: center; background: transparent; border: 1px solid #b99464; border-radius: 50%; color: #5d2f26; display: flex; font-size: 1.65rem; height: 34px; justify-content: center; line-height: 1; padding: 0 0 3px; width: 34px; }
+.ai-edit-help { color: #705947; margin: -4px 0 0; }
+.ai-edit-dialog label { color: #71553e; display: grid; font-size: .76rem; font-weight: 800; gap: 6px; letter-spacing: .05em; text-transform: uppercase; }
+.ai-edit-dialog textarea { background: #fffdf7; border: 1px solid #cbb99d; border-radius: 6px; color: #39291f; font: 400 .95rem/1.5 "Scaly Sans", Inter, sans-serif; min-height: 96px; padding: 10px; resize: vertical; text-transform: none; }
+.ai-edit-dialog .ai-edit-suggestion { min-height: 180px; }
+.ai-edit-dialog details { background: #f5ecdc; border: 1px solid #d8c9ae; border-radius: 6px; color: #604a39; font-size: .82rem; }
+.ai-edit-dialog summary { cursor: pointer; font-weight: 800; padding: 9px 10px; }
+.ai-edit-dialog pre { border-top: 1px solid #d8c9ae; font: 400 .8rem/1.45 "Scaly Sans", Inter, sans-serif; margin: 0; max-height: 160px; overflow: auto; padding: 10px; white-space: pre-wrap; }
+.ai-edit-generate, .ai-edit-apply { background: #692f26; border: 1px solid #692f26; border-radius: 6px; color: #fffaf0; font-weight: 800; min-height: 42px; padding: 9px 14px; }
+.ai-edit-dialog footer { display: flex; gap: 9px; justify-content: flex-end; }
+.ai-edit-dialog footer button:first-child { background: #f5ecdc; border: 1px solid #cbb99d; border-radius: 6px; color: #4a3328; padding: 9px 14px; }
+.ai-edit-dialog button:disabled { cursor: not-allowed; opacity: .58; }
+.ai-edit-error { background: #f9e2dc; border-left: 4px solid #9d3b2c; color: #7b2b22; margin: 0; padding: 9px 10px; }
+
+@media (max-width: 820px) {
+  .ai-edit-backdrop { align-items: stretch; padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)); }
+  .ai-edit-dialog { border-radius: 9px; gap: 12px; max-height: 100%; padding: 16px; }
+  .ai-edit-dialog h2 { font-size: 1.7rem; }
+  .ai-edit-dialog footer { flex-direction: column-reverse; }
+  .ai-edit-dialog footer button { min-height: 42px; }
+}

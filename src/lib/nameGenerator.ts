@@ -139,9 +139,12 @@ function personName(options: NameGeneratorOptions): GeneratedName {
     const surname = uniqueSurname(() => pick(doulmianFamilies));
     return { name: `${title}${givenName} ${surname}`, category: options.category, kind: 'character', style: 'constructed', givenName, surname };
   }
-  const compoundSurname = options.allowCompounds && Math.random() < 0.15;
   const professionChance = options.culture === 'northern-guild' ? 0.84 : 0.62;
-  const surname = uniqueSurname(() => Math.random() < professionChance
+  // With descriptive compounds enabled, surnames deliberately split between
+  // trades and compounds instead of allowing trades to dominate the list.
+  const occupationSurname = options.allowCompounds ? Math.random() < 0.5 : Math.random() < professionChance;
+  const compoundSurname = options.allowCompounds && !occupationSurname;
+  const surname = uniqueSurname(() => occupationSurname
     ? pick(professions)
     : compoundSurname
       ? compound(options)

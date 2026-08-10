@@ -12,6 +12,7 @@ import { MobileOutlineScrubber } from './components/MobileOutlineScrubber';
 import { MobileRevisionHistory } from './components/MobileRevisionHistory';
 import { MobileVisualViewportInset } from './components/MobileVisualViewportInset';
 import { PreviewPositionSync } from './components/PreviewPositionSync';
+import { PwaUpdateNotice } from './components/PwaUpdateNotice';
 import PreviewRootApp from './PreviewRootApp';
 import RootApp from './RootApp';
 import { isLocalPreviewMode } from './lib/runtimeMode';
@@ -40,6 +41,7 @@ createRoot(document.getElementById('root')!).render(
     <MobileRevisionHistory />
     <MobileVisualViewportInset />
     <PreviewPositionSync />
+    <PwaUpdateNotice />
     {!previewMode && <DriveLoginControl />}
   </StrictMode>
 );

@@ -505,6 +505,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .worldbuilding-context-menu button { background: transparent; border: 0; border-radius: 4px; color: #493329; font-size: .78rem; padding: 7px; text-align: left; }
 .worldbuilding-context-menu button:hover, .worldbuilding-context-menu button:focus-visible { background: #ead1a3; }
 
+.pwa-update-notice { align-items: center; background: #3a2b22; border: 1px solid #d0ad70; border-radius: 8px; bottom: max(16px, env(safe-area-inset-bottom)); box-shadow: 0 8px 24px rgb(35 21 12 / 30%); color: #fff8e9; display: flex; font-size: .82rem; gap: 10px; left: 50%; max-width: calc(100vw - 28px); padding: 9px 10px 9px 13px; position: fixed; transform: translateX(-50%); width: max-content; z-index: 70; }
+.pwa-update-notice button { background: #e0b55f; border: 1px solid #f0d28d; border-radius: 5px; color: #3a2b22; font: 800 .73rem "Scaly Sans", Inter, sans-serif; padding: 7px 9px; white-space: nowrap; }
+.pwa-update-notice .pwa-update-dismiss { background: transparent; border-color: transparent; color: #fff8e9; font: 400 1.35rem/1 Georgia, serif; padding: 0 2px 2px; }
+
 .workspace.view-editor .main-panes, .workspace.view-preview .main-panes { grid-template-columns: minmax(0, 1fr); }
 .workspace.view-editor .preview-pane, .workspace.view-preview .editor-pane { display: none; }
 

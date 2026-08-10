@@ -28,6 +28,18 @@ export function NameGeneratorDialog({ actionLabel, onClose, onUse, onUseAll }: N
     setResults(generateNames(options, count));
   };
 
+  const updateCategory = (category: NameCategory) => {
+    const nextOptions = { ...options, category };
+    setOptions(nextOptions);
+    setResults(generateNames(nextOptions, count));
+  };
+
+  const updateCulture = (culture: NameCulture) => {
+    const nextOptions = { ...options, culture };
+    setOptions(nextOptions);
+    setResults(generateNames(nextOptions, count));
+  };
+
   return (
     <div className="name-generator-backdrop" role="presentation">
       <section aria-labelledby="name-generator-title" aria-modal="true" className="name-generator-dialog" role="dialog">
@@ -40,12 +52,12 @@ export function NameGeneratorDialog({ actionLabel, onClose, onUse, onUseAll }: N
         </header>
         <form onSubmit={regenerate}>
           <label>Category
-            <select onChange={(event) => setOptions((current) => ({ ...current, category: event.target.value as NameCategory }))} value={options.category}>
+            <select onChange={(event) => updateCategory(event.target.value as NameCategory)} value={options.category}>
               {Object.entries(nameCategoryLabels).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
             </select>
           </label>
           <label>Cultural sound / custom
-            <select onChange={(event) => setOptions((current) => ({ ...current, culture: event.target.value as NameCulture }))} value={options.culture}>
+            <select onChange={(event) => updateCulture(event.target.value as NameCulture)} value={options.culture}>
               {Object.entries(nameCultureLabels).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
             </select>
           </label>

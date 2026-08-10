@@ -11,6 +11,7 @@ export type NameGeneratorOptions = {
   allowDirections: boolean;
   allowCompounds: boolean;
   includeTitles: boolean;
+  preferAlliteration: boolean;
 };
 
 export type GeneratedName = {
@@ -132,14 +133,21 @@ function personName(options: NameGeneratorOptions): GeneratedName {
   if (!hasSurname) {
     return { name: `${title}${constructedName(options.culture)}`, category: options.category, kind: 'character', style: title ? 'formal' : 'constructed' };
   }
+  const givenName = constructedName(options.culture);
   const compoundSurname = options.allowCompounds && Math.random() < 0.15;
   const professionChance = options.culture === 'northern-guild' ? 0.84 : 0.62;
-  const surname = uniqueSurname(() => Math.random() < professionChance
+  const makeSurname = () => Math.random() < professionChance
     ? pick(professions)
     : compoundSurname
       ? compound(options)
-      : `${pick(secondaryStarts)}${pick(['wood', 'leeves', 'del', 'ward', 'mere', 'rock', 'vale', 'croft'])}`);
-  return { name: `${title}${constructedName(options.culture)} ${surname}`, category: options.category, kind: 'character', style: compoundSurname ? 'compound' : title ? 'formal' : 'constructed' };
+      : `${pick(secondaryStarts)}${pick(['wood', 'leeves', 'del', 'ward', 'mere', 'rock', 'vale', 'croft'])}`;
+  const surname = uniqueSurname(() => {
+    if (!options.preferAlliteration) return makeSurname();
+    let candidate = makeSurname();
+    for (let attempt = 0; attempt < 40 && candidate[0]?.toLocaleLowerCase() !== givenName[0]?.toLocaleLowerCase(); attempt += 1) candidate = makeSurname();
+    return candidate;
+  });
+  return { name: `${title}${givenName} ${surname}`, category: options.category, kind: 'character', style: compoundSurname ? 'compound' : title ? 'formal' : 'constructed' };
 }
 
 function settlementName(options: NameGeneratorOptions): GeneratedName {

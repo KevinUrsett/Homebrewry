@@ -19,6 +19,9 @@ export type GeneratedName = {
   category: NameCategory;
   kind: WorldbuildingKind;
   style: 'constructed' | 'compound' | 'formal';
+  /** Present for people so a generated batch can keep both name parts unique. */
+  givenName?: string;
+  surname?: string;
 };
 
 export const nameCultureLabels: Record<NameCulture, string> = {
@@ -121,14 +124,20 @@ function compound(options: NameGeneratorOptions): string {
 function personName(options: NameGeneratorOptions): GeneratedName {
   const title = options.includeTitles && Math.random() < 0.45 ? `${pick(personTitles)} ` : '';
   if (options.culture === 'eastern-court') {
-    return { name: `${title}${uniqueSurname(() => pick(easternFamilies))} ${pick(easternGiven)}`, category: options.category, kind: 'character', style: 'constructed' };
+    const surname = uniqueSurname(() => pick(easternFamilies));
+    const givenName = pick(easternGiven);
+    return { name: `${title}${surname} ${givenName}`, category: options.category, kind: 'character', style: 'constructed', givenName, surname };
   }
   if (options.culture === 'desert-court') {
+    const givenName = pick(desertGiven);
+    const surname = uniqueSurname(() => pick(desertFamilies));
     const lineage = Math.random() < 0.35 ? ` ibn ${pick(desertGiven)}` : '';
-    return { name: `${title}${pick(desertGiven)} ${uniqueSurname(() => pick(desertFamilies))}${lineage}`, category: options.category, kind: 'character', style: 'formal' };
+    return { name: `${title}${givenName} ${surname}${lineage}`, category: options.category, kind: 'character', style: 'formal', givenName, surname };
   }
   if (options.culture === 'doulmian') {
-    return { name: `${title}${pick(doulmianGiven)} ${uniqueSurname(() => pick(doulmianFamilies))}`, category: options.category, kind: 'character', style: 'constructed' };
+    const givenName = pick(doulmianGiven);
+    const surname = uniqueSurname(() => pick(doulmianFamilies));
+    return { name: `${title}${givenName} ${surname}`, category: options.category, kind: 'character', style: 'constructed', givenName, surname };
   }
   const compoundSurname = options.allowCompounds && Math.random() < 0.15;
   const professionChance = options.culture === 'northern-guild' ? 0.84 : 0.62;
@@ -138,7 +147,7 @@ function personName(options: NameGeneratorOptions): GeneratedName {
       ? compound(options)
       : `${pick(secondaryStarts)}${pick(['wood', 'leeves', 'del', 'ward', 'mere', 'rock', 'vale', 'croft'])}`);
   const givenName = constructedName(options.culture, options.preferAlliteration ? surname[0] : undefined);
-  return { name: `${title}${givenName} ${surname}`, category: options.category, kind: 'character', style: compoundSurname ? 'compound' : title ? 'formal' : 'constructed' };
+  return { name: `${title}${givenName} ${surname}`, category: options.category, kind: 'character', style: compoundSurname ? 'compound' : title ? 'formal' : 'constructed', givenName, surname };
 }
 
 function settlementName(options: NameGeneratorOptions): GeneratedName {
@@ -210,10 +219,26 @@ export function generateName(options: NameGeneratorOptions): GeneratedName {
 export function generateNames(options: NameGeneratorOptions, count = 6): GeneratedName[] {
   const results: GeneratedName[] = [];
   const names = new Set<string>();
-  for (let attempts = 0; results.length < count && attempts < count * 12; attempts += 1) {
+  const givenNames = new Set<string>();
+  const surnames = new Set<string>();
+  const normalisePart = (value: string) => value.trim().toLocaleLowerCase();
+
+  for (let attempts = 0; results.length < count && attempts < count * 50; attempts += 1) {
     const result = generateName(options);
-    if (names.has(result.name)) continue;
+    const givenName = result.givenName && normalisePart(result.givenName);
+    const surname = result.surname && normalisePart(result.surname);
+
+    // Each click creates a new generation. A person's given name and surname
+    // may each appear only once in that generation.
+    if (
+      names.has(result.name)
+      || (givenName !== undefined && givenNames.has(givenName))
+      || (surname !== undefined && surnames.has(surname))
+    ) continue;
+
     names.add(result.name);
+    if (givenName !== undefined) givenNames.add(givenName);
+    if (surname !== undefined) surnames.add(surname);
     results.push(result);
   }
   return results;

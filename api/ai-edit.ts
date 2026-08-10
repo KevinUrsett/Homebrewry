@@ -35,7 +35,7 @@ export default async function handler(req: RequestLike, res: ResponseLike) {
     return;
   }
 
-  const apiKey = process.env.AI_GATEWAY_API_KEY;
+  const apiKey = process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN;
   if (!apiKey) {
     res.status(503).json({ error: 'AI editing has not been configured for this deployment.' });
     return;

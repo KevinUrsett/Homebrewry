@@ -2,6 +2,7 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { CataloguePanel } from './components/CataloguePanel';
 import { CampaignPanel, type PlotBeatDraftSeed } from './components/CampaignPanel';
 import { BrewPreview } from './components/BrewPreview';
+import { AiEditDialog } from './components/AiEditDialog';
 import { EncounterPanel } from './components/EncounterPanel';
 import { EditorPane } from './components/EditorPane';
 import { ImportDialog } from './components/ImportDialog';
@@ -129,6 +130,7 @@ export default function App() {
   const [ideasOpen, setIdeasOpen] = useState(false);
   const [captureMenuOpen, setCaptureMenuOpen] = useState(false);
   const [nameGeneratorTarget, setNameGeneratorTarget] = useState<'editor' | 'worldbuilding' | null>(null);
+  const [aiEditSelection, setAiEditSelection] = useState<{ start: number; end: number; text: string } | null>(null);
   const [worldbuildingSelectedId, setWorldbuildingSelectedId] = useState<string | null>(null);
   const [campaignDataSync, setCampaignDataSync] = useState<CampaignDataSyncMetadata | null>(null);
   const [livingWorld, setLivingWorld] = useState<LivingWorldData>(() => ({
@@ -399,6 +401,29 @@ export default function App() {
       redoRef.current = [];
     }
     updateActiveBrew((brew) => ({ ...brew, content }));
+  };
+
+  const openAiEdit = () => {
+    if (!activeBrew) return;
+    const selection = editorRef.current?.getSelection() ?? selectionRef.current;
+    const text = activeBrew.content.slice(selection.start, selection.end);
+    if (!text.trim()) {
+      setSaveState('Select a passage before using AI edit');
+      return;
+    }
+    selectionRef.current = selection;
+    setAiEditSelection({ ...selection, text });
+  };
+
+  const applyAiEdit = (replacement: string) => {
+    if (!activeBrew || !aiEditSelection) return;
+    const { start, end } = aiEditSelection;
+    const content = `${activeBrew.content.slice(0, start)}${replacement}${activeBrew.content.slice(end)}`;
+    updateContent(content);
+    const cursor = start + replacement.length;
+    selectionRef.current = { start: cursor, end: cursor };
+    setAiEditSelection(null);
+    window.requestAnimationFrame(() => editorRef.current?.focus(cursor));
   };
 
   const insertText = (before: string, after = '') => {
@@ -1769,6 +1794,7 @@ export default function App() {
               }}
               onOpenCatalogue={openCatalogue}
               onOpenEncounters={openEncounters}
+              onOpenAiEdit={openAiEdit}
               onSave={() => { void saveActiveBrewNow(); }}
               onCreateCatalogueReference={createCatalogueReference}
               onCreateWorldbuildingReference={createWorldbuildingReference}
@@ -1849,6 +1875,7 @@ export default function App() {
                 <button onClick={() => { setCaptureMenuOpen(false); openCatalogue(); }} type="button">Reference</button>
                 <button onClick={() => { setCaptureMenuOpen(false); openEncounters(); }} type="button">Encounter</button>
                 <button onClick={() => { setCaptureMenuOpen(false); setNameGeneratorTarget('editor'); }} type="button">Name</button>
+                <button onClick={() => { setCaptureMenuOpen(false); openAiEdit(); }} type="button">AI edit</button>
               </div>
               <div className="mobile-writing-tool-group mobile-writing-destinations" aria-label="Editor panels">
                 <button onClick={() => { setCaptureMenuOpen(false); setMobileSection('outline'); }} type="button">Outline</button>
@@ -1927,6 +1954,7 @@ export default function App() {
           </section>
         </div>
       )}
+      {aiEditSelection && <AiEditDialog selectedText={aiEditSelection.text} onApply={applyAiEdit} onClose={() => setAiEditSelection(null)} />}
       {nameGeneratorTarget && <NameGeneratorDialog actionLabel={nameGeneratorTarget === 'editor' ? 'Insert into brew' : 'Create Worldbuilding entry'} onClose={() => setNameGeneratorTarget(null)} onUse={useGeneratedName} onUseAll={nameGeneratorTarget === 'editor' ? useGeneratedNames : undefined} />}
       {importOpen && <ImportDialog onClose={() => setImportOpen(false)} onImport={importBrew} />}
       {privateMonsterImportOpen && (

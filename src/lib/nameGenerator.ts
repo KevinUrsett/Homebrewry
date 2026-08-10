@@ -88,11 +88,12 @@ function normaliseTheme(theme: string): string[] {
   return words;
 }
 
-function constructedName(culture: NameCulture = 'belentoran'): string {
+function constructedName(culture: NameCulture = 'belentoran', initial?: string): string {
   if (culture === 'doulmian') return `${pick(doulmianGiven)}${Math.random() < 0.45 ? pick(['a', 'en', 'or', 'i']) : ''}`;
   if (culture === 'eastern-court') return pick(easternGiven);
   if (culture === 'desert-court') return pick(desertGiven);
-  const start = pick(constructedStarts);
+  const matchingStarts = initial ? constructedStarts.filter((start) => start[0]?.toLocaleLowerCase() === initial.toLocaleLowerCase()) : [];
+  const start = matchingStarts.length ? pick(matchingStarts) : pick(constructedStarts);
   const end = pick(constructedEnds);
   return start.endsWith(end[0]!) ? `${start}${end.slice(1)}` : `${start}${end}`;
 }
@@ -129,24 +130,14 @@ function personName(options: NameGeneratorOptions): GeneratedName {
   if (options.culture === 'doulmian') {
     return { name: `${title}${pick(doulmianGiven)} ${uniqueSurname(() => pick(doulmianFamilies))}`, category: options.category, kind: 'character', style: 'constructed' };
   }
-  const hasSurname = Math.random() < 0.99;
-  if (!hasSurname) {
-    return { name: `${title}${constructedName(options.culture)}`, category: options.category, kind: 'character', style: title ? 'formal' : 'constructed' };
-  }
-  const givenName = constructedName(options.culture);
   const compoundSurname = options.allowCompounds && Math.random() < 0.15;
   const professionChance = options.culture === 'northern-guild' ? 0.84 : 0.62;
-  const makeSurname = () => Math.random() < professionChance
+  const surname = uniqueSurname(() => Math.random() < professionChance
     ? pick(professions)
     : compoundSurname
       ? compound(options)
-      : `${pick(secondaryStarts)}${pick(['wood', 'leeves', 'del', 'ward', 'mere', 'rock', 'vale', 'croft'])}`;
-  const surname = uniqueSurname(() => {
-    if (!options.preferAlliteration) return makeSurname();
-    let candidate = makeSurname();
-    for (let attempt = 0; attempt < 40 && candidate[0]?.toLocaleLowerCase() !== givenName[0]?.toLocaleLowerCase(); attempt += 1) candidate = makeSurname();
-    return candidate;
-  });
+      : `${pick(secondaryStarts)}${pick(['wood', 'leeves', 'del', 'ward', 'mere', 'rock', 'vale', 'croft'])}`);
+  const givenName = constructedName(options.culture, options.preferAlliteration ? surname[0] : undefined);
   return { name: `${title}${givenName} ${surname}`, category: options.category, kind: 'character', style: compoundSurname ? 'compound' : title ? 'formal' : 'constructed' };
 }
 

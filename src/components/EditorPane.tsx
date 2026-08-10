@@ -18,6 +18,7 @@ type EditorPaneProps = {
   customCatalogueCategories: readonly CustomCatalogueCategory[];
   onOpenCatalogue: () => void;
   onOpenEncounters: () => void;
+  onOpenAiEdit: () => void;
   onCreatePlotBeat: () => void;
   onSave: () => void;
   onCreateWorldbuildingReference: (name: string, kind: WorldbuildingKind) => Promise<string | null> | string | null;
@@ -51,6 +52,7 @@ export function EditorPane({
   customCatalogueCategories,
   onOpenCatalogue,
   onOpenEncounters,
+  onOpenAiEdit,
   onCreatePlotBeat,
   onSave,
   onCreateWorldbuildingReference,
@@ -88,6 +90,7 @@ export function EditorPane({
         <button onClick={onOpenEncounters} type="button">Encounter</button>
         <button onClick={onCreatePlotBeat} type="button">Plot beat</button>
         <button onClick={onConvertHomebrewery} type="button">Convert HB</button>
+        <button onClick={onOpenAiEdit} type="button">AI edit</button>
         <span className="toolbar-spacer" />
         <button className="editor-save-button" onClick={onSave} type="button">Save</button>
         <button onClick={onUndo} type="button">Undo</button>

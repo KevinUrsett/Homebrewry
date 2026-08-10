@@ -7,7 +7,7 @@ type ScrollerBounds = {
 };
 
 const MOBILE_BREAKPOINT = '(max-width: 820px)';
-const CONTROL_HEIGHT = 48;
+const CONTROL_HEIGHT = 64;
 const EDGE_GAP = 10;
 
 export function MobilePreviewScroller() {

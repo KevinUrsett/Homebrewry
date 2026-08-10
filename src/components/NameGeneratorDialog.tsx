@@ -15,7 +15,8 @@ const defaultOptions: NameGeneratorOptions = {
   affixes: '',
   allowDirections: false,
   allowCompounds: true,
-  includeTitles: false
+  includeTitles: false,
+  preferAlliteration: false
 };
 
 export function NameGeneratorDialog({ actionLabel, onClose, onUse, onUseAll }: NameGeneratorDialogProps) {
@@ -74,6 +75,7 @@ export function NameGeneratorDialog({ actionLabel, onClose, onUse, onUseAll }: N
             <label><input checked={options.allowDirections} onChange={(event) => setOptions((current) => ({ ...current, allowDirections: event.target.checked }))} type="checkbox" /> Use directional names</label>
             <label><input checked={options.allowCompounds} onChange={(event) => setOptions((current) => ({ ...current, allowCompounds: event.target.checked }))} type="checkbox" /> Use descriptive compounds</label>
             <label><input checked={options.includeTitles} onChange={(event) => setOptions((current) => ({ ...current, includeTitles: event.target.checked }))} type="checkbox" /> Include titles / honorifics</label>
+            <label><input checked={options.preferAlliteration} onChange={(event) => setOptions((current) => ({ ...current, preferAlliteration: event.target.checked }))} type="checkbox" /> Prefer alliteration (Marcus Mason)</label>
           </div>
           <button className="primary-button" type="submit">Generate names</button>
         </form>

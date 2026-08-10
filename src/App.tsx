@@ -82,6 +82,11 @@ const mobileLabels: Record<MobileSection, string> = {
   worldbuilding: 'Worldbuilding'
 };
 
+type DriveSaveNotice = {
+  tone: 'saving' | 'success' | 'error';
+  message: string;
+};
+
 export default function App() {
   const [brews, setBrews] = useState<Brew[]>([]);
   const [assets, setAssets] = useState<BrewAsset[]>([]);
@@ -89,10 +94,13 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('split');
   const [mobileSection, setMobileSection] = useState<MobileSection>('editor');
+  const [mobileTopMenuOpen, setMobileTopMenuOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [saveState, setSaveState] = useState('Loading local drafts…');
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [savingToDrive, setSavingToDrive] = useState(false);
+  const [driveSaveNotice, setDriveSaveNotice] = useState<DriveSaveNotice | null>(null);
   const [findVisible, setFindVisible] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [findValue, setFindValue] = useState('');
@@ -289,6 +297,12 @@ export default function App() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!driveSaveNotice || driveSaveNotice.tone === 'saving') return;
+    const timer = window.setTimeout(() => setDriveSaveNotice(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [driveSaveNotice]);
+
   const activeBrew = useMemo(
     () => brews.find((brew) => brew.id === activeId) ?? null,
     [activeId, brews]
@@ -337,13 +351,23 @@ export default function App() {
   }, [activeBrew, loading]);
 
   const saveActiveBrewNow = async () => {
-    if (!activeBrew) return;
+    if (!activeBrew || savingToDrive || syncing) return;
     try {
-      setSaveState('Saving locally…');
+      setSavingToDrive(true);
+      setSaveState('Saving to Google Drive…');
+      setDriveSaveNotice({ tone: 'saving', message: 'Saving to Google Drive…' });
+      const token = accessToken ?? await requestDriveAccess();
+      setAccessToken(token);
       await saveBrew(activeBrew);
-      setSaveState('Saved locally');
-    } catch {
-      setSaveState('Local save failed');
+      setBrews((currentBrews) => currentBrews.map((brew) => brew.id === activeBrew.id ? { ...activeBrew } : brew));
+      setSaveState('Saved to Google Drive');
+      setDriveSaveNotice({ tone: 'success', message: 'Saved to Google Drive' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not save to Google Drive';
+      setSaveState(message);
+      setDriveSaveNotice({ tone: 'error', message });
+    } finally {
+      setSavingToDrive(false);
     }
   };
 
@@ -1467,7 +1491,7 @@ export default function App() {
   const renderedBrew = previewBrew ?? activeBrew;
 
   return (
-    <div className={`app-shell mobile-${mobileSection}`}>
+    <div className={`app-shell mobile-${mobileSection}${mobileTopMenuOpen ? ' mobile-top-menu-open' : ''}`}>
       <header className="app-header">
         <div className="brand-lockup">
           <span className="brand-mark" aria-hidden>✦</span>
@@ -1520,6 +1544,7 @@ export default function App() {
             className={mobileSection === section ? 'is-selected' : ''}
             key={section}
             onClick={() => {
+              setMobileTopMenuOpen(false);
               if (section === 'catalogue') {
                 openCatalogue();
                 return;
@@ -1800,9 +1825,29 @@ export default function App() {
                 <button onClick={() => { setCaptureMenuOpen(false); setMobileSection('outline'); }} type="button">Outline</button>
                 <button onClick={openIdeas} type="button">My ideas</button>
               </div>
+              <div className="mobile-writing-tool-group mobile-writing-save" aria-label="Drive save">
+                <button disabled={savingToDrive || syncing} onClick={() => { void saveActiveBrewNow(); setCaptureMenuOpen(false); }} type="button">
+                  {savingToDrive ? 'Saving…' : 'Save to Drive'}
+                </button>
+              </div>
             </div>
           </>}
+          <button
+            aria-expanded={mobileTopMenuOpen}
+            aria-label={mobileTopMenuOpen ? 'Hide top menu' : 'Show top menu'}
+            className="mobile-top-menu-button"
+            onClick={() => setMobileTopMenuOpen((open) => !open)}
+            title={mobileTopMenuOpen ? 'Hide menu' : 'Show menu'}
+            type="button"
+          >
+            ☰
+          </button>
           <button aria-expanded={captureMenuOpen} aria-label="Open writing tools" className="mobile-outline-fab" onClick={() => setCaptureMenuOpen((open) => !open)} type="button">+</button>
+        </div>
+      )}
+      {driveSaveNotice && (
+        <div className={`drive-save-notice is-${driveSaveNotice.tone}`} role="status">
+          {driveSaveNotice.message}
         </div>
       )}
       {activeBrew.syncState === 'conflict' && activeBrew.conflict && (

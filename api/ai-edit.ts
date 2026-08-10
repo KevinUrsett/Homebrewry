@@ -1,3 +1,5 @@
+import { getVercelOidcToken } from '@vercel/oidc';
+
 type RequestLike = {
   body?: unknown;
   method?: string;
@@ -35,14 +37,8 @@ export default async function handler(req: RequestLike, res: ResponseLike) {
     return;
   }
 
-  // Vercel supplies VERCEL_OIDC_TOKEN when Secure Backend Access is enabled.
-  const apiKey = process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN;
-  if (!apiKey) {
-    res.status(503).json({ error: 'AI editing has not been configured for this deployment.' });
-    return;
-  }
-
   try {
+    const apiKey = process.env.AI_GATEWAY_API_KEY || await getVercelOidcToken();
     const upstream = await fetch('https://ai-gateway.vercel.sh/v1/chat/completions', {
       body: JSON.stringify({
         messages: [

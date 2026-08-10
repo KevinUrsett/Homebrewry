@@ -19,6 +19,9 @@ export type GeneratedName = {
   category: NameCategory;
   kind: WorldbuildingKind;
   style: 'constructed' | 'compound' | 'formal';
+  /** Present for people so a generated batch can keep both name parts unique. */
+  givenName?: string;
+  surname?: string;
 };
 
 export const nameCultureLabels: Record<NameCulture, string> = {
@@ -42,24 +45,25 @@ export const nameCategoryLabels: Record<NameCategory, string> = {
 
 const defaultSuffixes = ['hold', 'keep', 'hall', 'town', 'port', 'quay', 'lund', 'wall', 'guard', 'link', 'mere', 'ford', 'wick', 'stead', 'mark', 'watch', 'croft', 'haven'];
 const directions = ['North', 'South', 'East', 'West'];
-const structures = ['Gate', 'Hall', 'Keep', 'Bridge', 'Crown', 'Archive', 'Watch', 'Market', 'Spire', 'Mill', 'Crossing', 'Vault', 'Court', 'Beacon', 'Step'];
-const geography = ['River', 'Hill', 'Shore', 'Wood', 'Lake', 'Marsh', 'Vale', 'Reach', 'Fen', 'Down', 'Moor', 'Dell', 'Bay', 'Cape', 'Field', 'Cleft', 'Ridge'];
-const materials = ['Iron', 'Glass', 'Stone', 'Grain', 'Ivory', 'Copper', 'Clay', 'Amber', 'Ash', 'Flint', 'Pearl', 'Bronze', 'Salt', 'Slate'];
-const qualities = ['Black', 'White', 'Deep', 'High', 'Pale', 'Old', 'Far', 'Low', 'Red', 'Grey', 'Still', 'Hollow', 'Wide', 'Last', 'Golden'];
-const imagery = ['Boar', 'Skull', 'Wing', 'Tooth', 'Bloom', 'Sail', 'Step', 'Hare', 'Horn', 'Lantern', 'Root', 'Cairn', 'Bell', 'Crest', 'Hammer'];
+const structures = ['Gate', 'Hall', 'Keep', 'Bridge', 'Crown', 'Archive', 'Watch', 'Market', 'Spire', 'Mill', 'Crossing', 'Vault', 'Court', 'Beacon', 'Step', 'Tower', 'Quarry', 'Crane', 'Foundry', 'Lock', 'Furnace', 'Chapel', 'Signal', 'Toll', 'Causeway'];
+const geography = ['River', 'Hill', 'Shore', 'Wood', 'Lake', 'Marsh', 'Vale', 'Reach', 'Fen', 'Down', 'Moor', 'Dell', 'Bay', 'Cape', 'Field', 'Cleft', 'Ridge', 'Gully', 'Heath', 'Hollow', 'Ford', 'Weald', 'Brink', 'Cairn', 'Reef', 'Mire', 'Crag'];
+const materials = ['Iron', 'Glass', 'Stone', 'Grain', 'Ivory', 'Copper', 'Clay', 'Amber', 'Ash', 'Flint', 'Pearl', 'Bronze', 'Salt', 'Slate', 'Brass', 'Soot', 'Coal', 'Tin', 'Lead', 'Silk', 'Tallow', 'Cinder', 'Bone', 'Velvet', 'Moss'];
+const qualities = ['Black', 'White', 'Deep', 'High', 'Pale', 'Old', 'Far', 'Low', 'Red', 'Grey', 'Still', 'Hollow', 'Wide', 'Last', 'Golden', 'Crooked', 'Quiet', 'Blind', 'Laughing', 'Sour', 'Brisk', 'Mournful', 'Half', 'Blue', 'Burnt', 'Ragged'];
+const imagery = ['Boar', 'Skull', 'Wing', 'Tooth', 'Bloom', 'Sail', 'Step', 'Hare', 'Horn', 'Lantern', 'Root', 'Cairn', 'Bell', 'Crest', 'Hammer', 'Moth', 'Rook', 'Eel', 'Adder', 'Crow', 'Fox', 'Mule', 'Thistle', 'Kettle', 'Needle', 'Whistle', 'Chain'];
 const collective = ['Syndicate', 'Company', 'Accord', 'Circle', 'League', 'Guard', 'Assembly', 'Consortium', 'Brotherhood', 'Covenant', 'Wardens', 'House', 'Fellowship'];
 const personTitles = ['Captain', 'Father', 'Lady', 'Lord', 'Marshal', 'Archivist', 'Archmage', 'Steward', 'Provost', 'Warden', 'Master of Keys'];
 const constructedStarts = ['Tev', 'Viel', 'Quin', 'Fer', 'Tsu', 'Saph', 'Eld', 'Val', 'Bel', 'Ilo', 'Mar', 'Doul', 'Caen', 'Huj', 'Juun', 'Or', 'Kyr', 'Ner', 'Aven', 'Brin', 'Cori', 'Drel', 'Esm', 'Fara', 'Galen', 'Hav', 'Iri', 'Jor', 'Kela', 'Lume', 'Mera', 'Navi', 'Oren', 'Pella', 'Ruva', 'Seli', 'Toren', 'Ulan', 'Vera', 'Ysen', 'Zara', 'Ald', 'Beor', 'Catr', 'Dagn', 'Edr', 'Fjol', 'Gunn', 'Hald', 'Ivar', 'Jarek', 'Kost', 'Leof', 'Marek', 'Nikol', 'Oskar', 'Radom', 'Sven', 'Tomas', 'Ulrik', 'Vesna', 'Wulfr', 'Yar', 'Zden'];
 const professions = ['Aetherwright', 'Artificer', 'Boilermaker', 'Bridgewright', 'Cartwright', 'Chandler', 'Clockmaker', 'Coilkeeper', 'Copperwright', 'Dredger', 'Foundryman', 'Gearwright', 'Glassblower', 'Gravemason', 'Lamplighter', 'Lampwright', 'Lensmaker', 'Locksmith', 'Mason', 'Navigator', 'Rigger', 'Runesmith', 'Scribe', 'Signalman', 'Surveyor', 'Tanner', 'Tinkerer', 'Valvekeeper', 'Wardengraver', 'Weaver'];
-const easternFamilies = ['Arai', 'Bao', 'Chen', 'Cho', 'Han', 'Ishida', 'Kwon', 'Lin', 'Mori', 'Ngai', 'Ren', 'Sato', 'Shen', 'Tao', 'Yun'];
-const easternGiven = ['Aiko', 'Daichi', 'Hana', 'Jin', 'Kei', 'Mei', 'Nari', 'Riku', 'Sora', 'Yuna', 'Aya', 'Hiro', 'Jun', 'Min', 'Rin', 'Tae'];
-const desertGiven = ['Amin', 'Dariya', 'Farid', 'Jamal', 'Nadira', 'Qasim', 'Rami', 'Sahra', 'Tariq', 'Zahra', 'Ayla', 'Bashir', 'Hadi', 'Laleh', 'Mahir', 'Samira'];
-const desertFamilies = ['al-Basir', 'al-Karim', 'al-Mazin', 'al-Nur', 'al-Rashid', 'al-Sahir', 'al-Veyr', 'al-Zahir', 'al-Hamid', 'al-Miraj', 'al-Qadir', 'al-Safin'];
-const doulmianGiven = ['Ackhun', 'Anahiri', 'Dunai', 'Elogtro', 'Inhio', 'Nivi', 'Shien', 'Vajun', 'Aresh', 'Hirin', 'Kavun', 'Oshai'];
-const doulmianFamilies = ['Aner', 'Besh', 'DunDun', 'Halor', 'Keth', 'Naram', 'Othin', 'Varai', 'Daro', 'Kiveth', 'Uru', 'Vesh'];
+const easternFamilies = ['Arai', 'Bao', 'Chen', 'Cho', 'Han', 'Ishida', 'Kwon', 'Lin', 'Mori', 'Ngai', 'Ren', 'Sato', 'Shen', 'Tao', 'Yun', 'Aoki', 'Asano', 'Endo', 'Fujii', 'Hasegawa', 'Inoue', 'Kato', 'Kobayashi', 'Maeda', 'Nakamura', 'Nakano', 'Oda', 'Okada', 'Sakamoto', 'Suzuki', 'Takahashi', 'Tanaka', 'Ueda', 'Watanabe', 'Yamamoto', 'Zhang', 'Li', 'Park', 'Seo', 'Wu', 'Xie', 'Yamada', 'Jeong', 'Kang', 'Qiao'];
+const easternGiven = ['Aiko', 'Daichi', 'Hana', 'Jin', 'Kei', 'Mei', 'Nari', 'Riku', 'Sora', 'Yuna', 'Aya', 'Hiro', 'Jun', 'Min', 'Rin', 'Tae', 'Aki', 'Akira', 'Chiyo', 'Emi', 'Fumiko', 'Haru', 'Haruki', 'Haruto', 'Kaito', 'Kaori', 'Kenji', 'Kiyomi', 'Kota', 'Makoto', 'Miki', 'Naoko', 'Rei', 'Sachiko', 'Shiori', 'Takumi', 'Tomo', 'Yori', 'Yuki', 'Kazu', 'Masato', 'Nozomi', 'Seiji', 'Toshi', 'Yui'];
+const desertGiven = ['Amin', 'Dariya', 'Farid', 'Jamal', 'Nadira', 'Qasim', 'Rami', 'Sahra', 'Tariq', 'Zahra', 'Ayla', 'Bashir', 'Hadi', 'Laleh', 'Mahir', 'Samira', 'Adil', 'Amina', 'Aziz', 'Basma', 'Dawud', 'Fariha', 'Ilyas', 'Jasmin', 'Karim', 'Layla', 'Mina', 'Nabil', 'Noura', 'Omar', 'Rashid', 'Salma', 'Sami', 'Sana', 'Tala', 'Yasir', 'Zain', 'Zara', 'Adeel', 'Husam', 'Imaan', 'Khalid', 'Maryam', 'Naseem', 'Safiya'];
+const desertFamilies = ['al-Basir', 'al-Karim', 'al-Mazin', 'al-Nur', 'al-Rashid', 'al-Sahir', 'al-Veyr', 'al-Zahir', 'al-Hamid', 'al-Miraj', 'al-Qadir', 'al-Safin', 'al-Amin', 'al-Barq', 'al-Dar', 'al-Faris', 'al-Hakim', 'al-Jabir', 'al-Khazin', 'al-Latif', 'al-Mansur', 'al-Najjar', 'al-Qamar', 'al-Rafi', 'al-Sabbah', 'al-Tahir', 'al-Wahid', 'al-Yasir', 'al-Zayt', 'ibn Kharif', 'ibn Sabil', 'Bint Wadi', 'Dar Shamal', 'Darqesh', 'Hazar', 'Khalan', 'Maref', 'Nashir', 'Qadri', 'Sahim', 'Tazir', 'Vahram', 'Zafran', 'Zaydan', 'Zuhair'];
+const doulmianGiven = ['Ackhun', 'Anahiri', 'Dunai', 'Elogtro', 'Inhio', 'Nivi', 'Shien', 'Vajun', 'Aresh', 'Hirin', 'Kavun', 'Oshai', 'Beluun', 'Corae', 'Dervin', 'Eshara', 'Falan', 'Ghorin', 'Hivara', 'Ishen', 'Juvak', 'Kelei', 'Lunash', 'Mavun', 'Nireth', 'Orakai', 'Peshin', 'Qavira', 'Ruhen', 'Savax', 'Tirun', 'Uvela', 'Varosh', 'Weshin', 'Xarai', 'Yevan', 'Zurei', 'Avarin', 'Beshai', 'Cevun', 'Doshira', 'Evrin', 'Fushai', 'Gavan', 'Horeth'];
+const doulmianFamilies = ['Aner', 'Besh', 'DunDun', 'Halor', 'Keth', 'Naram', 'Othin', 'Varai', 'Daro', 'Kiveth', 'Uru', 'Vesh', 'Avari', 'Belor', 'Cesh', 'Dunvar', 'Eshar', 'Farin', 'Gaveth', 'Horan', 'Iver', 'Jash', 'Kavor', 'Leth', 'Moran', 'Nesh', 'Orin', 'Pavar', 'Qesh', 'Ravin', 'Sethar', 'Tovin', 'Uvar', 'Valesh', 'Weth', 'Xorin', 'Yavar', 'Zeth', 'Anuvar', 'Beshar', 'Cavor', 'Darev', 'Eshun', 'Favar', 'Gorun'];
 
 const constructedEnds = ['ca', 'le', 'del', 'enk', 'rei', 'rin', 'or', 'en', 'ai', 'eth', 'ar', 'at', 'un', 'is', 'a', 'el', 'in', 'os', 'et', 'um', 'ia', 'on', 'ra', 'mir', 'islav', 'ena', 'ora', 'borg', 'frid', 'mund', 'ric', 'stan', 'vlad'];
-const secondaryStarts = ['Black', 'Green', 'River', 'White', 'Grain', 'Iron', 'Cword', 'Gold', 'Bright', 'Sable', 'Moss', 'Copper', 'Flint', 'Pale', 'Hearth', 'Marsh', 'Candle', 'Bell', 'Hollow', 'Ridge', 'Tide', 'Briar'];
+const secondaryStarts = ['Black', 'Green', 'River', 'White', 'Grain', 'Iron', 'Cword', 'Gold', 'Bright', 'Sable', 'Moss', 'Copper', 'Flint', 'Pale', 'Hearth', 'Marsh', 'Candle', 'Bell', 'Hollow', 'Ridge', 'Tide', 'Briar', 'Hail', 'Low', 'Stone', 'Whit', 'Gal', 'Drift', 'Flock', 'Fair', 'Blood', 'Red', 'Quill', 'Ink', 'Soot', 'Brass', 'Cinder', 'Moth', 'Rook', 'Adder', 'Tallow', 'Thistle', 'Kettle', 'Crab', 'Rattle', 'Hush', 'Pike', 'Crow', 'Sour', 'Mire'];
+const surnameEnds = ['wood', 'leeves', 'del', 'ward', 'mere', 'rock', 'vale', 'croft', 'break', 'heel', 'helm', 'lock', 'bale', 'filer', 'tree', 'wing', 'wick', 'hand', 'well', 'veil', 'thrasher', 'hollow', 'thorn', 'step', 'binder', 'hook', 'brand', 'knell', 'gallows', 'cap', 'graft', 'song', 'shank', 'muzzle', 'lash', 'mender', 'shutter', 'reed', 'grin', 'spoke'];
 
 const recentSurnames: string[] = [];
 
@@ -121,24 +125,33 @@ function compound(options: NameGeneratorOptions): string {
 function personName(options: NameGeneratorOptions): GeneratedName {
   const title = options.includeTitles && Math.random() < 0.45 ? `${pick(personTitles)} ` : '';
   if (options.culture === 'eastern-court') {
-    return { name: `${title}${uniqueSurname(() => pick(easternFamilies))} ${pick(easternGiven)}`, category: options.category, kind: 'character', style: 'constructed' };
+    const surname = uniqueSurname(() => pick(easternFamilies));
+    const givenName = pick(easternGiven);
+    return { name: `${title}${surname} ${givenName}`, category: options.category, kind: 'character', style: 'constructed', givenName, surname };
   }
   if (options.culture === 'desert-court') {
+    const givenName = pick(desertGiven);
+    const surname = uniqueSurname(() => pick(desertFamilies));
     const lineage = Math.random() < 0.35 ? ` ibn ${pick(desertGiven)}` : '';
-    return { name: `${title}${pick(desertGiven)} ${uniqueSurname(() => pick(desertFamilies))}${lineage}`, category: options.category, kind: 'character', style: 'formal' };
+    return { name: `${title}${givenName} ${surname}${lineage}`, category: options.category, kind: 'character', style: 'formal', givenName, surname };
   }
   if (options.culture === 'doulmian') {
-    return { name: `${title}${pick(doulmianGiven)} ${uniqueSurname(() => pick(doulmianFamilies))}`, category: options.category, kind: 'character', style: 'constructed' };
+    const givenName = pick(doulmianGiven);
+    const surname = uniqueSurname(() => pick(doulmianFamilies));
+    return { name: `${title}${givenName} ${surname}`, category: options.category, kind: 'character', style: 'constructed', givenName, surname };
   }
-  const compoundSurname = options.allowCompounds && Math.random() < 0.15;
   const professionChance = options.culture === 'northern-guild' ? 0.84 : 0.62;
-  const surname = uniqueSurname(() => Math.random() < professionChance
+  // With descriptive compounds enabled, surnames deliberately split between
+  // trades and compounds instead of allowing trades to dominate the list.
+  const occupationSurname = options.allowCompounds ? Math.random() < 0.5 : Math.random() < professionChance;
+  const compoundSurname = options.allowCompounds && !occupationSurname;
+  const surname = uniqueSurname(() => occupationSurname
     ? pick(professions)
     : compoundSurname
       ? compound(options)
-      : `${pick(secondaryStarts)}${pick(['wood', 'leeves', 'del', 'ward', 'mere', 'rock', 'vale', 'croft'])}`);
+      : `${pick(secondaryStarts)}${pick(surnameEnds)}`);
   const givenName = constructedName(options.culture, options.preferAlliteration ? surname[0] : undefined);
-  return { name: `${title}${givenName} ${surname}`, category: options.category, kind: 'character', style: compoundSurname ? 'compound' : title ? 'formal' : 'constructed' };
+  return { name: `${title}${givenName} ${surname}`, category: options.category, kind: 'character', style: compoundSurname ? 'compound' : title ? 'formal' : 'constructed', givenName, surname };
 }
 
 function settlementName(options: NameGeneratorOptions): GeneratedName {
@@ -210,10 +223,26 @@ export function generateName(options: NameGeneratorOptions): GeneratedName {
 export function generateNames(options: NameGeneratorOptions, count = 6): GeneratedName[] {
   const results: GeneratedName[] = [];
   const names = new Set<string>();
-  for (let attempts = 0; results.length < count && attempts < count * 12; attempts += 1) {
+  const givenNames = new Set<string>();
+  const surnames = new Set<string>();
+  const normalisePart = (value: string) => value.trim().toLocaleLowerCase();
+
+  for (let attempts = 0; results.length < count && attempts < count * 50; attempts += 1) {
     const result = generateName(options);
-    if (names.has(result.name)) continue;
+    const givenName = result.givenName && normalisePart(result.givenName);
+    const surname = result.surname && normalisePart(result.surname);
+
+    // Each click creates a new generation. A person's given name and surname
+    // may each appear only once in that generation.
+    if (
+      names.has(result.name)
+      || (givenName !== undefined && givenNames.has(givenName))
+      || (surname !== undefined && surnames.has(surname))
+    ) continue;
+
     names.add(result.name);
+    if (givenName !== undefined) givenNames.add(givenName);
+    if (surname !== undefined) surnames.add(surname);
     results.push(result);
   }
   return results;

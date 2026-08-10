@@ -539,8 +539,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .name-generator-dialog form { grid-template-columns: minmax(0, 1fr); }
   .name-generator-dialog form > label, .name-generator-options, .name-generator-dialog form > button { grid-column: 1; min-width: 0; }
   .name-generator-dialog input, .name-generator-dialog select { max-width: 100%; min-width: 0; width: 100%; }
-  .name-generator-options { align-items: flex-start; flex-direction: column; gap: 9px; }
-  .name-generator-options label { font-size: .82rem; }
+  .name-generator-options { align-items: stretch; flex-direction: column; gap: 9px; }
+  .name-generator-options label { align-items: center; display: grid; font-size: .82rem; gap: 10px; grid-template-columns: 28px minmax(0, 1fr); width: 100%; }
+  .name-generator-options input { margin: 0; }
   .name-generator-results { grid-template-columns: minmax(0, 1fr); }
 
   .workspace { display: block; flex: 1; min-height: 0; }

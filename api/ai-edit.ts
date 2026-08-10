@@ -35,6 +35,7 @@ export default async function handler(req: RequestLike, res: ResponseLike) {
     return;
   }
 
+  // Vercel supplies VERCEL_OIDC_TOKEN when Secure Backend Access is enabled.
   const apiKey = process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN;
   if (!apiKey) {
     res.status(503).json({ error: 'AI editing has not been configured for this deployment.' });

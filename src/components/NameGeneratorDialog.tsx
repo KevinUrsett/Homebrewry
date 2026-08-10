@@ -9,7 +9,7 @@ type NameGeneratorDialogProps = {
 };
 
 const defaultOptions: NameGeneratorOptions = {
-  category: 'settlement',
+  category: 'person',
   culture: 'belentoran',
   theme: '',
   affixes: '',

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { entrySummary } from '../catalogue/presentation';
+import { dataString, entrySummary } from '../catalogue/presentation';
 import type { CatalogueEntry } from '../catalogue/types';
 import {
   addMonstersToEncounter,
@@ -51,6 +51,7 @@ type EncounterPanelProps = {
 type CombatantPicker = 'party' | 'npc' | 'monster' | null;
 type StatField = 'initiative' | 'armorClass' | 'maxHitPoints';
 type StatEditor = { participantId: string; field: StatField; value: string } | null;
+type MonsterSort = 'name' | 'cr-ascending' | 'cr-descending' | 'source' | 'type';
 
 const MONSTER_RESULTS_PAGE_SIZE = 30;
 const defaultEncounterDate: BelentorDate = { era: 'AA', year: 641, month: 'Quen', day: 1 };
@@ -60,6 +61,22 @@ const asNumber = (value: string): number | null => {
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
 };
+
+function challengeRatingNumber(challengeRating: string | undefined) {
+  if (!challengeRating) return Number.POSITIVE_INFINITY;
+  if (challengeRating.includes('/')) {
+    const [numerator, denominator] = challengeRating.split('/').map(Number);
+    return Number.isFinite(numerator) && Number.isFinite(denominator) && denominator !== 0
+      ? numerator / denominator
+      : Number.POSITIVE_INFINITY;
+  }
+  const value = Number(challengeRating);
+  return Number.isFinite(value) ? value : Number.POSITIVE_INFINITY;
+}
+
+function challengeRatingValue(monster: CatalogueEntry) {
+  return challengeRatingNumber(dataString(monster, 'cr')?.trim());
+}
 
 function participantPatch(
   encounter: Encounter,
@@ -98,6 +115,10 @@ export function EncounterPanel({
   onSetPartyLocation = () => undefined
 }: EncounterPanelProps) {
   const [monsterQuery, setMonsterQuery] = useState('');
+  const [monsterSourceFilter, setMonsterSourceFilter] = useState('all');
+  const [monsterCrFilter, setMonsterCrFilter] = useState('all');
+  const [monsterTypeFilter, setMonsterTypeFilter] = useState('all');
+  const [monsterSort, setMonsterSort] = useState<MonsterSort>('name');
   const [partyName, setPartyName] = useState('');
   const [partyArmorClass, setPartyArmorClass] = useState('');
   const [partyHitPoints, setPartyHitPoints] = useState('');
@@ -126,13 +147,37 @@ export function EncounterPanel({
   const orderedParticipants = selected ? sortCombatants(selected.participants.filter((participant) => !unavailableParticipants.some((item) => item.id === participant.id))) : [];
   const availableNpcEntities = npcEntities.filter((entity) => currentStateByEntityId.get(entity.id)?.fields.status?.value !== 'dead');
   const unavailableNpcEntities = npcEntities.filter((entity) => currentStateByEntityId.get(entity.id)?.fields.status?.value === 'dead');
+  const monsterSourceOptions = useMemo(
+    () => [...new Set(monsters.map((monster) => monster.source.trim()).filter(Boolean))].sort((left, right) => left.localeCompare(right)),
+    [monsters]
+  );
+  const monsterCrOptions = useMemo(
+    () => [...new Set(monsters.map((monster) => dataString(monster, 'cr')?.trim()).filter((value): value is string => Boolean(value)))].sort((left, right) => challengeRatingNumber(left) - challengeRatingNumber(right) || left.localeCompare(right)),
+    [monsters]
+  );
+  const monsterTypeOptions = useMemo(
+    () => [...new Set(monsters.map((monster) => dataString(monster, 'type')?.trim()).filter((value): value is string => Boolean(value)))].sort((left, right) => left.localeCompare(right)),
+    [monsters]
+  );
   const monsterMatches = useMemo(() => {
     const terms = monsterQuery.trim().toLowerCase();
-    const source = terms
-      ? monsters.filter((monster) => [monster.name, ...entrySummary(monster)].join(' ').toLowerCase().includes(terms))
-      : monsters;
-    return source;
-  }, [monsterQuery, monsters]);
+    const filtered = monsters.filter((monster) => {
+      const type = dataString(monster, 'type')?.trim() ?? '';
+      const cr = dataString(monster, 'cr')?.trim() ?? '';
+      const matchesText = !terms || [monster.name, monster.source, type, cr, ...entrySummary(monster)].join(' ').toLowerCase().includes(terms);
+      return matchesText
+        && (monsterSourceFilter === 'all' || monster.source === monsterSourceFilter)
+        && (monsterCrFilter === 'all' || cr === monsterCrFilter)
+        && (monsterTypeFilter === 'all' || type === monsterTypeFilter);
+    });
+    return [...filtered].sort((left, right) => {
+      if (monsterSort === 'cr-ascending') return challengeRatingValue(left) - challengeRatingValue(right) || left.name.localeCompare(right.name);
+      if (monsterSort === 'cr-descending') return challengeRatingValue(right) - challengeRatingValue(left) || left.name.localeCompare(right.name);
+      if (monsterSort === 'source') return left.source.localeCompare(right.source) || left.name.localeCompare(right.name);
+      if (monsterSort === 'type') return (dataString(left, 'type') ?? '').localeCompare(dataString(right, 'type') ?? '') || left.name.localeCompare(right.name);
+      return left.name.localeCompare(right.name);
+    });
+  }, [monsterCrFilter, monsterQuery, monsterSort, monsterSourceFilter, monsterTypeFilter, monsters]);
   const visibleMonsterMatches = useMemo(
     () => monsterMatches.slice(0, visibleMonsterCount),
     [monsterMatches, visibleMonsterCount]
@@ -568,6 +613,35 @@ export function EncounterPanel({
                         placeholder="Search monsters…"
                         value={monsterQuery}
                       />
+                      <div className="encounter-monster-filters" aria-label="Monster filters">
+                        <label>Sort
+                          <select onChange={(event) => { setMonsterSort(event.target.value as MonsterSort); setVisibleMonsterCount(MONSTER_RESULTS_PAGE_SIZE); }} value={monsterSort}>
+                            <option value="name">Name A–Z</option>
+                            <option value="cr-ascending">CR: low to high</option>
+                            <option value="cr-descending">CR: high to low</option>
+                            <option value="type">Creature type</option>
+                            <option value="source">Source</option>
+                          </select>
+                        </label>
+                        <label>Source
+                          <select onChange={(event) => { setMonsterSourceFilter(event.target.value); setVisibleMonsterCount(MONSTER_RESULTS_PAGE_SIZE); }} value={monsterSourceFilter}>
+                            <option value="all">All sources</option>
+                            {monsterSourceOptions.map((source) => <option key={source} value={source}>{source}</option>)}
+                          </select>
+                        </label>
+                        <label>CR
+                          <select onChange={(event) => { setMonsterCrFilter(event.target.value); setVisibleMonsterCount(MONSTER_RESULTS_PAGE_SIZE); }} value={monsterCrFilter}>
+                            <option value="all">All CRs</option>
+                            {monsterCrOptions.map((cr) => <option key={cr} value={cr}>CR {cr}</option>)}
+                          </select>
+                        </label>
+                        <label>Type
+                          <select onChange={(event) => { setMonsterTypeFilter(event.target.value); setVisibleMonsterCount(MONSTER_RESULTS_PAGE_SIZE); }} value={monsterTypeFilter}>
+                            <option value="all">All types</option>
+                            {monsterTypeOptions.map((type) => <option key={type} value={type}>{type}</option>)}
+                          </select>
+                        </label>
+                      </div>
                       <div className="encounter-monster-results">
                         {visibleMonsterMatches.map((monster) => (
                           <div className="encounter-monster-result" key={monster.id}>

@@ -170,6 +170,35 @@
   padding: 4px 7px;
 }
 
+.encounter-monster-filters {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 10px;
+}
+
+.encounter-monster-filters label {
+  color: #71553e;
+  display: grid;
+  font-size: .66rem;
+  font-weight: 800;
+  gap: 4px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.encounter-monster-filters select {
+  background: #fffdf7;
+  border: 1px solid #cbb99d;
+  border-radius: 5px;
+  color: #3e2d24;
+  font: 400 .8rem "Scaly Sans", Inter, sans-serif;
+  min-width: 0;
+  padding: 7px 6px;
+  text-transform: none;
+  width: 100%;
+}
+
 .encounter-party-picker {
   display: grid;
   gap: 6px;
@@ -500,13 +529,17 @@
   }
 
   .encounter-combatant-picker-backdrop {
-    align-items: end;
+    align-items: start;
     padding: 10px;
   }
 
   .encounter-picker {
-    max-height: min(720px, calc(100dvh - 20px));
+    max-height: calc(100dvh - 20px);
     padding: 14px;
+  }
+
+  .encounter-monster-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

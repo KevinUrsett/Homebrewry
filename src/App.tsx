@@ -172,12 +172,12 @@ export default function App() {
   useEffect(() => {
     const viewport = window.visualViewport;
     const updateAppHeight = () => {
-      // iOS can pan its layout viewport to keep the caret visible. In that
-      // state `visualViewport.height` alone leaves the lower part of the
-      // editor short by `offsetTop`, revealing an inert strip beneath it.
-      const visibleTop = viewport?.offsetTop ?? 0;
+      // `offsetTop` is the browser's temporary pan position (for example
+      // while its address bar is collapsing). Adding it makes the flex
+      // application taller after the first scroll and can freeze nested
+      // Preview scrolling. The visual viewport height is the usable height.
       const visibleHeight = viewport?.height ?? window.innerHeight;
-      document.documentElement.style.setProperty('--app-height', `${Math.round(visibleTop + visibleHeight)}px`);
+      document.documentElement.style.setProperty('--app-height', `${Math.round(visibleHeight)}px`);
     };
     updateAppHeight();
     viewport?.addEventListener('resize', updateAppHeight);

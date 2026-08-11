@@ -21,7 +21,7 @@ type DragState = {
   contentScrollTop: number;
 };
 
-type ContentMode = 'editor';
+type ContentMode = 'editor' | 'preview';
 
 const MOBILE_BREAKPOINT = '(max-width: 820px)';
 const LEFT_GESTURE_THRESHOLD = 48;
@@ -52,6 +52,18 @@ function readOutline(view: EditorView): OutlineItem[] {
   return headings;
 }
 
+function readPreviewOutline(pane: HTMLElement): OutlineItem[] {
+  const paneRect = pane.getBoundingClientRect();
+  return Array.from(pane.querySelectorAll<HTMLElement>('.brew-preview h1, .brew-preview h2, .brew-preview h3, .brew-preview h4, .brew-preview h5, .brew-preview h6'))
+    .map((heading) => ({
+      id: heading.id,
+      level: Number(heading.tagName.slice(1)),
+      title: heading.textContent?.trim() ?? '',
+      position: pane.scrollTop + heading.getBoundingClientRect().top - paneRect.top
+    }))
+    .filter((item) => item.title);
+}
+
 function closeWritingTools() {
   document.querySelector<HTMLButtonElement>('.mobile-outline-fab[aria-expanded="true"]')?.click();
 }
@@ -80,13 +92,16 @@ export function MobileOutlineScrubber() {
   useEffect(() => {
     const refresh = () => {
       const mobile = window.matchMedia(MOBILE_BREAKPOINT).matches;
+      const preview = mobile
+        ? document.querySelector<HTMLElement>('.app-shell.mobile-preview .preview-pane')
+        : null;
       const menu = mobile
         ? document.querySelector<HTMLElement>('.app-shell.mobile-editor .mobile-capture-menu')
         : null;
 
-      setTarget(menu);
-      setContentMode(menu ? 'editor' : null);
-      if (!menu) setOutlineOpen(false);
+      setTarget(preview ?? menu);
+      setContentMode(preview ? 'preview' : menu ? 'editor' : null);
+      if (!preview && !menu) setOutlineOpen(false);
 
       menu?.querySelectorAll<HTMLButtonElement>('.mobile-writing-destinations button').forEach((button) => {
         if (button.textContent?.trim() === 'Outline') button.hidden = true;
@@ -140,7 +155,7 @@ export function MobileOutlineScrubber() {
       const node = event.target;
       if (!(node instanceof Node)) return;
       if (panelRef.current?.contains(node)) return;
-      if (node instanceof Element && node.closest('.mobile-outline-scrubber')) return;
+      if (node instanceof Element && node.closest('.mobile-outline-scrubber, .mobile-preview-outline-button')) return;
       setOutlineOpen(false);
     };
 
@@ -169,6 +184,9 @@ export function MobileOutlineScrubber() {
       closeWritingTools();
       setOutline(readOutline(view));
       setActivePosition(view.state.selection.main.head);
+    } else if (contentMode === 'preview' && target) {
+      setOutline(readPreviewOutline(target));
+      setActivePosition(target.scrollTop);
     } else {
       return;
     }
@@ -297,6 +315,8 @@ export function MobileOutlineScrubber() {
         effects: EditorView.scrollIntoView(item.position, { y: 'start', yMargin: 28 })
       });
       view.focus();
+    } else if (contentMode === 'preview' && target) {
+      target.scrollTo({ top: Math.max(0, item.position - 18), behavior: 'smooth' });
     } else {
       return;
     }
@@ -308,7 +328,7 @@ export function MobileOutlineScrubber() {
 
   return (
     <>
-      {target && createPortal(
+      {contentMode === 'editor' && target && createPortal(
         <button
           aria-label="Scroll brew or drag left for outline"
           className="mobile-outline-scrubber"
@@ -322,6 +342,18 @@ export function MobileOutlineScrubber() {
         >
           <span aria-hidden="true">☰</span>
           <small>{scrollPercent}%</small>
+        </button>,
+        document.body
+      )}
+
+      {contentMode === 'preview' && target && createPortal(
+        <button
+          aria-label="Open preview outline"
+          className="mobile-preview-outline-button"
+          onClick={() => openOutline()}
+          type="button"
+        >
+          Outline
         </button>,
         document.body
       )}

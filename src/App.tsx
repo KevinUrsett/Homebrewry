@@ -96,6 +96,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('split');
   const [mobileSection, setMobileSection] = useState<MobileSection>('editor');
+  const [mobilePreviewOutlineOpen, setMobilePreviewOutlineOpen] = useState(false);
   const [mobileTopMenuOpen, setMobileTopMenuOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [saveState, setSaveState] = useState('Loading local drafts…');
@@ -1572,6 +1573,7 @@ export default function App() {
             key={section}
             onClick={() => {
               setMobileTopMenuOpen(false);
+              setMobilePreviewOutlineOpen(false);
               if (section === 'catalogue') {
                 openCatalogue();
                 return;
@@ -1603,7 +1605,37 @@ export default function App() {
         ))}
       </nav>
 
-      {ideasOpen ? (
+      {!ideasOpen && !campaignOpen && !catalogueOpen && !encountersOpen && !worldbuildingOpen && mobileSection === 'preview' ? (
+        <main className="mobile-preview-page" aria-label="Live preview">
+          <div className="mobile-preview-page-content">
+            <BrewPreview assets={assetMap} brew={renderedBrew} catalogue={catalogueMap} catalogueCategories={customCatalogueCategories} encounters={encounterMap} onAddWorldbuildingNote={addWorldbuildingQuickNote} onDeleteWorldbuildingReference={deleteWorldbuilding} onEncounterOpen={openEncounters} onOpenInWorldbuilding={openWorldbuilding} onReferenceOpen={setReferenceEntry} onWorldbuildingOpen={setWorldbuildingReferenceEntry} worldbuilding={worldbuildingMap} worldbuildingTypes={worldbuildingTypes} />
+          </div>
+
+          <button aria-expanded={mobilePreviewOutlineOpen} className="mobile-preview-page-outline-button" onClick={() => setMobilePreviewOutlineOpen((open) => !open)} type="button">Outline</button>
+
+          {mobilePreviewOutlineOpen && (
+            <aside aria-label="Preview outline" className="mobile-preview-page-outline">
+              <header><strong>Outline</strong><button aria-label="Close outline" onClick={() => setMobilePreviewOutlineOpen(false)} type="button">×</button></header>
+              <div>
+                {outline.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      document.getElementById(item.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      setMobilePreviewOutlineOpen(false);
+                    }}
+                    style={{ paddingLeft: `${12 + Math.max(0, item.level - 1) * 12}px` }}
+                    type="button"
+                  >
+                    {item.text}
+                  </button>
+                ))}
+                {!outline.length && <p>No headings in this brew yet.</p>}
+              </div>
+            </aside>
+          )}
+        </main>
+      ) : ideasOpen ? (
         <IdeasPanel
           brews={brews}
           ideas={livingWorld.ideaDrafts ?? []}

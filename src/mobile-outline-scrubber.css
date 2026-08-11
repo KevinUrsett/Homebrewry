@@ -41,6 +41,22 @@
     line-height: 1;
   }
 
+  .mobile-preview-outline-button {
+    background: #4a382d;
+    border: 1px solid #b9986d;
+    border-radius: 999px;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    box-shadow: 0 5px 16px rgb(40 22 13 / 28%);
+    color: #fff8e9;
+    font: 800 .78rem "Scaly Sans", Inter, sans-serif;
+    letter-spacing: .03em;
+    min-height: 42px;
+    padding: 8px 14px;
+    position: fixed;
+    right: 14px;
+    z-index: 1302;
+  }
+
   .mobile-inline-outline-backdrop {
     appearance: none;
     background: rgba(31, 20, 15, 0.18);

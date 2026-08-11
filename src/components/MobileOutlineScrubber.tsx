@@ -18,6 +18,7 @@ type DragState = {
   moved: boolean;
   mode: 'content' | 'outline';
   contentScroller: HTMLElement;
+  contentScrollTop: number;
 };
 
 type ContentMode = 'editor' | 'preview';
@@ -256,9 +257,10 @@ export function MobileOutlineScrubber() {
       currentY: event.clientY,
       moved: false,
       mode: outlineOpen ? 'outline' : 'content',
-      contentScroller: scroller
+      contentScroller: scroller,
+      contentScrollTop: scroller.scrollTop
     };
-    startContinuousScroll();
+    if (outlineOpen) startContinuousScroll();
   };
 
   const handlePointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
@@ -281,7 +283,13 @@ export function MobileOutlineScrubber() {
       return;
     }
 
-    if (Math.abs(vertical) >= 5 || Math.abs(horizontal) >= 5) drag.moved = true;
+    if (drag.mode === 'content' && Math.abs(vertical) >= 3) {
+      const maximum = Math.max(0, drag.contentScroller.scrollHeight - drag.contentScroller.clientHeight);
+      drag.contentScroller.scrollTop = Math.max(0, Math.min(maximum, drag.contentScrollTop + vertical * 5));
+      drag.moved = true;
+    }
+
+    if (Math.abs(horizontal) >= 5) drag.moved = true;
   };
 
   const handlePointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
@@ -370,7 +378,6 @@ export function MobileOutlineScrubber() {
                 <button
                   className={index === activeIndex ? 'is-current' : ''}
                   key={`${item.position}-${item.title}`}
-                  onPointerDown={(event) => event.preventDefault()}
                   onClick={() => navigateTo(item)}
                   style={{ paddingLeft: `${12 + Math.max(0, item.level - 1) * 12}px` }}
                   type="button"

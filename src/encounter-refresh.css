@@ -252,6 +252,18 @@
   border-bottom-color: #ad9576;
 }
 
+.combatant-statblock-button {
+  background: #ead1a3;
+  border: 1px solid #b98545;
+  border-radius: 999px;
+  color: #553526;
+  flex: 0 0 auto;
+  font-size: .62rem;
+  font-weight: 800;
+  padding: 4px 7px;
+  white-space: nowrap;
+}
+
 .combatant-summary-row {
   align-items: stretch;
   display: grid;

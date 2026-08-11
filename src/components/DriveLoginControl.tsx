@@ -15,7 +15,7 @@ export function DriveLoginControl() {
   const [detail, setDetail] = useState('Login and refresh/sync are separate actions.');
 
   useEffect(() => {
-    const findTarget = () => setTarget(document.querySelector<HTMLElement>('.cloud-controls'));
+    const findTarget = () => setTarget(document.querySelector<HTMLElement>('.cloud-login-target'));
     findTarget();
     const observer = new MutationObserver(findTarget);
     observer.observe(document.body, { childList: true, subtree: true });

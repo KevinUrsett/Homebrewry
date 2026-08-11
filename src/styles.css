@@ -559,7 +559,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   /* Keep navigation outside the preview's own scroll container on phones. */
   .app-shell.mobile-preview .workspace { display: flex; flex: 1; min-height: 0; overflow: hidden; }
   .app-shell.mobile-preview .main-panes, .app-shell.mobile-preview .preview-pane { flex: 1; min-height: 0; }
-  .app-shell.mobile-preview .preview-pane { overflow-x: hidden; overflow-y: scroll; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+  .app-shell.mobile-preview .preview-pane { overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
   .app-shell.mobile-outline .workspace { display: flex; flex: 1; min-height: 0; overflow: hidden; }
   .app-shell.mobile-outline .outline-panel { flex: 1; min-height: 0; overflow: hidden; }
   .app-shell.mobile-editor .workspace { display: flex; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; }

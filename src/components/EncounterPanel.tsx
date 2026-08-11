@@ -37,6 +37,7 @@ type EncounterPanelProps = {
   onCreateEncounter: () => void;
   onDeleteEncounter: (encounter: Encounter) => void;
   onInsertReference: (encounter: Encounter) => void;
+  onMonsterOpen?: (monster: CatalogueEntry) => void;
   onSelectEncounter: (id: string) => void;
   onUpdateEncounter: (encounter: Encounter) => void;
   onCreatePartyMember: (name: string, armorClass: number | null, maxHitPoints: number | null) => void;
@@ -86,6 +87,7 @@ export function EncounterPanel({
   onCreateEncounter,
   onDeleteEncounter,
   onInsertReference,
+  onMonsterOpen = () => undefined,
   onSelectEncounter,
   onUpdateEncounter,
   onCreatePartyMember,
@@ -137,6 +139,7 @@ export function EncounterPanel({
     () => monsterMatches.slice(0, visibleMonsterCount),
     [monsterMatches, visibleMonsterCount]
   );
+  const monstersById = useMemo(() => new Map(monsters.map((monster) => [monster.id, monster])), [monsters]);
 
   const addPartyMember = () => {
     const name = partyName.trim();
@@ -633,7 +636,11 @@ export function EncounterPanel({
             <p className="empty-panel">Choose an encounter to run combat.</p>
           ) : (
             <div className="initiative-list">
-              {orderedParticipants.map((participant) => (
+              {orderedParticipants.map((participant) => {
+                const sourceMonster = participant.kind === 'monster' && participant.source?.category === 'monster'
+                  ? monstersById.get(participant.source.id)
+                  : undefined;
+                return (
                 <article
                   className={`combatant-card ${participant.id === selected.activeCombatantId ? 'is-active' : ''} ${participant.currentHitPoints !== null && participant.currentHitPoints <= 0 ? 'is-defeated' : ''} ${participant.id === draggingParticipantId ? 'is-dragging' : ''} ${participant.id === touchDropTargetId ? 'is-drop-target' : ''}`}
                   data-participant-id={participant.id}
@@ -715,6 +722,7 @@ export function EncounterPanel({
                         {participant.id === selected.activeCombatantId ? '●' : '○'}
                       </button>
                       <input aria-label={`${participant.name} combatant name`} onChange={(event) => participantPatch(selected, participant, { name: event.target.value }, onUpdateEncounter)} value={participant.name} />
+                      {sourceMonster && <button aria-label={`Open ${sourceMonster.name} stat block`} className="combatant-statblock-button" onClick={() => onMonsterOpen(sourceMonster)} type="button">Stat block</button>}
                       <span className={`combatant-kind kind-${participant.kind}`}>{participant.kind}</span>
                       {participant.entityId && (
                         <span className="combatant-world-status">
@@ -829,7 +837,8 @@ export function EncounterPanel({
                     </div>
                   </div>
                 </article>
-              ))}
+                );
+              })}
               {!orderedParticipants.length && <p className="empty-panel">Use Add combatant to add party members, Worldbuilding NPCs, or monsters.</p>}
             </div>
           )}

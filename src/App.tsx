@@ -99,6 +99,7 @@ export default function App() {
   const [mobileSection, setMobileSection] = useState<MobileSection>('editor');
   const [mobilePreviewOutlineOpen, setMobilePreviewOutlineOpen] = useState(false);
   const [mobileTopMenuOpen, setMobileTopMenuOpen] = useState(false);
+  const [cloudMenuOpen, setCloudMenuOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [saveState, setSaveState] = useState('Loading local drafts…');
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -1554,15 +1555,17 @@ export default function App() {
           <button onClick={() => window.print()} type="button">Print</button>
         </div>
         <div className="cloud-controls">
-          <button onClick={checkForPwaUpdate} type="button">Check for updates</button>
-          {accessToken ? (
-            <button onClick={() => void syncToDrive()} type="button" disabled={syncing}>
-              {syncing ? 'Syncing…' : 'Refresh & sync'}
-            </button>
-          ) : (
-            <button onClick={() => void connectDrive()} type="button" disabled={!isGoogleConfigured()}>
-              {campaignDataSync?.drive || privateMonsterSync?.drive ? 'Reconnect Drive' : 'Connect Drive'}
-            </button>
+          <button aria-expanded={cloudMenuOpen} aria-label="Open app actions" className="cloud-menu-toggle" onClick={() => setCloudMenuOpen((open) => !open)} type="button">•••</button>
+          {cloudMenuOpen && (
+            <div className="cloud-menu-panel">
+              <button onClick={() => { checkForPwaUpdate(); setCloudMenuOpen(false); }} type="button">Check for updates</button>
+              {accessToken && (
+                <button onClick={() => { void syncToDrive(); setCloudMenuOpen(false); }} type="button" disabled={syncing}>
+                  {syncing ? 'Syncing…' : 'Refresh & sync'}
+                </button>
+              )}
+              <div className="cloud-login-target" />
+            </div>
           )}
         </div>
         <div className="save-indicator" aria-live="polite">{saveState}</div>

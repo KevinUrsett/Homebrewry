@@ -89,10 +89,12 @@ function parseEncounter(value: unknown): Encounter {
     throw new Error('Campaign data has an invalid encounter status.');
   }
   if (!Array.isArray(value.participants)) throw new Error('Campaign data has invalid encounter participants.');
+  if (value.date !== undefined && !isBelentorDate(value.date)) throw new Error('Campaign data has an invalid encounter date.');
 
   return {
     id: requiredString(value.id, 'encounter ID'),
     name: requiredString(value.name, 'encounter name'),
+    ...(value.date === undefined ? {} : { date: value.date }),
     status,
     optional: value.optional === true,
     participants: value.participants.map(parseParticipant),

@@ -85,6 +85,8 @@ export type EncounterStatus = 'not-started' | 'active' | 'completed' | 'skipped'
 export type Encounter = {
   id: string;
   name: string;
+  /** Optional in-world date for planning and campaign order. */
+  date?: BelentorDate;
   status: EncounterStatus;
   optional: boolean;
   participants: EncounterParticipant[];

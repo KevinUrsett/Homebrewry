@@ -483,6 +483,40 @@
   text-transform: uppercase;
 }
 
+.encounter-date-control {
+  color: var(--ink-muted, #66574a);
+  display: grid;
+  font-size: .68rem;
+  font-weight: 800;
+  gap: 2px;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+
+.encounter-date-actions { align-items: center; display: flex; gap: 3px; }
+.encounter-add-date, .encounter-date-clear { background: #fffdf7; border: 1px solid #cbb99d; border-radius: 5px; color: #39291f; font: inherit; font-weight: 700; min-height: 34px; padding: 5px; }
+.encounter-date-clear { color: #7a2f27; font-size: 1rem; line-height: 1; padding: 3px 7px; }
+.encounter-add-date { padding-inline: 8px; text-transform: none; }
+
+.encounter-date-picker-backdrop { align-items: center; background: rgb(30 20 15 / 58%); display: flex; inset: 0; justify-content: center; padding: 20px; position: fixed; z-index: 40; }
+.encounter-date-picker { background: #fffdf7; border: 1px solid #b99464; border-radius: 10px; box-shadow: 0 20px 60px rgb(20 12 8 / 40%); max-height: calc(100dvh - 40px); max-width: 680px; overflow: auto; width: 100%; }
+.encounter-date-picker > header { align-items: start; background: #f7f0df; border-bottom: 1px solid #d8c9ae; display: flex; justify-content: space-between; padding: 18px 20px; }
+.encounter-date-picker > header div { display: grid; gap: 3px; }
+.encounter-date-picker > header span, .encounter-date-picker > footer, .encounter-date-picker label { color: #71553e; font-size: .68rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.encounter-date-picker > header strong { color: #5d2f26; font-family: "Nodesto Caps Condensed", Georgia, serif; font-size: 2rem; letter-spacing: .025em; line-height: .9; }
+.encounter-date-picker > header > button { background: transparent; border: 0; color: #5d2f26; font-size: 1.6rem; line-height: 1; padding: 2px 5px; }
+.encounter-date-picker-controls { align-items: end; border-bottom: 1px solid #d8c9ae; display: grid; gap: 8px; grid-template-columns: auto minmax(130px, 1fr) minmax(80px, 100px) 74px auto; padding: 12px 16px; }
+.encounter-date-picker-controls label { display: grid; gap: 4px; }
+.encounter-date-picker-controls select, .encounter-date-picker-controls input, .encounter-date-picker-controls > button { background: #fffaf0; border: 1px solid #bda88a; border-radius: 5px; color: #3e2d24; font: inherit; min-height: 38px; padding: 7px 9px; }
+.encounter-date-picker-controls > button { font-size: 1.1rem; font-weight: 800; min-width: 38px; }
+.encounter-date-day-grid { display: grid; gap: 7px; grid-template-columns: repeat(10, minmax(0, 1fr)); padding: 18px; }
+.encounter-date-day-grid button { background: #fffaf0; border: 1px solid #d8c9ae; border-radius: 5px; color: #49362b; display: grid; gap: 2px; min-height: 58px; padding: 5px 2px; text-align: center; }
+.encounter-date-day-grid button span { font-family: Georgia, serif; font-size: 1rem; font-weight: 700; }
+.encounter-date-day-grid button small { color: #806c5a; font-size: .58rem; }
+.encounter-date-day-grid button:hover, .encounter-date-day-grid button.is-selected { background: #5d2f26; border-color: #5d2f26; color: #fffaf0; }
+.encounter-date-day-grid button:hover small, .encounter-date-day-grid button.is-selected small { color: #f0d9b1; }
+.encounter-date-picker > footer { border-top: 1px solid #d8c9ae; padding: 11px 18px; }
+
 .encounter-progress-controls select {
   background: #fffdf7;
   border: 1px solid #cbb99d;
@@ -612,4 +646,13 @@
   .encounter-progress-controls select {
     width: 100%;
   }
+
+  .encounter-date-control { width: 100%; }
+  .encounter-date-actions { width: 100%; }
+  .encounter-add-date { flex: 1; text-align: left; }
+  .encounter-date-picker-backdrop { align-items: end; padding: 10px; }
+  .encounter-date-picker { max-height: min(740px, calc(100dvh - 20px)); }
+  .encounter-date-picker-controls { grid-template-columns: auto minmax(0, 1fr) 72px auto; }
+  .encounter-date-picker-controls label:nth-of-type(3) { grid-column: 2 / span 2; }
+  .encounter-date-day-grid { gap: 5px; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 14px; }
 }

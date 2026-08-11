@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 
 const mobileEditorQuery = '(max-width: 820px)';
-const writingToolSelector = '.mobile-capture-menu, .mobile-outline-scrubber, .mobile-inline-outline, .mobile-inline-outline-backdrop';
+const writingToolSelector = '.mobile-capture-menu, .mobile-outline-scrubber, .mobile-inline-outline, .mobile-inline-outline-backdrop, .mobile-top-menu-button';
 
 function isEditorFocused() {
   const active = document.activeElement;

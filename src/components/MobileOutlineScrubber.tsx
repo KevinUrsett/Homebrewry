@@ -18,7 +18,6 @@ type DragState = {
   moved: boolean;
   mode: 'content' | 'outline';
   contentScroller: HTMLElement;
-  contentScrollTop: number;
 };
 
 type ContentMode = 'editor' | 'preview';
@@ -101,7 +100,6 @@ export function MobileOutlineScrubber() {
 
       setTarget(preview ?? menu);
       setContentMode(preview ? 'preview' : menu ? 'editor' : null);
-      if (!preview && !menu) setOutlineOpen(false);
 
       menu?.querySelectorAll<HTMLButtonElement>('.mobile-writing-destinations button').forEach((button) => {
         if (button.textContent?.trim() === 'Outline') button.hidden = true;
@@ -155,7 +153,7 @@ export function MobileOutlineScrubber() {
       const node = event.target;
       if (!(node instanceof Node)) return;
       if (panelRef.current?.contains(node)) return;
-      if (node instanceof Element && node.closest('.mobile-outline-scrubber, .mobile-preview-outline-button')) return;
+      if (node instanceof Element && node.closest('.mobile-outline-scrubber')) return;
       setOutlineOpen(false);
     };
 
@@ -258,10 +256,9 @@ export function MobileOutlineScrubber() {
       currentY: event.clientY,
       moved: false,
       mode: outlineOpen ? 'outline' : 'content',
-      contentScroller: scroller,
-      contentScrollTop: scroller.scrollTop
+      contentScroller: scroller
     };
-    if (outlineOpen) startContinuousScroll();
+    startContinuousScroll();
   };
 
   const handlePointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
@@ -284,13 +281,7 @@ export function MobileOutlineScrubber() {
       return;
     }
 
-    if (drag.mode === 'content' && Math.abs(vertical) >= 3) {
-      const maximum = Math.max(0, drag.contentScroller.scrollHeight - drag.contentScroller.clientHeight);
-      drag.contentScroller.scrollTop = Math.max(0, Math.min(maximum, drag.contentScrollTop + vertical * 5));
-      drag.moved = true;
-    }
-
-    if (Math.abs(horizontal) >= 5) drag.moved = true;
+    if (Math.abs(vertical) >= 5 || Math.abs(horizontal) >= 5) drag.moved = true;
   };
 
   const handlePointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
@@ -328,9 +319,9 @@ export function MobileOutlineScrubber() {
 
   return (
     <>
-      {contentMode === 'editor' && target && createPortal(
+      {target && createPortal(
         <button
-          aria-label="Scroll brew or drag left for outline"
+          aria-label={`Scroll ${contentMode === 'preview' ? 'preview' : 'brew'} or drag left for outline`}
           className="mobile-outline-scrubber"
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
@@ -342,18 +333,6 @@ export function MobileOutlineScrubber() {
         >
           <span aria-hidden="true">☰</span>
           <small>{scrollPercent}%</small>
-        </button>,
-        document.body
-      )}
-
-      {contentMode === 'preview' && target && createPortal(
-        <button
-          aria-label="Open preview outline"
-          className="mobile-preview-outline-button"
-          onClick={() => openOutline()}
-          type="button"
-        >
-          Outline
         </button>,
         document.body
       )}
@@ -391,6 +370,7 @@ export function MobileOutlineScrubber() {
                 <button
                   className={index === activeIndex ? 'is-current' : ''}
                   key={`${item.position}-${item.title}`}
+                  onPointerDown={(event) => event.preventDefault()}
                   onClick={() => navigateTo(item)}
                   style={{ paddingLeft: `${12 + Math.max(0, item.level - 1) * 12}px` }}
                   type="button"

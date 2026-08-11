@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { listWorldbuildingEntries } from '../lib/worldbuildingStore';
-import { listEncounters } from '../lib/encounterStore';
 import {
   calendarEventKinds,
   deleteCalendarEvent,
@@ -12,7 +11,7 @@ import {
   type CalendarEventKind,
   type CalendarView
 } from '../lib/calendarEventStore';
-import type { Encounter, WorldbuildingEntry } from '../types';
+import type { WorldbuildingEntry } from '../types';
 import '../belentor-calendar.css';
 import '../belentor-calendar-events.css';
 import '../belentor-calendar-save.css';
@@ -24,7 +23,6 @@ type BelentorMonth = {
 };
 
 type CalendarEventDraft = Pick<BelentorCalendarEvent, 'id' | 'title' | 'notes' | 'kind' | 'year' | 'monthIndex' | 'day' | 'annual' | 'worldbuildingIds' | 'createdAt' | 'updatedAt'>;
-type CalendarDisplayEvent = BelentorCalendarEvent & { encounterId?: string };
 
 export const belentorMonths: readonly BelentorMonth[] = [
   { name: 'Quen', marker: 'Winter Equinox', star: null },
@@ -96,32 +94,11 @@ function formatSavedTime(value?: string) {
   return parsed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-function encounterCalendarEvent(encounter: Encounter): CalendarDisplayEvent | null {
-  if (!encounter.date || encounter.date.era !== 'AA') return null;
-  const monthIndex = belentorMonths.findIndex((month) => month.name === encounter.date?.month);
-  if (monthIndex < 0) return null;
-  return {
-    id: `encounter:${encounter.id}`,
-    title: encounter.name || 'Untitled encounter',
-    notes: 'Encounter date · managed from Encounters.',
-    kind: 'event',
-    year: encounter.date.year,
-    monthIndex,
-    day: encounter.date.day,
-    annual: false,
-    worldbuildingIds: [],
-    createdAt: encounter.updatedAt,
-    updatedAt: encounter.updatedAt,
-    encounterId: encounter.id
-  };
-}
-
 export function BelentorCalendar() {
   const [monthIndex, setMonthIndex] = useState(0);
   const [year, setYear] = useState(641);
   const [selectedDay, setSelectedDay] = useState(1);
   const [events, setEvents] = useState<BelentorCalendarEvent[]>([]);
-  const [encounters, setEncounters] = useState<Encounter[]>([]);
   const [worldbuildingEntries, setWorldbuildingEntries] = useState<WorldbuildingEntry[]>([]);
   const [eventDraft, setEventDraft] = useState<CalendarEventDraft | null>(null);
   const [worldbuildingQuery, setWorldbuildingQuery] = useState('');
@@ -143,8 +120,8 @@ export function BelentorCalendar() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([loadCalendarEvents(), listWorldbuildingEntries(), listEncounters()])
-      .then(([calendar, entries, storedEncounters]) => {
+    Promise.all([loadCalendarEvents(), listWorldbuildingEntries()])
+      .then(([calendar, entries]) => {
         if (cancelled) return;
         setEvents(calendar.events);
         setMonthIndex(calendar.view.monthIndex);
@@ -154,18 +131,12 @@ export function BelentorCalendar() {
         setLastSavedAt(calendar.lastSavedAt);
         setStatus(calendar.status);
         setWorldbuildingEntries([...entries].sort((left, right) => left.name.localeCompare(right.name)));
-        setEncounters(storedEncounters);
       })
       .catch((error) => {
         if (!cancelled) setStatus(error instanceof Error ? error.message : 'Calendar entries could not be loaded.');
       });
     return () => { cancelled = true; };
   }, []);
-
-  const displayEvents = useMemo<CalendarDisplayEvent[]>(
-    () => [...events.filter((event) => !event.deletedAt), ...encounters.map(encounterCalendarEvent).filter((event): event is CalendarDisplayEvent => event !== null)],
-    [encounters, events]
-  );
 
   useEffect(() => {
     if (!dirty) return undefined;
@@ -178,10 +149,10 @@ export function BelentorCalendar() {
   }, [dirty]);
 
   const selectedDateEvents = useMemo(
-    () => displayEvents
+    () => events
       .filter((event) => event.monthIndex === monthIndex && event.day === selectedDay && occursInYear(event, year))
       .sort((left, right) => calendarEventKinds.indexOf(left.kind) - calendarEventKinds.indexOf(right.kind) || left.title.localeCompare(right.title)),
-    [displayEvents, monthIndex, selectedDay, year]
+    [events, monthIndex, selectedDay, year]
   );
 
   const visibleWorldbuildingEntries = useMemo(() => {
@@ -198,11 +169,11 @@ export function BelentorCalendar() {
   );
 
   const monthEventCounts = useMemo(
-    () => belentorMonths.map((_, index) => displayEvents.filter((event) => event.monthIndex === index && occursInYear(event, year)).length),
-    [displayEvents, year]
+    () => belentorMonths.map((_, index) => events.filter((event) => event.monthIndex === index && occursInYear(event, year)).length),
+    [events, year]
   );
 
-  const eventsForDay = (day: number) => displayEvents.filter((event) => event.monthIndex === monthIndex && event.day === day && occursInYear(event, year));
+  const eventsForDay = (day: number) => events.filter((event) => event.monthIndex === monthIndex && event.day === day && occursInYear(event, year));
 
   const stageView = (view: CalendarView) => {
     setMonthIndex(view.monthIndex);
@@ -341,7 +312,6 @@ export function BelentorCalendar() {
       setStatus(result.status);
       setEventDraft(null);
       setWorldbuildingEntries((await listWorldbuildingEntries()).sort((left, right) => left.name.localeCompare(right.name)));
-      setEncounters(await listEncounters());
     } finally {
       setSaving(false);
     }
@@ -468,8 +438,8 @@ export function BelentorCalendar() {
                 {selectedDateEvents.map((calendarEvent) => (
                   <article className={`belentor-event-card kind-${calendarEvent.kind}`} key={calendarEvent.id}>
                     <div className="belentor-event-card-heading">
-                      <div><span>{calendarEvent.encounterId ? 'Encounter' : eventKindLabels[calendarEvent.kind]}</span><strong>{calendarEvent.title}</strong><small>{eventDateLabel(calendarEvent)}</small></div>
-                      {!calendarEvent.encounterId && <div><button onClick={() => startEditing(calendarEvent)} type="button">Edit</button><button className="quiet-danger" onClick={() => void removeEvent(calendarEvent)} type="button">Delete</button></div>}
+                      <div><span>{eventKindLabels[calendarEvent.kind]}</span><strong>{calendarEvent.title}</strong><small>{eventDateLabel(calendarEvent)}</small></div>
+                      <div><button onClick={() => startEditing(calendarEvent)} type="button">Edit</button><button className="quiet-danger" onClick={() => void removeEvent(calendarEvent)} type="button">Delete</button></div>
                     </div>
                     {calendarEvent.notes && <p>{calendarEvent.notes}</p>}
                     {calendarEvent.worldbuildingIds.length > 0 && (

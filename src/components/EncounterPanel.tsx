@@ -108,6 +108,10 @@ export function EncounterPanel({
   const [monsterQuantity, setMonsterQuantity] = useState('1');
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [datePickerMonthIndex, setDatePickerMonthIndex] = useState(0);
+  const [datePickerYear, setDatePickerYear] = useState(641);
+  const [datePickerEra, setDatePickerEra] = useState<BelentorDate['era']>('AA');
   const [draggingParticipantId, setDraggingParticipantId] = useState<string | null>(null);
   const [touchDropTargetId, setTouchDropTargetId] = useState<string | null>(null);
   const draggedParticipantId = useRef<string | null>(null);
@@ -194,6 +198,37 @@ export function EncounterPanel({
     if (!selected) return;
     const currentDate = selected.date ?? defaultEncounterDate;
     onUpdateEncounter(touchEncounter(selected, { date: { ...currentDate, ...patch } }));
+  };
+
+  const openDatePicker = () => {
+    const date = selected?.date ?? defaultEncounterDate;
+    setDatePickerMonthIndex(Math.max(0, belentorMonths.findIndex(({ name }) => name === date.month)));
+    setDatePickerYear(date.year);
+    setDatePickerEra(date.era);
+    setIsDatePickerOpen(true);
+  };
+
+  const moveDatePickerMonth = (direction: -1 | 1) => {
+    setDatePickerMonthIndex((current) => {
+      const next = current + direction;
+      if (next < 0) {
+        setDatePickerYear((year) => Math.max(0, year - 1));
+        return belentorMonths.length - 1;
+      }
+      if (next >= belentorMonths.length) {
+        setDatePickerYear((year) => Math.min(9999, year + 1));
+        return 0;
+      }
+      return next;
+    });
+  };
+
+  const selectEncounterDate = (day: number) => {
+    if (!selected) return;
+    onUpdateEncounter(touchEncounter(selected, {
+      date: { day, month: belentorMonths[datePickerMonthIndex].name, year: datePickerYear, era: datePickerEra }
+    }));
+    setIsDatePickerOpen(false);
   };
 
   const applyHitPointChange = (participant: EncounterParticipant, mode: 'damage' | 'healing' = 'damage') => {
@@ -386,20 +421,10 @@ export function EncounterPanel({
                 <div className="encounter-progress-controls">
                   <div className="encounter-date-control">
                     <span>When</span>
-                    {selected.date ? (
-                      <div className="encounter-date-fields">
-                        <input aria-label="Encounter day" max="30" min="1" onChange={(event) => updateEncounterDate({ day: Math.max(1, Math.min(30, Number(event.target.value) || 1)) })} type="number" value={selected.date.day} />
-                        <select aria-label="Encounter month" onChange={(event) => updateEncounterDate({ month: event.target.value as BelentorDate['month'] })} value={selected.date.month}>
-                          {belentorMonths.map(({ name }) => <option key={name} value={name}>{name}</option>)}
-                        </select>
-                        <input aria-label="Encounter year" min="0" onChange={(event) => updateEncounterDate({ year: Math.max(0, Number(event.target.value) || 0) })} type="number" value={selected.date.year} />
-                        <select aria-label="Encounter era" onChange={(event) => updateEncounterDate({ era: event.target.value as BelentorDate['era'] })} value={selected.date.era}>
-                          <option value="AA">AA</option>
-                          <option value="BA">BA</option>
-                        </select>
-                        <button aria-label="Clear encounter date" className="encounter-date-clear" onClick={() => onUpdateEncounter(touchEncounter(selected, { date: undefined }))} title="Clear date" type="button">×</button>
-                      </div>
-                    ) : <button className="encounter-add-date" onClick={() => updateEncounterDate({})} type="button">Add date</button>}
+                    <div className="encounter-date-actions">
+                      <button className="encounter-add-date" onClick={openDatePicker} type="button">{selected.date ? formatBelentorDate(selected.date) : 'Set date'}</button>
+                      {selected.date && <button aria-label="Clear encounter date" className="encounter-date-clear" onClick={() => onUpdateEncounter(touchEncounter(selected, { date: undefined }))} title="Clear date" type="button">×</button>}
+                    </div>
                   </div>
                   <label>
                     Progress
@@ -575,6 +600,27 @@ export function EncounterPanel({
               <button className="primary-button" type="submit">Add</button>
             </div>
           </form>
+        </div>
+      )}
+      {isDatePickerOpen && (
+        <div className="encounter-date-picker-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setIsDatePickerOpen(false); }}>
+          <section aria-label="Choose encounter date" aria-modal="true" className="encounter-date-picker" role="dialog">
+            <header>
+              <div><span>When does this happen?</span><strong>{belentorMonths[datePickerMonthIndex].name} {datePickerYear} {datePickerEra}</strong></div>
+              <button aria-label="Close date picker" onClick={() => setIsDatePickerOpen(false)} type="button">×</button>
+            </header>
+            <div className="encounter-date-picker-controls">
+              <button aria-label="Previous month" onClick={() => moveDatePickerMonth(-1)} type="button">←</button>
+              <label>Month<select onChange={(event) => setDatePickerMonthIndex(Number(event.target.value))} value={datePickerMonthIndex}>{belentorMonths.map(({ name }, index) => <option key={name} value={index}>{name}</option>)}</select></label>
+              <label>Year<input max="9999" min="0" onChange={(event) => setDatePickerYear(Math.min(9999, Math.max(0, Number(event.target.value) || 0)))} type="number" value={datePickerYear} /></label>
+              <label>Era<select onChange={(event) => setDatePickerEra(event.target.value as BelentorDate['era'])} value={datePickerEra}><option value="AA">AA</option><option value="BA">BA</option></select></label>
+              <button aria-label="Next month" onClick={() => moveDatePickerMonth(1)} type="button">→</button>
+            </div>
+            <div className="encounter-date-day-grid" role="grid" aria-label={`${belentorMonths[datePickerMonthIndex].name} days`}>
+              {Array.from({ length: 30 }, (_, index) => index + 1).map((day) => <button aria-label={`${day} ${belentorMonths[datePickerMonthIndex].name}, ${datePickerYear} ${datePickerEra}`} className={selected?.date?.day === day && selected.date.month === belentorMonths[datePickerMonthIndex].name && selected.date.year === datePickerYear && selected.date.era === datePickerEra ? 'is-selected' : ''} key={day} onClick={() => selectEncounterDate(day)} role="gridcell" type="button"><span>{day}</span><small>Day {((day - 1) % 10) + 1}</small></button>)}
+            </div>
+            <footer>Pick a day to set the encounter date.</footer>
+          </section>
         </div>
       )}
 

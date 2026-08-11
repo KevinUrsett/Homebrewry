@@ -33,6 +33,7 @@ type MarkdownEditorProps = {
   customCatalogueCategories?: readonly CustomCatalogueCategory[];
   ariaLabel?: string;
   compact?: boolean;
+  spellcheckEnabled?: boolean;
 };
 
 type ReferenceMenu = {
@@ -54,7 +55,7 @@ class ReferenceChip extends WidgetType {
 
   toDOM() {
     const element = document.createElement('span');
-    element.className = 'cm-reference-chip';
+    element.className = this.kind === 'encounter' ? 'cm-reference-chip cm-encounter-reference-chip' : 'cm-reference-chip cm-inline-reference';
     element.setAttribute('aria-label', `${this.kind} reference: ${this.label}`);
     element.title = `${this.kind} reference`;
     element.textContent = this.label;
@@ -113,6 +114,7 @@ export function MarkdownEditor({
   customCatalogueCategories = [],
   ariaLabel = 'Markdown source',
   compact = false,
+  spellcheckEnabled = true,
   ref
 }: MarkdownEditorProps & { ref?: Ref<MarkdownEditorHandle> }) {
   const parentRef = useRef<HTMLDivElement>(null);
@@ -152,7 +154,7 @@ export function MarkdownEditor({
           markdown(),
           syntaxHighlighting(markdownHighlightStyle),
           EditorView.lineWrapping,
-          EditorView.contentAttributes.of({ 'aria-label': ariaLabel }),
+          EditorView.contentAttributes.of({ 'aria-label': ariaLabel, spellcheck: spellcheckEnabled ? 'true' : 'false' }),
           referenceDecorations,
           EditorView.updateListener.of((update) => {
             if (update.docChanged) latestRef.current.onChange(update.state.doc.toString());
@@ -170,19 +172,9 @@ export function MarkdownEditor({
               if (!(event instanceof MouseEvent)) return false;
               if (!latestRef.current.onCreateWorldbuildingReference && !latestRef.current.onCreateCatalogueReference) return false;
               const selection = editor.state.selection.main;
-              let from = selection.from;
-              let to = selection.to;
-              if (from === to) {
-                const position = editor.posAtCoords({ x: event.clientX, y: event.clientY });
-                const word = position === null ? null : editor.state.wordAt(position);
-                if (!word) return false;
-                from = word.from;
-                to = word.to;
-                // A right-clicked word is a selection too. This keeps the
-                // reference replacement anchored to the word rather than
-                // inserting a token at the old cursor position.
-                editor.dispatch({ selection: { anchor: from, head: to } });
-              }
+              if (selection.from === selection.to) return false;
+              const from = selection.from;
+              const to = selection.to;
               const name = normalizeWorldbuildingName(editor.state.sliceDoc(from, to));
               if (!name) return false;
               event.preventDefault();
@@ -213,6 +205,10 @@ export function MarkdownEditor({
       viewRef.current = null;
     };
   }, [ariaLabel]);
+
+  useEffect(() => {
+    viewRef.current?.contentDOM.setAttribute('spellcheck', spellcheckEnabled ? 'true' : 'false');
+  }, [spellcheckEnabled]);
 
   useEffect(() => {
     const view = viewRef.current;

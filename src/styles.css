@@ -325,7 +325,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .reference-content > :first-child { margin-top: 0; }
 .reference-content > :last-child { margin-bottom: 0; }
 .primary-button { background: #5d2f26; border: 1px solid #5d2f26; border-radius: 5px; color: #fffaf0; padding: 8px 10px; }
-.reference-backdrop { align-items: center; background: rgb(30 20 15 / 58%); display: flex; inset: 0; justify-content: center; padding: 20px; position: fixed; z-index: 12; }
+.reference-backdrop { align-items: center; background: rgb(30 20 15 / 58%); display: flex; inset: 0; justify-content: center; padding: 20px; position: fixed; z-index: 60; }
 .reference-dialog { background: #fffaf0; border: 1px solid #b99464; border-radius: 10px; box-shadow: 0 20px 60px rgb(20 12 8 / 40%); max-height: calc(100vh - 40px); max-width: 780px; overflow: auto; padding: 24px; width: 100%; }
 .reference-dialog-header { align-items: center; border-bottom: 1px solid #d8c9ae; color: #71553e; display: flex; font-size: .74rem; font-weight: 800; justify-content: space-between; letter-spacing: .08em; margin: -4px 0 20px; padding-bottom: 9px; text-transform: uppercase; }
 .reference-dialog-header button { background: transparent; border: 0; color: #5d2f26; font-size: 1.45rem; line-height: 1; }

@@ -37,6 +37,7 @@ type EncounterPanelProps = {
   onCreateEncounter: () => void;
   onDeleteEncounter: (encounter: Encounter) => void;
   onInsertReference: (encounter: Encounter) => void;
+  onMonsterOpen?: (monster: CatalogueEntry) => void;
   onSelectEncounter: (id: string) => void;
   onUpdateEncounter: (encounter: Encounter) => void;
   onCreatePartyMember: (name: string, armorClass: number | null, maxHitPoints: number | null) => void;
@@ -86,6 +87,7 @@ export function EncounterPanel({
   onCreateEncounter,
   onDeleteEncounter,
   onInsertReference,
+  onMonsterOpen = () => undefined,
   onSelectEncounter,
   onUpdateEncounter,
   onCreatePartyMember,
@@ -104,8 +106,6 @@ export function EncounterPanel({
   const [statEditor, setStatEditor] = useState<StatEditor>(null);
   const [visibleMonsterCount, setVisibleMonsterCount] = useState(MONSTER_RESULTS_PAGE_SIZE);
   const [combatantPicker, setCombatantPicker] = useState<CombatantPicker>(null);
-  const [monsterQuantityPicker, setMonsterQuantityPicker] = useState<CatalogueEntry | null>(null);
-  const [monsterQuantity, setMonsterQuantity] = useState('1');
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
@@ -137,6 +137,15 @@ export function EncounterPanel({
     () => monsterMatches.slice(0, visibleMonsterCount),
     [monsterMatches, visibleMonsterCount]
   );
+  const monstersById = useMemo(() => new Map(monsters.map((monster) => [monster.id, monster])), [monsters]);
+  const addedMonsterCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const participant of selected?.participants ?? []) {
+      if (participant.kind !== 'monster' || participant.source?.category !== 'monster') continue;
+      counts.set(participant.source.id, (counts.get(participant.source.id) ?? 0) + 1);
+    }
+    return counts;
+  }, [selected?.participants]);
 
   const addPartyMember = () => {
     const name = partyName.trim();
@@ -162,16 +171,10 @@ export function EncounterPanel({
     clearCombatantEditors();
   };
 
-  const openMonsterQuantityPicker = (monster: CatalogueEntry) => {
-    setMonsterQuantity('1');
-    setMonsterQuantityPicker(monster);
-  };
-
-  const addMonsterQuantity = () => {
-    if (!selected || !monsterQuantityPicker) return;
-    const quantity = Math.min(99, Math.max(1, Math.floor(Number(monsterQuantity)) || 1));
-    addCombatantAndClosePicker(addMonstersToEncounter(selected, monsterQuantityPicker, quantity));
-    setMonsterQuantityPicker(null);
+  const addOneMonster = (monster: CatalogueEntry) => {
+    if (!selected) return;
+    onUpdateEncounter(addMonstersToEncounter(selected, monster, 1));
+    clearCombatantEditors();
   };
 
   const selectEncounter = (id: string) => {
@@ -484,18 +487,28 @@ export function EncounterPanel({
               </section>
 
               {combatantPicker && (
-                <section className="encounter-picker" aria-label="Add combatant">
+                <div
+                  className="encounter-combatant-picker-backdrop"
+                  onMouseDown={(event) => {
+                    if (event.target === event.currentTarget) setCombatantPicker(null);
+                  }}
+                  role="presentation"
+                >
+                <section aria-label="Add combatant" aria-modal="true" className="encounter-picker" role="dialog">
                   <div className="encounter-picker-header">
-                    <h3>Add combatant</h3>
-                    <span>
-                      {combatantPicker === 'party'
-                        ? `${partyMembers.length} party member${partyMembers.length === 1 ? '' : 's'}`
-                        : combatantPicker === 'npc'
-                          ? `${availableNpcEntities.length} available NPC${availableNpcEntities.length === 1 ? '' : 's'}`
-                          : loading
-                            ? 'Loading…'
-                            : `${monsterMatches.length.toLocaleString()} monster match${monsterMatches.length === 1 ? '' : 'es'}`}
-                    </span>
+                    <div>
+                      <h3>Add combatant</h3>
+                      <span>
+                        {combatantPicker === 'party'
+                          ? `${partyMembers.length} party member${partyMembers.length === 1 ? '' : 's'}`
+                          : combatantPicker === 'npc'
+                            ? `${availableNpcEntities.length} available NPC${availableNpcEntities.length === 1 ? '' : 's'}`
+                            : loading
+                              ? 'Loading…'
+                              : `${monsterMatches.length.toLocaleString()} monster match${monsterMatches.length === 1 ? '' : 'es'}`}
+                      </span>
+                    </div>
+                    <button aria-label="Close combatant picker" className="encounter-picker-close" onClick={() => setCombatantPicker(null)} type="button">×</button>
                   </div>
                   <div className="encounter-picker-tabs" role="tablist" aria-label="Combatant source">
                     <button aria-selected={combatantPicker === 'party'} className={combatantPicker === 'party' ? 'is-selected' : ''} onClick={() => setCombatantPicker('party')} role="tab" type="button">Party</button>
@@ -559,7 +572,10 @@ export function EncounterPanel({
                         {visibleMonsterMatches.map((monster) => (
                           <div className="encounter-monster-result" key={monster.id}>
                             <div><strong>{monster.name}</strong><span>{entrySummary(monster).join(' · ') || 'SRD monster'}</span></div>
-                            <button onClick={() => openMonsterQuantityPicker(monster)} type="button">Add</button>
+                            <div className="encounter-monster-actions">
+                              {(addedMonsterCounts.get(monster.id) ?? 0) > 0 && <span aria-label={`${addedMonsterCounts.get(monster.id)} ${monster.name} added`} className="encounter-monster-count">×{addedMonsterCounts.get(monster.id)}</span>}
+                              <button onClick={() => addOneMonster(monster)} type="button">Add</button>
+                            </div>
                           </div>
                         ))}
                         {!loading && !monsterMatches.length && <p className="empty-panel">No monsters match that search.</p>}
@@ -576,6 +592,7 @@ export function EncounterPanel({
                     </>
                   )}
                 </section>
+                </div>
               )}
               {unavailableParticipants.length > 0 && (
                 <section className="unavailable-combatants" aria-label="Unavailable combatants">
@@ -587,21 +604,6 @@ export function EncounterPanel({
           )}
       </section>
 
-      {monsterQuantityPicker && (
-        <div className="encounter-quantity-backdrop" role="presentation">
-          <form aria-labelledby="monster-quantity-title" aria-modal="true" className="encounter-quantity-dialog" onSubmit={(event) => { event.preventDefault(); addMonsterQuantity(); }} role="dialog">
-            <p className="eyebrow">Add combatants</p>
-            <h2 id="monster-quantity-title">{monsterQuantityPicker.name}</h2>
-            <label>How many?
-              <input autoFocus inputMode="numeric" max="99" min="1" onChange={(event) => setMonsterQuantity(event.target.value)} type="number" value={monsterQuantity} />
-            </label>
-            <div>
-              <button onClick={() => setMonsterQuantityPicker(null)} type="button">Cancel</button>
-              <button className="primary-button" type="submit">Add</button>
-            </div>
-          </form>
-        </div>
-      )}
       {isDatePickerOpen && (
         <div className="encounter-date-picker-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setIsDatePickerOpen(false); }}>
           <section aria-label="Choose encounter date" aria-modal="true" className="encounter-date-picker" role="dialog">
@@ -633,7 +635,11 @@ export function EncounterPanel({
             <p className="empty-panel">Choose an encounter to run combat.</p>
           ) : (
             <div className="initiative-list">
-              {orderedParticipants.map((participant) => (
+              {orderedParticipants.map((participant) => {
+                const sourceMonster = participant.kind === 'monster' && participant.source?.category === 'monster'
+                  ? monstersById.get(participant.source.id)
+                  : undefined;
+                return (
                 <article
                   className={`combatant-card ${participant.id === selected.activeCombatantId ? 'is-active' : ''} ${participant.currentHitPoints !== null && participant.currentHitPoints <= 0 ? 'is-defeated' : ''} ${participant.id === draggingParticipantId ? 'is-dragging' : ''} ${participant.id === touchDropTargetId ? 'is-drop-target' : ''}`}
                   data-participant-id={participant.id}
@@ -715,6 +721,7 @@ export function EncounterPanel({
                         {participant.id === selected.activeCombatantId ? '●' : '○'}
                       </button>
                       <input aria-label={`${participant.name} combatant name`} onChange={(event) => participantPatch(selected, participant, { name: event.target.value }, onUpdateEncounter)} value={participant.name} />
+                      {sourceMonster && <button aria-label={`Open ${sourceMonster.name} stat block`} className="combatant-statblock-button" onClick={() => onMonsterOpen(sourceMonster)} type="button">Stat block</button>}
                       <span className={`combatant-kind kind-${participant.kind}`}>{participant.kind}</span>
                       {participant.entityId && (
                         <span className="combatant-world-status">
@@ -829,7 +836,8 @@ export function EncounterPanel({
                     </div>
                   </div>
                 </article>
-              ))}
+                );
+              })}
               {!orderedParticipants.length && <p className="empty-panel">Use Add combatant to add party members, Worldbuilding NPCs, or monsters.</p>}
             </div>
           )}

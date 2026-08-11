@@ -13,6 +13,7 @@ import { PrivateMonsterImportDialog } from './components/PrivateMonsterImportDia
 import { ReferenceDialog } from './components/ReferenceDialog';
 import { WorldbuildingPanel } from './components/WorldbuildingPanel';
 import { WorldbuildingReferenceDialog } from './components/WorldbuildingReferenceDialog';
+import { checkForPwaUpdate } from './components/PwaUpdateNotice';
 import type { MarkdownEditorHandle } from './components/MarkdownEditor';
 import {
   creationDeviceLabel,
@@ -1553,6 +1554,7 @@ export default function App() {
           <button onClick={() => window.print()} type="button">Print</button>
         </div>
         <div className="cloud-controls">
+          <button onClick={checkForPwaUpdate} type="button">Check for updates</button>
           {accessToken ? (
             <button onClick={() => void syncToDrive()} type="button" disabled={syncing}>
               {syncing ? 'Syncing…' : 'Refresh & sync'}
@@ -1893,6 +1895,7 @@ export default function App() {
                  <button aria-pressed={spellcheckEnabled} onClick={() => setSpellcheckEnabled((current) => { const next = !current; localStorage.setItem('homebrewry-spellcheck', next ? 'on' : 'off'); return next; })} type="button">
                    Spellcheck: {spellcheckEnabled ? 'On' : 'Off'}
                  </button>
+                 <button onClick={() => { checkForPwaUpdate(); setCaptureMenuOpen(false); }} type="button">Check for updates</button>
                </div>
               <div className="mobile-writing-tool-group mobile-writing-save" aria-label="Drive save">
                 <button disabled={savingToDrive || syncing} onClick={() => { void saveActiveBrewNow(); setCaptureMenuOpen(false); }} type="button">

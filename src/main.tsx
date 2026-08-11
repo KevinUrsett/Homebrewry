@@ -1,6 +1,5 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { registerSW } from 'virtual:pwa-register';
 import { DriveLoginControl } from './components/DriveLoginControl';
 import { MobileCaptureDismiss } from './components/MobileCaptureDismiss';
 import { MobileContextTools } from './components/MobileContextTools';
@@ -22,8 +21,6 @@ import './iphone-layout.css';
 import './mobile-editor-text-size.css';
 import './mobile-qol.css';
 import './mobile-outline-scrubber.css';
-
-registerSW({ immediate: true });
 
 const previewMode = isLocalPreviewMode();
 const AppRoot = previewMode ? PreviewRootApp : RootApp;

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import App from './App';
+import { checkForPwaUpdate } from './components/PwaUpdateNotice';
 import { createBrew, getLivingWorldData, replaceBrews, saveBrew, saveLivingWorldData } from './lib/brewStore';
 import { loadBrewsFromDrive } from './lib/driveBrewStorage';
 import { listEncounters } from './lib/encounterStore';
@@ -308,6 +309,7 @@ export default function RootApp() {
       <main className="landing-page">
         <header className="landing-header">
           <div className="landing-brand" aria-label="Homebrewry"><span aria-hidden>✦</span><strong>Homebrewry</strong></div>
+          <button className="landing-update-button" onClick={checkForPwaUpdate} type="button">Check for updates</button>
         </header>
         <section className="landing-hero">
           <div className="landing-hero-copy">
@@ -333,9 +335,12 @@ export default function RootApp() {
           <span aria-hidden>✦</span>
           <strong>Homebrewry</strong>
         </div>
-        <button className="landing-library-button" disabled={!brews.length} onClick={() => openWorkspace('library')} type="button">
-          {brews.length ? 'Open workspace' : 'No brews yet'}
-        </button>
+        <div className="landing-header-actions">
+          <button className="landing-update-button" onClick={checkForPwaUpdate} type="button">Check for updates</button>
+          <button className="landing-library-button" disabled={!brews.length} onClick={() => openWorkspace('library')} type="button">
+            {brews.length ? 'Open workspace' : 'No brews yet'}
+          </button>
+        </div>
       </header>
 
       <section className="landing-hero">

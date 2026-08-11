@@ -24,8 +24,9 @@
 
 .landing-brand { align-items: center; display: flex; font-family: Georgia, serif; font-size: 1.2rem; gap: 9px; letter-spacing: .02em; }
 .landing-brand span { color: var(--landing-gold); font-size: 1.45rem; }
-.landing-library-button { background: transparent; border: 1px solid rgb(247 239 221 / 45%); border-radius: 999px; color: #f8efdd; padding: 9px 14px; }
-.landing-library-button:hover { background: rgb(255 255 255 / 8%); }
+.landing-header-actions { align-items: center; display: flex; gap: 8px; }
+.landing-library-button, .landing-update-button { background: transparent; border: 1px solid rgb(247 239 221 / 45%); border-radius: 999px; color: #f8efdd; padding: 9px 14px; }
+.landing-library-button:hover, .landing-update-button:hover { background: rgb(255 255 255 / 8%); }
 
 .landing-hero {
   align-items: center;
@@ -123,7 +124,8 @@
 @media (max-width: 560px) {
   .landing-header { padding-inline: 16px; }
   .landing-brand { font-size: 1.05rem; }
-  .landing-library-button { font-size: .76rem; padding: 7px 10px; }
+  .landing-header-actions { gap: 5px; }
+  .landing-library-button, .landing-update-button { font-size: .7rem; padding: 7px 9px; }
   .landing-hero { gap: 34px; padding: 34px 18px 54px; }
   .landing-hero h1 { font-size: clamp(3.2rem, 17vw, 5rem); }
   .landing-intro { font-size: .95rem; }

@@ -150,11 +150,44 @@
   color: #fffaf0;
 }
 
-.encounter-monster-actions {
+.encounter-monster-result > .encounter-monster-actions {
   align-items: center;
   display: flex;
   flex: none;
   gap: 7px;
+}
+
+.encounter-monster-result {
+  gap: 8px;
+  padding: 5px 7px;
+}
+
+.encounter-monster-result > .encounter-monster-open {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+  padding: 3px 0;
+  text-align: left;
+}
+
+.encounter-monster-result > .encounter-monster-open span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.encounter-monster-open:hover strong,
+.encounter-monster-open:focus-visible strong {
+  color: #7a2f27;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .encounter-monster-count {
@@ -168,6 +201,35 @@
   justify-content: center;
   min-width: 28px;
   padding: 4px 7px;
+}
+
+.encounter-monster-filters {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-top: 10px;
+}
+
+.encounter-monster-filters label {
+  color: #71553e;
+  display: grid;
+  font-size: .66rem;
+  font-weight: 800;
+  gap: 4px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.encounter-monster-filters select {
+  background: #fffdf7;
+  border: 1px solid #cbb99d;
+  border-radius: 5px;
+  color: #3e2d24;
+  font: 400 .8rem "Scaly Sans", Inter, sans-serif;
+  min-width: 0;
+  padding: 7px 6px;
+  text-transform: none;
+  width: 100%;
 }
 
 .encounter-party-picker {
@@ -500,13 +562,17 @@
   }
 
   .encounter-combatant-picker-backdrop {
-    align-items: end;
+    align-items: start;
     padding: 10px;
   }
 
   .encounter-picker {
-    max-height: min(720px, calc(100dvh - 20px));
+    max-height: calc(100dvh - 20px);
     padding: 14px;
+  }
+
+  .encounter-monster-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

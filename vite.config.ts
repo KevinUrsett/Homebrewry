@@ -6,7 +6,12 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'prompt',
+      registerType: 'autoUpdate',
+      injectRegister: false,
+      workbox: {
+        clientsClaim: true,
+        skipWaiting: true
+      },
       includeAssets: ['icon.svg'],
       manifest: {
         id: '/',

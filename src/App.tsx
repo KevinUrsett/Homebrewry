@@ -1722,6 +1722,7 @@ export default function App() {
           onResurrectNpc={resurrectNpc}
           onSetPartyLocation={setPartyLocation}
           onInsertReference={beginEncounterInsertion}
+          onMonsterOpen={setReferenceEntry}
           onSelectEncounter={setEncounterSelectedId}
           onUpdateEncounter={persistEncounter}
           onUpdatePartyMember={persistPartyMember}

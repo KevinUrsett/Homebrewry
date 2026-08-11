@@ -483,6 +483,25 @@
   text-transform: uppercase;
 }
 
+.encounter-date-control {
+  color: var(--ink-muted, #66574a);
+  display: grid;
+  font-size: .68rem;
+  font-weight: 800;
+  gap: 2px;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+
+.encounter-date-fields { align-items: center; display: flex; gap: 3px; }
+.encounter-date-fields input, .encounter-date-fields select, .encounter-add-date, .encounter-date-clear { background: #fffdf7; border: 1px solid #cbb99d; border-radius: 5px; color: #39291f; font: inherit; font-weight: 700; min-height: 34px; padding: 5px; }
+.encounter-date-fields input { min-width: 0; width: 42px; }
+.encounter-date-fields input:nth-of-type(2) { width: 52px; }
+.encounter-date-fields select { min-width: 0; padding-right: 3px; }
+.encounter-date-fields select:first-of-type { max-width: 96px; }
+.encounter-date-clear { color: #7a2f27; font-size: 1rem; line-height: 1; padding: 3px 7px; }
+.encounter-add-date { padding-inline: 8px; text-transform: none; }
+
 .encounter-progress-controls select {
   background: #fffdf7;
   border: 1px solid #cbb99d;
@@ -612,4 +631,8 @@
   .encounter-progress-controls select {
     width: 100%;
   }
+
+  .encounter-date-control { width: 100%; }
+  .encounter-date-fields { width: 100%; }
+  .encounter-date-fields select:first-of-type { flex: 1; max-width: none; }
 }

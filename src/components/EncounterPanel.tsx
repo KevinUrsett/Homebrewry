@@ -15,8 +15,9 @@ import {
   touchEncounter
 } from '../lib/encounters';
 import { campaignStoragePresentation } from '../lib/campaignStorageStatus';
+import { belentorMonths, formatBelentorDate } from '../lib/belentorCalendar';
 import type { CampaignPosition, DerivedPartyLocation } from '../lib/campaignProgress';
-import type { CampaignEntity, Encounter, EncounterParticipant, EntityCurrentState, PartyMember, SyncState, WorldEvent } from '../types';
+import type { BelentorDate, CampaignEntity, Encounter, EncounterParticipant, EntityCurrentState, PartyMember, SyncState, WorldEvent } from '../types';
 import '../encounter-refresh.css';
 
 type EncounterPanelProps = {
@@ -51,6 +52,7 @@ type StatField = 'initiative' | 'armorClass' | 'maxHitPoints';
 type StatEditor = { participantId: string; field: StatField; value: string } | null;
 
 const MONSTER_RESULTS_PAGE_SIZE = 30;
+const defaultEncounterDate: BelentorDate = { era: 'AA', year: 641, month: 'Quen', day: 1 };
 
 const asNumber = (value: string): number | null => {
   if (!value.trim()) return null;
@@ -188,6 +190,12 @@ export function EncounterPanel({
     setIsEditingName(false);
   };
 
+  const updateEncounterDate = (patch: Partial<BelentorDate>) => {
+    if (!selected) return;
+    const currentDate = selected.date ?? defaultEncounterDate;
+    onUpdateEncounter(touchEncounter(selected, { date: { ...currentDate, ...patch } }));
+  };
+
   const applyHitPointChange = (participant: EncounterParticipant, mode: 'damage' | 'healing' = 'damage') => {
     if (!selected) return;
     const entered = asNumber(hitPointChanges[participant.id] ?? '');
@@ -303,6 +311,7 @@ export function EncounterPanel({
               >
                 <strong>{encounter.name || 'Untitled encounter'}</strong>
                 <span>{encounter.participants.length} combatant{encounter.participants.length === 1 ? '' : 's'} · {encounter.status}</span>
+                {encounter.date && <small>{formatBelentorDate(encounter.date)}</small>}
               </button>
             ))}
             {!encounters.length && <p className="empty-panel">Create an encounter to start a combat setup.</p>}
@@ -375,6 +384,23 @@ export function EncounterPanel({
                   </div>
                 )}
                 <div className="encounter-progress-controls">
+                  <div className="encounter-date-control">
+                    <span>When</span>
+                    {selected.date ? (
+                      <div className="encounter-date-fields">
+                        <input aria-label="Encounter day" max="30" min="1" onChange={(event) => updateEncounterDate({ day: Math.max(1, Math.min(30, Number(event.target.value) || 1)) })} type="number" value={selected.date.day} />
+                        <select aria-label="Encounter month" onChange={(event) => updateEncounterDate({ month: event.target.value as BelentorDate['month'] })} value={selected.date.month}>
+                          {belentorMonths.map(({ name }) => <option key={name} value={name}>{name}</option>)}
+                        </select>
+                        <input aria-label="Encounter year" min="0" onChange={(event) => updateEncounterDate({ year: Math.max(0, Number(event.target.value) || 0) })} type="number" value={selected.date.year} />
+                        <select aria-label="Encounter era" onChange={(event) => updateEncounterDate({ era: event.target.value as BelentorDate['era'] })} value={selected.date.era}>
+                          <option value="AA">AA</option>
+                          <option value="BA">BA</option>
+                        </select>
+                        <button aria-label="Clear encounter date" className="encounter-date-clear" onClick={() => onUpdateEncounter(touchEncounter(selected, { date: undefined }))} title="Clear date" type="button">×</button>
+                      </div>
+                    ) : <button className="encounter-add-date" onClick={() => updateEncounterDate({})} type="button">Add date</button>}
+                  </div>
                   <label>
                     Progress
                     <select

@@ -536,6 +536,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .mobile-writing-save { grid-template-columns: minmax(0, 1fr); }
   .mobile-writing-save button { background: #5d2f26; border-color: #5d2f26; color: #fff8e9; font-weight: 800; }
   .mobile-writing-save button:disabled { background: #a8947b; border-color: #a8947b; color: #f4e7ce; }
+  .mobile-writing-login { grid-template-columns: minmax(0, 1fr); }
+  .mobile-writing-login button { border-color: #9c653d; font-weight: 800; }
   .drive-save-notice { top: calc(env(safe-area-inset-top) + 12px); }
   .name-generator-backdrop { align-items: stretch; padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)); }
    .name-generator-dialog { gap: 12px; max-height: 100%; padding: 16px; }

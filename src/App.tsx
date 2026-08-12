@@ -1369,14 +1369,18 @@ export default function App() {
   const connectDrive = async () => {
     try {
       setSaveState('Connecting to Google Drive…');
-      const token = await requestDriveAccess();
+      setDriveSaveNotice({ tone: 'saving', message: 'Opening Google Drive login…' });
+      const token = await requestDriveAccess({ force: true });
       setAccessToken(token);
       const campaignResult = await syncCampaignDataOnly(token, true);
       const privateMonsterResult = await syncPrivateMonsterCatalogueOnly(token, true);
       const details = [campaignResult?.detail, privateMonsterResult?.detail].filter(Boolean).join('; ');
       setSaveState(details ? `Google Drive connected; ${details}` : 'Google Drive connected for this session');
+      setDriveSaveNotice({ tone: 'success', message: 'Logged in to Google Drive' });
     } catch (error) {
-      setSaveState(error instanceof Error ? error.message : 'Google Drive connection failed');
+      const message = error instanceof Error ? error.message : 'Google Drive connection failed';
+      setSaveState(message);
+      setDriveSaveNotice({ tone: 'error', message });
     }
   };
 
@@ -1929,8 +1933,11 @@ export default function App() {
                    Spellcheck: {spellcheckEnabled ? 'On' : 'Off'}
                  </button>
                  <button disabled={syncing || savingToDrive} onClick={() => void syncToDrive()} type="button">
-                  {syncing ? 'Syncing…' : 'Sync with Drive'}
+                  {syncing ? 'Syncing…' : 'Sync to Drive'}
                 </button>
+              </div>
+              <div className="mobile-writing-tool-group mobile-writing-login" aria-label="Drive login">
+                <button disabled={syncing || savingToDrive} onClick={() => void connectDrive()} type="button">Log in to Drive</button>
               </div>
               <div className="mobile-writing-tool-group mobile-writing-save" aria-label="Drive save">
                 <button disabled={savingToDrive || syncing} onClick={() => { void saveActiveBrewNow(); setCaptureMenuOpen(false); }} type="button">

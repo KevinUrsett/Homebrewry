@@ -34,6 +34,22 @@ const change = async (element: HTMLInputElement | HTMLSelectElement, value: stri
 };
 
 describe('PlotBoardPanel', () => {
+  it('shows a required-field message instead of saving an untitled beat', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push({ container, root });
+
+    await act(async () => { root.render(<PlotBoardPanel board={board} entities={[]} onSave={() => undefined} />); });
+    const add = container.querySelector<HTMLButtonElement>('.plot-board-add-beat');
+    await act(async () => { add?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+    const save = Array.from(container.querySelectorAll<HTMLButtonElement>('.plot-beat-editor button')).find((button) => button.textContent === 'Save beat');
+    await act(async () => { save?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+
+    expect(container.querySelector('.plot-beat-validation')?.textContent).toContain('title');
+    expect(container.querySelector<HTMLInputElement>('.plot-beat-invalid input')?.getAttribute('aria-invalid')).toBe('true');
+  });
+
   it('saves a beat spanning later phases and renders it across both cells', async () => {
     const container = document.createElement('div');
     document.body.append(container);

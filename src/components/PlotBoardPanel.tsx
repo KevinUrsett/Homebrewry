@@ -48,6 +48,7 @@ export function PlotBoardPanel({ board, entities, draftSeed, onDraftSeedApplied,
   const [laneTone, setLaneTone] = useState<PlotBoardLane['tone']>('main');
   const [laneInsertAfterId, setLaneInsertAfterId] = useState<string | null>(null);
   const [editor, setEditor] = useState<BeatEditor | null>(null);
+  const [saveAttempted, setSaveAttempted] = useState(false);
   const phaseInputRef = useRef<HTMLInputElement>(null);
   const laneInputRef = useRef<HTMLInputElement>(null);
 
@@ -63,6 +64,7 @@ export function PlotBoardPanel({ board, entities, draftSeed, onDraftSeedApplied,
   useEffect(() => {
     if (!draftSeed || !draft || !lanes[0] || !phases[0]) return;
     setEditor({ id: undefined, laneId: lanes[0].id, spanToPhaseId: '', phaseId: phases[0].id, title: draftSeed.title ?? '', notes: '', status: 'seed', entityId: draftSeed.entityIds?.find((id) => entityById.has(id)) ?? '', linkTargetId: '', linkLabel: 'leads to' });
+    setSaveAttempted(false);
     onDraftSeedApplied?.();
   }, [draft, draftSeed, entityById, lanes, onDraftSeedApplied, phases]);
 
@@ -118,14 +120,20 @@ export function PlotBoardPanel({ board, entities, draftSeed, onDraftSeedApplied,
     const timestamp = new Date().toISOString();
     replaceDraft({ ...draft, lanes: moveOrderedItem(draft.lanes, laneId, offset), updatedAt: timestamp });
   };
-  const openNewBeat = (laneId: string, phaseId: string) => setEditor({ laneId, spanToPhaseId: '', phaseId, title: '', notes: '', status: 'seed', entityId: '', linkTargetId: '', linkLabel: 'leads to' });
+  const openNewBeat = (laneId: string, phaseId: string) => {
+    setSaveAttempted(false);
+    setEditor({ laneId, spanToPhaseId: '', phaseId, title: '', notes: '', status: 'seed', entityId: '', linkTargetId: '', linkLabel: 'leads to' });
+  };
   const openBeat = (beat: PlotBoardBeat) => {
     const outgoing = draft?.links.find((link) => link.sourceBeatId === beat.id);
     const spanEnd = [...(beat.spanPhaseIds ?? [])].filter((phaseId) => phaseId !== beat.phaseId).at(-1) ?? '';
+    setSaveAttempted(false);
     setEditor({ id: beat.id, laneId: beat.laneId, spanToPhaseId: spanEnd, phaseId: beat.phaseId, title: beat.title, notes: beat.notes, status: beat.status, entityId: beat.entityIds[0] ?? '', linkTargetId: outgoing?.targetBeatId ?? '', linkLabel: outgoing?.label ?? 'leads to' });
   };
   const saveBeat = () => {
-    if (!draft || !editor?.title.trim()) return;
+    if (!draft || !editor) return;
+    setSaveAttempted(true);
+    if (!editor.laneId || !editor.phaseId || !editor.title.trim()) return;
     const timestamp = new Date().toISOString();
     const entityIds = editor.entityId ? [editor.entityId] : [];
     const existing = editor.id ? draft.beats.find((beat) => beat.id === editor.id) : undefined;
@@ -140,6 +148,7 @@ export function PlotBoardPanel({ board, entities, draftSeed, onDraftSeedApplied,
     const links = editor.linkTargetId && editor.linkTargetId !== beat.id ? [...withoutSourceLinks, { id: crypto.randomUUID(), sourceBeatId: beat.id, targetBeatId: editor.linkTargetId, label: editor.linkLabel.trim() || 'leads to', createdAt: timestamp }] : withoutSourceLinks;
     replaceDraft({ ...draft, beats: nextBeats, links, updatedAt: timestamp });
     setEditor(null);
+    setSaveAttempted(false);
   };
   const removeBeat = () => {
     if (!draft || !editor?.id) return;
@@ -165,6 +174,7 @@ export function PlotBoardPanel({ board, entities, draftSeed, onDraftSeedApplied,
   const isSpanning = (beat: PlotBoardBeat) => (beat.spanPhaseIds?.length ?? 0) > 1;
   const spanEndIndex = (beat: PlotBoardBeat) => Math.max(...(beat.spanPhaseIds ?? [beat.phaseId]).map((phaseId) => phases.findIndex((phase) => phase.id === phaseId)));
   const renderBeat = (beat: PlotBoardBeat, className = 'plot-board-beat') => <button className={`${className} status-${beat.status}`} key={beat.id} onClick={() => openBeat(beat)} type="button"><span>{statusLabel[beat.status]}</span><strong>{beat.title}</strong>{beat.entityIds.length > 0 && <small>{beat.entityIds.map((id) => entityById.get(id)?.name).filter(Boolean).join(', ')}</small>}{beatConnections(beat.id).map((connection) => <em key={connection}>→ {connection}</em>)}</button>;
+  const missingBeatFields = editor ? [!editor.laneId && 'story arc', !editor.phaseId && 'phase', !editor.title.trim() && 'title'].filter(Boolean) as string[] : [];
 
   return <section className="plot-board-section" aria-label="Plot board">
     <header><div><p className="eyebrow">Campaign narrative</p><h2>Plot board</h2><small>Outline story arcs and plot beats. This is independent from Campaign Now and World State.</small></div></header>
@@ -197,7 +207,7 @@ export function PlotBoardPanel({ board, entities, draftSeed, onDraftSeedApplied,
           })}
         </div></div>
       </>}
-      {editor && <section className="plot-beat-editor" aria-label="Plot beat editor"><div><h3>{editor.id ? 'Edit plot beat' : 'New plot beat'}</h3><button onClick={() => setEditor(null)} type="button">Close</button></div><label>Story arc<select onChange={(event) => setEditor({ ...editor, laneId: event.target.value })} value={editor.laneId}>{lanes.map((lane) => <option key={lane.id} value={lane.id}>{lane.title}</option>)}</select></label><label>Phase<select onChange={(event) => setEditor({ ...editor, phaseId: event.target.value, spanToPhaseId: '' })} value={editor.phaseId}>{phases.map((phase) => <option key={phase.id} value={phase.id}>{phase.title}</option>)}</select></label><label>To<select onChange={(event) => setEditor({ ...editor, spanToPhaseId: event.target.value })} value={editor.spanToPhaseId}><option value="">This phase only</option>{phases.slice(Math.max(0, phases.findIndex((phase) => phase.id === editor.phaseId) + 1)).map((phase) => <option key={phase.id} value={phase.id}>Through {phase.title}</option>)}</select></label><label>Status<select onChange={(event) => setEditor({ ...editor, status: event.target.value as PlotBeatStatus })} value={editor.status}>{(Object.keys(statusLabel) as PlotBeatStatus[]).map((status) => <option key={status} value={status}>{statusLabel[status]}</option>)}</select></label><label>Title<input autoFocus onChange={(event) => setEditor({ ...editor, title: event.target.value })} placeholder="The discovery, betrayal, revelation…" value={editor.title} /></label><label>Reference<select onChange={(event) => setEditor({ ...editor, entityId: event.target.value })} value={editor.entityId}><option value="">No Worldbuilding reference</option>{entities.map((entity) => <option key={entity.id} value={entity.id}>{entity.name}</option>)}</select></label><label>Connect to<select onChange={(event) => setEditor({ ...editor, linkTargetId: event.target.value })} value={editor.linkTargetId}><option value="">No direct connection</option>{beats.filter((beat) => beat.id !== editor.id).map((beat) => <option key={beat.id} value={beat.id}>{beat.title}</option>)}</select></label><label>Connection label<input disabled={!editor.linkTargetId} onChange={(event) => setEditor({ ...editor, linkLabel: event.target.value })} value={editor.linkLabel} /></label><label className="plot-beat-notes">Notes<textarea onChange={(event) => setEditor({ ...editor, notes: event.target.value })} placeholder="What happens, why it matters, what can change…" value={editor.notes} /></label><div className="plot-beat-editor-actions"><button className="primary-button" onClick={saveBeat} type="button">Save beat</button>{editor.id && <button className="quiet-danger" onClick={removeBeat} type="button">Remove beat</button>}</div></section>}
+      {editor && <section className="plot-beat-editor" aria-label="Plot beat editor"><div><h3>{editor.id ? 'Edit plot beat' : 'New plot beat'}</h3><button onClick={() => setEditor(null)} type="button">Close</button></div>{saveAttempted && missingBeatFields.length > 0 && <p className="plot-beat-validation" role="alert">Add {missingBeatFields.join(', ')} before saving.</p>}<label className={saveAttempted && !editor.laneId ? 'plot-beat-invalid' : ''}>Story arc *<select aria-invalid={saveAttempted && !editor.laneId} onChange={(event) => setEditor({ ...editor, laneId: event.target.value })} value={editor.laneId}>{lanes.map((lane) => <option key={lane.id} value={lane.id}>{lane.title}</option>)}</select></label><label className={saveAttempted && !editor.phaseId ? 'plot-beat-invalid' : ''}>Phase *<select aria-invalid={saveAttempted && !editor.phaseId} onChange={(event) => setEditor({ ...editor, phaseId: event.target.value, spanToPhaseId: '' })} value={editor.phaseId}>{phases.map((phase) => <option key={phase.id} value={phase.id}>{phase.title}</option>)}</select></label><label>To<select onChange={(event) => setEditor({ ...editor, spanToPhaseId: event.target.value })} value={editor.spanToPhaseId}><option value="">This phase only</option>{phases.slice(Math.max(0, phases.findIndex((phase) => phase.id === editor.phaseId) + 1)).map((phase) => <option key={phase.id} value={phase.id}>Through {phase.title}</option>)}</select></label><label>Status<select onChange={(event) => setEditor({ ...editor, status: event.target.value as PlotBeatStatus })} value={editor.status}>{(Object.keys(statusLabel) as PlotBeatStatus[]).map((status) => <option key={status} value={status}>{statusLabel[status]}</option>)}</select></label><label className={saveAttempted && !editor.title.trim() ? 'plot-beat-invalid' : ''}>Title *<input aria-invalid={saveAttempted && !editor.title.trim()} autoFocus onChange={(event) => setEditor({ ...editor, title: event.target.value })} placeholder="The discovery, betrayal, revelation…" value={editor.title} /></label><label>Reference<select onChange={(event) => setEditor({ ...editor, entityId: event.target.value })} value={editor.entityId}><option value="">No Worldbuilding reference</option>{entities.map((entity) => <option key={entity.id} value={entity.id}>{entity.name}</option>)}</select></label><label>Connect to<select onChange={(event) => setEditor({ ...editor, linkTargetId: event.target.value })} value={editor.linkTargetId}><option value="">No direct connection</option>{beats.filter((beat) => beat.id !== editor.id).map((beat) => <option key={beat.id} value={beat.id}>{beat.title}</option>)}</select></label><label>Connection label<input disabled={!editor.linkTargetId} onChange={(event) => setEditor({ ...editor, linkLabel: event.target.value })} value={editor.linkLabel} /></label><label className="plot-beat-notes">Notes<textarea onChange={(event) => setEditor({ ...editor, notes: event.target.value })} placeholder="What happens, why it matters, what can change…" value={editor.notes} /></label><div className="plot-beat-editor-actions"><button className="primary-button" onClick={saveBeat} type="button">Save beat</button>{editor.id && <button className="quiet-danger" onClick={removeBeat} type="button">Remove beat</button>}</div></section>}
     </>}
   </section>;
 }

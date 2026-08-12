@@ -12,3 +12,6 @@
 .plot-board-grid { position: relative; }
 .plot-board-span { align-self: stretch; display: flex; padding: 8px; pointer-events: none; position: relative; z-index: 2; }
 .plot-board-span-beat { align-content: start; height: 100%; pointer-events: auto; }
+.plot-beat-validation { background: #f9e9e1; border: 1px solid #b15b42; border-radius: 5px; color: #7b3126; font-size: .78rem; font-weight: 700; grid-column: 1 / -1; margin: 0; padding: 9px 10px; }
+.plot-beat-editor label.plot-beat-invalid { color: #8a3328; }
+.plot-beat-editor .plot-beat-invalid input, .plot-beat-editor .plot-beat-invalid select { border-color: #ad4c37; box-shadow: 0 0 0 2px rgb(173 76 55 / 13%); }

@@ -1925,8 +1925,9 @@ export default function App() {
                 <button onClick={() => { setCaptureMenuOpen(false); setNameGeneratorTarget('editor'); }} type="button">Name</button>
               </div>
               <div className="mobile-writing-tool-group mobile-writing-destinations" aria-label="Editor panels">
-                <button onClick={() => { setCaptureMenuOpen(false); setMobileSection('outline'); }} type="button">Outline</button>
+                <button hidden onClick={() => { setCaptureMenuOpen(false); setMobileSection('outline'); }} type="button">Outline</button>
                 <button onClick={openIdeas} type="button">My ideas</button>
+                <button disabled={syncing || savingToDrive} onClick={() => void connectDrive()} type="button">Log in to Drive</button>
               </div>
                <div className="mobile-writing-tool-group mobile-writing-destinations" aria-label="Editor settings">
                  <button aria-pressed={spellcheckEnabled} onClick={() => setSpellcheckEnabled((current) => { const next = !current; localStorage.setItem('homebrewry-spellcheck', next ? 'on' : 'off'); return next; })} type="button">
@@ -1935,9 +1936,6 @@ export default function App() {
                  <button disabled={syncing || savingToDrive} onClick={() => void syncToDrive()} type="button">
                   {syncing ? 'Syncing…' : 'Sync to Drive'}
                 </button>
-              </div>
-              <div className="mobile-writing-tool-group mobile-writing-login" aria-label="Drive login">
-                <button disabled={syncing || savingToDrive} onClick={() => void connectDrive()} type="button">Log in to Drive</button>
               </div>
               <div className="mobile-writing-tool-group mobile-writing-save" aria-label="Drive save">
                 <button disabled={savingToDrive || syncing} onClick={() => { void saveActiveBrewNow(); setCaptureMenuOpen(false); }} type="button">

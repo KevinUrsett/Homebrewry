@@ -1381,20 +1381,47 @@ export default function App() {
   };
 
   const syncToDrive = async () => {
-    if (!accessToken || syncing) return;
+    if (syncing) return;
     try {
       setSyncing(true);
       setSaveState('Syncing with Google Drive…');
-      const assetResult = await syncAssets(accessToken, assets);
-      await replaceAssets(assetResult.assets);
-      setAssets(assetResult.assets);
-      const brewResult = await syncBrews(accessToken, brews);
-      await replaceBrews(brewResult.brews);
-      setBrews(brewResult.brews);
-      const campaignResult = await syncCampaignDataOnly(accessToken);
-      const syncedCurrentBrew = campaignResult?.data.currentBrewId;
-      if (syncedCurrentBrew && brewResult.brews.some((brew) => brew.id === syncedCurrentBrew)) setActiveId(syncedCurrentBrew);
-      const privateMonsterResult = await syncPrivateMonsterCatalogueOnly(accessToken);
+      let token = accessToken;
+      if (!token) {
+        setSaveState('Opening Google Drive login…');
+        token = await requestDriveAccess({ force: true });
+        setAccessToken(token);
+        setSaveState('Syncing with Google Drive…');
+      }
+
+      const syncEverything = async (activeToken: string) => {
+        const assetResult = await syncAssets(activeToken, assets);
+        await replaceAssets(assetResult.assets);
+        setAssets(assetResult.assets);
+        const brewResult = await syncBrews(activeToken, brews);
+        await replaceBrews(brewResult.brews);
+        setBrews(brewResult.brews);
+        const campaignResult = await syncCampaignDataOnly(activeToken);
+        const syncedCurrentBrew = campaignResult?.data.currentBrewId;
+        if (syncedCurrentBrew && brewResult.brews.some((brew) => brew.id === syncedCurrentBrew)) setActiveId(syncedCurrentBrew);
+        const privateMonsterResult = await syncPrivateMonsterCatalogueOnly(activeToken);
+        return { assetResult, brewResult, campaignResult, privateMonsterResult };
+      };
+
+      let result;
+      try {
+        result = await syncEverything(token);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '';
+        if (!/\\(401\\)/.test(message)) throw error;
+
+        setSaveState('Drive session expired — opening Google login…');
+        token = await requestDriveAccess({ force: true });
+        setAccessToken(token);
+        setSaveState('Syncing with Google Drive…');
+        result = await syncEverything(token);
+      }
+
+      const { assetResult, brewResult, campaignResult, privateMonsterResult } = result;
       setSaveState(`${brewResult.detail}; ${assetResult.detail}; ${campaignResult?.detail ?? 'Campaign data sync already in progress'}; ${privateMonsterResult?.detail ?? 'Private monster catalogue sync already in progress'}`);
     } catch (error) {
       setSaveState(error instanceof Error ? error.message : 'Google Drive sync failed');
@@ -1899,6 +1926,11 @@ export default function App() {
                  </button>
                  <button onClick={() => { checkForPwaUpdate(); setCaptureMenuOpen(false); }} type="button">Check for updates</button>
                </div>
+              <div className="mobile-writing-tool-group mobile-writing-sync" aria-label="Drive sync">
+                <button disabled={syncing || savingToDrive} onClick={() => { void syncToDrive(); setCaptureMenuOpen(false); }} type="button">
+                  {syncing ? 'Syncing…' : 'Sync with Drive'}
+                </button>
+              </div>
               <div className="mobile-writing-tool-group mobile-writing-save" aria-label="Drive save">
                 <button disabled={savingToDrive || syncing} onClick={() => { void saveActiveBrewNow(); setCaptureMenuOpen(false); }} type="button">
                   {savingToDrive ? 'Saving…' : 'Save to Drive'}

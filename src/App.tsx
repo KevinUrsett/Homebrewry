@@ -1385,6 +1385,7 @@ export default function App() {
     try {
       setSyncing(true);
       setSaveState('Syncing with Google Drive…');
+      setDriveSaveNotice({ tone: 'saving', message: 'Syncing with Google Drive…' });
       let token = accessToken;
       if (!token) {
         setSaveState('Opening Google Drive login…');
@@ -1423,8 +1424,11 @@ export default function App() {
 
       const { assetResult, brewResult, campaignResult, privateMonsterResult } = result;
       setSaveState(`${brewResult.detail}; ${assetResult.detail}; ${campaignResult?.detail ?? 'Campaign data sync already in progress'}; ${privateMonsterResult?.detail ?? 'Private monster catalogue sync already in progress'}`);
+      setDriveSaveNotice({ tone: 'success', message: 'Synced with Google Drive' });
     } catch (error) {
-      setSaveState(error instanceof Error ? error.message : 'Google Drive sync failed');
+      const message = error instanceof Error ? error.message : 'Google Drive sync failed';
+      setSaveState(message);
+      setDriveSaveNotice({ tone: 'error', message });
     } finally {
       setSyncing(false);
     }
@@ -1924,10 +1928,7 @@ export default function App() {
                  <button aria-pressed={spellcheckEnabled} onClick={() => setSpellcheckEnabled((current) => { const next = !current; localStorage.setItem('homebrewry-spellcheck', next ? 'on' : 'off'); return next; })} type="button">
                    Spellcheck: {spellcheckEnabled ? 'On' : 'Off'}
                  </button>
-                 <button onClick={() => { checkForPwaUpdate(); setCaptureMenuOpen(false); }} type="button">Check for updates</button>
-               </div>
-              <div className="mobile-writing-tool-group mobile-writing-sync" aria-label="Drive sync">
-                <button disabled={syncing || savingToDrive} onClick={() => { void syncToDrive(); setCaptureMenuOpen(false); }} type="button">
+                 <button disabled={syncing || savingToDrive} onClick={() => void syncToDrive()} type="button">
                   {syncing ? 'Syncing…' : 'Sync with Drive'}
                 </button>
               </div>

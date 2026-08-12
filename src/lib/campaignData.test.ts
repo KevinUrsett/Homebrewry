@@ -42,6 +42,18 @@ describe('campaign data snapshots', () => {
     expect(parsed.timelineEntries).toHaveLength(1);
   });
 
+  it('preserves a plot beat spanning contiguous story arcs', () => {
+    const timestamp = '2026-08-12T08:00:00.000Z';
+    const board = createBlankPlotBoard(timestamp);
+    const phase = { id: 'opening', title: 'Opening', order: 0, createdAt: timestamp, updatedAt: timestamp };
+    const main = { id: 'main', title: 'Main story', tone: 'main' as const, order: 0, createdAt: timestamp, updatedAt: timestamp };
+    const side = { id: 'side', title: 'Side quest', tone: 'side' as const, order: 1, createdAt: timestamp, updatedAt: timestamp };
+    const beat = { id: 'beat-1', laneId: main.id, spanLaneIds: [main.id, side.id], phaseId: phase.id, title: 'Shared discovery', notes: '', status: 'planned' as const, entityIds: [], order: 0, createdAt: timestamp, updatedAt: timestamp };
+    const snapshot = { ...createCampaignDataSnapshot([], [], [], timestamp), plotBoard: { ...board, phases: [phase], lanes: [main, side], beats: [beat] } };
+
+    expect(parseCampaignDataSnapshot(JSON.parse(JSON.stringify(snapshot))).plotBoard?.beats).toEqual([beat]);
+  });
+
   it('preserves structured custom monster data in schema v3 while safely migrating v2 entries', () => {
     const template: CatalogueEntry = {
       id: 'srd-monster',

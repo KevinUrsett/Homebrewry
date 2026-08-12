@@ -326,7 +326,11 @@ function parsePlotBoard(value: unknown): PlotBoard {
   const laneIds = new Set(lanes.map((lane) => lane.id));
   const beats = value.beats.map((beat) => {
     if (!isRecord(beat) || !laneIds.has(String(beat.laneId)) || !phaseIds.has(String(beat.phaseId)) || !['seed', 'planned', 'active', 'resolved'].includes(String(beat.status)) || !Array.isArray(beat.entityIds)) throw new Error('Campaign data has an invalid plot board beat.');
-    return { id: requiredString(beat.id, 'plot board beat ID'), laneId: requiredString(beat.laneId, 'plot board beat lane'), phaseId: requiredString(beat.phaseId, 'plot board beat phase'), title: requiredString(beat.title, 'plot board beat title'), notes: requiredString(beat.notes, 'plot board beat notes'), status: beat.status as PlotBoard['beats'][number]['status'], entityIds: requiredStringArray(beat.entityIds, 'plot board beat entity IDs'), order: nullableNumber(beat.order, 'plot board beat order') ?? 0, createdAt: requiredString(beat.createdAt, 'plot board beat creation time'), updatedAt: requiredString(beat.updatedAt, 'plot board beat update time') };
+    const laneId = requiredString(beat.laneId, 'plot board beat lane');
+    const storedSpanLaneIds = beat.spanLaneIds === undefined ? [] : requiredStringArray(beat.spanLaneIds, 'plot board beat spanning lanes');
+    if (storedSpanLaneIds.some((id) => !laneIds.has(id))) throw new Error('Campaign data has an invalid plot board beat span.');
+    const spanLaneIds = [...new Set([laneId, ...storedSpanLaneIds])];
+    return { id: requiredString(beat.id, 'plot board beat ID'), laneId, ...(spanLaneIds.length > 1 ? { spanLaneIds } : {}), phaseId: requiredString(beat.phaseId, 'plot board beat phase'), title: requiredString(beat.title, 'plot board beat title'), notes: requiredString(beat.notes, 'plot board beat notes'), status: beat.status as PlotBoard['beats'][number]['status'], entityIds: requiredStringArray(beat.entityIds, 'plot board beat entity IDs'), order: nullableNumber(beat.order, 'plot board beat order') ?? 0, createdAt: requiredString(beat.createdAt, 'plot board beat creation time'), updatedAt: requiredString(beat.updatedAt, 'plot board beat update time') };
   });
   const beatIds = new Set(beats.map((beat) => beat.id));
   const links = value.links.map((link) => {

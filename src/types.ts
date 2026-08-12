@@ -251,10 +251,10 @@ export type PlotBoardLane = {
 /** A DM-authored plot beat. It never alters World State or campaign position. */
 export type PlotBoardBeat = {
   id: string;
-  /** The first arc occupied by this beat. Additional occupied arcs are stored below. */
+  /** The first phase occupied by this beat. Additional occupied phases are stored below. */
   laneId: string;
-  /** Contiguous story arcs this beat visually spans, starting with laneId. */
-  spanLaneIds?: string[];
+  /** Contiguous phases this beat visually spans, starting with phaseId. */
+  spanPhaseIds?: string[];
   phaseId: string;
   title: string;
   notes: string;

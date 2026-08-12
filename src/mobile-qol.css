@@ -38,6 +38,11 @@
 
   html.mobile-focus-writing .app-shell.mobile-editor.mobile-top-menu-open .mobile-nav {
     display: grid !important;
+    padding-top: max(59px, env(safe-area-inset-top));
+  }
+
+  html.mobile-focus-writing .app-shell.mobile-editor.mobile-top-menu-open .mobile-history-controls {
+    top: calc(max(59px, env(safe-area-inset-top)) + 5px);
   }
 
   html.mobile-focus-writing .app-shell.mobile-editor .workspace {

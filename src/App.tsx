@@ -17,6 +17,7 @@ import { checkForPwaUpdate } from './components/PwaUpdateNotice';
 import type { MarkdownEditorHandle } from './components/MarkdownEditor';
 import {
   creationDeviceLabel,
+  currentDeviceId,
   createBrew,
   deleteBrew,
   getCampaignDataSyncMetadata,
@@ -388,6 +389,7 @@ export default function App() {
           ? {
               ...updater(brew),
               updatedAt: new Date().toISOString(),
+              updatedOnDeviceId: currentDeviceId(),
               version: brew.version + 1,
               syncState: brew.drive ? 'pending' : 'local'
             }

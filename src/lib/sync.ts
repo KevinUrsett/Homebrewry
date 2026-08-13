@@ -27,6 +27,7 @@ const withConflict = (local: Brew, remote: { brew: Brew; file: { headRevisionId?
       content: remote.brew.content,
       createdAt: remote.brew.createdAt,
       createdOn: remote.brew.createdOn,
+      updatedOnDeviceId: remote.brew.updatedOnDeviceId,
       updatedAt: remote.brew.updatedAt,
       version: remote.brew.version,
       rendererSettings: remote.brew.rendererSettings
@@ -49,6 +50,12 @@ export async function syncBrews(accessToken: string, brews: Brew[]): Promise<Syn
     if (remote && local.drive && remote.file.headRevisionId !== local.drive.revisionId) {
       const localChanged = local.updatedAt > local.drive.lastSyncedAt;
       if (localChanged) {
+        if (local.updatedOnDeviceId && local.updatedOnDeviceId === remote.brew.updatedOnDeviceId) {
+          const file = await uploadBrew(accessToken, local);
+          synced.push(asSynced(local, file));
+          changes += 1;
+          continue;
+        }
         synced.push(withConflict(local, remote));
         conflicts += 1;
         continue;

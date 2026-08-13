@@ -33,7 +33,7 @@ export type BrewAsset = {
 };
 
 export type ConflictSnapshot = {
-  remoteBrew: Pick<Brew, 'title' | 'content' | 'createdAt' | 'createdOn' | 'updatedAt' | 'version' | 'rendererSettings'>;
+  remoteBrew: Pick<Brew, 'title' | 'content' | 'createdAt' | 'createdOn' | 'updatedAt' | 'updatedOnDeviceId' | 'version' | 'rendererSettings'>;
   remoteRevisionId: string;
 };
 
@@ -44,6 +44,7 @@ export type Brew = {
   createdAt: string;
   /** A concise device class recorded when this brew was created. */
   createdOn?: string;
+  updatedOnDeviceId?: string;
   updatedAt: string;
   version: number;
   rendererSettings: RendererSettings;

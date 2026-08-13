@@ -118,6 +118,15 @@ export function creationDeviceLabel(): string {
   return 'This device';
 }
 
+export function currentDeviceId(): string {
+  const key = 'homebrewry-device-id';
+  const existing = localStorage.getItem(key);
+  if (existing) return existing;
+  const id = crypto.randomUUID();
+  localStorage.setItem(key, id);
+  return id;
+}
+
 export async function listBrews(): Promise<Brew[]> {
   const database = await getDatabase();
   const brews = await database.getAll(STORE_NAME) as Brew[];

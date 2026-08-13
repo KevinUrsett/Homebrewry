@@ -1,5 +1,15 @@
 /* Phase 9 encounter tracker refinements. Kept separate so the feature can be
-   reviewed or reverted without disturbing the shared application theme. */
+reviewed or reverted without disturbing the shared application theme. */
+
+.encounter-view-tabs { display: flex; gap: 4px; }
+.encounter-view-tabs button { background: #f7f0df; border: 1px solid #ad9576; border-radius: 6px; color: #422f25; font-size: .78rem; padding: 8px 10px; }
+.encounter-view-tabs button.is-selected { background: #5d2f26; border-color: #5d2f26; color: #fffaf0; font-weight: 800; }
+.initiative-run-actions { align-items: center; display: flex; gap: 7px; }
+.encounter-view-run .encounter-library { display: none; }
+.encounter-view-run .encounter-workspace { display: contents; }
+.encounter-view-run .encounter-setup > :not(.encounter-combatant-picker-backdrop) { display: none; }
+.encounter-view-run .initiative-panel { grid-column: 1 / -1; }
+.encounter-view-entries .initiative-panel { display: none; }
 
 .encounter-title-display {
   align-items: center;

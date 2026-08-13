@@ -12,7 +12,8 @@ reviewed or reverted without disturbing the shared application theme. */
 .encounter-view-create .initiative-panel { display: none; }
 .encounter-view-create:not(.is-editing) .encounter-setup { display: none; }
 .encounter-list-item { align-items: stretch; display: flex; gap: 6px; }
-.encounter-list-main { background: transparent; border: 0; color: inherit; flex: 1; min-width: 0; padding: 0; text-align: left; }
+.encounter-list-main { background: transparent; border: 0; color: inherit; display: grid; flex: 1; gap: 3px; min-width: 0; padding: 0; text-align: left; }
+.encounter-list-name { color: #39291f; display: block; font-size: .94rem; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .encounter-list-actions { align-items: center; display: flex; gap: 3px; }
 .encounter-list-actions button { background: #fffaf0; border: 1px solid #cbb99d; border-radius: 5px; color: #5d2f26; font-size: .72rem; min-height: 30px; padding: 4px 7px; }
 .party-roster > summary { align-items: center; background: #f7f0df; border: 1px solid #cbb99d; border-radius: 6px; color: #5d2f26; cursor: pointer; display: flex; font-weight: 800; justify-content: space-between; list-style: none; padding: 9px 10px; }

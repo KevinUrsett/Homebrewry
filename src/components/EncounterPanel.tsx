@@ -391,8 +391,8 @@ export function EncounterPanel({
           <div className="encounter-list">
             {encounters.map((encounter) => (
               <article className={`encounter-list-item ${selected?.id === encounter.id ? 'is-selected' : ''}`} key={encounter.id}>
-                <button className="encounter-list-main" onClick={() => openEncounterEditor(encounter.id)} type="button">
-                  <strong>{encounter.name || 'Untitled encounter'}</strong>
+                <button aria-label={`Edit ${encounter.name || 'untitled encounter'}`} className="encounter-list-main" onClick={() => openEncounterEditor(encounter.id)} type="button">
+                  <strong className="encounter-list-name">{encounter.name || 'Untitled encounter'}</strong>
                   <span>{encounter.participants.length} combatant{encounter.participants.length === 1 ? '' : 's'} · {encounter.status}</span>
                   {encounter.date && <small>{formatBelentorDate(encounter.date)}</small>}
                 </button>
@@ -506,28 +506,6 @@ export function EncounterPanel({
                     <span>Optional encounter</span>
                   </label>
                 </div>
-              </div>
-
-              <div className="encounter-actions">
-                <button
-                  className="primary-button"
-                  disabled={!selected.participants.length}
-                  onClick={() => {
-                    onUpdateEncounter(advanceCombatTurn(selected));
-                    setEncounterView('run');
-                  }}
-                  type="button"
-                >
-                  {selected.status === 'active' ? 'Next turn' : 'Start combat'}
-                </button>
-                {selected.status === 'active' && (
-                  <button className="encounter-end-button" onClick={() => onEndCombat(selected)} type="button">End combat</button>
-                )}
-                <button className="encounter-add-button" onClick={() => setCombatantPicker((current) => current ? null : 'monster')} type="button">
-                  {combatantPicker ? 'Close picker' : 'Add combatant'}
-                </button>
-                <button onClick={() => onInsertReference(selected)} type="button">Insert into brew</button>
-                <button className="quiet-danger" onClick={() => onDeleteEncounter(selected)} type="button">Delete</button>
               </div>
 
               <section className={`encounter-section encounter-tracker-summary ${selected.participants.length ? '' : 'is-empty'}`}>
@@ -719,7 +697,12 @@ export function EncounterPanel({
       <section className="initiative-panel" aria-label="Initiative tracker">
           <div className="encounter-section-heading">
             <div><p className="eyebrow">Run combat</p><h2>Initiative</h2></div>
-            <div className="initiative-run-actions">{selected?.activeCombatantId && <span className="initiative-current">Current turn</span>}{selected && <button className="encounter-add-button" onClick={() => setCombatantPicker('monster')} type="button">Add combatant</button>}</div>
+            <div className="initiative-run-actions">
+              {selected?.activeCombatantId && <span className="initiative-current">Current turn</span>}
+              {selected && <button className="primary-button" disabled={!selected.participants.length} onClick={() => onUpdateEncounter(advanceCombatTurn(selected))} type="button">{selected.status === 'active' ? 'Next turn' : 'Start combat'}</button>}
+              {selected?.status === 'active' && <button className="encounter-end-button" onClick={() => onEndCombat(selected)} type="button">End combat</button>}
+              {selected && <button className="encounter-add-button" onClick={() => setCombatantPicker('monster')} type="button">Add combatant</button>}
+            </div>
           </div>
           {!selected ? (
             <p className="empty-panel">Choose an encounter to run combat.</p>

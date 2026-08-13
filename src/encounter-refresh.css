@@ -9,7 +9,12 @@ reviewed or reverted without disturbing the shared application theme. */
 .encounter-view-run .encounter-workspace { display: contents; }
 .encounter-view-run .encounter-setup > :not(.encounter-combatant-picker-backdrop) { display: none; }
 .encounter-view-run .initiative-panel { grid-column: 1 / -1; }
-.encounter-view-entries .initiative-panel { display: none; }
+.encounter-view-create .initiative-panel { display: none; }
+.encounter-view-create:not(.is-editing) .encounter-setup { display: none; }
+.encounter-list-item { align-items: stretch; display: flex; gap: 6px; }
+.encounter-list-main { background: transparent; border: 0; color: inherit; flex: 1; min-width: 0; padding: 0; text-align: left; }
+.encounter-list-actions { align-items: center; display: flex; gap: 3px; }
+.encounter-list-actions button { background: #fffaf0; border: 1px solid #cbb99d; border-radius: 5px; color: #5d2f26; font-size: .72rem; min-height: 30px; padding: 4px 7px; }
 
 .encounter-title-display {
   align-items: center;

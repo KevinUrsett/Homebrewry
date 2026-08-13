@@ -52,7 +52,7 @@ type CombatantPicker = 'party' | 'npc' | 'monster' | null;
 type StatField = 'initiative' | 'armorClass' | 'maxHitPoints';
 type StatEditor = { participantId: string; field: StatField; value: string } | null;
 type MonsterSort = 'name' | 'cr-ascending' | 'cr-descending' | 'source' | 'type';
-type EncounterView = 'entries' | 'run';
+type EncounterView = 'create' | 'run';
 
 const MONSTER_RESULTS_PAGE_SIZE = Number.MAX_SAFE_INTEGER;
 const defaultEncounterDate: BelentorDate = { era: 'AA', year: 641, month: 'Quen', day: 1 };
@@ -116,7 +116,8 @@ export function EncounterPanel({
   onSetPartyLocation = () => undefined
 }: EncounterPanelProps) {
   const [monsterQuery, setMonsterQuery] = useState('');
-  const [encounterView, setEncounterView] = useState<EncounterView>('entries');
+  const [encounterView, setEncounterView] = useState<EncounterView>('create');
+  const [editingEncounter, setEditingEncounter] = useState(false);
   const [monsterSourceFilter, setMonsterSourceFilter] = useState('all');
   const [monsterRulesetFilter, setMonsterRulesetFilter] = useState('all');
   const [monsterCrFilter, setMonsterCrFilter] = useState('all');
@@ -237,6 +238,18 @@ export function EncounterPanel({
     onSelectEncounter(id);
   };
 
+  const openEncounterEditor = (id: string) => {
+    selectEncounter(id);
+    setEncounterView('create');
+    setEditingEncounter(true);
+  };
+
+  const createEncounter = () => {
+    onCreateEncounter();
+    setEncounterView('create');
+    window.setTimeout(() => setEditingEncounter(true), 0);
+  };
+
   const startEditingName = () => {
     if (!selected) return;
     setNameDraft(selected.name);
@@ -355,7 +368,7 @@ export function EncounterPanel({
   );
 
   return (
-    <main className={`encounter-page encounter-view-${encounterView}`} aria-label="Combat encounters">
+    <main className={`encounter-page encounter-view-${encounterView}${editingEncounter ? ' is-editing' : ''}`} aria-label="Combat encounters">
       <header className="encounter-page-header">
         <div>
           <p className="eyebrow">Combat toolkit</p>
@@ -364,11 +377,11 @@ export function EncounterPanel({
         </div>
         <div className="page-header-actions">
           <div className="encounter-view-tabs" role="tablist" aria-label="Encounter view">
-            <button aria-selected={encounterView === 'entries'} className={encounterView === 'entries' ? 'is-selected' : ''} onClick={() => setEncounterView('entries')} role="tab" type="button">Entries</button>
+            <button aria-selected={encounterView === 'create'} className={encounterView === 'create' ? 'is-selected' : ''} onClick={() => setEncounterView('create')} role="tab" type="button">Create</button>
             <button aria-selected={encounterView === 'run'} className={encounterView === 'run' ? 'is-selected' : ''} onClick={() => setEncounterView('run')} role="tab" type="button">Run combat</button>
           </div>
           <span className={`sync-badge sync-${storage.tone}`} title={storage.title}>{storage.label}</span>
-          <button className="primary-button" onClick={onCreateEncounter} type="button">New encounter</button>
+          <button className="primary-button" onClick={createEncounter} type="button">New encounter</button>
         </div>
       </header>
 
@@ -398,16 +411,18 @@ export function EncounterPanel({
           <div className="encounter-sidebar-heading"><span>Saved encounters</span><span>{encounters.length}</span></div>
           <div className="encounter-list">
             {encounters.map((encounter) => (
-              <button
-                className={`encounter-list-item ${selected?.id === encounter.id ? 'is-selected' : ''}`}
-                key={encounter.id}
-                onClick={() => selectEncounter(encounter.id)}
-                type="button"
-              >
-                <strong>{encounter.name || 'Untitled encounter'}</strong>
-                <span>{encounter.participants.length} combatant{encounter.participants.length === 1 ? '' : 's'} · {encounter.status}</span>
-                {encounter.date && <small>{formatBelentorDate(encounter.date)}</small>}
-              </button>
+              <article className={`encounter-list-item ${selected?.id === encounter.id ? 'is-selected' : ''}`} key={encounter.id}>
+                <button className="encounter-list-main" onClick={() => openEncounterEditor(encounter.id)} type="button">
+                  <strong>{encounter.name || 'Untitled encounter'}</strong>
+                  <span>{encounter.participants.length} combatant{encounter.participants.length === 1 ? '' : 's'} · {encounter.status}</span>
+                  {encounter.date && <small>{formatBelentorDate(encounter.date)}</small>}
+                </button>
+                <div className="encounter-list-actions">
+                  <button aria-label={`Edit ${encounter.name || 'encounter'}`} onClick={() => openEncounterEditor(encounter.id)} title="Edit" type="button">✎</button>
+                  <button aria-label={`Run ${encounter.name || 'encounter'}`} onClick={() => { selectEncounter(encounter.id); setEncounterView('run'); }} title="Run combat" type="button">Run</button>
+                  <button aria-label={`Delete ${encounter.name || 'encounter'}`} className="quiet-danger" onClick={() => onDeleteEncounter(encounter)} title="Delete" type="button">×</button>
+                </div>
+              </article>
             ))}
             {!encounters.length && <p className="empty-panel">Create an encounter to start a combat setup.</p>}
           </div>

@@ -830,7 +830,7 @@ export function EncounterPanel({
                         title={canAdjustHitPoints(participant) ? 'Open damage and healing calculator' : 'Set maximum HP first'}
                         type="button"
                       >
-                        <span>Hit points</span>
+                        <span>HP</span>
                         <strong>
                           <b>{participant.currentHitPoints ?? '—'}</b>
                           <small>/ {participant.maxHitPoints ?? '—'}</small>
@@ -844,7 +844,7 @@ export function EncounterPanel({
                           onClick={() => openStatEditor(participant, 'initiative')}
                           type="button"
                         >
-                          <span>Initiative</span>
+                          <span>Init.</span>
                           <strong>{participant.initiative ?? '—'}</strong>
                         </button>
                         <button
@@ -853,7 +853,7 @@ export function EncounterPanel({
                           onClick={() => openStatEditor(participant, 'armorClass')}
                           type="button"
                         >
-                          <span>Armor class</span>
+                          <span>AC</span>
                           <strong>{participant.armorClass ?? '—'}</strong>
                         </button>
                       </div>

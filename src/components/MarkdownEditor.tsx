@@ -44,6 +44,8 @@ type ReferenceMenu = {
   y: number;
 };
 
+type MobileReferenceSelection = Pick<ReferenceMenu, 'name' | 'from' | 'to'>;
+
 class ReferenceChip extends WidgetType {
   constructor(private readonly label: string, private readonly kind: string) {
     super();
@@ -122,6 +124,7 @@ export function MarkdownEditor({
   const initialContentRef = useRef(content);
   const latestRef = useRef({ onChange, onSelectionChange, onKeyDown, onCreateWorldbuildingReference, onCreateCatalogueReference });
   const [referenceMenu, setReferenceMenu] = useState<ReferenceMenu | null>(null);
+  const [mobileReferenceSelection, setMobileReferenceSelection] = useState<MobileReferenceSelection | null>(null);
 
   useEffect(() => {
     latestRef.current = { onChange, onSelectionChange, onKeyDown, onCreateWorldbuildingReference, onCreateCatalogueReference };
@@ -161,6 +164,12 @@ export function MarkdownEditor({
             if (update.selectionSet) {
               const selection = update.state.selection.main;
               latestRef.current.onSelectionChange?.({ start: selection.from, end: selection.to });
+              if (selection.from === selection.to || !window.matchMedia('(pointer: coarse)').matches) {
+                setMobileReferenceSelection(null);
+              } else {
+                const name = normalizeWorldbuildingName(update.state.sliceDoc(selection.from, selection.to));
+                setMobileReferenceSelection(name ? { name, from: selection.from, to: selection.to } : null);
+              }
             }
           }),
           EditorView.domEventHandlers({
@@ -178,6 +187,7 @@ export function MarkdownEditor({
               const name = normalizeWorldbuildingName(editor.state.sliceDoc(from, to));
               if (!name) return false;
               event.preventDefault();
+              setMobileReferenceSelection(null);
               setReferenceMenu({
                 name,
                 from,
@@ -189,6 +199,7 @@ export function MarkdownEditor({
             },
             mousedown: () => {
               setReferenceMenu(null);
+              setMobileReferenceSelection(null);
               return false;
             }
           })
@@ -237,6 +248,19 @@ export function MarkdownEditor({
   return (
     <>
       <div className={`markdown-editor ${compact ? 'reference-source-editor' : ''}`} ref={parentRef} />
+      {mobileReferenceSelection && !referenceMenu && (
+        <button
+          className="mobile-reference-selection-action"
+          onClick={() => {
+            setReferenceMenu({ ...mobileReferenceSelection, x: 12, y: 12 });
+            setMobileReferenceSelection(null);
+          }}
+          onMouseDown={(event) => event.preventDefault()}
+          type="button"
+        >
+          Add “{mobileReferenceSelection.name}” as reference
+        </button>
+      )}
       {referenceMenu && (
         <div className="worldbuilding-context-menu" role="menu" style={{ left: referenceMenu.x, top: referenceMenu.y }}>
           <strong>Link “{referenceMenu.name}” as</strong>

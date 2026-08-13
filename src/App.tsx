@@ -741,9 +741,10 @@ export default function App() {
 
   const useGeneratedName = (result: GeneratedName) => {
     if (nameGeneratorTarget === 'editor') {
-      insertText(result.name);
+      const reference = createWorldbuildingReference(result.name, result.kind);
+      insertText(reference ?? result.name);
       setCaptureMenuOpen(false);
-      setSaveState(`Inserted “${result.name}”`);
+      setSaveState(`Added and linked “${result.name}”`);
     } else if (nameGeneratorTarget === 'worldbuilding') {
       const existing = findWorldbuildingEntryByName(worldbuildingEntries, result.name);
       const entry = existing ?? createWorldbuildingEntry(result.name, result.kind);
@@ -756,10 +757,10 @@ export default function App() {
 
   const useGeneratedNames = (results: readonly GeneratedName[]) => {
     if (nameGeneratorTarget !== 'editor') return;
-    insertText(results.map((result) => `- ${result.name}`).join('\n'));
+    insertText(results.map((result) => `- ${createWorldbuildingReference(result.name, result.kind) ?? result.name}`).join('\n'));
     setCaptureMenuOpen(false);
     setNameGeneratorTarget(null);
-    setSaveState(`Inserted ${results.length} generated names`);
+    setSaveState(`Added and linked ${results.length} generated names`);
   };
 
   const createWorldbuildingReference = (name: string, kind: WorldbuildingKind): string | null => {

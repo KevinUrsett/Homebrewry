@@ -503,6 +503,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .worldbuilding-context-menu strong + .worldbuilding-context-menu-label { border-top: 0; margin-top: 0; padding-top: 0; }
 .worldbuilding-context-menu button { background: transparent; border: 0; border-radius: 4px; color: #493329; font-size: .78rem; padding: 7px; text-align: left; }
 .worldbuilding-context-menu button:hover, .worldbuilding-context-menu button:focus-visible { background: #ead1a3; }
+.mobile-reference-selection-action { display: none; }
 
 .pwa-update-notice { align-items: center; background: #3a2b22; border: 1px solid #d0ad70; border-radius: 8px; bottom: max(16px, env(safe-area-inset-bottom)); box-shadow: 0 8px 24px rgb(35 21 12 / 30%); color: #fff8e9; display: flex; font-size: .82rem; gap: 10px; left: 50%; max-width: calc(100vw - 28px); padding: 9px 10px 9px 13px; position: fixed; transform: translateX(-50%); width: max-content; z-index: 70; }
 .pwa-update-notice button { background: #e0b55f; border: 1px solid #f0d28d; border-radius: 5px; color: #3a2b22; font: 800 .73rem "Scaly Sans", Inter, sans-serif; padding: 7px 9px; white-space: nowrap; }
@@ -536,8 +537,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .mobile-writing-save { grid-template-columns: minmax(0, 1fr); }
   .mobile-writing-save button { background: #5d2f26; border-color: #5d2f26; color: #fff8e9; font-weight: 800; }
   .mobile-writing-save button:disabled { background: #a8947b; border-color: #a8947b; color: #f4e7ce; }
-  .mobile-writing-login { grid-template-columns: minmax(0, 1fr); }
-  .mobile-writing-login button { border-color: #9c653d; font-weight: 800; }
   .drive-save-notice { top: calc(env(safe-area-inset-top) + 12px); }
   .name-generator-backdrop { align-items: stretch; padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)); }
    .name-generator-dialog { gap: 12px; max-height: 100%; padding: 16px; }
@@ -626,6 +625,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .worldbuilding-current-state { grid-template-columns: 1fr; }
   .worldbuilding-state-editor { align-items: stretch; flex-direction: column; }
   .worldbuilding-context-menu { bottom: 12px; left: 12px !important; max-height: min(530px, calc(100dvh - 24px)); right: 12px; top: auto !important; transform: none; }
+  .mobile-reference-selection-action { background: #5d2f26; border: 1px solid #d6af6d; border-radius: 999px; bottom: calc(env(safe-area-inset-bottom) + 84px); box-shadow: 0 7px 20px rgb(35 21 12 / 30%); color: #fffaf0; display: block; font: 800 .74rem "Scaly Sans", Inter, sans-serif; left: 50%; max-width: calc(100vw - 38px); overflow: hidden; padding: 10px 14px; position: fixed; text-overflow: ellipsis; transform: translateX(-50%); white-space: nowrap; z-index: 45; }
 }
 
 @media print {

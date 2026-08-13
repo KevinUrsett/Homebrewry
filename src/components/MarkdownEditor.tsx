@@ -125,6 +125,7 @@ export function MarkdownEditor({
   const latestRef = useRef({ onChange, onSelectionChange, onKeyDown, onCreateWorldbuildingReference, onCreateCatalogueReference });
   const [referenceMenu, setReferenceMenu] = useState<ReferenceMenu | null>(null);
   const [mobileReferenceSelection, setMobileReferenceSelection] = useState<MobileReferenceSelection | null>(null);
+  const [mobileReferenceBottom, setMobileReferenceBottom] = useState(84);
 
   useEffect(() => {
     latestRef.current = { onChange, onSelectionChange, onKeyDown, onCreateWorldbuildingReference, onCreateCatalogueReference };
@@ -222,6 +223,31 @@ export function MarkdownEditor({
   }, [spellcheckEnabled]);
 
   useEffect(() => {
+    if (!mobileReferenceSelection) return undefined;
+
+    const updatePosition = () => {
+      const viewport = window.visualViewport;
+      if (!viewport) {
+        setMobileReferenceBottom(84);
+        return;
+      }
+
+      const keyboardHeight = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+      setMobileReferenceBottom(keyboardHeight > 80 ? Math.ceil(keyboardHeight + 14) : 84);
+    };
+
+    updatePosition();
+    window.visualViewport?.addEventListener('resize', updatePosition);
+    window.visualViewport?.addEventListener('scroll', updatePosition);
+    window.addEventListener('resize', updatePosition);
+    return () => {
+      window.visualViewport?.removeEventListener('resize', updatePosition);
+      window.visualViewport?.removeEventListener('scroll', updatePosition);
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [mobileReferenceSelection]);
+
+  useEffect(() => {
     const view = viewRef.current;
     if (!view || content === view.state.doc.toString()) return;
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: content } });
@@ -251,6 +277,7 @@ export function MarkdownEditor({
       {mobileReferenceSelection && !referenceMenu && (
         <button
           className="mobile-reference-selection-action"
+          style={{ bottom: mobileReferenceBottom }}
           onClick={() => {
             setReferenceMenu({ ...mobileReferenceSelection, x: 12, y: 12 });
             setMobileReferenceSelection(null);

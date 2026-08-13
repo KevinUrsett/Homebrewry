@@ -39,7 +39,7 @@ export function appendWorldEvent(events: readonly WorldEvent[], event: WorldEven
 const locationKinds = new Set(['town', 'road', 'landmark', 'region', 'location', 'settlement']);
 
 export function entityKindForWorldbuilding(kind: string): CampaignEntityKind {
-  if (kind === 'character' || kind === 'historical-figure') return 'npc';
+  if (kind === 'character' || kind === 'historical-figure' || kind === 'npc') return 'npc';
   if (kind === 'faction' || kind === 'organization') return 'faction';
   if (kind === 'town') return 'settlement';
   if (locationKinds.has(kind)) return 'location';

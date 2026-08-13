@@ -11,6 +11,7 @@ export const worldbuildingKindLabels: Record<BuiltInWorldbuildingKind, string> =
   road: 'Road',
   'historical-figure': 'Historical figure',
   character: 'Character',
+  npc: 'NPC',
   faction: 'Faction',
   landmark: 'Landmark',
   region: 'Region',

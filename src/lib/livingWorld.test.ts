@@ -71,6 +71,13 @@ describe('Living World entities and events', () => {
     expect(alive.worldEvents[1]?.changes[0]).toMatchObject({ previousValue: 'dead', nextValue: 'alive' });
   });
 
+  it('treats an NPC Worldbuilding entry as a campaign NPC', () => {
+    const entry = createWorldbuildingEntry('Talon', 'npc');
+    const entities = synchroniseWorldbuildingEntities('campaign-1', [entry]);
+
+    expect(entities[0]).toMatchObject({ kind: 'npc', name: 'Talon' });
+  });
+
   it('keeps a planned story node attached to its chosen parent', () => {
     const base = { id: 'living-world' as const, campaignId: 'campaign-1', entities: [], entityReferences: [], worldEvents: [], timelineEntries: [] };
     const root = createTimelineEntry(base, { lane: 'main', status: 'planned', title: 'Reach Sund', when: '', notes: '', entityIds: [] }, '2026-07-30T12:00:00.000Z', () => 'root');

@@ -20,4 +20,8 @@ describe('worldbuilding records', () => {
     expect(worldbuildingKindLabel(type.id, [type])).toBe('Deity');
     expect(findWorldbuildingEntryByName([entry], 'lady of lanterns')).toBe(entry);
   });
+
+  it('keeps NPC as a built-in Worldbuilding type', () => {
+    expect(worldbuildingKindLabel('npc')).toBe('NPC');
+  });
 });

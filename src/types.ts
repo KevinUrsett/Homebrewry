@@ -315,6 +315,7 @@ export const worldbuildingKinds = [
   'road',
   'historical-figure',
   'character',
+  'npc',
   'faction',
   'landmark',
   'region',

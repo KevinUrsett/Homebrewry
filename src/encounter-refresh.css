@@ -616,23 +616,20 @@ reviewed or reverted without disturbing the shared application theme. */
   }
 }
 .encounter-title-row {
-  align-items: flex-start;
-  display: flex;
-  gap: 20px;
-  justify-content: space-between;
-  padding-bottom: 14px;
+  display: grid;
+  gap: 8px;
+  padding-bottom: 12px;
+}
+
+.encounter-view-create .encounter-title-display h2 {
+  font-size: clamp(1.55rem, 4vw, 2.05rem);
 }
 
 .encounter-progress-controls {
-  align-items: center;
-  background: #f7f0df;
-  border: 1px solid #ded0b9;
-  border-radius: 8px;
-  display: flex;
-  flex: 0 0 auto;
-  flex-wrap: wrap;
-  gap: 9px;
-  padding: 7px 9px;
+  align-items: end;
+  display: grid;
+  gap: 7px;
+  grid-template-columns: minmax(170px, 1fr) minmax(140px, .65fr) auto;
 }
 
 .encounter-progress-controls > label {
@@ -697,7 +694,7 @@ reviewed or reverted without disturbing the shared application theme. */
   display: flex;
   gap: 6px;
   min-height: 34px;
-  padding: 6px 9px;
+  padding: 5px 8px;
   text-transform: none;
 }
 
@@ -734,7 +731,14 @@ reviewed or reverted without disturbing the shared application theme. */
 }
 
 .encounter-tracker-summary {
-  padding: 16px 0;
+  padding: 13px 0;
+}
+
+.tracker-add-button {
+  background: #ead1a3;
+  border-color: #b78b49;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .encounter-tracker-summary .encounter-helper {
@@ -768,8 +772,7 @@ reviewed or reverted without disturbing the shared application theme. */
 
 @media (max-width: 760px) {
   .encounter-title-row {
-    align-items: stretch;
-    flex-direction: column;
+    gap: 7px;
   }
 
   .encounter-title-display {
@@ -777,7 +780,6 @@ reviewed or reverted without disturbing the shared application theme. */
   }
 
   .encounter-progress-controls {
-    justify-content: space-between;
     width: 100%;
   }
 }
@@ -799,19 +801,17 @@ reviewed or reverted without disturbing the shared application theme. */
 
   .encounter-progress-controls {
     align-items: stretch;
-  }
-
-  .encounter-progress-controls > label:first-child {
-    flex: 1;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .encounter-progress-controls select {
     width: 100%;
   }
 
-  .encounter-date-control { width: 100%; }
+  .encounter-date-control { grid-column: 1 / -1; width: 100%; }
   .encounter-date-actions { width: 100%; }
   .encounter-add-date { flex: 1; text-align: left; }
+  .encounter-progress-controls .encounter-optional-toggle { align-self: end; }
   .encounter-date-picker-backdrop { align-items: end; padding: 10px; }
   .encounter-date-picker { max-height: min(740px, calc(100dvh - 20px)); }
   .encounter-date-picker-controls { grid-template-columns: auto minmax(0, 1fr) 72px auto; }

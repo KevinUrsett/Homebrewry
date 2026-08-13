@@ -511,6 +511,7 @@ export function EncounterPanel({
               <section className={`encounter-section encounter-tracker-summary ${selected.participants.length ? '' : 'is-empty'}`}>
                 <div className="encounter-section-heading">
                   <div><p className="eyebrow">Tracker</p><h2>{selected.participants.length} combatant{selected.participants.length === 1 ? '' : 's'}</h2></div>
+                  <button className="encounter-add-button tracker-add-button" onClick={() => setCombatantPicker('monster')} type="button">Add combatants</button>
                 </div>
                 <p className="encounter-helper">
                   {selected.participants.length

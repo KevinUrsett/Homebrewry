@@ -512,7 +512,10 @@ export function EncounterPanel({
                 <button
                   className="primary-button"
                   disabled={!selected.participants.length}
-                  onClick={() => onUpdateEncounter(advanceCombatTurn(selected))}
+                  onClick={() => {
+                    onUpdateEncounter(advanceCombatTurn(selected));
+                    setEncounterView('run');
+                  }}
                   type="button"
                 >
                   {selected.status === 'active' ? 'Next turn' : 'Start combat'}

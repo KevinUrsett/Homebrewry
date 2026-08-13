@@ -15,6 +15,11 @@ reviewed or reverted without disturbing the shared application theme. */
 .encounter-list-main { background: transparent; border: 0; color: inherit; flex: 1; min-width: 0; padding: 0; text-align: left; }
 .encounter-list-actions { align-items: center; display: flex; gap: 3px; }
 .encounter-list-actions button { background: #fffaf0; border: 1px solid #cbb99d; border-radius: 5px; color: #5d2f26; font-size: .72rem; min-height: 30px; padding: 4px 7px; }
+.party-roster > summary { align-items: center; background: #f7f0df; border: 1px solid #cbb99d; border-radius: 6px; color: #5d2f26; cursor: pointer; display: flex; font-weight: 800; justify-content: space-between; list-style: none; padding: 9px 10px; }
+.party-roster > summary::-webkit-details-marker { display: none; }
+.party-roster > summary::after { content: '⌄'; margin-left: 8px; }
+.party-roster[open] > summary::after { content: '⌃'; }
+.party-roster:not([open]) > .encounter-sidebar-heading { display: none; }
 
 .encounter-title-display {
   align-items: center;

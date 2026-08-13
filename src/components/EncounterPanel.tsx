@@ -385,27 +385,6 @@ export function EncounterPanel({
         </div>
       </header>
 
-      {campaignPosition && (
-        <section className="campaign-position" aria-label="Current campaign position">
-          <span>Campaign now</span>
-          <strong>
-            {positionActive
-              ? `Active: ${positionActive.name}`
-              : `After ${positionPrevious?.name ?? 'the campaign opening'} · Before ${positionNext?.name ?? 'the next required encounter'}`}
-          </strong>
-          <small>{campaignPosition.headingPath.join(' › ') || 'No section heading'} · {partyLocation ? `Party: ${partyLocation.name}${partyLocation.source === 'manual' ? ' (manual)' : ''}` : 'Party location not set'}.</small>
-        </section>
-      )}
-
-      <section className="campaign-position" aria-label="Campaign view">
-        <span>Campaign view</span>
-        <strong>{campaignPosition?.headingPath.join(' › ') || 'No linked encounter position'}</strong>
-        <div className="campaign-location-control">
-          <label>Party location<select aria-label="Party location" onChange={(event) => event.target.value && onSetPartyLocation(event.target.value)} value={partyLocation?.source === 'manual' ? partyLocation.entityId : ''}><option value="">Derived from section</option>{locationEntities.map((entity) => <option key={entity.id} value={entity.id}>{entity.name}</option>)}</select></label>
-          <small>{worldEvents.slice(-3).reverse().map((event) => event.type).join(' · ') || 'No recent campaign events'}</small>
-        </div>
-      </section>
-
       <section className="encounter-workspace">
         <aside className="encounter-library" aria-label="Saved encounters">
           <div className="encounter-sidebar-heading"><span>Saved encounters</span><span>{encounters.length}</span></div>
@@ -427,7 +406,8 @@ export function EncounterPanel({
             {!encounters.length && <p className="empty-panel">Create an encounter to start a combat setup.</p>}
           </div>
 
-          <section className="party-roster">
+          <details className="party-roster">
+            <summary>Current party <span>{partyMembers.length}</span></summary>
             <div className="encounter-sidebar-heading"><span>Current party</span><span>{partyMembers.length}</span></div>
             <p className="encounter-helper">New encounters snapshot this roster; later roster changes never overwrite a running fight.</p>
             <div className="party-member-list">
@@ -446,7 +426,7 @@ export function EncounterPanel({
               <input aria-label="New party member maximum hit points" min="0" onChange={(event) => setPartyHitPoints(event.target.value)} placeholder="Max HP" type="number" value={partyHitPoints} />
               <button disabled={!partyName.trim()} onClick={addPartyMember} type="button">Add character</button>
             </div>
-          </section>
+          </details>
         </aside>
 
         <section className="encounter-setup" aria-live="polite">

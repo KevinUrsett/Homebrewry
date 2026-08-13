@@ -806,7 +806,7 @@ export function EncounterPanel({
                         {participant.id === selected.activeCombatantId ? '●' : '○'}
                       </button>
                       <input aria-label={`${participant.name} combatant name`} onChange={(event) => participantPatch(selected, participant, { name: event.target.value }, onUpdateEncounter)} value={participant.name} />
-                      {sourceMonster && <button aria-label={`Open ${sourceMonster.name} stat block`} className="combatant-statblock-button" onClick={() => onMonsterOpen(sourceMonster)} type="button">Stat block</button>}
+                      {sourceMonster && <button aria-label={`Open ${sourceMonster.name} stat block`} className="combatant-statblock-button" onClick={() => onMonsterOpen(sourceMonster)} type="button">Stat</button>}
                       <span className={`combatant-kind kind-${participant.kind}`}>{participant.kind}</span>
                       {participant.entityId && (
                         <span className="combatant-world-status">

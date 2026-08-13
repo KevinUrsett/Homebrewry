@@ -295,16 +295,16 @@ reviewed or reverted without disturbing the shared application theme. */
 }
 
 .combatant-card {
-  background: linear-gradient(155deg, #fffdf8, #fbf5e8);
+  background: #fffdf8;
   border: 1px solid #d1bea0;
   border-left: 4px solid #90775d;
-  border-radius: 8px;
-  box-shadow: 0 3px 10px rgb(65 43 25 / 7%);
+  border-radius: 6px;
+  box-shadow: 0 2px 5px rgb(65 43 25 / 5%);
   display: grid;
-  gap: 6px;
-  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 3px;
+  grid-template-columns: 22px minmax(0, 1fr);
   margin-top: 0;
-  padding: 6px 7px 6px 4px;
+  padding: 4px 5px 4px 2px;
   position: relative;
   transition: box-shadow .16s ease, margin-top .18s ease, opacity .12s ease, transform .18s ease;
 }
@@ -351,16 +351,17 @@ reviewed or reverted without disturbing the shared application theme. */
 }
 
 .combatant-drag-handle {
-  align-self: stretch;
-  background: #f4ead8;
-  border-color: #d1bea0;
-  border-radius: 6px;
+  align-self: center;
+  background: transparent;
+  border-color: transparent;
+  border-radius: 4px;
   color: #806c5a;
   cursor: grab;
   font-size: 1.05rem;
   line-height: 1;
-  min-width: 26px;
-  padding: 4px 2px;
+  min-height: 46px;
+  min-width: 22px;
+  padding: 2px 0;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
@@ -377,16 +378,16 @@ reviewed or reverted without disturbing the shared application theme. */
 .combatant-title {
   align-items: center;
   display: grid;
-  gap: 5px;
+  gap: 4px;
   grid-template-columns: auto minmax(0, 1fr) auto;
 }
 
 .combatant-title > input {
   background: transparent;
   border-bottom-color: transparent;
-  font-size: .95rem;
-  min-height: 28px;
-  padding: 2px;
+  font-size: .9rem;
+  min-height: 24px;
+  padding: 1px 2px;
 }
 
 .initiative-panel .combatant-kind,
@@ -404,18 +405,18 @@ reviewed or reverted without disturbing the shared application theme. */
   border-radius: 999px;
   color: #553526;
   flex: 0 0 auto;
-  font-size: .58rem;
+  font-size: .55rem;
   font-weight: 800;
-  padding: 4px 6px;
+  padding: 3px 5px;
   white-space: nowrap;
 }
 
 .combatant-summary-row {
-  align-items: stretch;
-  display: grid;
-  gap: 5px;
-  grid-template-columns: minmax(112px, 1.25fr) minmax(64px, .65fr) minmax(64px, .65fr) auto;
-  margin-top: 5px;
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 3px;
 }
 
 .combatant-stat-button,
@@ -444,27 +445,29 @@ reviewed or reverted without disturbing the shared application theme. */
 .combatant-initiative-button,
 .combatant-ac-button {
   align-items: center;
-  display: grid;
-  gap: 2px;
-  grid-template-columns: 1fr;
-  min-height: 58px;
-  padding: 5px 6px;
+  display: flex;
+  gap: 3px;
+  justify-content: space-between;
+  min-height: 30px;
+  padding: 4px 5px;
   text-align: center;
 }
 
 .combatant-initiative-button strong,
 .combatant-ac-button strong {
-  font-size: 1.05rem;
+  font-size: .9rem;
 }
 
 .combatant-hp-button {
-  align-content: center;
-  background: linear-gradient(145deg, #f5e5c5, #ead1a3);
+  align-items: center;
+  background: #f5e5c5;
   border-color: #ba8c48;
-  display: grid;
-  gap: 3px;
-  min-height: 58px;
-  padding: 6px 8px;
+  display: flex;
+  flex: 1 1 106px;
+  gap: 5px;
+  justify-content: space-between;
+  min-height: 30px;
+  padding: 4px 7px;
 }
 
 .combatant-hp-button strong {
@@ -476,20 +479,21 @@ reviewed or reverted without disturbing the shared application theme. */
 
 .combatant-hp-button strong b {
   font-family: Georgia, serif;
-  font-size: clamp(1.35rem, 4vw, 1.65rem);
+  font-size: 1rem;
 }
 
 .combatant-hp-button strong small {
   color: #725d48;
-  font-size: .7rem;
+  font-size: .68rem;
   font-weight: 700;
 }
 
 .combatant-remove-button {
   align-self: center;
   border-radius: 999px;
-  min-height: 28px;
-  min-width: 28px;
+  min-height: 24px;
+  min-width: 24px;
+  padding: 1px 4px;
 }
 
 .combatant-stat-editor,
@@ -500,7 +504,7 @@ reviewed or reverted without disturbing the shared application theme. */
   border-radius: 5px;
   display: grid;
   gap: 6px;
-  grid-column: 1 / -1;
+  flex-basis: 100%;
   padding: 8px;
 }
 
@@ -566,16 +570,12 @@ reviewed or reverted without disturbing the shared application theme. */
   }
 
   .combatant-card {
-    grid-template-columns: 28px minmax(0, 1fr);
+    grid-template-columns: 22px minmax(0, 1fr);
     padding-left: 4px;
   }
 
   .combatant-drag-handle {
-    min-width: 28px;
-  }
-
-  .combatant-summary-row {
-    grid-template-columns: minmax(112px, 1.25fr) minmax(64px, .65fr) minmax(64px, .65fr) auto;
+    min-width: 22px;
   }
 
   .combatant-stat-editor {
@@ -606,10 +606,6 @@ reviewed or reverted without disturbing the shared application theme. */
 }
 
 @media (max-width: 430px) {
-  .combatant-summary-row {
-    grid-template-columns: minmax(108px, 1.25fr) minmax(58px, .65fr) minmax(58px, .65fr) auto;
-  }
-
   .combatant-hp-calculator {
     grid-template-columns: 1fr 1fr;
   }

@@ -515,9 +515,20 @@ export function EncounterPanel({
                 </div>
                 <p className="encounter-helper">
                   {selected.participants.length
-                    ? 'Press and drag the left grip to set order. Keyboard users can focus a grip and press ↑ or ↓.'
+                    ? 'Added combatants are listed below. Set their initiative and order in Run combat.'
                     : 'Add party members, confirmed Worldbuilding NPCs, or catalogue monsters to prepare this encounter.'}
                 </p>
+                {selected.participants.length > 0 && (
+                  <div className="encounter-combatant-summary-list" aria-label="Combatants in this encounter">
+                    {selected.participants.map((participant) => (
+                      <div className="encounter-combatant-summary" key={participant.id}>
+                        <span className={`combatant-kind kind-${participant.kind}`}>{participant.kind}</span>
+                        <strong>{participant.name || 'Unnamed combatant'}</strong>
+                        <button aria-label={`Remove ${participant.name || 'combatant'} from encounter`} className="quiet-danger" onClick={() => onUpdateEncounter(removeEncounterParticipant(selected, participant.id))} type="button">×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </section>
 
               {combatantPicker && (

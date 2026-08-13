@@ -746,6 +746,38 @@ reviewed or reverted without disturbing the shared application theme. */
   max-width: 62ch;
 }
 
+.encounter-combatant-summary-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.encounter-combatant-summary {
+  align-items: center;
+  background: #f7f0df;
+  border: 1px solid #ded0b9;
+  border-radius: 5px;
+  display: flex;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 5px 4px 7px;
+}
+
+.encounter-combatant-summary strong {
+  font-size: .78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.encounter-combatant-summary .quiet-danger {
+  font-size: .82rem;
+  line-height: 1;
+  min-width: 22px;
+  padding: 1px 4px;
+}
+
 .encounter-tracker-summary.is-empty h2 {
   color: #806c5a;
 }

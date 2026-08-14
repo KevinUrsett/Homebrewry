@@ -8,6 +8,8 @@ describe('Tales on Unwritten Tomes curated references', () => {
     expect(talesOnUnwrittenTomesReferences).toEqual(expect.arrayContaining([
       expect.objectContaining({ name: 'Gyrro', kind: 'town' }),
       expect.objectContaining({ name: 'Talon Bloodwing', kind: 'character' }),
+      expect.objectContaining({ name: 'Eldorin', kind: 'deity' }),
+      expect.objectContaining({ name: 'Vorrak', kind: 'deity', aliases: ['Varrak'] }),
       expect.objectContaining({ name: 'The Contingency', kind: 'item' }),
       expect.objectContaining({ name: 'Sky-Guard', kind: 'faction' })
     ]));

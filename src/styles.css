@@ -446,6 +446,27 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .worldbuilding-list-item small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .worldbuilding-suggestion-browser { display: grid; flex: 1; gap: 12px; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 0 10px 12px; }
 .worldbuilding-suggestion-browser .brew-reference-index, .worldbuilding-suggestion-browser .unresolved-references { margin: 0; }
+.reference-inbox { display: flex; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; padding: 0 10px 12px; }
+.reference-inbox-tabs { display: flex; flex-wrap: wrap; gap: 5px; padding: 0 0 9px; }
+.reference-inbox-tabs button { background: #f1e5cf; border: 1px solid #cdb795; border-radius: 999px; color: #5d4535; font-size: .68rem; font-weight: 800; padding: 6px 8px; }
+.reference-inbox-tabs button.is-selected { background: #5d2f26; border-color: #5d2f26; color: #fffaf0; }
+.reference-inbox-tabs span { background: rgb(255 250 240 / 35%); border-radius: 999px; font-size: .6rem; margin-left: 2px; padding: 1px 4px; }
+.reference-inbox-panel { background: #fbf5e8; border: 1px solid #d8c9ae; border-radius: 7px; display: flex; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; }
+.reference-inbox-panel > header { align-items: flex-start; border-bottom: 1px solid #dfd1ba; display: flex; gap: 8px; justify-content: space-between; padding: 10px; }
+.reference-inbox-panel h3 { color: #5d2f26; font-size: .96rem; margin: 0; }
+.reference-inbox-panel p { color: #806c5a; font-size: .68rem; line-height: 1.35; margin: 3px 0 0; }
+.reference-inbox-bulk-actions { display: grid; flex: 0 0 auto; gap: 5px; }
+.reference-inbox-bulk-actions button { background: #f7f0df; border: 1px solid #c7ae88; border-radius: 4px; color: #493329; font-size: .65rem; font-weight: 800; padding: 6px 7px; white-space: nowrap; }
+.reference-inbox-bulk-actions .primary-button { background: #5d2f26; border-color: #5d2f26; color: #fffaf0; }
+.reference-inbox-list { display: grid; gap: 5px; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 8px; }
+.reference-inbox-list article { align-items: center; background: #fffdf7; border: 1px solid #d8c9ae; border-radius: 5px; display: grid; gap: 7px; grid-template-columns: auto minmax(0, 1fr) auto auto; padding: 7px; }
+.reference-inbox-list article > div { display: grid; gap: 2px; min-width: 0; }
+.reference-inbox-list strong { color: #493329; font-size: .78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reference-inbox-list span, .reference-inbox-list small { color: #806c5a; font-size: .63rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reference-inbox-list button { background: #f7f0df; border: 1px solid #c7ae88; border-radius: 4px; color: #493329; font-size: .67rem; font-weight: 800; padding: 6px 7px; }
+.reference-inbox-list select { background: #fffaf0; border: 1px solid #d1c0a5; border-radius: 4px; color: #493329; font-size: .66rem; max-width: 100px; min-width: 0; padding: 5px; }
+.reference-inbox-check { align-items: center; display: flex; }
+.reference-inbox-check input { accent-color: #6a2f26; height: 17px; margin: 0; width: 17px; }
 .worldbuilding-curated-reference-list { display: grid; gap: 6px; margin-top: 9px; }
 .worldbuilding-curated-reference-list article { align-items: center; background: #f8f0e1; border: 1px solid #d8c9ae; border-radius: 6px; display: flex; gap: 8px; justify-content: space-between; padding: 8px; }
 .worldbuilding-curated-reference-list article > div { display: grid; gap: 2px; min-width: 0; }

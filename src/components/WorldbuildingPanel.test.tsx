@@ -60,8 +60,10 @@ describe('WorldbuildingPanel', () => {
       );
     });
 
-    const suggestions = Array.from(container.querySelectorAll('button')).find((button) => button.textContent?.includes('To create'));
+    const suggestions = Array.from(container.querySelectorAll('button')).find((button) => button.textContent?.includes('Reference inbox'));
     await act(async () => suggestions?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    const places = Array.from(container.querySelectorAll('button')).find((button) => button.textContent?.includes('Places'));
+    await act(async () => places?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     const addBelentor = container.querySelector<HTMLButtonElement>('[aria-label="Create Belentor"]');
     expect(addBelentor).not.toBeNull();
     await act(async () => addBelentor?.dispatchEvent(new MouseEvent('click', { bubbles: true })));

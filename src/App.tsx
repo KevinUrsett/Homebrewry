@@ -654,6 +654,23 @@ export default function App() {
       .catch(() => setSaveState('Curated reference setup failed'));
   };
 
+  const createSuggestedWorldbuildingEntries = (references: readonly Pick<WorldbuildingEntry, 'name' | 'kind'>[]) => {
+    if (!references.length) return;
+    const knownNames = new Set(worldbuildingEntries.flatMap((entry) => [entry.name, ...entry.aliases]).map((name) => name.toLocaleLowerCase()));
+    const newEntries = references
+      .filter((reference) => !knownNames.has(reference.name.toLocaleLowerCase()))
+      .map((reference) => createWorldbuildingEntry(reference.name, reference.kind));
+    if (!newEntries.length) return;
+    const nextEntries = [...newEntries, ...worldbuildingEntries];
+    const nextLivingWorld = synchroniseLivingWorld(livingWorld, nextEntries);
+    campaignRecordsRef.current = { ...campaignRecordsRef.current, worldbuildingEntries: nextEntries, livingWorld: nextLivingWorld };
+    setWorldbuildingEntries(nextEntries);
+    setLivingWorld(nextLivingWorld);
+    void Promise.all([saveWorldbuildingEntries(newEntries), saveLivingWorldData(nextLivingWorld)])
+      .then((metadata) => noteCampaignDataSaved(metadata.at(-1)!, `${newEntries.length} Worldbuilding entries created`))
+      .catch(() => setSaveState('Worldbuilding entries could not be created'));
+  };
+
   const setNpcStatus = (entry: WorldbuildingEntry, status: string) => {
     const entity = entityByWorldbuildingId.get(entry.id);
     if (!entity || entity.kind !== 'npc') return;
@@ -1786,6 +1803,7 @@ export default function App() {
           onCreateCatalogueReference={createCatalogueReference}
           onCreateWorldbuildingReference={createWorldbuildingReference}
           onCreateCuratedReferences={createCuratedReferences}
+          onCreateSuggestedEntries={createSuggestedWorldbuildingEntries}
           onCreatePlotBeat={createPlotBeatFromWorldbuilding}
           onDelete={deleteWorldbuilding}
           onEncounterOpen={(encounterId) => {

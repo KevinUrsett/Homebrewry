@@ -11,41 +11,47 @@ export type CuratedReference = {
   kind: WorldbuildingKind;
   aliases?: string[];
   notes: string;
+  deity?: {
+    rank: 'Prime deity' | 'Greater deity' | 'Lesser deity';
+    alignment: string;
+    domains: readonly string[];
+  };
 };
 
-const reference = (name: string, kind: WorldbuildingKind, notes: string, aliases?: string[]): CuratedReference => ({ name, kind, notes, aliases });
+const reference = (name: string, kind: WorldbuildingKind, notes: string, aliases?: string[], deity?: CuratedReference['deity']): CuratedReference => ({ name, kind, notes, aliases, deity });
+const deity = (rank: NonNullable<CuratedReference['deity']>['rank'], alignment: string, ...domains: string[]): NonNullable<CuratedReference['deity']> => ({ rank, alignment, domains });
 
 export const talesOnUnwrittenTomesReferences: readonly CuratedReference[] = [
   // World, realms, and powers
   reference('Belentor', 'region', 'The campaign continent and primary setting.'),
   reference('The Celestial Handful', 'region', 'The world travelling the cosmic rivers, guided by the stars.'),
-  reference('Erylmar', 'deity', 'Prime creator of the world. Her departure defines the setting’s absent afterlife.', ['Erylmar the Creator']),
+  reference('Erylmar', 'deity', 'Prime creator of the world. Her departure defines the setting’s absent afterlife.\n\n**Rank:** Prime deity  \n**Alignment:** Neutral Good  \n**Domains:** Creation, Life, Stars', ['Erylmar the Creator'], deity('Prime deity', 'Neutral Good', 'Creation', 'Life', 'Stars')),
   // The Celestial Handful pantheon
-  reference('Eldorin', 'deity', 'Greater deity of the Celestial Handful pantheon.'),
-  reference('Eryab', 'deity', 'Greater deity of the Celestial Handful pantheon.'),
-  reference('Fugrar', 'deity', 'Greater deity of the Celestial Handful pantheon.'),
-  reference('Silvin', 'deity', 'Greater deity of the Celestial Handful pantheon.'),
-  reference('Avoldin', 'deity', 'Greater deity of the Celestial Handful pantheon.'),
-  reference('Wheina', 'deity', 'Greater deity of the Celestial Handful pantheon.'),
-  reference('Auren', 'deity', 'Greater deity of the Celestial Handful pantheon.'),
-  reference('Shungdro', 'deity', 'Greater deity of the Celestial Handful pantheon.'),
-  reference('Gargadjinn', 'deity', 'Greater deity of the Celestial Handful pantheon.'),
-  reference('Myar', 'deity', 'Greater deity of the Celestial Handful pantheon.'),
-  reference('Zylar', 'deity', 'Greater deity of the Celestial Handful pantheon.'),
-  reference('Elyndra', 'deity', 'Greater deity of the Celestial Handful pantheon.'),
-  reference('Vorrak', 'deity', 'Greater deity of the Celestial Handful pantheon.', ['Varrak']),
-  reference('Hin Ge', 'deity', 'Lesser deity of the Celestial Handful pantheon.'),
-  reference('Iroth', 'deity', 'Lesser deity of the Celestial Handful pantheon.'),
-  reference('Ellehirn', 'deity', 'Lesser deity of the Celestial Handful pantheon.'),
-  reference('Brirvock', 'deity', 'Lesser deity of the Celestial Handful pantheon.'),
-  reference('Korbyglum', 'deity', 'Lesser deity of the Celestial Handful pantheon.'),
-  reference('Aiv', 'deity', 'Lesser deity of the Celestial Handful pantheon.'),
-  reference('Onro', 'deity', 'Lesser deity of the Celestial Handful pantheon.'),
-  reference('Vraxis', 'deity', 'Lesser deity of the Celestial Handful pantheon.'),
-  reference('Fabrian', 'deity', 'Lesser deity of the Celestial Handful pantheon.'),
-  reference('Silien', 'deity', 'Lesser deity of the Celestial Handful pantheon.'),
-  reference('Chuny', 'deity', 'Lesser deity of the Celestial Handful pantheon.'),
-  reference('Lowi', 'deity', 'Lesser deity of the Celestial Handful pantheon.'),
+  reference('Eldorin', 'deity', 'Patron of learned magic, records, and the ordered arts.\n\n**Rank:** Greater deity  \n**Alignment:** Lawful Neutral  \n**Domains:** Arcana, Knowledge, Order', undefined, deity('Greater deity', 'Lawful Neutral', 'Arcana', 'Knowledge', 'Order')),
+  reference('Eryab', 'deity', 'Keeper of the dead, graves, remembrance, and the boundary beyond mortal life.\n\n**Rank:** Greater deity  \n**Alignment:** Lawful Neutral  \n**Domains:** Death, Grave, Memory', undefined, deity('Greater deity', 'Lawful Neutral', 'Death', 'Grave', 'Memory')),
+  reference('Fugrar', 'deity', 'Guide of roads, wanderers, navigation, and the turning stars.\n\n**Rank:** Greater deity  \n**Alignment:** Chaotic Good  \n**Domains:** Travel, Stars, Freedom', undefined, deity('Greater deity', 'Chaotic Good', 'Travel', 'Stars', 'Freedom')),
+  reference('Silvin', 'deity', 'Guardian of growing things, wild places, restoration, and seasonal return.\n\n**Rank:** Greater deity  \n**Alignment:** Neutral Good  \n**Domains:** Nature, Life, Renewal', undefined, deity('Greater deity', 'Neutral Good', 'Nature', 'Life', 'Renewal')),
+  reference('Avoldin', 'deity', 'Patron of crowns, oaths, civic law, and the burdens of leadership.\n\n**Rank:** Greater deity  \n**Alignment:** Lawful Good  \n**Domains:** Order, Oaths, Rule', undefined, deity('Greater deity', 'Lawful Good', 'Order', 'Oaths', 'Rule')),
+  reference('Wheina', 'deity', 'Lady of mercy, medicine, shelter, and the sustaining hearth.\n\n**Rank:** Greater deity  \n**Alignment:** Neutral Good  \n**Domains:** Healing, Mercy, Hearth', undefined, deity('Greater deity', 'Neutral Good', 'Healing', 'Mercy', 'Hearth')),
+  reference('Auren', 'deity', 'Patron of sunfire, craft, invention, and work made to endure.\n\n**Rank:** Greater deity  \n**Alignment:** Lawful Good  \n**Domains:** Forge, Light, Industry', undefined, deity('Greater deity', 'Lawful Good', 'Forge', 'Light', 'Industry')),
+  reference('Shungdro', 'deity', 'God of disciplined battle, endurance, and strength tested by hardship.\n\n**Rank:** Greater deity  \n**Alignment:** Lawful Neutral  \n**Domains:** War, Strength, Endurance', undefined, deity('Greater deity', 'Lawful Neutral', 'War', 'Strength', 'Endurance')),
+  reference('Gargadjinn', 'deity', 'Power of storms, elemental upheaval, and transformation through destruction.\n\n**Rank:** Greater deity  \n**Alignment:** Chaotic Neutral  \n**Domains:** Tempest, Elements, Change', undefined, deity('Greater deity', 'Chaotic Neutral', 'Tempest', 'Elements', 'Change')),
+  reference('Myar', 'deity', 'Lady of deep water, chance, wealth carried across the world, and uncertain tides.\n\n**Rank:** Greater deity  \n**Alignment:** Chaotic Neutral  \n**Domains:** Sea, Fortune, Trade', undefined, deity('Greater deity', 'Chaotic Neutral', 'Sea', 'Fortune', 'Trade')),
+  reference('Zylar', 'deity', 'Patron of secrets, dreams, masks, and the knowledge hidden from daylight.\n\n**Rank:** Greater deity  \n**Alignment:** Chaotic Neutral  \n**Domains:** Trickery, Dreams, Secrets', undefined, deity('Greater deity', 'Chaotic Neutral', 'Trickery', 'Dreams', 'Secrets')),
+  reference('Elyndra', 'deity', 'Muse of beauty, art, love, and fierce creative expression.\n\n**Rank:** Greater deity  \n**Alignment:** Chaotic Good  \n**Domains:** Beauty, Art, Passion', undefined, deity('Greater deity', 'Chaotic Good', 'Beauty', 'Art', 'Passion')),
+  reference('Vorrak', 'deity', 'Judge of conquest, ruin, hard justice, and the price exacted by war.\n\n**Rank:** Greater deity  \n**Alignment:** Lawful Evil  \n**Domains:** War, Judgement, Ruin', ['Varrak'], deity('Greater deity', 'Lawful Evil', 'War', 'Judgement', 'Ruin')),
+  reference('Hin Ge', 'deity', 'Patron of messengers, exchanges, contracts, and the hazards of the road.\n\n**Rank:** Lesser deity  \n**Alignment:** True Neutral  \n**Domains:** Trade, Roads, Messages', undefined, deity('Lesser deity', 'True Neutral', 'Trade', 'Roads', 'Messages')),
+  reference('Iroth', 'deity', 'Keeper of bargains, debt, measured justice, and obligations fulfilled.\n\n**Rank:** Lesser deity  \n**Alignment:** Lawful Neutral  \n**Domains:** Law, Debt, Bargains', undefined, deity('Lesser deity', 'Lawful Neutral', 'Law', 'Debt', 'Bargains')),
+  reference('Ellehirn', 'deity', 'Watcher over moonlit journeys, sailors, quiet omens, and night skies.\n\n**Rank:** Lesser deity  \n**Alignment:** Chaotic Good  \n**Domains:** Moon, Navigation, Omens', undefined, deity('Lesser deity', 'Chaotic Good', 'Moon', 'Navigation', 'Omens')),
+  reference('Brirvock', 'deity', 'Patron of smiths, engines, mines, and clever work done by hand.\n\n**Rank:** Lesser deity  \n**Alignment:** Lawful Neutral  \n**Domains:** Forge, Invention, Earth', undefined, deity('Lesser deity', 'Lawful Neutral', 'Forge', 'Invention', 'Earth')),
+  reference('Korbyglum', 'deity', 'God of harvest, feasting, brewing, and the communal plenty of a good year.\n\n**Rank:** Lesser deity  \n**Alignment:** Chaotic Good  \n**Domains:** Harvest, Feast, Plenty', undefined, deity('Lesser deity', 'Chaotic Good', 'Harvest', 'Feast', 'Plenty')),
+  reference('Aiv', 'deity', 'Spirit of cold, scarcity, solitude, and the will to survive a hard season.\n\n**Rank:** Lesser deity  \n**Alignment:** True Neutral  \n**Domains:** Winter, Survival, Solitude', undefined, deity('Lesser deity', 'True Neutral', 'Winter', 'Survival', 'Solitude')),
+  reference('Onro', 'deity', 'Patron of language, archives, quiet study, and names preserved against time.\n\n**Rank:** Lesser deity  \n**Alignment:** Lawful Neutral  \n**Domains:** Knowledge, Language, Archives', undefined, deity('Lesser deity', 'Lawful Neutral', 'Knowledge', 'Language', 'Archives')),
+  reference('Vraxis', 'deity', 'Guardian of beasts, the hunt, instinct, and bonds between hunter and prey.\n\n**Rank:** Lesser deity  \n**Alignment:** Neutral Good  \n**Domains:** Beasts, Hunt, Instinct', undefined, deity('Lesser deity', 'Neutral Good', 'Beasts', 'Hunt', 'Instinct')),
+  reference('Fabrian', 'deity', 'Patron of theatre, disguise, wit, and the lies that reveal a deeper truth.\n\n**Rank:** Lesser deity  \n**Alignment:** Chaotic Neutral  \n**Domains:** Masks, Performance, Deception', undefined, deity('Lesser deity', 'Chaotic Neutral', 'Masks', 'Performance', 'Deception')),
+  reference('Silien', 'deity', 'Guardian of families, homes, wards, and promises kept between kin.\n\n**Rank:** Lesser deity  \n**Alignment:** Lawful Good  \n**Domains:** Home, Family, Protection', undefined, deity('Lesser deity', 'Lawful Good', 'Home', 'Family', 'Protection')),
+  reference('Chuny', 'deity', 'Guide of endings, grief, lost things, and the quiet dignity of letting go.\n\n**Rank:** Lesser deity  \n**Alignment:** True Neutral  \n**Domains:** Endings, Grief, Loss', undefined, deity('Lesser deity', 'True Neutral', 'Endings', 'Grief', 'Loss')),
+  reference('Lowi', 'deity', 'Patron of luck, overlooked folk, small victories, and joyful mischief.\n\n**Rank:** Lesser deity  \n**Alignment:** Chaotic Good  \n**Domains:** Luck, Community, Mischief', undefined, deity('Lesser deity', 'Chaotic Good', 'Luck', 'Community', 'Mischief')),
   reference("Enc'thrii", 'landmark', 'The ice moon whose alignment with Din and Unri forms the autumn Perigee.'),
   reference('Monarchy of Sharlai', 'faction', 'One of the four warring monarchies. The party is commissioned under its authority.', ['Sharlai', 'Royal Crown']),
   reference('Monarchy of Zsweon', 'faction', 'A rival monarchy pressuring Sharlai’s eastern border.', ['Zsweon']),

@@ -467,6 +467,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .reference-inbox-list select { background: #fffaf0; border: 1px solid #d1c0a5; border-radius: 4px; color: #493329; font-size: .66rem; max-width: 100px; min-width: 0; padding: 5px; }
 .reference-inbox-check { align-items: center; display: flex; }
 .reference-inbox-check input { accent-color: #6a2f26; height: 17px; margin: 0; width: 17px; }
+.reference-inbox-pantheon-list article { align-items: start; grid-template-columns: auto minmax(0, 1fr) auto; padding: 9px; }
+.reference-inbox-pantheon-list article > div { gap: 3px; }
+.reference-inbox-pantheon-list strong { font-size: .86rem; }
+.reference-inbox-pantheon-list span, .reference-inbox-pantheon-list small { overflow: visible; text-overflow: clip; white-space: normal; }
+.reference-inbox-pantheon-list span { color: #705643; font-weight: 700; }
+.reference-inbox-pantheon-list small { line-height: 1.35; }
 .worldbuilding-curated-reference-list { display: grid; gap: 6px; margin-top: 9px; }
 .worldbuilding-curated-reference-list article { align-items: center; background: #f8f0e1; border: 1px solid #d8c9ae; border-radius: 6px; display: flex; gap: 8px; justify-content: space-between; padding: 8px; }
 .worldbuilding-curated-reference-list article > div { display: grid; gap: 2px; min-width: 0; }
@@ -640,6 +646,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .worldbuilding-page-header { align-items: flex-start; flex-direction: column; gap: 9px; margin-bottom: 12px; }
   .worldbuilding-workspace { display: block; min-height: 0; width: auto; }
   .worldbuilding-browser { border-bottom: 1px solid #d8c9ae; border-right: 0; max-height: 370px; }
+  .worldbuilding-browser.is-reference-inbox { max-height: min(68dvh, 610px); }
   .worldbuilding-details { min-height: 55vh; padding: 22px 17px; }
   .worldbuilding-meta-grid { grid-template-columns: 1fr; }
   .worldbuilding-preview-header { align-items: flex-start; flex-direction: column; }

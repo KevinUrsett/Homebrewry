@@ -79,7 +79,26 @@ const talonState: EntityCurrentState = {
 };
 
 describe('EncounterPanel monster browser', () => {
-  it('reveals more catalogue monsters instead of trapping the user in the first results', async () => {
+  it('places the edited encounter into the active brew through the shared insertion flow', async () => {
+    const onInsertReference = vi.fn();
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push({ container, root });
+
+    await act(async () => {
+      root.render(<EncounterPanel encounters={[encounter]} loading={false} monsters={[]} onCreateEncounter={vi.fn()} onCreatePartyMember={vi.fn()} onDeleteEncounter={vi.fn()} onDeletePartyMember={vi.fn()} onInsertReference={onInsertReference} onSelectEncounter={vi.fn()} onUpdateEncounter={vi.fn()} onUpdatePartyMember={vi.fn()} partyMembers={[]} selectedId={encounter.id} syncState="synced" />);
+    });
+
+    const edit = container.querySelector<HTMLButtonElement>('[aria-label="Edit Test encounter"]');
+    await act(async () => edit?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    const place = Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Place in brew');
+    await act(async () => place?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    expect(onInsertReference).toHaveBeenCalledWith(encounter);
+  });
+
+  it('loads the full catalogue so the user is not trapped in the first results', async () => {
     const container = document.createElement('div');
     document.body.append(container);
     const root = createRoot(container);
@@ -115,18 +134,10 @@ describe('EncounterPanel monster browser', () => {
       catalogueTab?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
 
-    expect(container.querySelectorAll('.encounter-monster-result')).toHaveLength(30);
-    const showMore = Array.from(container.querySelectorAll('button')).find((button) => button.textContent?.startsWith('Show 1 more'));
-    expect(showMore).toBeTruthy();
-
-    await act(async () => {
-      showMore?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    });
-
     expect(container.querySelectorAll('.encounter-monster-result')).toHaveLength(31);
   });
 
-  it('closes the touch-sized picker after adding a monster so the tracker stays interactive', async () => {
+  it('keeps the picker open after adding a monster so several can be added', async () => {
     const container = document.createElement('div');
     document.body.append(container);
     const root = createRoot(container);
@@ -138,10 +149,8 @@ describe('EncounterPanel monster browser', () => {
     await act(async () => { Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Add combatant')?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
     await act(async () => { Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Catalogue')?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
     await act(async () => { Array.from(container.querySelectorAll('.encounter-monster-result button')).find((button) => button.textContent === 'Add')?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
-    await act(async () => { container.querySelector<HTMLFormElement>('.encounter-quantity-dialog')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
     expect(onUpdateEncounter).toHaveBeenCalledWith(expect.objectContaining({ participants: [expect.objectContaining({ kind: 'monster' })] }));
-    expect(container.querySelector('.encounter-picker')).toBeNull();
-    expect(Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Add combatant')).toBeTruthy();
+    expect(container.querySelector('.encounter-picker')).not.toBeNull();
   });
 
   it('adds a confirmed Worldbuilding NPC with its current status and stable entity link', async () => {

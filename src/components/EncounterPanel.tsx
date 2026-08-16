@@ -508,6 +508,10 @@ export function EncounterPanel({
                 </div>
               </div>
 
+              <div className="encounter-actions" aria-label="Encounter actions">
+                <button className="primary-button" onClick={() => onInsertReference(selected)} type="button">Place in brew</button>
+              </div>
+
               <section className={`encounter-section encounter-tracker-summary ${selected.participants.length ? '' : 'is-empty'}`}>
                 <div className="encounter-section-heading">
                   <div><p className="eyebrow">Tracker</p><h2>{selected.participants.length} combatant{selected.participants.length === 1 ? '' : 's'}</h2></div>

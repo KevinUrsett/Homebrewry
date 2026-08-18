@@ -37,10 +37,11 @@ export function parseRendererBlocks(source: string): RendererBlock[] {
 
   for (let index = 0; index < lines.length; index += 1) {
     const directive = lines[index].match(/^:::(note|warning|tip|descriptive|columns|wide|homebrewery|statblock|item|spell|dungeon|pagebreak|columnbreak|spacer)(?:\s+(.+))?\s*$/i);
-    if (directive) {
+    const dungeonShorthand = directive ? null : lines[index].match(/^:::\s*(.+?)\s*$/);
+    if (directive || dungeonShorthand) {
       flushMarkdown();
-      const kind = directive[1].toLowerCase();
-      const argument = directive[2]?.trim();
+      const kind = directive ? directive[1].toLowerCase() : 'dungeon';
+      const argument = directive ? directive[2]?.trim() : dungeonShorthand?.[1]?.trim();
 
       if (kind === 'pagebreak') {
         blocks.push({ type: 'pagebreak' });
@@ -69,7 +70,8 @@ export function parseRendererBlocks(source: string): RendererBlock[] {
 
       const blockContent = content.join('\n').trim();
       if (kind === 'dungeon') {
-        const mapMatch = blockContent.match(/^!\[[^\]]*\]\(([^\s)]+)[^)]*\)\s*$/m) ?? blockContent.match(/^map:\s*(\S+)\s*$/mi);
+        const imageMatches = [...blockContent.matchAll(/!\[[^\]]*\]\(([^\s)]+)[^)]*\)/g)];
+        const mapMatch = imageMatches.at(-1) ?? blockContent.match(/^map:\s*(\S+)\s*$/mi);
         const rooms = blockContent.split('\n').map((line) => line.match(/^\s*(\d+[A-Za-z]?)\s*[|.:\-]\s*(.+?)\s*$/)).filter((item): item is RegExpMatchArray => Boolean(item)).map((item) => ({ number: item[1], title: item[2] }));
         blocks.push({ type: 'dungeon', title: argument || 'Dungeon', mapSource: mapMatch?.[1], rooms });
       }

@@ -89,7 +89,7 @@ export function EditorPane({
         <button onClick={() => onInsert('\n```item\n', '\n```\n')} type="button">Item</button>
         <button onClick={() => onInsert('\n```spell\n', '\n```\n')} type="button">Spell</button>
         <button onClick={() => onInsert('\n:::pagebreak\n')} type="button">Page</button>
-        <button onClick={() => onInsert('\n:::dungeon Dungeon name\n![Dungeon map](asset://your-map-id)\n1 | Room one\n2 | Room two\n:::\n')} type="button">Dungeon</button>
+        <button onClick={() => onInsert('\n:::dungeon Dungeon name\n1 | Room one\n2 | Room two\n:::\n')} type="button">Dungeon</button>
         <button onClick={() => imageInputRef.current?.click()} type="button">Image</button>
         <ReferenceMenu customCategories={customCatalogueCategories} onBrowseCatalogue={onOpenCatalogue} onSelectCategory={onInsertReferenceCategory} />
         <button onClick={onOpenEncounters} type="button">Encounter</button>

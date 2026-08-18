@@ -27,4 +27,20 @@ describe('renderer block parser', () => {
       { type: 'markdown', content: 'After' }
     ]);
   });
+
+  it('supports titled dungeon shorthand and uses the last image as its map', () => {
+    const blocks = parseRendererBlocks(':::Temple of Silvin\n![Placeholder](asset://missing)\n![Temple map](asset://map-2638)\n1 | Room one\n2 | Room two\n:::');
+
+    expect(blocks).toEqual([
+      {
+        type: 'dungeon',
+        title: 'Temple of Silvin',
+        mapSource: 'asset://map-2638',
+        rooms: [
+          { number: '1', title: 'Room one' },
+          { number: '2', title: 'Room two' }
+        ]
+      }
+    ]);
+  });
 });

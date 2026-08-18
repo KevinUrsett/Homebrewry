@@ -1500,7 +1500,9 @@ export default function App() {
   const openCurrentDungeonMap = () => {
     if (!activeBrew) return;
     const beforeCursor = activeBrew.content.slice(0, selectionRef.current.start);
-    const title = [...beforeCursor.matchAll(/^:::dungeon\s+(.+)$/gmi)].at(-1)?.[1]?.trim();
+    const dungeonDirectives = [...beforeCursor.matchAll(/^:::(?:dungeon\s+)?(.+?)\s*$/gmi)]
+      .filter((match) => !/^(note|warning|tip|descriptive|columns|wide|homebrewery|statblock|item|spell|pagebreak|columnbreak|spacer)(?:\s|$)/i.test(match[1]));
+    const title = dungeonDirectives.at(-1)?.[1]?.trim();
     setCaptureMenuOpen(false);
     setMobileSection('preview');
     window.requestAnimationFrame(() => window.setTimeout(() => {
@@ -2015,7 +2017,7 @@ export default function App() {
                 <button onClick={() => { insertText('\n:::descriptive\n', '\n:::\n'); setCaptureMenuOpen(false); }} type="button">Descr</button>
                 <button onClick={() => { insertText('\n:::pagebreak\n'); setCaptureMenuOpen(false); }} type="button">Page</button>
                 <button onClick={() => { document.getElementById('brew-image-input')?.click(); setCaptureMenuOpen(false); }} type="button">Image</button>
-                <button onClick={() => { insertText('\n:::dungeon Dungeon name\n![Dungeon map](asset://your-map-id)\n1 | Room one\n2 | Room two\n:::\n'); setCaptureMenuOpen(false); }} type="button">Dungeon</button>
+                <button onClick={() => { insertText('\n:::dungeon Dungeon name\n1 | Room one\n2 | Room two\n:::\n'); setCaptureMenuOpen(false); }} type="button">Dungeon</button>
               </div>
               <div className="mobile-writing-tool-group" aria-label="Insert content">
                 <button onClick={() => { setCaptureMenuOpen(false); openCatalogue(); }} type="button">Reference</button>

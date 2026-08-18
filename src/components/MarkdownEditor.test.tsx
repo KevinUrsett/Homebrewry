@@ -42,6 +42,8 @@ describe('MarkdownEditor images', () => {
     const image = host.querySelector<HTMLImageElement>('.cm-markdown-image-preview img');
     expect(image?.alt).toBe('A brass lantern');
     expect(image?.src).toBe('blob:lantern-preview');
+    expect(host.textContent).toContain('A brass lantern');
+    expect(host.textContent).not.toContain('asset://lantern-art');
     expect(createObjectURL).toHaveBeenCalledWith(asset.blob);
   });
 });

@@ -153,6 +153,27 @@ class MarkdownImagePreview extends WidgetType {
   }
 }
 
+class MarkdownImageLabel extends WidgetType {
+  constructor(private readonly label: string) {
+    super();
+  }
+
+  eq(other: MarkdownImageLabel) {
+    return other.label === this.label;
+  }
+
+  toDOM() {
+    const element = document.createElement('span');
+    element.className = 'cm-markdown-image-label';
+    element.textContent = this.label || 'Brew illustration';
+    return element;
+  }
+
+  ignoreEvent() {
+    return false;
+  }
+}
+
 function imagePreviewDecorations(view: EditorView): DecorationSet {
   const lookup = view.state.facet(imageAssetLookup);
   const decorations = [];
@@ -164,10 +185,15 @@ function imagePreviewDecorations(view: EditorView): DecorationSet {
     while ((match = markdownImagePattern.exec(line))) {
       const source = match[2];
       const asset = source.startsWith('asset://') ? lookup(source) : undefined;
+      const end = position + match.index + match[0].length;
+      decorations.push(Decoration.replace({
+        widget: new MarkdownImageLabel(match[1] || asset?.alt || 'Brew illustration'),
+        inclusive: false
+      }).range(position + match.index, end));
       decorations.push(Decoration.widget({
         side: 1,
         widget: new MarkdownImagePreview(source, match[1], asset)
-      }).range(position + match.index + match[0].length));
+      }).range(end));
     }
     position += line.length + 1;
   }

@@ -1,5 +1,5 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
-import { EditorState } from '@codemirror/state';
+import { Compartment, EditorState, Facet } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
@@ -14,7 +14,7 @@ import {
 } from '@codemirror/view';
 import { catalogueCategories, catalogueCategoryLabel, type CatalogueCategory, type CustomCatalogueCategory } from '../catalogue/types';
 import { normalizeWorldbuildingName, worldbuildingKindLabels, worldbuildingKinds } from '../lib/worldbuilding';
-import type { WorldbuildingKind, WorldbuildingType } from '../types';
+import type { BrewAsset, WorldbuildingKind, WorldbuildingType } from '../types';
 
 export type MarkdownEditorHandle = {
   getSelection: () => { start: number; end: number };
@@ -34,6 +34,7 @@ type MarkdownEditorProps = {
   ariaLabel?: string;
   compact?: boolean;
   spellcheckEnabled?: boolean;
+  assets?: ReadonlyMap<string, BrewAsset>;
 };
 
 type ReferenceMenu = {
@@ -45,6 +46,8 @@ type ReferenceMenu = {
 };
 
 type MobileReferenceSelection = Pick<ReferenceMenu, 'name' | 'from' | 'to'>;
+
+const emptyAssets = new Map<string, BrewAsset>();
 
 class ReferenceChip extends WidgetType {
   constructor(private readonly label: string, private readonly kind: string) {
@@ -91,6 +94,103 @@ const referenceDecorations = ViewPlugin.fromClass(class {
   decorations: (value) => value.decorations
 });
 
+type AssetLookup = (source: string) => BrewAsset | undefined;
+
+const imageAssetLookup = Facet.define<AssetLookup, AssetLookup>({
+  combine: (lookups) => lookups[lookups.length - 1] ?? (() => undefined)
+});
+
+const imageAssetLookupCompartment = new Compartment();
+const markdownImagePattern = /!\[([^\]]*)\]\(([^\s)]+)(?:\s+["'][^"']*["'])?\)/g;
+
+class MarkdownImagePreview extends WidgetType {
+  constructor(private readonly source: string, private readonly alt: string, private readonly asset?: BrewAsset) {
+    super();
+  }
+
+  eq(other: MarkdownImagePreview) {
+    return other.source === this.source
+      && other.alt === this.alt
+      && other.asset?.updatedAt === this.asset?.updatedAt
+      && other.asset?.blob === this.asset?.blob;
+  }
+
+  toDOM() {
+    const figure = document.createElement('span');
+    figure.className = 'cm-markdown-image-preview';
+    const image = document.createElement('img');
+    image.alt = this.alt || this.asset?.alt || 'Brew illustration';
+    image.loading = 'lazy';
+
+    if (this.source.startsWith('asset://')) {
+      if (!this.asset) {
+        figure.classList.add('is-missing');
+        figure.textContent = 'Image unavailable on this device — sync with Drive to restore it.';
+        return figure;
+      }
+      const objectUrl = URL.createObjectURL(this.asset.blob);
+      figure.dataset.objectUrl = objectUrl;
+      image.src = objectUrl;
+    } else {
+      image.src = this.source;
+    }
+
+    image.addEventListener('error', () => {
+      figure.classList.add('is-missing');
+      figure.replaceChildren(document.createTextNode('This image could not be displayed.'));
+    }, { once: true });
+    figure.append(image);
+    return figure;
+  }
+
+  destroy(dom: HTMLElement) {
+    const objectUrl = dom.dataset.objectUrl;
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+  }
+
+  ignoreEvent() {
+    return false;
+  }
+}
+
+function imagePreviewDecorations(view: EditorView): DecorationSet {
+  const lookup = view.state.facet(imageAssetLookup);
+  const decorations = [];
+  let position = 0;
+
+  for (const line of view.state.doc.iterLines()) {
+    markdownImagePattern.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = markdownImagePattern.exec(line))) {
+      const source = match[2];
+      const asset = source.startsWith('asset://') ? lookup(source) : undefined;
+      decorations.push(Decoration.widget({
+        side: 1,
+        widget: new MarkdownImagePreview(source, match[1], asset)
+      }).range(position + match.index + match[0].length));
+    }
+    position += line.length + 1;
+  }
+
+  return Decoration.set(decorations, true);
+}
+
+const imagePreviews = ViewPlugin.fromClass(class {
+  decorations: DecorationSet;
+
+  constructor(view: EditorView) {
+    this.decorations = imagePreviewDecorations(view);
+  }
+
+  update(update: ViewUpdate) {
+    if (update.docChanged || update.transactions.some((transaction) => transaction.reconfigured)) {
+      this.decorations = imagePreviewDecorations(update.view);
+    }
+  }
+}, {
+  decorations: (value) => value.decorations
+});
+
 const markdownHighlightStyle = HighlightStyle.define([
   { tag: tags.heading1, color: '#7a2f27', fontWeight: '800' },
   { tag: tags.heading2, color: '#8a4a2c', fontWeight: '800' },
@@ -117,11 +217,13 @@ export function MarkdownEditor({
   ariaLabel = 'Markdown source',
   compact = false,
   spellcheckEnabled = true,
+  assets = emptyAssets,
   ref
 }: MarkdownEditorProps & { ref?: Ref<MarkdownEditorHandle> }) {
   const parentRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const initialContentRef = useRef(content);
+  const assetsRef = useRef(assets);
   const latestRef = useRef({ onChange, onSelectionChange, onKeyDown, onCreateWorldbuildingReference, onCreateCatalogueReference });
   const [referenceMenu, setReferenceMenu] = useState<ReferenceMenu | null>(null);
   const [mobileReferenceSelection, setMobileReferenceSelection] = useState<MobileReferenceSelection | null>(null);
@@ -130,6 +232,13 @@ export function MarkdownEditor({
   useEffect(() => {
     latestRef.current = { onChange, onSelectionChange, onKeyDown, onCreateWorldbuildingReference, onCreateCatalogueReference };
   }, [onChange, onCreateCatalogueReference, onCreateWorldbuildingReference, onKeyDown, onSelectionChange]);
+
+  useEffect(() => {
+    assetsRef.current = assets;
+    viewRef.current?.dispatch({
+      effects: imageAssetLookupCompartment.reconfigure(imageAssetLookup.of((source) => assetsRef.current.get(source.slice('asset://'.length))))
+    });
+  }, [assets]);
 
   useImperativeHandle(ref, () => ({
     getSelection: () => {
@@ -160,6 +269,8 @@ export function MarkdownEditor({
           EditorView.lineWrapping,
           EditorView.contentAttributes.of({ 'aria-label': ariaLabel, spellcheck: spellcheckEnabled ? 'true' : 'false' }),
           referenceDecorations,
+          imageAssetLookupCompartment.of(imageAssetLookup.of((source) => assetsRef.current.get(source.slice('asset://'.length)))),
+          imagePreviews,
           EditorView.updateListener.of((update) => {
             if (update.docChanged) latestRef.current.onChange(update.state.doc.toString());
             if (update.selectionSet) {

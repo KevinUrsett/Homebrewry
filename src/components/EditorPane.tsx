@@ -2,7 +2,7 @@ import { type RefObject, useRef } from 'react';
 import { MarkdownEditor, type MarkdownEditorHandle } from './MarkdownEditor';
 import { ReferenceMenu } from './ReferenceMenu';
 import type { CatalogueCategory, CustomCatalogueCategory } from '../catalogue/types';
-import type { WorldbuildingKind, WorldbuildingType } from '../types';
+import type { BrewAsset, WorldbuildingKind, WorldbuildingType } from '../types';
 
 type EditorPaneProps = {
   title: string;
@@ -30,6 +30,7 @@ type EditorPaneProps = {
   onRedo: () => void;
   onToggleFind: () => void;
   spellcheckEnabled: boolean;
+  assets: ReadonlyMap<string, BrewAsset>;
   onToggleSpellcheck: () => void;
   onFindChange: (value: string) => void;
   onReplaceChange: (value: string) => void;
@@ -63,6 +64,7 @@ export function EditorPane({
   onRedo,
   onToggleFind,
   spellcheckEnabled,
+  assets,
   onToggleSpellcheck,
   onFindChange,
   onReplaceChange,
@@ -124,6 +126,7 @@ export function EditorPane({
       />
       <MarkdownEditor
         content={content}
+        assets={assets}
         onChange={onContentChange}
         spellcheckEnabled={spellcheckEnabled}
         customCatalogueCategories={customCatalogueCategories}

@@ -39,8 +39,14 @@ describe('renderer block parser', () => {
         rooms: [
           { number: '1', title: 'Room one' },
           { number: '2', title: 'Room two' }
-        ]
+        ],
+        markers: []
       }
     ]);
+  });
+
+  it('parses placed dungeon room markers', () => {
+    const [block] = parseRendererBlocks(':::dungeon Temple\n![Map](asset://map)\n1 | Gate\n::map-marker 1 42.5 61\n:::');
+    expect(block).toMatchObject({ type: 'dungeon', markers: [{ number: '1', x: 42.5, y: 61 }] });
   });
 });

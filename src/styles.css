@@ -120,7 +120,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .dungeon-map-dialog { background: #fff9eb; border: 2px solid #b38855; border-radius: 10px; box-shadow: 0 20px 60px rgb(0 0 0 / 45%); display: grid; gap: 12px; max-height: calc(100dvh - 32px); max-width: 900px; overflow: auto; padding: 16px; width: 100%; }
 .dungeon-map-dialog header { align-items: center; display: flex; gap: 8px; justify-content: space-between; }
 .dungeon-map-dialog h2 { color: #652f26; margin: 0; }
+.dungeon-map-canvas { cursor: default; line-height: 0; position: relative; width: fit-content; }
+.dungeon-map-canvas.is-placing { cursor: crosshair; }
 .dungeon-map-dialog img { display: block; height: auto; max-height: 62dvh; max-width: 100%; object-fit: contain; width: 100%; }
+.dungeon-room-marker { align-items: center; background: #7d382a !important; border: 2px solid #fff9eb !important; border-radius: 50% !important; box-shadow: 0 1px 4px rgb(0 0 0 / 45%); display: flex; font-size: .75rem !important; height: 28px; justify-content: center; line-height: 1; padding: 0 !important; position: absolute; transform: translate(-50%, -50%); width: 28px; }
+.dungeon-map-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; }
 .dungeon-room-ledger { display: flex; flex-wrap: wrap; gap: 7px; }
 .dungeon-room-ledger button { background: #f5ead2; color: #503225; text-align: left; }
 .dungeon-room-ledger strong { color: #7d382a; margin-right: 5px; }

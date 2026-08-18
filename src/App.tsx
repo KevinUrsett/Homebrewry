@@ -1513,6 +1513,29 @@ export default function App() {
     }, 80));
   };
 
+  const addDungeonRoomMarker = (title: string, marker: { number: string; x: number; y: number }) => {
+    if (!activeBrew) return;
+    const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const blockStart = new RegExp(`^:::(?:dungeon\\s+)?${escapedTitle}\\s*$`, 'mi');
+    const startMatch = blockStart.exec(activeBrew.content);
+    if (!startMatch || startMatch.index === undefined) {
+      setSaveState('Dungeon block could not be found');
+      return;
+    }
+    const closingAt = activeBrew.content.indexOf('\n:::', startMatch.index + startMatch[0].length);
+    if (closingAt < 0) {
+      setSaveState('Dungeon block needs a closing ::: line');
+      return;
+    }
+    const markerLine = `::map-marker ${marker.number} ${marker.x.toFixed(2)} ${marker.y.toFixed(2)}`;
+    const roomLine = `${marker.number} | Room ${marker.number}`;
+    const withMarker = `${activeBrew.content.slice(0, closingAt)}\n${markerLine}\n${roomLine}${activeBrew.content.slice(closingAt)}`;
+    const hasRoomSection = new RegExp(`^#{1,6}\\s*${marker.number.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:[.:\\s-]|$)`, 'mi').test(withMarker);
+    const nextContent = hasRoomSection ? withMarker : `${withMarker}\n\n#### ${marker.number}. Room ${marker.number}\n\n`;
+    updateContent(nextContent);
+    setSaveState(`Room ${marker.number} added to ${title}`);
+  };
+
   const rotateImage = async (asset: BrewAsset) => {
     try {
       const updated = await rotateAsset(asset);
@@ -1742,7 +1765,7 @@ export default function App() {
       {!ideasOpen && !campaignOpen && !catalogueOpen && !encountersOpen && !worldbuildingOpen && mobileSection === 'preview' ? (
         <main className="mobile-preview-page" aria-label="Live preview">
           <div className="mobile-preview-page-content">
-            <BrewPreview assets={assetMap} brew={renderedBrew} catalogue={catalogueMap} catalogueCategories={customCatalogueCategories} encounters={encounterMap} onAddWorldbuildingNote={addWorldbuildingQuickNote} onDeleteWorldbuildingReference={deleteWorldbuilding} onEncounterOpen={openEncounters} onOpenInWorldbuilding={openWorldbuilding} onReferenceOpen={setReferenceEntry} onWorldbuildingOpen={setWorldbuildingReferenceEntry} worldbuilding={worldbuildingMap} worldbuildingTypes={worldbuildingTypes} />
+            <BrewPreview assets={assetMap} brew={renderedBrew} catalogue={catalogueMap} catalogueCategories={customCatalogueCategories} encounters={encounterMap} onAddDungeonMarker={addDungeonRoomMarker} onAddWorldbuildingNote={addWorldbuildingQuickNote} onDeleteWorldbuildingReference={deleteWorldbuilding} onEncounterOpen={openEncounters} onOpenInWorldbuilding={openWorldbuilding} onReferenceOpen={setReferenceEntry} onWorldbuildingOpen={setWorldbuildingReferenceEntry} worldbuilding={worldbuildingMap} worldbuildingTypes={worldbuildingTypes} />
           </div>
 
           <button aria-expanded={mobilePreviewOutlineOpen} className="mobile-preview-page-outline-button" onClick={() => setMobilePreviewOutlineOpen((open) => !open)} type="button">Outline</button>
@@ -1967,6 +1990,7 @@ export default function App() {
                   catalogue={catalogueMap}
                   catalogueCategories={customCatalogueCategories}
                   encounters={encounterMap}
+                  onAddDungeonMarker={addDungeonRoomMarker}
                   onEncounterOpen={openEncounters}
                   onReferenceOpen={setReferenceEntry}
                   onAddWorldbuildingNote={addWorldbuildingQuickNote}

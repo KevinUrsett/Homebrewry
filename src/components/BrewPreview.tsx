@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { catalogueReferenceFromUrl, entryFromReference, remarkCatalogueReferences } from '../catalogue/references';
@@ -27,6 +27,7 @@ type BrewPreviewProps = {
   onOpenInWorldbuilding?: (entry: WorldbuildingEntry) => void;
   onDeleteWorldbuildingReference?: (entry: WorldbuildingEntry) => void;
   onAddWorldbuildingNote?: (entry: WorldbuildingEntry, note: string) => void;
+  onAddDungeonMarker?: (title: string, marker: { number: string; x: number; y: number }) => void;
 };
 
 type MarkdownRendererProps = {
@@ -54,8 +55,9 @@ type CharacterRendererBlock = {
   classes?: string[];
 };
 
-function DungeonBlock({ block, assets }: { block: Extract<RendererBlock, { type: 'dungeon' }>; assets?: ReadonlyMap<string, BrewAsset> }) {
+function DungeonBlock({ block, assets, onAddMarker }: { block: Extract<RendererBlock, { type: 'dungeon' }>; assets?: ReadonlyMap<string, BrewAsset>; onAddMarker?: (title: string, marker: { number: string; x: number; y: number }) => void }) {
   const [open, setOpen] = useState(false);
+  const [placing, setPlacing] = useState(false);
   const assetId = block.mapSource?.startsWith('asset://') ? block.mapSource.slice('asset://'.length) : '';
   const asset = assetId ? assets?.get(assetId) : undefined;
   const mapUrl = useMemo(() => asset ? URL.createObjectURL(asset.blob) : block.mapSource, [asset?.blob, block.mapSource]);
@@ -66,7 +68,14 @@ function DungeonBlock({ block, assets }: { block: Extract<RendererBlock, { type:
       .find((heading) => new RegExp(`^\\s*${number.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}(?:[.:\\s-]|$)`).test(heading.textContent ?? ''));
     target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
-  return <section className="brew-dungeon-card" data-dungeon-title={block.title}><header><div><small>Dungeon map</small><h3>{block.title}</h3></div><button disabled={!mapUrl} onClick={() => setOpen(true)} type="button">Map</button></header>{!mapUrl && <p>Add an image line inside this dungeon block to use the map.</p>}{open && <div className="dungeon-map-backdrop" onClick={() => setOpen(false)} role="presentation"><section aria-label={`${block.title} map`} className="dungeon-map-dialog" onClick={(event) => event.stopPropagation()}><header><h2>{block.title}</h2><button aria-label="Close map" onClick={() => setOpen(false)} type="button">×</button></header>{mapUrl && <img alt={`${block.title} map`} src={mapUrl} />}<div className="dungeon-room-ledger">{block.rooms.map((room) => <button key={room.number} onClick={() => openRoom(room.number)} type="button"><strong>{room.number}</strong>{room.title}</button>)}</div></section></div>}</section>;
+  const nextNumber = String(Math.max(0, ...[...block.rooms, ...block.markers].map((item) => Number.parseInt(item.number, 10)).filter(Number.isFinite)) + 1);
+  const placeMarker = (event: MouseEvent<HTMLDivElement>) => {
+    if (!placing || !onAddMarker) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    onAddMarker(block.title, { number: nextNumber, x: ((event.clientX - rect.left) / rect.width) * 100, y: ((event.clientY - rect.top) / rect.height) * 100 });
+    setPlacing(false);
+  };
+  return <section className="brew-dungeon-card" data-dungeon-title={block.title}><header><div><small>Dungeon map</small><h3>{block.title}</h3></div><button disabled={!mapUrl} onClick={() => setOpen(true)} type="button">Map</button></header>{!mapUrl && <p>Add an image line inside this dungeon block to use the map.</p>}{open && <div className="dungeon-map-backdrop" onClick={() => setOpen(false)} role="presentation"><section aria-label={`${block.title} map`} className="dungeon-map-dialog" onClick={(event) => event.stopPropagation()}><header><h2>{block.title}</h2><button aria-label="Close map" onClick={() => setOpen(false)} type="button">×</button></header>{mapUrl && <div className={`dungeon-map-canvas${placing ? ' is-placing' : ''}`} onClick={placeMarker}><img alt={`${block.title} map`} src={mapUrl} />{block.markers.map((marker) => <button aria-label={`Open room ${marker.number}`} className="dungeon-room-marker" key={`${marker.number}-${marker.x}-${marker.y}`} onClick={(event) => { event.stopPropagation(); openRoom(marker.number); }} style={{ left: `${marker.x}%`, top: `${marker.y}%` }} type="button">{marker.number}</button>)}</div>}<div className="dungeon-map-actions">{onAddMarker && <button disabled={!mapUrl} onClick={() => setPlacing((current) => !current)} type="button">{placing ? 'Tap the map…' : `Add room ${nextNumber}`}</button>}<div className="dungeon-room-ledger">{block.rooms.map((room) => <button key={room.number} onClick={() => openRoom(room.number)} type="button"><strong>{room.number}</strong>{room.title}</button>)}</div></div></section></div>}</section>;
 }
 
 function LocalAssetImage({ asset, alt }: { asset: BrewAsset; alt: string }) {
@@ -276,6 +285,7 @@ function renderBlock(
   onOpenInWorldbuilding: ((entry: WorldbuildingEntry) => void) | undefined,
   onDeleteWorldbuildingReference: ((entry: WorldbuildingEntry) => void) | undefined,
   onAddWorldbuildingNote: ((entry: WorldbuildingEntry, note: string) => void) | undefined,
+  onAddDungeonMarker: ((title: string, marker: { number: string; x: number; y: number }) => void) | undefined,
   key: string
 ) {
   const dependencies: RenderDependencies = {
@@ -299,7 +309,7 @@ function renderBlock(
   if (block.type === 'homebrewery') {
     return <section className={['brew-homebrewery', ...block.classes].join(' ')} key={key}><MarkdownRenderer content={block.content} getId={getId} {...dependencies} /></section>;
   }
-  if (block.type === 'dungeon') return <DungeonBlock assets={assets} block={block} key={key} />;
+  if (block.type === 'dungeon') return <DungeonBlock assets={assets} block={block} key={key} onAddMarker={onAddDungeonMarker} />;
   if (block.type === 'callout') {
     return (
       <aside className={`brew-callout callout-${block.variant}`} key={key}>
@@ -316,7 +326,7 @@ function renderBlock(
   return <CharacterBlock block={block} getId={getId} key={key} {...dependencies} />;
 }
 
-export const BrewPreview = memo(function BrewPreview({ brew, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen, onOpenInWorldbuilding, onDeleteWorldbuildingReference, onAddWorldbuildingNote }: BrewPreviewProps) {
+export const BrewPreview = memo(function BrewPreview({ brew, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen, onOpenInWorldbuilding, onDeleteWorldbuildingReference, onAddWorldbuildingNote, onAddDungeonMarker }: BrewPreviewProps) {
   const headingOccurrences = new Map<string, number>();
   const getId = (children: ReactNode) => {
     const text = String(children);
@@ -334,7 +344,7 @@ export const BrewPreview = memo(function BrewPreview({ brew, assets, catalogue, 
     >
       {pages.map((page, pageIndex) => (
         <article className="brew-preview brew-continuous" key={`page-${pageIndex}`}>
-          {page.map((block, blockIndex) => renderBlock(block, getId, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen, onOpenInWorldbuilding, onDeleteWorldbuildingReference, onAddWorldbuildingNote, `page-${pageIndex}-block-${blockIndex}`))}
+          {page.map((block, blockIndex) => renderBlock(block, getId, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen, onOpenInWorldbuilding, onDeleteWorldbuildingReference, onAddWorldbuildingNote, onAddDungeonMarker, `page-${pageIndex}-block-${blockIndex}`))}
           <span aria-hidden className="brew-page-number">{pageIndex + 1}</span>
         </article>
       ))}

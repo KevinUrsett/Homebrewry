@@ -108,7 +108,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .markdown-editor .cm-inline-reference { color: inherit; font: inherit; }
 .markdown-editor .cm-encounter-reference-chip { background: #f1dfb3; border: 1px solid #c8a563; border-radius: 999px; color: #5d3528; cursor: text; font-family: Inter, sans-serif; font-size: .82em; font-weight: 800; letter-spacing: .01em; padding: 1px 6px; }
 .markdown-editor .cm-markdown-image-label { color: #755326; font-family: Inter, sans-serif; font-size: .8em; font-style: italic; font-weight: 700; }
-.markdown-editor .cm-markdown-image-preview { background: rgb(255 250 240 / 78%); border: 1px solid #bca789; box-sizing: border-box; margin: 10px 0 14px; max-width: min(100%, 620px); padding: 7px; width: fit-content; }
+.markdown-editor .cm-markdown-image-preview { background: rgb(255 250 240 / 78%); border: 1px solid #bca789; box-sizing: border-box; display: inline-block; margin: 10px 0 14px; max-width: min(100%, 620px); padding: 7px; vertical-align: top; width: 100%; }
 .markdown-editor .cm-markdown-image-preview img { display: block; height: auto; max-height: 360px; max-width: 100%; object-fit: contain; }
 .markdown-editor .cm-markdown-image-preview.is-missing { background: #f3d3cd; color: #8a2f27; font-family: Inter, sans-serif; font-size: .82rem; line-height: 1.35; max-width: 440px; padding: 8px 10px; width: auto; }
 

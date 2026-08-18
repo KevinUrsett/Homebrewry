@@ -32,7 +32,7 @@ import {
   savePrivateMonsterSyncMetadata,
   seedBrews
 } from './lib/brewStore';
-import { createAsset, listAssets, orientAsset, replaceAssets, saveAsset, type ImageOrientation } from './lib/assetStore';
+import { createAsset, listAssets, replaceAssets, rotateAsset, saveAsset } from './lib/assetStore';
 import { syncAssets } from './lib/assetSync';
 import { createCampaignDataSnapshot } from './lib/campaignData';
 import { deriveCampaignPosition, derivePartyLocation } from './lib/campaignProgress';
@@ -1481,24 +1481,20 @@ export default function App() {
     }
   };
 
-  const changeImageOrientation = async (asset: BrewAsset, orientation: ImageOrientation) => {
+  const rotateImage = async (asset: BrewAsset) => {
     try {
-      const updated = await orientAsset(asset, orientation);
-      if (updated === asset) {
-        setSaveState(`Image is already ${orientation}`);
-        return;
-      }
+      const updated = await rotateAsset(asset);
       await saveAsset(updated);
       const nextAssets = assets.map((item) => item.id === updated.id ? updated : item);
       setAssets(nextAssets);
-      setSaveState(`Image changed to ${orientation}`);
+      setSaveState('Image rotated');
       if (!accessToken) return;
       const result = await syncAssets(accessToken, nextAssets);
       await replaceAssets(result.assets);
       setAssets(result.assets);
       setSaveState(`Image updated in Drive; ${result.detail}`);
     } catch (error) {
-      setSaveState(error instanceof Error ? error.message : 'Image orientation could not be changed');
+      setSaveState(error instanceof Error ? error.message : 'Image could not be rotated');
     }
   };
 
@@ -1898,7 +1894,7 @@ export default function App() {
               onToggleFind={() => setFindVisible((visible) => !visible)}
               spellcheckEnabled={spellcheckEnabled}
               assets={assetMap}
-              onChangeImageOrientation={(asset, orientation) => { void changeImageOrientation(asset, orientation); }}
+              onRotateImage={(asset) => { void rotateImage(asset); }}
               onToggleSpellcheck={() => setSpellcheckEnabled((current) => { const next = !current; localStorage.setItem('homebrewry-spellcheck', next ? 'on' : 'off'); return next; })}
               onUndo={undo}
               replaceValue={replaceValue}

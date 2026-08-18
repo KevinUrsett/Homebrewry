@@ -3,7 +3,6 @@ import { ASSET_STORE_NAME, getDatabase } from './brewStore';
 
 export const MAX_IMAGE_SIZE = 8 * 1024 * 1024;
 export const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
-export type ImageOrientation = 'portrait' | 'landscape';
 
 export function createAsset(file: File, alt = file.name.replace(/\.[^.]+$/, '')): BrewAsset {
   if (!SUPPORTED_IMAGE_TYPES.has(file.type)) throw new Error('Use a PNG, JPEG, WebP, or GIF image.');
@@ -41,7 +40,7 @@ export async function replaceAssets(assets: BrewAsset[]): Promise<void> {
   await transaction.done;
 }
 
-export async function orientAsset(asset: BrewAsset, orientation: ImageOrientation): Promise<BrewAsset> {
+export async function rotateAsset(asset: BrewAsset): Promise<BrewAsset> {
   if (asset.mimeType === 'image/gif') throw new Error('GIF images cannot be rotated.');
 
   const sourceUrl = URL.createObjectURL(asset.blob);
@@ -49,11 +48,6 @@ export async function orientAsset(asset: BrewAsset, orientation: ImageOrientatio
   image.src = sourceUrl;
   try {
     await image.decode();
-    const shouldRotate = orientation === 'portrait'
-      ? image.naturalWidth > image.naturalHeight
-      : image.naturalHeight > image.naturalWidth;
-    if (!shouldRotate) return asset;
-
     const canvas = document.createElement('canvas');
     canvas.width = image.naturalHeight;
     canvas.height = image.naturalWidth;

@@ -7,6 +7,7 @@ export type RendererBlock =
   | { type: 'columns'; content: string }
   | { type: 'wide'; content: string }
   | { type: 'homebrewery'; content: string; classes: string[] }
+  | { type: 'dungeon'; title: string; mapSource?: string; rooms: { number: string; title: string }[] }
   | { type: 'spacer'; size: number }
   | { type: 'pagebreak' }
   | { type: 'columnbreak' };
@@ -35,7 +36,7 @@ export function parseRendererBlocks(source: string): RendererBlock[] {
   };
 
   for (let index = 0; index < lines.length; index += 1) {
-    const directive = lines[index].match(/^:::(note|warning|tip|descriptive|columns|wide|homebrewery|statblock|item|spell|pagebreak|columnbreak|spacer)(?:\s+(.+))?\s*$/i);
+    const directive = lines[index].match(/^:::(note|warning|tip|descriptive|columns|wide|homebrewery|statblock|item|spell|dungeon|pagebreak|columnbreak|spacer)(?:\s+(.+))?\s*$/i);
     if (directive) {
       flushMarkdown();
       const kind = directive[1].toLowerCase();
@@ -67,6 +68,11 @@ export function parseRendererBlocks(source: string): RendererBlock[] {
       }
 
       const blockContent = content.join('\n').trim();
+      if (kind === 'dungeon') {
+        const mapMatch = blockContent.match(/^!\[[^\]]*\]\(([^\s)]+)[^)]*\)\s*$/m) ?? blockContent.match(/^map:\s*(\S+)\s*$/mi);
+        const rooms = blockContent.split('\n').map((line) => line.match(/^\s*(\d+[A-Za-z]?)\s*[|.:\-]\s*(.+?)\s*$/)).filter((item): item is RegExpMatchArray => Boolean(item)).map((item) => ({ number: item[1], title: item[2] }));
+        blocks.push({ type: 'dungeon', title: argument || 'Dungeon', mapSource: mapMatch?.[1], rooms });
+      }
       if (kind === 'columns') blocks.push({ type: 'columns', content: blockContent });
       if (kind === 'wide') blocks.push({ type: 'wide', content: blockContent });
       if (kind === 'homebrewery') blocks.push({ type: 'homebrewery', classes: parseClasses(argument), content: blockContent });

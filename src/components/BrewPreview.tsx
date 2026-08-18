@@ -54,6 +54,21 @@ type CharacterRendererBlock = {
   classes?: string[];
 };
 
+function DungeonBlock({ block, assets }: { block: Extract<RendererBlock, { type: 'dungeon' }>; assets?: ReadonlyMap<string, BrewAsset> }) {
+  const [open, setOpen] = useState(false);
+  const assetId = block.mapSource?.startsWith('asset://') ? block.mapSource.slice('asset://'.length) : '';
+  const asset = assetId ? assets?.get(assetId) : undefined;
+  const mapUrl = useMemo(() => asset ? URL.createObjectURL(asset.blob) : block.mapSource, [asset?.blob, block.mapSource]);
+  useEffect(() => () => { if (asset && mapUrl) URL.revokeObjectURL(mapUrl); }, [asset, mapUrl]);
+  const openRoom = (number: string) => {
+    setOpen(false);
+    const target = [...document.querySelectorAll<HTMLElement>('.brew-book h1, .brew-book h2, .brew-book h3, .brew-book h4, .brew-book h5, .brew-book h6')]
+      .find((heading) => new RegExp(`^\\s*${number.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}(?:[.:\\s-]|$)`).test(heading.textContent ?? ''));
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  return <section className="brew-dungeon-card"><header><div><small>Dungeon map</small><h3>{block.title}</h3></div><button disabled={!mapUrl} onClick={() => setOpen(true)} type="button">Map</button></header>{!mapUrl && <p>Add an image line inside this dungeon block to use the map.</p>}{open && <div className="dungeon-map-backdrop" onClick={() => setOpen(false)} role="presentation"><section aria-label={`${block.title} map`} className="dungeon-map-dialog" onClick={(event) => event.stopPropagation()}><header><h2>{block.title}</h2><button aria-label="Close map" onClick={() => setOpen(false)} type="button">×</button></header>{mapUrl && <img alt={`${block.title} map`} src={mapUrl} />}<div className="dungeon-room-ledger">{block.rooms.map((room) => <button key={room.number} onClick={() => openRoom(room.number)} type="button"><strong>{room.number}</strong>{room.title}</button>)}</div></section></div>}</section>;
+}
+
 function LocalAssetImage({ asset, alt }: { asset: BrewAsset; alt: string }) {
   const url = useMemo(() => URL.createObjectURL(asset.blob), [asset.blob]);
   useEffect(() => () => URL.revokeObjectURL(url), [url]);
@@ -284,6 +299,7 @@ function renderBlock(
   if (block.type === 'homebrewery') {
     return <section className={['brew-homebrewery', ...block.classes].join(' ')} key={key}><MarkdownRenderer content={block.content} getId={getId} {...dependencies} /></section>;
   }
+  if (block.type === 'dungeon') return <DungeonBlock assets={assets} block={block} key={key} />;
   if (block.type === 'callout') {
     return (
       <aside className={`brew-callout callout-${block.variant}`} key={key}>

@@ -27,11 +27,11 @@ export async function syncAssets(accessToken: string, assets: BrewAsset[]): Prom
     const remote = remoteById.get(asset.id);
     if (remote) remoteById.delete(asset.id);
 
-    if (remote && asset.drive?.revisionId === remote.file.headRevisionId) {
+    if (remote && asset.syncState !== 'pending' && asset.drive?.revisionId === remote.file.headRevisionId) {
       synced.push({ ...asset, syncState: 'synced' });
       continue;
     }
-    if (remote && asset.drive) {
+    if (remote && asset.syncState !== 'pending' && asset.drive) {
       synced.push(remote.asset);
       changes += 1;
       continue;

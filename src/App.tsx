@@ -32,7 +32,7 @@ import {
   savePrivateMonsterSyncMetadata,
   seedBrews
 } from './lib/brewStore';
-import { createAsset, listAssets, replaceAssets, saveAsset } from './lib/assetStore';
+import { createAsset, listAssets, orientAsset, replaceAssets, saveAsset, type ImageOrientation } from './lib/assetStore';
 import { syncAssets } from './lib/assetSync';
 import { createCampaignDataSnapshot } from './lib/campaignData';
 import { deriveCampaignPosition, derivePartyLocation } from './lib/campaignProgress';
@@ -1481,6 +1481,27 @@ export default function App() {
     }
   };
 
+  const changeImageOrientation = async (asset: BrewAsset, orientation: ImageOrientation) => {
+    try {
+      const updated = await orientAsset(asset, orientation);
+      if (updated === asset) {
+        setSaveState(`Image is already ${orientation}`);
+        return;
+      }
+      await saveAsset(updated);
+      const nextAssets = assets.map((item) => item.id === updated.id ? updated : item);
+      setAssets(nextAssets);
+      setSaveState(`Image changed to ${orientation}`);
+      if (!accessToken) return;
+      const result = await syncAssets(accessToken, nextAssets);
+      await replaceAssets(result.assets);
+      setAssets(result.assets);
+      setSaveState(`Image updated in Drive; ${result.detail}`);
+    } catch (error) {
+      setSaveState(error instanceof Error ? error.message : 'Image orientation could not be changed');
+    }
+  };
+
   const replaceBrew = async (brew: Brew) => {
     await saveBrew(brew);
     setBrews((current) => current.map((item) => item.id === brew.id ? brew : item));
@@ -1877,6 +1898,7 @@ export default function App() {
               onToggleFind={() => setFindVisible((visible) => !visible)}
               spellcheckEnabled={spellcheckEnabled}
               assets={assetMap}
+              onChangeImageOrientation={(asset, orientation) => { void changeImageOrientation(asset, orientation); }}
               onToggleSpellcheck={() => setSpellcheckEnabled((current) => { const next = !current; localStorage.setItem('homebrewry-spellcheck', next ? 'on' : 'off'); return next; })}
               onUndo={undo}
               replaceValue={replaceValue}

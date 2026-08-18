@@ -3,6 +3,7 @@ import { MarkdownEditor, type MarkdownEditorHandle } from './MarkdownEditor';
 import { ReferenceMenu } from './ReferenceMenu';
 import type { CatalogueCategory, CustomCatalogueCategory } from '../catalogue/types';
 import type { BrewAsset, WorldbuildingKind, WorldbuildingType } from '../types';
+import type { ImageOrientation } from '../lib/assetStore';
 
 type EditorPaneProps = {
   title: string;
@@ -31,6 +32,7 @@ type EditorPaneProps = {
   onToggleFind: () => void;
   spellcheckEnabled: boolean;
   assets: ReadonlyMap<string, BrewAsset>;
+  onChangeImageOrientation: (asset: BrewAsset, orientation: ImageOrientation) => void;
   onToggleSpellcheck: () => void;
   onFindChange: (value: string) => void;
   onReplaceChange: (value: string) => void;
@@ -65,6 +67,7 @@ export function EditorPane({
   onToggleFind,
   spellcheckEnabled,
   assets,
+  onChangeImageOrientation,
   onToggleSpellcheck,
   onFindChange,
   onReplaceChange,
@@ -127,6 +130,7 @@ export function EditorPane({
       <MarkdownEditor
         content={content}
         assets={assets}
+        onChangeImageOrientation={onChangeImageOrientation}
         onChange={onContentChange}
         spellcheckEnabled={spellcheckEnabled}
         customCatalogueCategories={customCatalogueCategories}

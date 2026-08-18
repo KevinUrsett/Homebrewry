@@ -110,6 +110,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .markdown-editor .cm-markdown-image-label { color: #755326; display: block; font-family: Inter, sans-serif; font-size: .72em; font-style: italic; font-weight: 700; letter-spacing: .03em; margin: 12px 0 4px; text-transform: uppercase; }
 .markdown-editor .cm-markdown-image-preview { background: transparent; box-sizing: border-box; display: inline-block; margin: 0 0 18px; max-width: 100%; padding: 0; vertical-align: top; width: auto; }
 .markdown-editor .cm-markdown-image-preview img { border: 1px solid #bca789; box-shadow: 0 2px 6px rgb(62 39 20 / 14%); display: block; height: auto; max-height: 360px; max-width: 100%; object-fit: contain; }
+.markdown-editor .cm-image-edit-button { background: #f7edd7; border: 1px solid #bca789; border-radius: 999px; color: #65442f; cursor: pointer; font: 800 .8rem Inter, sans-serif; height: 27px; padding: 0; position: absolute; right: -11px; top: -11px; width: 27px; }
+.markdown-editor .cm-markdown-image-preview { position: relative; }
+.markdown-editor .cm-image-orientation-menu { background: #fffaf0; border: 1px solid #bca789; border-radius: 6px; box-shadow: 0 5px 14px rgb(48 28 16 / 22%); display: grid; gap: 3px; padding: 4px; position: absolute; right: -10px; top: 22px; z-index: 4; }
+.markdown-editor .cm-image-orientation-menu button { background: transparent; border: 0; border-radius: 4px; color: #493329; font: 700 .7rem Inter, sans-serif; padding: 6px 8px; text-align: left; white-space: nowrap; }
+.markdown-editor .cm-image-orientation-menu button:hover { background: #ead9b5; }
 .markdown-editor .cm-markdown-image-preview.is-missing { background: #f3d3cd; color: #8a2f27; font-family: Inter, sans-serif; font-size: .82rem; line-height: 1.35; max-width: 440px; padding: 8px 10px; width: auto; }
 
 .preview-pane { background: #29333d; container-type: inline-size; min-height: 0; min-width: 0; overflow: auto; padding: clamp(14px, 2.5vw, 30px); }

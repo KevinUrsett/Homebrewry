@@ -1,4 +1,4 @@
-import { listRemoteAssets, uploadAsset } from './googleDrive';
+import { deleteRemoteAsset, listRemoteAssets, uploadAsset } from './googleDrive';
 import type { BrewAsset, SyncState } from '../types';
 
 export type AssetSyncResult = {
@@ -17,11 +17,19 @@ const asSynced = (asset: BrewAsset, file: { id: string; headRevisionId?: string 
   syncState: 'synced'
 });
 
-export async function syncAssets(accessToken: string, assets: BrewAsset[]): Promise<AssetSyncResult> {
+export async function syncAssets(accessToken: string, assets: BrewAsset[], deletedAssetIds: readonly string[] = []): Promise<AssetSyncResult> {
   const remoteAssets = await listRemoteAssets(accessToken);
   const remoteById = new Map(remoteAssets.map((remote) => [remote.asset.id, remote]));
   const synced: BrewAsset[] = [];
   let changes = 0;
+
+  for (const assetId of deletedAssetIds) {
+    const remote = remoteById.get(assetId);
+    if (!remote) continue;
+    await deleteRemoteAsset(accessToken, remote.file.id);
+    remoteById.delete(assetId);
+    changes += 1;
+  }
 
   for (const asset of assets) {
     const remote = remoteById.get(asset.id);

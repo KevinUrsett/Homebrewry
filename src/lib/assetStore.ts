@@ -33,6 +33,11 @@ export async function saveAsset(asset: BrewAsset): Promise<void> {
   await database.put(ASSET_STORE_NAME, asset);
 }
 
+export async function deleteAsset(assetId: string): Promise<void> {
+  const database = await getDatabase();
+  await database.delete(ASSET_STORE_NAME, assetId);
+}
+
 export async function replaceAssets(assets: BrewAsset[]): Promise<void> {
   const database = await getDatabase();
   const transaction = database.transaction(ASSET_STORE_NAME, 'readwrite');

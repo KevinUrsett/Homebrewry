@@ -32,6 +32,7 @@ type EditorPaneProps = {
   spellcheckEnabled: boolean;
   assets: ReadonlyMap<string, BrewAsset>;
   onRotateImage: (asset: BrewAsset) => void;
+  onDeleteImage: (asset: BrewAsset) => void;
   onToggleSpellcheck: () => void;
   onFindChange: (value: string) => void;
   onReplaceChange: (value: string) => void;
@@ -67,6 +68,7 @@ export function EditorPane({
   spellcheckEnabled,
   assets,
   onRotateImage,
+  onDeleteImage,
   onToggleSpellcheck,
   onFindChange,
   onReplaceChange,
@@ -130,6 +132,7 @@ export function EditorPane({
         content={content}
         assets={assets}
         onRotateImage={onRotateImage}
+        onDeleteImage={onDeleteImage}
         onChange={onContentChange}
         spellcheckEnabled={spellcheckEnabled}
         customCatalogueCategories={customCatalogueCategories}

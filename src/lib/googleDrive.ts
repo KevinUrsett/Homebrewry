@@ -313,4 +313,12 @@ export async function uploadAsset(accessToken: string, asset: BrewAsset): Promis
   });
 }
 
+export async function deleteRemoteAsset(accessToken: string, fileId: string): Promise<void> {
+  const response = await fetch(`${DRIVE_API}/files/${fileId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${currentAccessToken(accessToken)}` }
+  });
+  if (!response.ok && response.status !== 404) throwDriveError(response, 'Google Drive image deletion failed');
+}
+
 export class DriveConflictError extends Error {}

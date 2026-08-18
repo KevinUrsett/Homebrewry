@@ -32,7 +32,7 @@ import {
   savePrivateMonsterSyncMetadata,
   seedBrews
 } from './lib/brewStore';
-import { createAsset, listAssets, replaceAssets, rotateAsset, saveAsset } from './lib/assetStore';
+import { createAsset, deleteAsset, listAssets, replaceAssets, rotateAsset, saveAsset } from './lib/assetStore';
 import { syncAssets } from './lib/assetSync';
 import { createCampaignDataSnapshot } from './lib/campaignData';
 import { deriveCampaignPosition, derivePartyLocation } from './lib/campaignProgress';
@@ -91,9 +91,21 @@ type DriveSaveNotice = {
   message: string;
 };
 
+const deletedAssetStorageKey = 'homebrewry-deleted-assets';
+
+function readDeletedAssetIds(): string[] {
+  try {
+    const saved = JSON.parse(localStorage.getItem(deletedAssetStorageKey) ?? '[]');
+    return Array.isArray(saved) ? saved.filter((id): id is string => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
 export default function App() {
   const [brews, setBrews] = useState<Brew[]>([]);
   const [assets, setAssets] = useState<BrewAsset[]>([]);
+  const [pendingAssetDeletionIds, setPendingAssetDeletionIds] = useState<string[]>(readDeletedAssetIds);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('split');
@@ -1419,9 +1431,13 @@ export default function App() {
       }
 
       const syncEverything = async (activeToken: string) => {
-        const assetResult = await syncAssets(activeToken, assets);
+        const assetResult = await syncAssets(activeToken, assets, pendingAssetDeletionIds);
         await replaceAssets(assetResult.assets);
         setAssets(assetResult.assets);
+        if (pendingAssetDeletionIds.length) {
+          setPendingAssetDeletionIds([]);
+          localStorage.removeItem(deletedAssetStorageKey);
+        }
         const brewResult = await syncBrews(activeToken, brews);
         await replaceBrews(brewResult.brews);
         setBrews(brewResult.brews);
@@ -1472,7 +1488,7 @@ export default function App() {
         setSaveState('Image added locally — connect Drive, then sync to back it up');
         return;
       }
-      const result = await syncAssets(accessToken, nextAssets);
+      const result = await syncAssets(accessToken, nextAssets, pendingAssetDeletionIds);
       await replaceAssets(result.assets);
       setAssets(result.assets);
       setSaveState(`Image uploaded to Drive; ${result.detail}`);
@@ -1489,12 +1505,38 @@ export default function App() {
       setAssets(nextAssets);
       setSaveState('Image rotated');
       if (!accessToken) return;
-      const result = await syncAssets(accessToken, nextAssets);
+      const result = await syncAssets(accessToken, nextAssets, pendingAssetDeletionIds);
       await replaceAssets(result.assets);
       setAssets(result.assets);
       setSaveState(`Image updated in Drive; ${result.detail}`);
     } catch (error) {
       setSaveState(error instanceof Error ? error.message : 'Image could not be rotated');
+    }
+  };
+
+  const deleteImage = async (asset: BrewAsset) => {
+    if (!window.confirm(`Delete “${asset.alt}”? This removes it from this brew and Google Drive.`)) return;
+    try {
+      const nextContent = activeBrew?.content
+        .replace(new RegExp(`!\\[[^\\]]*\\]\\(asset://${asset.id.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}(?:\\s+["'][^"']*["'])?\\)`, 'g'), '')
+        .replace(/\n{3,}/g, '\n\n');
+      if (typeof nextContent === 'string') updateContent(nextContent);
+      await deleteAsset(asset.id);
+      const nextAssets = assets.filter((item) => item.id !== asset.id);
+      setAssets(nextAssets);
+      const deletions = [...new Set([...pendingAssetDeletionIds, asset.id])];
+      setPendingAssetDeletionIds(deletions);
+      localStorage.setItem(deletedAssetStorageKey, JSON.stringify(deletions));
+      setSaveState('Image deleted locally');
+      if (!accessToken) return;
+      const result = await syncAssets(accessToken, nextAssets, deletions);
+      await replaceAssets(result.assets);
+      setAssets(result.assets);
+      setPendingAssetDeletionIds([]);
+      localStorage.removeItem(deletedAssetStorageKey);
+      setSaveState(`Image deleted from Drive; ${result.detail}`);
+    } catch (error) {
+      setSaveState(error instanceof Error ? error.message : 'Image could not be deleted');
     }
   };
 
@@ -1895,6 +1937,7 @@ export default function App() {
               spellcheckEnabled={spellcheckEnabled}
               assets={assetMap}
               onRotateImage={(asset) => { void rotateImage(asset); }}
+              onDeleteImage={(asset) => { void deleteImage(asset); }}
               onToggleSpellcheck={() => setSpellcheckEnabled((current) => { const next = !current; localStorage.setItem('homebrewry-spellcheck', next ? 'on' : 'off'); return next; })}
               onUndo={undo}
               replaceValue={replaceValue}

@@ -36,6 +36,7 @@ type MarkdownEditorProps = {
   spellcheckEnabled?: boolean;
   assets?: ReadonlyMap<string, BrewAsset>;
   onRotateImage?: (asset: BrewAsset) => void;
+  onDeleteImage?: (asset: BrewAsset) => void;
 };
 
 type ReferenceMenu = {
@@ -105,7 +106,7 @@ const imageAssetLookupCompartment = new Compartment();
 const markdownImagePattern = /!\[([^\]]*)\]\(([^\s)]+)(?:\s+["'][^"']*["'])?\)/g;
 
 class MarkdownImagePreview extends WidgetType {
-  constructor(private readonly source: string, private readonly alt: string, private readonly asset?: BrewAsset, private readonly onRotate?: (asset: BrewAsset) => void) {
+  constructor(private readonly source: string, private readonly alt: string, private readonly asset?: BrewAsset, private readonly onRotate?: (asset: BrewAsset) => void, private readonly onDelete?: (asset: BrewAsset) => void) {
     super();
   }
 
@@ -141,6 +142,19 @@ class MarkdownImagePreview extends WidgetType {
       figure.replaceChildren(document.createTextNode('This image could not be displayed.'));
     }, { once: true });
     figure.append(image);
+    if (this.asset && this.onDelete) {
+      const remove = document.createElement('button');
+      remove.className = 'cm-image-delete-button';
+      remove.setAttribute('aria-label', `Delete ${image.alt}`);
+      remove.textContent = '×';
+      remove.type = 'button';
+      remove.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.onDelete?.(this.asset!);
+      });
+      figure.append(remove);
+    }
     if (this.asset && this.onRotate) {
       const rotate = document.createElement('button');
       rotate.className = 'cm-image-rotate-button';
@@ -188,7 +202,7 @@ class MarkdownImageLabel extends WidgetType {
   }
 }
 
-function imagePreviewDecorations(view: EditorView, onRotate?: (asset: BrewAsset) => void): DecorationSet {
+function imagePreviewDecorations(view: EditorView, onRotate?: (asset: BrewAsset) => void, onDelete?: (asset: BrewAsset) => void): DecorationSet {
   const lookup = view.state.facet(imageAssetLookup);
   const decorations = [];
   let position = 0;
@@ -206,7 +220,7 @@ function imagePreviewDecorations(view: EditorView, onRotate?: (asset: BrewAsset)
       }).range(position + match.index, end));
       decorations.push(Decoration.widget({
         side: 1,
-        widget: new MarkdownImagePreview(source, match[1], asset, onRotate)
+        widget: new MarkdownImagePreview(source, match[1], asset, onRotate, onDelete)
       }).range(end));
     }
     position += line.length + 1;
@@ -215,17 +229,17 @@ function imagePreviewDecorations(view: EditorView, onRotate?: (asset: BrewAsset)
   return Decoration.set(decorations, true);
 }
 
-function imagePreviews(onRotate?: (asset: BrewAsset) => void) {
+function imagePreviews(onRotate?: (asset: BrewAsset) => void, onDelete?: (asset: BrewAsset) => void) {
   return ViewPlugin.fromClass(class {
   decorations: DecorationSet;
 
   constructor(view: EditorView) {
-    this.decorations = imagePreviewDecorations(view, onRotate);
+    this.decorations = imagePreviewDecorations(view, onRotate, onDelete);
   }
 
   update(update: ViewUpdate) {
     if (update.docChanged || update.transactions.some((transaction) => transaction.reconfigured)) {
-      this.decorations = imagePreviewDecorations(update.view, onRotate);
+      this.decorations = imagePreviewDecorations(update.view, onRotate, onDelete);
     }
   }
 }, {
@@ -261,6 +275,7 @@ export function MarkdownEditor({
   spellcheckEnabled = true,
   assets = emptyAssets,
   onRotateImage,
+  onDeleteImage,
   ref
 }: MarkdownEditorProps & { ref?: Ref<MarkdownEditorHandle> }) {
   const parentRef = useRef<HTMLDivElement>(null);
@@ -268,6 +283,7 @@ export function MarkdownEditor({
   const initialContentRef = useRef(content);
   const assetsRef = useRef(assets);
   const imageRotationRef = useRef(onRotateImage);
+  const imageDeletionRef = useRef(onDeleteImage);
   const latestRef = useRef({ onChange, onSelectionChange, onKeyDown, onCreateWorldbuildingReference, onCreateCatalogueReference });
   const [referenceMenu, setReferenceMenu] = useState<ReferenceMenu | null>(null);
   const [mobileReferenceSelection, setMobileReferenceSelection] = useState<MobileReferenceSelection | null>(null);
@@ -280,6 +296,10 @@ export function MarkdownEditor({
   useEffect(() => {
     imageRotationRef.current = onRotateImage;
   }, [onRotateImage]);
+
+  useEffect(() => {
+    imageDeletionRef.current = onDeleteImage;
+  }, [onDeleteImage]);
 
   useEffect(() => {
     assetsRef.current = assets;
@@ -318,7 +338,7 @@ export function MarkdownEditor({
           EditorView.contentAttributes.of({ 'aria-label': ariaLabel, spellcheck: spellcheckEnabled ? 'true' : 'false' }),
           referenceDecorations,
           imageAssetLookupCompartment.of(imageAssetLookup.of((source) => assetsRef.current.get(source.slice('asset://'.length)))),
-          imagePreviews((asset) => imageRotationRef.current?.(asset)),
+          imagePreviews((asset) => imageRotationRef.current?.(asset), (asset) => imageDeletionRef.current?.(asset)),
           EditorView.updateListener.of((update) => {
             if (update.docChanged) latestRef.current.onChange(update.state.doc.toString());
             if (update.selectionSet) {

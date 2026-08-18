@@ -1497,6 +1497,20 @@ export default function App() {
     }
   };
 
+  const openCurrentDungeonMap = () => {
+    if (!activeBrew) return;
+    const beforeCursor = activeBrew.content.slice(0, selectionRef.current.start);
+    const title = [...beforeCursor.matchAll(/^:::dungeon\s+(.+)$/gmi)].at(-1)?.[1]?.trim();
+    setCaptureMenuOpen(false);
+    setMobileSection('preview');
+    window.requestAnimationFrame(() => window.setTimeout(() => {
+      const selector = title ? `.brew-dungeon-card[data-dungeon-title="${CSS.escape(title)}"]` : '.brew-dungeon-card';
+      const card = document.querySelector<HTMLElement>(selector);
+      card?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card?.querySelector<HTMLButtonElement>('button')?.click();
+    }, 80));
+  };
+
   const rotateImage = async (asset: BrewAsset) => {
     try {
       const updated = await rotateAsset(asset);
@@ -2001,11 +2015,13 @@ export default function App() {
                 <button onClick={() => { insertText('\n:::descriptive\n', '\n:::\n'); setCaptureMenuOpen(false); }} type="button">Descr</button>
                 <button onClick={() => { insertText('\n:::pagebreak\n'); setCaptureMenuOpen(false); }} type="button">Page</button>
                 <button onClick={() => { document.getElementById('brew-image-input')?.click(); setCaptureMenuOpen(false); }} type="button">Image</button>
+                <button onClick={() => { insertText('\n:::dungeon Dungeon name\n![Dungeon map](asset://your-map-id)\n1 | Room one\n2 | Room two\n:::\n'); setCaptureMenuOpen(false); }} type="button">Dungeon</button>
               </div>
               <div className="mobile-writing-tool-group" aria-label="Insert content">
                 <button onClick={() => { setCaptureMenuOpen(false); openCatalogue(); }} type="button">Reference</button>
                 <button onClick={() => { setCaptureMenuOpen(false); openEncounters(); }} type="button">Encounter</button>
                 <button onClick={() => { setCaptureMenuOpen(false); setNameGeneratorTarget('editor'); }} type="button">Name</button>
+                <button onClick={openCurrentDungeonMap} type="button">Map</button>
               </div>
               <div className="mobile-writing-tool-group mobile-writing-destinations" aria-label="Editor panels">
                 <button hidden onClick={() => { setCaptureMenuOpen(false); setMobileSection('outline'); }} type="button">Outline</button>

@@ -58,10 +58,12 @@ type CharacterRendererBlock = {
 function DungeonBlock({ block, assets, onAddMarker }: { block: Extract<RendererBlock, { type: 'dungeon' }>; assets?: ReadonlyMap<string, BrewAsset>; onAddMarker?: (title: string, marker: { number: string; x: number; y: number }) => void }) {
   const [open, setOpen] = useState(false);
   const [placing, setPlacing] = useState(false);
+  const [draftMarker, setDraftMarker] = useState<{ number: string; x: number; y: number } | null>(null);
   const assetId = block.mapSource?.startsWith('asset://') ? block.mapSource.slice('asset://'.length) : '';
   const asset = assetId ? assets?.get(assetId) : undefined;
   const mapUrl = useMemo(() => asset ? URL.createObjectURL(asset.blob) : block.mapSource, [asset?.blob, block.mapSource]);
   useEffect(() => () => { if (asset && mapUrl) URL.revokeObjectURL(mapUrl); }, [asset, mapUrl]);
+  useEffect(() => { setDraftMarker(null); }, [block.markers]);
   const openRoom = (number: string) => {
     setOpen(false);
     const target = [...document.querySelectorAll<HTMLElement>('.brew-book h1, .brew-book h2, .brew-book h3, .brew-book h4, .brew-book h5, .brew-book h6')]
@@ -72,10 +74,14 @@ function DungeonBlock({ block, assets, onAddMarker }: { block: Extract<RendererB
   const placeMarker = (event: MouseEvent<HTMLDivElement>) => {
     if (!placing || !onAddMarker) return;
     const rect = event.currentTarget.getBoundingClientRect();
-    onAddMarker(block.title, { number: nextNumber, x: ((event.clientX - rect.left) / rect.width) * 100, y: ((event.clientY - rect.top) / rect.height) * 100 });
+    if (!rect.width || !rect.height) return;
+    const marker = { number: nextNumber, x: ((event.clientX - rect.left) / rect.width) * 100, y: ((event.clientY - rect.top) / rect.height) * 100 };
+    setDraftMarker(marker);
+    onAddMarker(block.title, marker);
     setPlacing(false);
   };
-  return <section className="brew-dungeon-card" data-dungeon-title={block.title}><header><div><small>Dungeon map</small><h3>{block.title}</h3></div><button disabled={!mapUrl} onClick={() => setOpen(true)} type="button">Map</button></header>{!mapUrl && <p>Add an image line inside this dungeon block to use the map.</p>}{open && <div className="dungeon-map-backdrop" onClick={() => setOpen(false)} role="presentation"><section aria-label={`${block.title} map`} className="dungeon-map-dialog" onClick={(event) => event.stopPropagation()}><header><h2>{block.title}</h2><button aria-label="Close map" onClick={() => setOpen(false)} type="button">×</button></header>{mapUrl && <div className={`dungeon-map-canvas${placing ? ' is-placing' : ''}`} onClick={placeMarker}><img alt={`${block.title} map`} src={mapUrl} />{block.markers.map((marker) => <button aria-label={`Open room ${marker.number}`} className="dungeon-room-marker" key={`${marker.number}-${marker.x}-${marker.y}`} onClick={(event) => { event.stopPropagation(); openRoom(marker.number); }} style={{ left: `${marker.x}%`, top: `${marker.y}%` }} type="button">{marker.number}</button>)}</div>}<div className="dungeon-map-actions">{onAddMarker && <button disabled={!mapUrl} onClick={() => setPlacing((current) => !current)} type="button">{placing ? 'Tap the map…' : `Add room ${nextNumber}`}</button>}<div className="dungeon-room-ledger">{block.rooms.map((room) => <button key={room.number} onClick={() => openRoom(room.number)} type="button"><strong>{room.number}</strong>{room.title}</button>)}</div></div></section></div>}</section>;
+  const markers = draftMarker ? [...block.markers, draftMarker] : block.markers;
+  return <section className="brew-dungeon-card" data-dungeon-title={block.title}><header><div><small>Dungeon map</small><h3>{block.title}</h3></div><button disabled={!mapUrl} onClick={() => setOpen(true)} type="button">Map</button></header>{!mapUrl && <p>Add an image line inside this dungeon block to use the map.</p>}{open && <div className="dungeon-map-backdrop" onClick={() => setOpen(false)} role="presentation"><section aria-label={`${block.title} map`} className="dungeon-map-dialog" onClick={(event) => event.stopPropagation()}><header><h2>{block.title}</h2><button aria-label="Close map" onClick={() => setOpen(false)} type="button">×</button></header>{mapUrl && <div className={`dungeon-map-canvas${placing ? ' is-placing' : ''}`} onClick={placeMarker}><img alt={`${block.title} map`} src={mapUrl} />{markers.map((marker) => <button aria-label={`Open room ${marker.number}`} className="dungeon-room-marker" key={`${marker.number}-${marker.x}-${marker.y}`} onClick={(event) => { event.stopPropagation(); openRoom(marker.number); }} style={{ left: `${marker.x}%`, top: `${marker.y}%` }} type="button">{marker.number}</button>)}</div>}<div className="dungeon-map-actions">{onAddMarker && <button disabled={!mapUrl} onClick={() => setPlacing((current) => !current)} type="button">{placing ? 'Tap the map to place it' : `Add room ${nextNumber}`}</button>}{placing && <span className="dungeon-map-placement-help">Tap the room’s position</span>}<div className="dungeon-room-ledger">{block.rooms.map((room) => <button key={room.number} onClick={() => openRoom(room.number)} type="button"><strong>{room.number}</strong>{room.title}</button>)}</div></div></section></div>}</section>;
 }
 
 function LocalAssetImage({ asset, alt }: { asset: BrewAsset; alt: string }) {

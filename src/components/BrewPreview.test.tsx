@@ -63,6 +63,27 @@ afterEach(() => {
 });
 
 describe('BrewPreview', () => {
+  it('places the next numbered marker when a dungeon map is clicked', async () => {
+    const onAddDungeonMarker = vi.fn();
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push({ container, root });
+    const dungeonBrew = { ...brew, content: ':::dungeon Temple\n![Map](https://example.test/map.png)\n1 | Gate\n2 | Hall\n:::' };
+
+    await act(async () => { root.render(<BrewPreview brew={dungeonBrew} onAddDungeonMarker={onAddDungeonMarker} />); });
+    const openMap = [...container.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent === 'Map');
+    await act(async () => { openMap?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+    const addRoom = [...container.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent === 'Add room 3');
+    await act(async () => { addRoom?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+    const canvas = container.querySelector<HTMLDivElement>('.dungeon-map-canvas');
+    Object.defineProperty(canvas, 'getBoundingClientRect', { value: () => ({ left: 10, top: 20, width: 200, height: 100 }) });
+    await act(async () => { canvas?.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 110, clientY: 70 })); });
+
+    expect(onAddDungeonMarker).toHaveBeenCalledWith('Temple', { number: '3', x: 50, y: 50 });
+    expect(container.querySelector('.dungeon-room-marker')?.textContent).toBe('3');
+  });
+
   it('opens a validated catalogue reference when its rendered name is clicked', async () => {
     const onReferenceOpen = vi.fn();
     const container = document.createElement('div');

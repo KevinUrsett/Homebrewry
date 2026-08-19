@@ -88,6 +88,17 @@ const mobileLabels: Record<MobileSection, string> = {
   worldbuilding: 'Worldbuilding'
 };
 
+const mobilePrimarySections = ['library', 'editor', 'preview', 'outline'] as const satisfies readonly MobileSection[];
+
+const mobileToolSections = [
+  { id: 'catalogue', label: 'Catalogue' },
+  { id: 'campaign', label: 'Campaign' },
+  { id: 'encounters', label: 'Encounters' },
+  { id: 'maps', label: 'Maps' },
+  { id: 'worldbuilding', label: 'Worldbuilding' },
+  { id: 'ideas', label: 'My ideas' }
+] as const;
+
 type DriveSaveNotice = {
   tone: 'saving' | 'success' | 'error';
   message: string;
@@ -112,8 +123,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('split');
   const [mobileSection, setMobileSection] = useState<MobileSection>('editor');
-  const [mobilePreviewOutlineOpen, setMobilePreviewOutlineOpen] = useState(false);
-  const [mobileTopMenuOpen, setMobileTopMenuOpen] = useState(false);
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const [cloudMenuOpen, setCloudMenuOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [saveState, setSaveState] = useState('Loading local drafts…');
@@ -484,6 +494,7 @@ export default function App() {
   };
 
   const openCatalogue = (entry?: CatalogueEntry) => {
+    setMobileToolsOpen(false);
     setCatalogueSelection(entry ?? null);
     setCatalogueOpen(true);
     setCampaignOpen(false);
@@ -522,6 +533,7 @@ export default function App() {
   };
 
   const openEncounters = (encounter?: Encounter) => {
+    setMobileToolsOpen(false);
     if (encounter) setEncounterSelectedId(encounter.id);
     setCatalogueOpen(false);
     setCampaignOpen(false);
@@ -534,6 +546,7 @@ export default function App() {
   };
 
   const openMaps = (map?: CampaignMapRecord) => {
+    setMobileToolsOpen(false);
     if (map) setSelectedMapId(map.id);
     setCatalogueOpen(false);
     setCampaignOpen(false);
@@ -585,6 +598,7 @@ export default function App() {
   };
 
   const openWorldbuilding = (entry?: WorldbuildingEntry) => {
+    setMobileToolsOpen(false);
     if (entry) setWorldbuildingSelectedId(entry.id);
     setCatalogueOpen(false);
     setCampaignOpen(false);
@@ -603,6 +617,7 @@ export default function App() {
   };
 
   const openCampaign = () => {
+    setMobileToolsOpen(false);
     setCatalogueOpen(false);
     setEncountersOpen(false);
     setWorldbuildingOpen(false);
@@ -1378,6 +1393,7 @@ export default function App() {
   };
 
   const openIdeas = () => {
+    setMobileToolsOpen(false);
     setCatalogueOpen(false);
     setCampaignOpen(false);
     setEncountersOpen(false);
@@ -1732,15 +1748,72 @@ export default function App() {
   }
 
   const renderedBrew = previewBrew ?? activeBrew;
+  const toolPanelOpen = ideasOpen || campaignOpen || catalogueOpen || encountersOpen || mapsOpen || worldbuildingOpen;
+
+  const selectMobilePrimarySection = (section: typeof mobilePrimarySections[number]) => {
+    setMobileToolsOpen(false);
+    setCaptureMenuOpen(false);
+    setMobileSection(section);
+    setCatalogueOpen(false);
+    setCampaignOpen(false);
+    setEncountersOpen(false);
+    setMapsOpen(false);
+    setWorldbuildingOpen(false);
+    setIdeasOpen(false);
+    if (section !== 'outline') setPendingInsertion(null);
+  };
+
+  const openMobileTool = (tool: typeof mobileToolSections[number]['id']) => {
+    if (tool === 'catalogue') {
+      openCatalogue();
+      return;
+    }
+    if (tool === 'campaign') {
+      openCampaign();
+      return;
+    }
+    if (tool === 'encounters') {
+      openEncounters();
+      return;
+    }
+    if (tool === 'maps') {
+      openMaps();
+      return;
+    }
+    if (tool === 'worldbuilding') {
+      openWorldbuilding();
+      return;
+    }
+    openIdeas();
+  };
 
   return (
-    <div className={`app-shell mobile-${mobileSection}${mobileTopMenuOpen ? ' mobile-top-menu-open' : ''}`}>
+    <div className={`app-shell mobile-${mobileSection}`}>
       <header className="app-header">
-        <div className="brand-lockup">
-          <span className="brand-mark" aria-hidden>✦</span>
-          <span>Homebrewry</span>
+        <div className="app-header-main">
+          <div className="brand-lockup">
+            <span className="brand-mark" aria-hidden>✦</span>
+            <span>Homebrewry</span>
+          </div>
+          <div className="save-indicator" aria-live="polite">{saveState}</div>
+          <div className="cloud-controls">
+            <button aria-expanded={cloudMenuOpen} aria-label="Open app actions" className="cloud-menu-toggle" onClick={() => setCloudMenuOpen((open) => !open)} type="button">•••</button>
+            {cloudMenuOpen && (
+              <div className="cloud-menu-panel">
+                <button onClick={() => { checkForPwaUpdate(); setCloudMenuOpen(false); }} type="button">Check for updates</button>
+                {accessToken && (
+                  <button onClick={() => { void syncToDrive(); setCloudMenuOpen(false); }} type="button" disabled={syncing}>
+                    {syncing ? 'Syncing…' : 'Refresh & sync'}
+                  </button>
+                )}
+                <div className="cloud-login-target" />
+              </div>
+            )}
+          </div>
         </div>
-        <div className="desktop-view-controls" aria-label="Preview layout">
+      </header>
+
+      <nav className="desktop-view-controls desktop-mode-rail" aria-label="Workspace navigation">
           {(['editor', 'split', 'preview'] as ViewMode[]).map((mode) => (
             <button
               className={viewMode === mode ? 'is-selected' : ''}
@@ -1766,99 +1839,39 @@ export default function App() {
           <button className={worldbuildingOpen ? 'is-selected' : ''} onClick={() => worldbuildingOpen ? setWorldbuildingOpen(false) : openWorldbuilding()} type="button">Worldbuilding</button>
           <button className={ideasOpen ? 'is-selected' : ''} onClick={() => ideasOpen ? setIdeasOpen(false) : openIdeas()} type="button">My ideas</button>
           <button onClick={() => window.print()} type="button">Print</button>
-        </div>
-        <div className="cloud-controls">
-          <button aria-expanded={cloudMenuOpen} aria-label="Open app actions" className="cloud-menu-toggle" onClick={() => setCloudMenuOpen((open) => !open)} type="button">•••</button>
-          {cloudMenuOpen && (
-            <div className="cloud-menu-panel">
-              <button onClick={() => { checkForPwaUpdate(); setCloudMenuOpen(false); }} type="button">Check for updates</button>
-              {accessToken && (
-                <button onClick={() => { void syncToDrive(); setCloudMenuOpen(false); }} type="button" disabled={syncing}>
-                  {syncing ? 'Syncing…' : 'Refresh & sync'}
-                </button>
-              )}
-              <div className="cloud-login-target" />
-            </div>
-          )}
-        </div>
-        <div className="save-indicator" aria-live="polite">{saveState}</div>
-      </header>
+      </nav>
 
       <nav className="mobile-nav" aria-label="Mobile navigation">
-        {(Object.keys(mobileLabels) as MobileSection[]).map((section) => (
+        {mobilePrimarySections.map((section) => (
           <button
             className={mobileSection === section ? 'is-selected' : ''}
+            data-mobile-destination={section}
             key={section}
-            onClick={() => {
-              setMobileTopMenuOpen(false);
-              setMobilePreviewOutlineOpen(false);
-              if (section === 'catalogue') {
-                openCatalogue();
-                return;
-              }
-              if (section === 'campaign') {
-                openCampaign();
-                return;
-              }
-              if (section === 'encounters') {
-                openEncounters();
-                return;
-              }
-              if (section === 'maps') {
-                openMaps();
-                return;
-              }
-              if (section === 'worldbuilding') {
-                openWorldbuilding();
-                return;
-              }
-              setMobileSection(section);
-              setCatalogueOpen(false);
-              setCampaignOpen(false);
-              setEncountersOpen(false);
-              setMapsOpen(false);
-              setWorldbuildingOpen(false);
-              setIdeasOpen(false);
-              if (section !== 'outline') setPendingInsertion(null);
-            }}
+            onClick={() => selectMobilePrimarySection(section)}
             type="button"
           >
             {mobileLabels[section]}
           </button>
         ))}
+        <button aria-expanded={mobileToolsOpen} className={mobileToolsOpen || toolPanelOpen ? 'is-selected' : ''} onClick={() => setMobileToolsOpen((open) => !open)} type="button">Tools</button>
       </nav>
 
-      {!ideasOpen && !campaignOpen && !catalogueOpen && !encountersOpen && !mapsOpen && !worldbuildingOpen && mobileSection === 'preview' ? (
-        <main className="mobile-preview-page" aria-label="Live preview">
-          <div className="mobile-preview-page-content">
-            <BrewPreview assets={assetMap} brew={renderedBrew} catalogue={catalogueMap} catalogueCategories={customCatalogueCategories} encounters={encounterMap} maps={campaignMapRecords} onAddWorldbuildingNote={addWorldbuildingQuickNote} onDeleteWorldbuildingReference={deleteWorldbuilding} onEncounterOpen={openEncounters} onOpenInWorldbuilding={openWorldbuilding} onReferenceOpen={setReferenceEntry} onWorldbuildingOpen={setWorldbuildingReferenceEntry} worldbuilding={worldbuildingMap} worldbuildingTypes={worldbuildingTypes} />
-          </div>
+      {mobileToolsOpen && (
+        <>
+          <button aria-label="Close tools" className="mobile-tools-backdrop" onClick={() => setMobileToolsOpen(false)} type="button" />
+          <aside aria-label="Workspace tools" className="mobile-tools-sheet">
+            <header><strong>Tools</strong><button aria-label="Close tools" onClick={() => setMobileToolsOpen(false)} type="button">×</button></header>
+            <div className="mobile-tools-grid">
+              {mobileToolSections.map((tool) => (
+                <button data-mobile-destination={tool.id === 'ideas' ? undefined : tool.id} key={tool.id} onClick={() => openMobileTool(tool.id)} type="button">{tool.label}</button>
+              ))}
+              <button onClick={() => { window.print(); setMobileToolsOpen(false); }} type="button">Print</button>
+            </div>
+          </aside>
+        </>
+      )}
 
-          <button aria-expanded={mobilePreviewOutlineOpen} className="mobile-preview-page-outline-button" onClick={() => setMobilePreviewOutlineOpen((open) => !open)} type="button">Outline</button>
-
-          {mobilePreviewOutlineOpen && (
-            <aside aria-label="Preview outline" className="mobile-preview-page-outline">
-              <header><strong>Outline</strong><button aria-label="Close outline" onClick={() => setMobilePreviewOutlineOpen(false)} type="button">×</button></header>
-              <div>
-                {outline.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      document.getElementById(item.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      setMobilePreviewOutlineOpen(false);
-                    }}
-                    style={{ paddingLeft: `${12 + Math.max(0, item.level - 1) * 12}px` }}
-                    type="button"
-                  >
-                    {item.text}
-                  </button>
-                ))}
-                {!outline.length && <p>No headings in this brew yet.</p>}
-              </div>
-            </aside>
-          )}
-        </main>
-      ) : ideasOpen ? (
+      {ideasOpen ? (
         <IdeasPanel
           brews={brews}
           ideas={livingWorld.ideaDrafts ?? []}
@@ -2153,16 +2166,6 @@ export default function App() {
               </div>
             </div>
           </>}
-          <button
-            aria-expanded={mobileTopMenuOpen}
-            aria-label={mobileTopMenuOpen ? 'Hide top menu' : 'Show top menu'}
-            className="mobile-top-menu-button"
-            onClick={() => setMobileTopMenuOpen((open) => !open)}
-            title={mobileTopMenuOpen ? 'Hide menu' : 'Show menu'}
-            type="button"
-          >
-            ☰
-          </button>
           <button aria-expanded={captureMenuOpen} aria-label="Open writing tools" className="mobile-outline-fab" onClick={() => setCaptureMenuOpen((open) => !open)} type="button">+</button>
         </div>
       )}

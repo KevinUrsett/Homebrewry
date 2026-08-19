@@ -206,9 +206,18 @@ export default function RootApp() {
     const navigate = () => {
       if (cancelled) return;
       const buttons = [...document.querySelectorAll<HTMLButtonElement>('.mobile-nav button')];
-      const destination = buttons.find((button) => button.textContent?.trim() === label);
+      const destination = buttons.find((button) => button.dataset.mobileDestination === pendingDestination || button.textContent?.trim() === label);
       if (!destination) {
-        frame = window.requestAnimationFrame(navigate);
+        const tools = buttons.find((button) => button.textContent?.trim() === 'Tools');
+        if (!tools) {
+          frame = window.requestAnimationFrame(navigate);
+          return;
+        }
+        tools.click();
+        window.requestAnimationFrame(() => {
+          document.querySelector<HTMLButtonElement>(`[data-mobile-destination="${pendingDestination}"]`)?.click();
+          setPendingDestination(null);
+        });
         return;
       }
       destination.click();

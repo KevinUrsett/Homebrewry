@@ -382,8 +382,7 @@ export const BrewPreview = memo(function BrewPreview({ brew, assets, catalogue, 
     headingOccurrences.set(text, occurrence + 1);
     return getHeadingId(text, occurrence);
   };
-  const blocks = parseRendererBlocks(brew.content);
-  const pages = splitRendererPages(blocks);
+  const pages = useMemo(() => splitRendererPages(parseRendererBlocks(brew.content)), [brew.content]);
 
   return (
     <div
@@ -406,4 +405,5 @@ export const BrewPreview = memo(function BrewPreview({ brew, assets, catalogue, 
   && previous.encounters === next.encounters
   && previous.worldbuilding === next.worldbuilding
   && previous.worldbuildingTypes === next.worldbuildingTypes
+  && previous.maps === next.maps
 );

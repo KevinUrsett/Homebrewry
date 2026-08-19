@@ -14,20 +14,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 
 .app-shell { background: #e5ded0; display: flex; flex-direction: column; height: 100vh; height: var(--app-height, 100dvh); min-height: 0; }
 
-.app-header {
-  align-items: center;
-  background: #2c211b;
-  color: #f9f2e4;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 16px;
-  min-height: 58px;
-  padding: env(safe-area-inset-top) 20px 0;
-}
+.app-header { background: #2c211b; color: #f9f2e4; flex: 0 0 auto; padding: env(safe-area-inset-top) 20px 0; }
+.app-header-main { align-items: center; display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) minmax(120px, 1.4fr) auto; min-height: 58px; }
 
 .brand-lockup { align-items: center; display: flex; font-family: Georgia, serif; font-size: 1.2rem; font-weight: 700; gap: 8px; }
 .brand-mark { color: #c5963e; font-size: 1.45rem; }
-.save-indicator { color: #d9c9ab; font-size: .79rem; justify-self: end; }
+.save-indicator { color: #d9c9ab; font-size: .79rem; justify-self: center; max-width: 100%; overflow: hidden; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 .drive-save-notice { background: #3a2b22; border: 1px solid #d0ad70; border-radius: 999px; box-shadow: 0 8px 22px rgb(40 22 13 / 32%); color: #fff8e9; font: 800 .76rem "Scaly Sans", Inter, sans-serif; left: 50%; max-width: calc(100vw - 44px); padding: 10px 14px; position: fixed; text-align: center; top: calc(env(safe-area-inset-top) + 14px); transform: translateX(-50%); z-index: 30; }
 .drive-save-notice.is-success { background: #365b31; border-color: #a8cf9c; }
 .drive-save-notice.is-error { background: #7a2f27; border-color: #e2a69f; }
@@ -41,14 +33,15 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .cloud-login-target { display: contents; }
 
 .desktop-view-controls { background: #49382d; border-radius: 8px; display: flex; flex-wrap: wrap; overflow: visible; padding: 3px; }
-.desktop-view-controls button, .mobile-nav button { background: transparent; border: 0; border-radius: 5px; color: #e5d7c3; font-size: .82rem; padding: 6px 11px; }
+.desktop-mode-rail { background: #3a2b22; border-radius: 0; flex: 0 0 auto; flex-wrap: nowrap; gap: 2px; justify-content: center; min-height: 42px; overflow-x: auto; overscroll-behavior-x: contain; padding: 4px 16px; scrollbar-width: none; }
+.desktop-mode-rail::-webkit-scrollbar { display: none; }
+.desktop-view-controls button, .mobile-nav button, .mobile-tools-grid button { background: transparent; border: 0; border-radius: 5px; color: #e5d7c3; font-size: .82rem; padding: 6px 11px; }
 .desktop-view-controls button.is-selected, .mobile-nav button.is-selected { background: #c5963e; color: #241a15; font-weight: 700; }
 
 .mobile-nav { display: none; }
 .mobile-outline-fab { display: none; }
-.mobile-top-menu-button { display: none; }
 .mobile-capture-menu { display: none; }
-.mobile-preview-page { display: none; }
+.mobile-tools-backdrop, .mobile-tools-sheet { display: none; }
 /* The mobile outline control stays available while the editor itself scrolls. */
 .workspace { display: grid; flex: 1; grid-template-columns: 235px minmax(0, 1fr) 220px; min-height: 0; }
 .side-panel { background: #f7f0df; border-color: #d4c7b1; border-style: solid; min-height: 0; min-width: 0; overflow: hidden; }
@@ -574,16 +567,24 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 }
 
 @media (max-width: 820px) {
-  .app-header { grid-template-columns: 1fr auto; min-height: 54px; padding-inline: 14px; }
+  .app-header { padding-inline: 14px; }
+  .app-header-main { gap: 9px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; min-height: 54px; }
+  .brand-lockup { font-size: 1rem; gap: 5px; min-width: 0; }
+  .brand-mark { font-size: 1.15rem; }
   .desktop-view-controls { display: none; }
   .cloud-menu-toggle { height: 32px; min-width: 38px; padding-inline: 8px; }
-  .save-indicator { font-size: .72rem; }
-  .mobile-nav { background: #3a2b22; display: grid; gap: 3px; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 5px 8px; }
-  .mobile-nav button { font-size: .64rem; line-height: 1.1; min-height: 30px; padding: 6px 2px; white-space: normal; }
+  .save-indicator { font-size: .68rem; justify-self: stretch; }
+  .mobile-nav { background: #3a2b22; display: flex; flex: 0 0 auto; gap: 4px; min-height: 46px; overflow-x: auto; overscroll-behavior-x: contain; padding: 5px 10px; scrollbar-width: none; }
+  .mobile-nav::-webkit-scrollbar { display: none; }
+  .mobile-nav button { flex: 0 0 auto; font-size: .72rem; line-height: 1; min-height: 36px; padding: 7px 11px; white-space: nowrap; }
+  .mobile-tools-backdrop { background: rgb(24 14 9 / 38%); border: 0; display: block; inset: 0; padding: 0; position: fixed; z-index: 90; }
+  .mobile-tools-sheet { background: #f7f0df; border: 1px solid #b99464; border-radius: 14px; box-shadow: 0 16px 42px rgb(35 22 16 / 34%); display: grid; gap: 10px; left: 10px; max-height: min(420px, calc(100dvh - env(safe-area-inset-top) - 116px)); overflow: auto; padding: 12px; position: fixed; right: 10px; top: calc(env(safe-area-inset-top) + 104px); z-index: 91; }
+  .mobile-tools-sheet > header { align-items: center; color: #4e2f24; display: flex; font-family: Georgia, serif; justify-content: space-between; }
+  .mobile-tools-sheet > header button { background: #fffaf0; border: 1px solid #bca789; border-radius: 6px; color: #533e31; font-size: 1.25rem; height: 34px; padding: 0 0 2px; width: 34px; }
+  .mobile-tools-grid { display: grid; gap: 7px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mobile-tools-grid button { background: #fffaf0; border: 1px solid #c7af8d; color: #493329; font-size: .84rem; font-weight: 700; min-height: 46px; padding: 8px; }
   .mobile-capture-menu { align-items: end; bottom: calc(16px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 8px; position: fixed; right: 14px; z-index: 8; }
   .mobile-outline-fab { align-items: center; background: #5d2f26; border: 1px solid #d0ad70; border-radius: 50%; box-shadow: 0 5px 16px rgb(40 22 13 / 35%); color: #fff8e9; display: flex; font: 400 1.55rem/1 Georgia, serif; height: 44px; justify-content: center; padding: 0 0 3px; width: 44px; }
-  .mobile-top-menu-button { align-items: center; background: #4a382d; border: 1px solid #b9986d; border-radius: 50%; box-shadow: 0 5px 16px rgb(40 22 13 / 28%); color: #fff8e9; display: flex; font: 400 1.2rem/1 Georgia, serif; height: 44px; justify-content: center; padding: 0; width: 44px; }
-  .mobile-top-menu-button[aria-expanded="true"] { background: #c5963e; border-color: #e1bd78; color: #2c211b; }
   .mobile-capture-option { background: #f4e7ce; border: 1px solid #b78a59; border-radius: 999px; box-shadow: 0 4px 13px rgb(40 22 13 / 23%); color: #563127; font: 800 .73rem "Scaly Sans", Inter, sans-serif; letter-spacing: .04em; padding: 9px 13px; text-transform: uppercase; }
   .mobile-writing-tools { background: #f4e7ce; border: 1px solid #b78a59; border-radius: 14px; box-shadow: 0 8px 24px rgb(40 22 13 / 30%); display: grid; gap: 7px; max-height: min(65dvh, 430px); max-width: calc(100vw - 28px); overflow: auto; padding: 9px; width: min(350px, calc(100vw - 28px)); }
   .mobile-writing-tool-group { display: grid; gap: 5px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -606,37 +607,16 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .name-generator-options input { margin: 0; }
   .name-generator-results { grid-template-columns: minmax(0, 1fr); }
 
-  .workspace { display: block; flex: 1; min-height: 0; }
+  .workspace { display: flex; flex: 1; min-height: 0; overflow: hidden; }
   .library-panel, .outline-panel, .editor-pane, .preview-pane { display: none; min-height: 0; }
-  .main-panes { display: block; }
-  .app-shell.mobile-library .library-panel, .app-shell.mobile-outline .outline-panel, .app-shell.mobile-editor .editor-pane, .app-shell.mobile-preview .preview-pane { display: flex; }
-  .app-shell.mobile-preview .preview-pane { padding: 10px; }
-  /* Keep navigation outside the preview's own scroll container on phones. */
-  .app-shell.mobile-preview .workspace { display: flex; flex: 1; min-height: 0; overflow: hidden; }
-  .app-shell.mobile-preview .main-panes, .app-shell.mobile-preview .preview-pane { flex: 1; min-height: 0; }
-  .app-shell.mobile-preview .preview-pane { overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
-  /* Mobile Preview deliberately uses the page's native scroll instead of a
-     second scroll container inside the fixed workspace. */
-  .app-shell.mobile-preview { display: block; height: auto; min-height: 100dvh; }
-  .app-shell.mobile-preview .app-header { position: sticky; top: 0; z-index: 60; }
-  .app-shell.mobile-preview .mobile-nav { position: sticky; top: calc(54px + env(safe-area-inset-top)); z-index: 59; }
-  .app-shell.mobile-preview .mobile-preview-page { background: #29333d; display: block; min-height: calc(100dvh - 94px); padding: 10px; }
-  .app-shell.mobile-preview .mobile-preview-page-content { margin: 0 auto; max-width: 210mm; }
-  .app-shell.mobile-preview .mobile-preview-page .brew-book { display: grid; }
-  .app-shell.mobile-preview .mobile-preview-page-outline-button { background: #4a382d; border: 1px solid #b9986d; border-radius: 999px; bottom: max(16px, env(safe-area-inset-bottom)); box-shadow: 0 5px 16px rgb(40 22 13 / 28%); color: #fff8e9; font: 800 .78rem "Scaly Sans", Inter, sans-serif; letter-spacing: .03em; min-height: 42px; padding: 8px 14px; position: fixed; right: 14px; z-index: 80; }
-  .app-shell.mobile-preview .mobile-preview-page-outline { background: #f7f0df; border: 1px solid #b99464; border-radius: 14px; bottom: max(68px, calc(16px + env(safe-area-inset-bottom) + 42px)); box-shadow: 0 15px 42px rgba(35, 22, 16, 0.3); display: grid; grid-template-rows: auto minmax(0, 1fr); max-height: min(62dvh, 520px); overflow: hidden; position: fixed; right: 14px; width: min(320px, calc(100vw - 28px)); z-index: 81; }
-  .app-shell.mobile-preview .mobile-preview-page-outline > header { align-items: center; border-bottom: 1px solid #d8c9ae; color: #4e2f24; display: flex; font-family: Georgia, serif; justify-content: space-between; padding: 11px 12px; }
-  .app-shell.mobile-preview .mobile-preview-page-outline > header button { background: #fffaf0; border: 1px solid #bca789; border-radius: 6px; color: #533e31; font-size: 1.2rem; height: 34px; width: 34px; }
-  .app-shell.mobile-preview .mobile-preview-page-outline > div { overflow-y: auto; padding: 6px; }
-  .app-shell.mobile-preview .mobile-preview-page-outline > div > button { background: transparent; border: 0; border-left: 3px solid transparent; border-radius: 5px; color: #493329; display: block; font-size: .86rem; min-height: 42px; padding-bottom: 7px; padding-right: 9px; padding-top: 7px; text-align: left; width: 100%; }
-  .app-shell.mobile-preview .mobile-preview-page-outline > div > button:active { background: #ead1a3; border-left-color: #7a2f27; }
-  .app-shell.mobile-preview .mobile-preview-page-outline p { color: #806c5a; font-size: .8rem; margin: 12px; }
-  .app-shell.mobile-outline .workspace { display: flex; flex: 1; min-height: 0; overflow: hidden; }
-  .app-shell.mobile-outline .outline-panel { flex: 1; min-height: 0; overflow: hidden; }
-  .app-shell.mobile-editor .workspace { display: flex; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; }
-  .app-shell.mobile-editor .main-panes { display: flex; flex: 1; min-height: 0; }
-  .app-shell.mobile-editor .editor-pane { flex: 1; min-height: 0; overflow: hidden; }
-  .app-shell.mobile-editor .app-header, .app-shell.mobile-editor .editor-toolbar, .app-shell.mobile-editor .title-input { display: none; }
+  .main-panes { display: flex; flex: 1; min-height: 0; min-width: 0; }
+  .app-shell.mobile-library .library-panel, .app-shell.mobile-outline .outline-panel, .app-shell.mobile-editor .editor-pane, .app-shell.mobile-preview .preview-pane { display: flex; flex: 1; min-height: 0; }
+  .app-shell.mobile-library .library-panel, .app-shell.mobile-outline .outline-panel { overflow: hidden; }
+  .app-shell.mobile-preview .preview-pane { background: #29333d; overflow: auto; overscroll-behavior: contain; padding: 10px; -webkit-overflow-scrolling: touch; }
+  .app-shell.mobile-preview .preview-canvas { margin: 0 auto; max-width: 210mm; width: 100%; }
+  .app-shell.mobile-preview .brew-book { display: grid; }
+  .app-shell.mobile-editor .editor-pane { overflow: hidden; }
+  .app-shell.mobile-editor .editor-toolbar, .app-shell.mobile-editor .title-input { display: none; }
   .toolbar-spacer { display: none; }
   .find-replace { grid-template-columns: 1fr 1fr; }
   .find-replace button { grid-column: 1 / -1; }
@@ -649,8 +629,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .brew-preview { min-height: calc(100vh - 156px); padding: 28px 22px; }
   .brew-preview h1 { font-size: 2rem; }
   .brew-columns { column-count: 1; }
-  .catalogue-page { display: block; flex: 1; min-height: 0; overflow: auto; padding: 12px; }
-  .encounter-page, .worldbuilding-page { min-height: calc(100dvh - 136px); padding: 12px; }
+  .catalogue-page, .campaign-page, .encounter-page, .worldbuilding-page, .ideas-page, .maps-panel { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+  .catalogue-page { display: block; padding: 12px; }
+  .encounter-page, .worldbuilding-page { min-height: 0; padding: 12px; }
   .catalogue-page-header { align-items: flex-start; flex-direction: column; gap: 8px; margin-bottom: 12px; }
   .catalogue-header-actions { justify-content: flex-start; }
   .catalogue-new-category, .worldbuilding-new-type { grid-template-columns: 1fr 1fr; }
@@ -673,7 +654,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .encounter-setup, .initiative-panel { min-height: 0; padding: 19px 15px; }
   .initiative-panel { border-left: 0; border-top: 1px solid #d8c9ae; }
   .combatant-fields { grid-template-columns: repeat(2, minmax(0, 1fr)) auto repeat(2, minmax(0, 1fr)) auto; }
-  .worldbuilding-page { display: block; flex: 1; overflow: auto; }
+  .worldbuilding-page { display: block; }
   .worldbuilding-page-header { align-items: flex-start; flex-direction: column; gap: 9px; margin-bottom: 12px; }
   .worldbuilding-workspace { display: block; min-height: 0; width: auto; }
   .worldbuilding-browser { border-bottom: 1px solid #d8c9ae; border-right: 0; max-height: 370px; }

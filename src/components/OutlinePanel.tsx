@@ -3,12 +3,13 @@ import type { OutlineItem } from '../types';
 type OutlinePanelProps = {
   outline: OutlineItem[];
   insertionLabel?: string | null;
+  selectionAction?: 'insert' | 'connect';
   onCancelInsertion?: () => void;
   onInsertAtSection?: (item: OutlineItem | null) => void;
   onNavigate?: (item: OutlineItem) => void;
 };
 
-export function OutlinePanel({ outline, insertionLabel, onCancelInsertion, onInsertAtSection, onNavigate }: OutlinePanelProps) {
+export function OutlinePanel({ outline, insertionLabel, selectionAction = 'insert', onCancelInsertion, onInsertAtSection, onNavigate }: OutlinePanelProps) {
   const scrollToHeading = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
@@ -19,7 +20,7 @@ export function OutlinePanel({ outline, insertionLabel, onCancelInsertion, onIns
         <span>Outline</span>
         {insertionLabel && <button className="outline-cancel" onClick={onCancelInsertion} type="button">Cancel</button>}
       </div>
-      {insertionLabel && <p className="outline-insert-help">Choose where to insert “{insertionLabel}”.</p>}
+      {insertionLabel && <p className="outline-insert-help">{selectionAction === 'connect' ? 'Choose the section to connect to' : 'Choose where to insert'} “{insertionLabel}”.</p>}
       {outline.length > 0 ? (
         <nav className="outline-list">
           {outline.map((item) => (
@@ -35,15 +36,15 @@ export function OutlinePanel({ outline, insertionLabel, onCancelInsertion, onIns
               type="button"
             >
               <span>{item.text}</span>
-              {insertionLabel && <small>Insert here</small>}
+              {insertionLabel && <small>{selectionAction === 'connect' ? 'Connect here' : 'Insert here'}</small>}
             </button>
           ))}
-          {insertionLabel && <button className="outline-document-end" onClick={() => onInsertAtSection?.(null)} type="button">Insert at document end</button>}
+          {insertionLabel && selectionAction === 'insert' && <button className="outline-document-end" onClick={() => onInsertAtSection?.(null)} type="button">Insert at document end</button>}
         </nav>
       ) : (
         <div>
           <p className="empty-panel">Add Markdown headings to build an outline.</p>
-          {insertionLabel && <button className="outline-document-end" onClick={() => onInsertAtSection?.(null)} type="button">Insert at document end</button>}
+          {insertionLabel && selectionAction === 'insert' && <button className="outline-document-end" onClick={() => onInsertAtSection?.(null)} type="button">Insert at document end</button>}
         </div>
       )}
     </aside>

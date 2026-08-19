@@ -2,6 +2,8 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { CataloguePanel } from './components/CataloguePanel';
 import { CampaignPanel, type PlotBeatDraftSeed } from './components/CampaignPanel';
 import { BrewPreview } from './components/BrewPreview';
+import { DungeonMapEditor } from './components/DungeonMapEditor';
+import { parseRendererBlocks } from './renderer/blocks';
 import { EncounterPanel } from './components/EncounterPanel';
 import { EditorPane } from './components/EditorPane';
 import { ImportDialog } from './components/ImportDialog';
@@ -145,6 +147,7 @@ export default function App() {
   const [worldbuildingOpen, setWorldbuildingOpen] = useState(false);
   const [ideasOpen, setIdeasOpen] = useState(false);
   const [captureMenuOpen, setCaptureMenuOpen] = useState(false);
+  const [editingDungeonTitle, setEditingDungeonTitle] = useState<string | null>(null);
   const [nameGeneratorTarget, setNameGeneratorTarget] = useState<'editor' | 'worldbuilding' | null>(null);
   const [worldbuildingSelectedId, setWorldbuildingSelectedId] = useState<string | null>(null);
   const [campaignDataSync, setCampaignDataSync] = useState<CampaignDataSyncMetadata | null>(null);
@@ -1711,6 +1714,10 @@ export default function App() {
   }
 
   const renderedBrew = previewBrew ?? activeBrew;
+  const editingDungeon = useMemo(() => {
+    const block = editingDungeonTitle ? parseRendererBlocks(activeBrew.content).find((item) => item.type === 'dungeon' && item.title === editingDungeonTitle) : undefined;
+    return block?.type === 'dungeon' ? block : undefined;
+  }, [activeBrew.content, editingDungeonTitle]);
 
   return (
     <div className={`app-shell mobile-${mobileSection}${mobileTopMenuOpen ? ' mobile-top-menu-open' : ''}`}>
@@ -1804,7 +1811,7 @@ export default function App() {
       {!ideasOpen && !campaignOpen && !catalogueOpen && !encountersOpen && !worldbuildingOpen && mobileSection === 'preview' ? (
         <main className="mobile-preview-page" aria-label="Live preview">
           <div className="mobile-preview-page-content">
-            <BrewPreview assets={assetMap} brew={renderedBrew} catalogue={catalogueMap} catalogueCategories={customCatalogueCategories} encounters={encounterMap} onAddDungeonMarker={addDungeonRoomMarker} onAddWorldbuildingNote={addWorldbuildingQuickNote} onDeleteWorldbuildingReference={deleteWorldbuilding} onEncounterOpen={openEncounters} onMoveDungeonMarker={moveDungeonMarker} onOpenInWorldbuilding={openWorldbuilding} onReferenceOpen={setReferenceEntry} onRemoveDungeonRoom={removeDungeonRoom} onRenameDungeonRoom={renameDungeonRoom} onWorldbuildingOpen={setWorldbuildingReferenceEntry} worldbuilding={worldbuildingMap} worldbuildingTypes={worldbuildingTypes} />
+            <BrewPreview assets={assetMap} brew={renderedBrew} catalogue={catalogueMap} catalogueCategories={customCatalogueCategories} encounters={encounterMap} onAddWorldbuildingNote={addWorldbuildingQuickNote} onDeleteWorldbuildingReference={deleteWorldbuilding} onEncounterOpen={openEncounters} onOpenInWorldbuilding={openWorldbuilding} onReferenceOpen={setReferenceEntry} onWorldbuildingOpen={setWorldbuildingReferenceEntry} worldbuilding={worldbuildingMap} worldbuildingTypes={worldbuildingTypes} />
           </div>
 
           <button aria-expanded={mobilePreviewOutlineOpen} className="mobile-preview-page-outline-button" onClick={() => setMobilePreviewOutlineOpen((open) => !open)} type="button">Outline</button>
@@ -2016,6 +2023,7 @@ export default function App() {
               assets={assetMap}
               onRotateImage={(asset) => { void rotateImage(asset); }}
               onDeleteImage={(asset) => { void deleteImage(asset); }}
+              onOpenDungeonMap={setEditingDungeonTitle}
               onToggleSpellcheck={() => setSpellcheckEnabled((current) => { const next = !current; localStorage.setItem('homebrewry-spellcheck', next ? 'on' : 'off'); return next; })}
               onUndo={undo}
               replaceValue={replaceValue}
@@ -2029,12 +2037,8 @@ export default function App() {
                   catalogue={catalogueMap}
                   catalogueCategories={customCatalogueCategories}
                   encounters={encounterMap}
-                  onAddDungeonMarker={addDungeonRoomMarker}
-                  onMoveDungeonMarker={moveDungeonMarker}
                   onEncounterOpen={openEncounters}
                   onReferenceOpen={setReferenceEntry}
-                  onRemoveDungeonRoom={removeDungeonRoom}
-                  onRenameDungeonRoom={renameDungeonRoom}
                   onAddWorldbuildingNote={addWorldbuildingQuickNote}
                   onDeleteWorldbuildingReference={deleteWorldbuilding}
                   onWorldbuildingOpen={setWorldbuildingReferenceEntry}
@@ -2214,6 +2218,20 @@ export default function App() {
           onClose={() => setWorldbuildingReferenceEntry(null)}
           onOpenInWorldbuilding={openReferenceInWorldbuilding}
           types={worldbuildingTypes}
+        />
+      )}
+      {editingDungeon && (
+        <DungeonMapEditor
+          assets={assetMap}
+          mapSource={editingDungeon.mapSource}
+          markers={editingDungeon.markers}
+          onAddMarker={(marker) => addDungeonRoomMarker(editingDungeon.title, marker)}
+          onClose={() => setEditingDungeonTitle(null)}
+          onMoveMarker={(marker) => moveDungeonMarker(editingDungeon.title, marker)}
+          onRemoveRoom={(number) => removeDungeonRoom(editingDungeon.title, number)}
+          onRenameRoom={(number, title) => renameDungeonRoom(editingDungeon.title, number, title)}
+          rooms={editingDungeon.rooms}
+          title={editingDungeon.title}
         />
       )}
     </div>

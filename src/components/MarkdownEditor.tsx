@@ -37,6 +37,7 @@ type MarkdownEditorProps = {
   assets?: ReadonlyMap<string, BrewAsset>;
   onRotateImage?: (asset: BrewAsset) => void;
   onDeleteImage?: (asset: BrewAsset) => void;
+  onOpenDungeonMap?: (title: string) => void;
 };
 
 type ReferenceMenu = {
@@ -105,8 +106,10 @@ const imageAssetLookup = Facet.define<AssetLookup, AssetLookup>({
 const imageAssetLookupCompartment = new Compartment();
 const markdownImagePattern = /!\[([^\]]*)\]\(([^\s)]+)(?:\s+["'][^"']*["'])?\)/g;
 
+type DungeonImage = { title: string; markers: { number: string; x: number; y: number }[] };
+
 class MarkdownImagePreview extends WidgetType {
-  constructor(private readonly source: string, private readonly alt: string, private readonly asset?: BrewAsset, private readonly onRotate?: (asset: BrewAsset) => void, private readonly onDelete?: (asset: BrewAsset) => void) {
+  constructor(private readonly source: string, private readonly alt: string, private readonly asset?: BrewAsset, private readonly onRotate?: (asset: BrewAsset) => void, private readonly onDelete?: (asset: BrewAsset) => void, private readonly dungeon?: DungeonImage, private readonly onOpenDungeon?: (title: string) => void) {
     super();
   }
 
@@ -114,7 +117,7 @@ class MarkdownImagePreview extends WidgetType {
     return other.source === this.source
       && other.alt === this.alt
       && other.asset?.updatedAt === this.asset?.updatedAt
-      && other.asset?.blob === this.asset?.blob;
+      && other.asset?.blob === this.asset?.blob && other.dungeon?.title === this.dungeon?.title;
   }
 
   toDOM() {
@@ -142,6 +145,19 @@ class MarkdownImagePreview extends WidgetType {
       figure.replaceChildren(document.createTextNode('This image could not be displayed.'));
     }, { once: true });
     figure.append(image);
+    if (this.dungeon) {
+      figure.classList.add('is-dungeon-map');
+      figure.title = 'Tap to edit dungeon rooms';
+      figure.addEventListener('click', () => this.onOpenDungeon?.(this.dungeon!.title));
+      for (const marker of this.dungeon.markers) {
+        const pin = document.createElement('span');
+        pin.className = 'cm-dungeon-room-marker';
+        pin.style.left = `${marker.x}%`;
+        pin.style.top = `${marker.y}%`;
+        pin.textContent = marker.number;
+        figure.append(pin);
+      }
+    }
     if (this.asset && this.onDelete) {
       const remove = document.createElement('button');
       remove.className = 'cm-image-delete-button';
@@ -202,7 +218,22 @@ class MarkdownImageLabel extends WidgetType {
   }
 }
 
-function imagePreviewDecorations(view: EditorView, onRotate?: (asset: BrewAsset) => void, onDelete?: (asset: BrewAsset) => void): DecorationSet {
+function dungeonImageAt(doc: string, position: number, source: string): DungeonImage | undefined {
+  const start = doc.lastIndexOf(':::', position);
+  if (start < 0) return undefined;
+  const lineEnd = doc.indexOf('\n', start);
+  const header = doc.slice(start, lineEnd < 0 ? doc.length : lineEnd).match(/^:::(?:dungeon\s+)?(.+?)\s*$/i);
+  if (!header || /^(note|warning|tip|descriptive|columns|wide|homebrewery|statblock|item|spell|pagebreak|columnbreak|spacer)(?:\s|$)/i.test(header[1])) return undefined;
+  const close = doc.indexOf('\n:::', start + 3);
+  if (close < position) return undefined;
+  const body = doc.slice(lineEnd + 1, close < 0 ? doc.length : close);
+  if (!body.includes(source)) return undefined;
+  const image = [...body.matchAll(markdownImagePattern)].at(-1);
+  if (!image || image[2] !== source) return undefined;
+  return { title: header[1].trim(), markers: [...body.matchAll(/^::map-marker\s+(\S+)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s*$/gmi)].map((match) => ({ number: match[1], x: Number(match[2]), y: Number(match[3]) })) };
+}
+
+function imagePreviewDecorations(view: EditorView, onRotate?: (asset: BrewAsset) => void, onDelete?: (asset: BrewAsset) => void, onOpenDungeon?: (title: string) => void): DecorationSet {
   const lookup = view.state.facet(imageAssetLookup);
   const decorations = [];
   let position = 0;
@@ -220,7 +251,7 @@ function imagePreviewDecorations(view: EditorView, onRotate?: (asset: BrewAsset)
       }).range(position + match.index, end));
       decorations.push(Decoration.widget({
         side: 1,
-        widget: new MarkdownImagePreview(source, match[1], asset, onRotate, onDelete)
+        widget: new MarkdownImagePreview(source, match[1], asset, onRotate, onDelete, dungeonImageAt(view.state.doc.toString(), position + match.index, source), onOpenDungeon)
       }).range(end));
     }
     position += line.length + 1;
@@ -229,17 +260,17 @@ function imagePreviewDecorations(view: EditorView, onRotate?: (asset: BrewAsset)
   return Decoration.set(decorations, true);
 }
 
-function imagePreviews(onRotate?: (asset: BrewAsset) => void, onDelete?: (asset: BrewAsset) => void) {
+function imagePreviews(onRotate?: (asset: BrewAsset) => void, onDelete?: (asset: BrewAsset) => void, onOpenDungeon?: (title: string) => void) {
   return ViewPlugin.fromClass(class {
   decorations: DecorationSet;
 
   constructor(view: EditorView) {
-    this.decorations = imagePreviewDecorations(view, onRotate, onDelete);
+    this.decorations = imagePreviewDecorations(view, onRotate, onDelete, onOpenDungeon);
   }
 
   update(update: ViewUpdate) {
     if (update.docChanged || update.transactions.some((transaction) => transaction.reconfigured)) {
-      this.decorations = imagePreviewDecorations(update.view, onRotate, onDelete);
+      this.decorations = imagePreviewDecorations(update.view, onRotate, onDelete, onOpenDungeon);
     }
   }
 }, {
@@ -276,6 +307,7 @@ export function MarkdownEditor({
   assets = emptyAssets,
   onRotateImage,
   onDeleteImage,
+  onOpenDungeonMap,
   ref
 }: MarkdownEditorProps & { ref?: Ref<MarkdownEditorHandle> }) {
   const parentRef = useRef<HTMLDivElement>(null);
@@ -284,6 +316,7 @@ export function MarkdownEditor({
   const assetsRef = useRef(assets);
   const imageRotationRef = useRef(onRotateImage);
   const imageDeletionRef = useRef(onDeleteImage);
+  const dungeonOpenRef = useRef(onOpenDungeonMap);
   const latestRef = useRef({ onChange, onSelectionChange, onKeyDown, onCreateWorldbuildingReference, onCreateCatalogueReference });
   const [referenceMenu, setReferenceMenu] = useState<ReferenceMenu | null>(null);
   const [mobileReferenceSelection, setMobileReferenceSelection] = useState<MobileReferenceSelection | null>(null);
@@ -300,6 +333,7 @@ export function MarkdownEditor({
   useEffect(() => {
     imageDeletionRef.current = onDeleteImage;
   }, [onDeleteImage]);
+  useEffect(() => { dungeonOpenRef.current = onOpenDungeonMap; }, [onOpenDungeonMap]);
 
   useEffect(() => {
     assetsRef.current = assets;
@@ -338,7 +372,7 @@ export function MarkdownEditor({
           EditorView.contentAttributes.of({ 'aria-label': ariaLabel, spellcheck: spellcheckEnabled ? 'true' : 'false' }),
           referenceDecorations,
           imageAssetLookupCompartment.of(imageAssetLookup.of((source) => assetsRef.current.get(source.slice('asset://'.length)))),
-          imagePreviews((asset) => imageRotationRef.current?.(asset), (asset) => imageDeletionRef.current?.(asset)),
+          imagePreviews((asset) => imageRotationRef.current?.(asset), (asset) => imageDeletionRef.current?.(asset), (title) => dungeonOpenRef.current?.(title)),
           EditorView.updateListener.of((update) => {
             if (update.docChanged) latestRef.current.onChange(update.state.doc.toString());
             if (update.selectionSet) {

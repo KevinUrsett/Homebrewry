@@ -1531,7 +1531,7 @@ export default function App() {
     const roomLine = `${marker.number} | Room ${marker.number}`;
     const withMarker = `${activeBrew.content.slice(0, closingAt)}\n${markerLine}\n${roomLine}${activeBrew.content.slice(closingAt)}`;
     const hasRoomSection = new RegExp(`^#{1,6}\\s*${marker.number.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:[.:\\s-]|$)`, 'mi').test(withMarker);
-    const nextContent = hasRoomSection ? withMarker : `${withMarker}\n\n#### ${marker.number}. Room ${marker.number}\n\n:::descriptive\nRead this aloud.\n:::\n\n`;
+    const nextContent = hasRoomSection ? withMarker : `${withMarker}\n\n#### ${marker.number}. Room ${marker.number}\n\n:::descriptive\n\n:::\n\n`;
     updateContent(nextContent);
     setSaveState(`Room ${marker.number} added to ${title}`);
   };
@@ -2083,7 +2083,7 @@ export default function App() {
                 <button onClick={() => { insertText('\n:::descriptive\n', '\n:::\n'); setCaptureMenuOpen(false); }} type="button">Descr</button>
                 <button onClick={() => { insertText('\n:::pagebreak\n'); setCaptureMenuOpen(false); }} type="button">Page</button>
                 <button onClick={() => { document.getElementById('brew-image-input')?.click(); setCaptureMenuOpen(false); }} type="button">Image</button>
-                <button onClick={() => { insertText('\n:::dungeon Dungeon name\n1 | Room one\n2 | Room two\n:::\n'); setCaptureMenuOpen(false); }} type="button">Dungeon</button>
+                <button onClick={() => { insertText('\n:::dungeon Dungeon name\n:::\n'); setCaptureMenuOpen(false); }} type="button">Dungeon</button>
               </div>
               <div className="mobile-writing-tool-group" aria-label="Insert content">
                 <button onClick={() => { setCaptureMenuOpen(false); openCatalogue(); }} type="button">Reference</button>

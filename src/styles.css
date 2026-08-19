@@ -123,7 +123,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .dungeon-map-canvas { cursor: default; line-height: 0; position: relative; width: fit-content; }
 .dungeon-map-canvas.is-placing { cursor: crosshair; }
 .dungeon-map-dialog img { display: block; height: auto; max-height: 62dvh; max-width: 100%; object-fit: contain; width: 100%; }
-.dungeon-room-marker { align-items: center; background: #7d382a !important; border: 2px solid #fff9eb !important; border-radius: 50% !important; box-shadow: 0 1px 4px rgb(0 0 0 / 45%); display: flex; font-size: .75rem !important; height: 28px; justify-content: center; line-height: 1; padding: 0 !important; position: absolute; transform: translate(-50%, -50%); width: 28px; }
+.dungeon-room-marker { align-items: center; background: #7d382a !important; border: 3px solid #fff9eb !important; border-radius: 50% !important; box-shadow: 0 2px 6px rgb(0 0 0 / 48%); display: flex; font-size: .95rem !important; height: 42px; justify-content: center; line-height: 1; padding: 0 !important; position: absolute; touch-action: none; transform: translate(-50%, -50%); width: 42px; }
 .dungeon-map-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; }
 .dungeon-map-placement-help { color: #6e4c36; font: 700 .8rem Inter, sans-serif; }
 .dungeon-room-ledger { display: flex; flex-wrap: wrap; gap: 7px; }

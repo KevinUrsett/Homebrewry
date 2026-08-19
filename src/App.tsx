@@ -335,6 +335,10 @@ export default function App() {
     () => deferredBrews.find((brew) => brew.id === activeId) ?? activeBrew,
     [activeBrew, activeId, deferredBrews]
   );
+  const editingDungeon = useMemo(() => {
+    const block = editingDungeonTitle && activeBrew ? parseRendererBlocks(activeBrew.content).find((item) => item.type === 'dungeon' && item.title === editingDungeonTitle) : undefined;
+    return block?.type === 'dungeon' ? block : undefined;
+  }, [activeBrew, editingDungeonTitle]);
   const assetMap = useMemo(() => new Map(assets.map((asset) => [asset.id, asset])), [assets]);
   const catalogueEntries = useMemo(
     () => [...baseCatalogueEntries, ...privateMonsterEntries, ...customCatalogueEntries].sort((left, right) => left.category.localeCompare(right.category) || left.name.localeCompare(right.name)),
@@ -1714,10 +1718,6 @@ export default function App() {
   }
 
   const renderedBrew = previewBrew ?? activeBrew;
-  const editingDungeon = useMemo(() => {
-    const block = editingDungeonTitle ? parseRendererBlocks(activeBrew.content).find((item) => item.type === 'dungeon' && item.title === editingDungeonTitle) : undefined;
-    return block?.type === 'dungeon' ? block : undefined;
-  }, [activeBrew.content, editingDungeonTitle]);
 
   return (
     <div className={`app-shell mobile-${mobileSection}${mobileTopMenuOpen ? ' mobile-top-menu-open' : ''}`}>

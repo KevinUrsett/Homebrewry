@@ -741,6 +741,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .map-brew-link > div { display: grid; gap: 2px; flex: 1; }
 .map-brew-link strong { font-size: .76rem; text-transform: uppercase; letter-spacing: .05em; }
 .map-brew-link small { color: #806f63; }
+.cm-campaign-map-chip { align-items: center; background: #fbf2df; border: 1px solid #c69b54; border-left: 5px solid #7a382b; border-radius: 7px; box-sizing: border-box; display: inline-flex; gap: 14px; justify-content: space-between; margin: 8px 0; max-width: 100%; min-width: min(100%, 280px); padding: 9px 10px; vertical-align: middle; }
+.cm-campaign-map-chip > span { display: grid; gap: 1px; }
+.cm-campaign-map-chip strong { color: #593026; font-family: 'Bookinsanity Bold', Georgia, serif; }
+.cm-campaign-map-chip small { color: #806f63; font-size: .76em; }
+.cm-campaign-map-chip button { background: #fffaf0; border: 1px solid #b58b50; border-radius: 5px; color: #63342b; font: inherit; padding: 4px 7px; white-space: nowrap; }
 .brew-map-card { margin: 1.4rem 0; padding: 16px; border: 1px solid #b98c4e; border-left: 6px solid #783626; border-radius: 9px; background: #fbf2db; }
 .brew-map-card > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .brew-map-card h3, .brew-map-card p { margin: 0; }

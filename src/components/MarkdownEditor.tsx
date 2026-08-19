@@ -14,7 +14,7 @@ import {
 } from '@codemirror/view';
 import { catalogueCategories, catalogueCategoryLabel, type CatalogueCategory, type CustomCatalogueCategory } from '../catalogue/types';
 import { normalizeWorldbuildingName, worldbuildingKindLabels, worldbuildingKinds } from '../lib/worldbuilding';
-import type { BrewAsset, WorldbuildingKind, WorldbuildingType } from '../types';
+import type { BrewAsset, CampaignMapRecord, WorldbuildingKind, WorldbuildingType } from '../types';
 
 export type MarkdownEditorHandle = {
   getSelection: () => { start: number; end: number };
@@ -38,6 +38,8 @@ type MarkdownEditorProps = {
   onRotateImage?: (asset: BrewAsset) => void;
   onDeleteImage?: (asset: BrewAsset) => void;
   onOpenDungeonMap?: (title: string) => void;
+  maps?: ReadonlyMap<string, CampaignMapRecord>;
+  onOpenCampaignMap?: (mapId: string) => void;
 };
 
 type ReferenceMenu = {
@@ -51,6 +53,7 @@ type ReferenceMenu = {
 type MobileReferenceSelection = Pick<ReferenceMenu, 'name' | 'from' | 'to'>;
 
 const emptyAssets = new Map<string, BrewAsset>();
+const emptyMaps = new Map<string, CampaignMapRecord>();
 
 class ReferenceChip extends WidgetType {
   constructor(private readonly label: string, private readonly kind: string) {
@@ -218,6 +221,62 @@ class MarkdownImageLabel extends WidgetType {
   }
 }
 
+class CampaignMapChip extends WidgetType {
+  constructor(private readonly mapId: string, private readonly name: string, private readonly roomCount: number, private readonly onOpen?: (mapId: string) => void) { super(); }
+
+  eq(other: CampaignMapChip) {
+    return other.mapId === this.mapId && other.name === this.name && other.roomCount === this.roomCount;
+  }
+
+  toDOM() {
+    const card = document.createElement('span');
+    card.className = 'cm-campaign-map-chip';
+    const details = document.createElement('span');
+    const label = document.createElement('strong');
+    label.textContent = this.name;
+    const meta = document.createElement('small');
+    meta.textContent = `${this.roomCount} numbered area${this.roomCount === 1 ? '' : 's'}`;
+    details.append(label, meta);
+    const open = document.createElement('button');
+    open.type = 'button';
+    open.textContent = 'Edit map';
+    open.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.onOpen?.(this.mapId);
+    });
+    card.append(details, open);
+    return card;
+  }
+
+  ignoreEvent() { return false; }
+}
+
+function campaignMapDecorations(view: EditorView, maps: ReadonlyMap<string, CampaignMapRecord>, onOpen?: (mapId: string) => void): DecorationSet {
+  const decorations = [];
+  let position = 0;
+  for (const line of view.state.doc.iterLines()) {
+    const match = line.match(/^\s*:::map\s+([0-9a-f-]+)\s*$/i);
+    if (match) {
+      const mapId = match[1];
+      const map = maps.get(mapId);
+      decorations.push(Decoration.replace({ widget: new CampaignMapChip(mapId, map?.name || 'Map unavailable', map?.rooms.length || 0, onOpen), inclusive: false }).range(position, position + line.length));
+    }
+    position += line.length + 1;
+  }
+  return Decoration.set(decorations, true);
+}
+
+function campaignMapPreviews(maps: ReadonlyMap<string, CampaignMapRecord>, onOpen?: (mapId: string) => void) {
+  return ViewPlugin.fromClass(class {
+    decorations: DecorationSet;
+    constructor(view: EditorView) { this.decorations = campaignMapDecorations(view, maps, onOpen); }
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.transactions.some((transaction) => transaction.reconfigured)) this.decorations = campaignMapDecorations(update.view, maps, onOpen);
+    }
+  }, { decorations: (value) => value.decorations });
+}
+
 function dungeonImageAt(doc: string, position: number, source: string): DungeonImage | undefined {
   const start = doc.lastIndexOf(':::', position);
   if (start < 0) return undefined;
@@ -308,6 +367,8 @@ export function MarkdownEditor({
   onRotateImage,
   onDeleteImage,
   onOpenDungeonMap,
+  maps = emptyMaps,
+  onOpenCampaignMap,
   ref
 }: MarkdownEditorProps & { ref?: Ref<MarkdownEditorHandle> }) {
   const parentRef = useRef<HTMLDivElement>(null);
@@ -373,6 +434,7 @@ export function MarkdownEditor({
           referenceDecorations,
           imageAssetLookupCompartment.of(imageAssetLookup.of((source) => assetsRef.current.get(source.slice('asset://'.length)))),
           imagePreviews((asset) => imageRotationRef.current?.(asset), (asset) => imageDeletionRef.current?.(asset), (title) => dungeonOpenRef.current?.(title)),
+          campaignMapPreviews(maps, onOpenCampaignMap),
           EditorView.updateListener.of((update) => {
             if (update.docChanged) latestRef.current.onChange(update.state.doc.toString());
             if (update.selectionSet) {

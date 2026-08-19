@@ -85,10 +85,6 @@ export function MobileOutlineScrubber() {
 
       setTarget(menu);
       setContentMode(menu ? 'editor' : null);
-
-      menu?.querySelectorAll<HTMLButtonElement>('.mobile-writing-destinations button').forEach((button) => {
-        if (button.textContent?.trim() === 'Outline') button.hidden = true;
-      });
     };
 
     refresh();

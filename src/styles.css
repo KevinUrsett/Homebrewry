@@ -583,14 +583,25 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .mobile-tools-sheet > header button { background: #fffaf0; border: 1px solid #bca789; border-radius: 6px; color: #533e31; font-size: 1.25rem; height: 34px; padding: 0 0 2px; width: 34px; }
   .mobile-tools-grid { display: grid; gap: 7px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .mobile-tools-grid button { background: #fffaf0; border: 1px solid #c7af8d; color: #493329; font-size: .84rem; font-weight: 700; min-height: 46px; padding: 8px; }
-  .mobile-capture-menu { align-items: end; bottom: calc(16px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 8px; position: fixed; right: 14px; z-index: 8; }
-  .mobile-outline-fab { align-items: center; background: #5d2f26; border: 1px solid #d0ad70; border-radius: 50%; box-shadow: 0 5px 16px rgb(40 22 13 / 35%); color: #fff8e9; display: flex; font: 400 1.55rem/1 Georgia, serif; height: 44px; justify-content: center; padding: 0 0 3px; width: 44px; }
-  .mobile-capture-option { background: #f4e7ce; border: 1px solid #b78a59; border-radius: 999px; box-shadow: 0 4px 13px rgb(40 22 13 / 23%); color: #563127; font: 800 .73rem "Scaly Sans", Inter, sans-serif; letter-spacing: .04em; padding: 9px 13px; text-transform: uppercase; }
-  .mobile-writing-tools { background: #f4e7ce; border: 1px solid #b78a59; border-radius: 14px; box-shadow: 0 8px 24px rgb(40 22 13 / 30%); display: grid; gap: 7px; max-height: min(65dvh, 430px); max-width: calc(100vw - 28px); overflow: auto; padding: 9px; width: min(350px, calc(100vw - 28px)); }
-  .mobile-writing-tool-group { display: grid; gap: 5px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .mobile-writing-tool-group button { background: #fffaf0; border: 1px solid #d1c0a5; border-radius: 6px; color: #4d392d; font-size: .72rem; min-height: 38px; padding: 6px 4px; }
-  .mobile-writing-destinations { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .mobile-writing-destinations button { border-color: #9c653d; font-weight: 800; }
+  .mobile-capture-menu { align-items: end; bottom: calc(16px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 9px; position: fixed; right: 12px; z-index: 1405; }
+  .mobile-outline-fab { align-items: center; background: #5d2f26; border: 1px solid #d0ad70; border-radius: 50%; box-shadow: 0 5px 16px rgb(40 22 13 / 35%); color: #fff8e9; display: flex; font: 400 1.55rem/1 Georgia, serif; height: 44px; justify-content: center; padding: 0 0 3px; transition: background .16s ease, transform .16s ease; width: 44px; }
+  .mobile-outline-fab[aria-expanded="true"] { background: #3a2b22; transform: rotate(0deg); }
+  .mobile-writing-tools { background: linear-gradient(180deg, #fbf3e2 0%, #f2e4c8 100%); border: 1px solid #b78a59; border-radius: 18px; box-shadow: 0 12px 32px rgb(40 22 13 / 34%); display: grid; gap: 10px; max-height: min(72dvh, 540px); max-width: calc(100vw - 24px); overflow: auto; overscroll-behavior: contain; padding: 12px; width: min(370px, calc(100vw - 24px)); }
+  .mobile-writing-tools-header { align-items: center; border-bottom: 1px solid #d4c09e; display: flex; justify-content: space-between; order: -30; padding: 0 1px 10px; }
+  .mobile-writing-tools-header > div { display: grid; gap: 2px; }
+  .mobile-writing-tools-header span { color: #846548; font-size: .61rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+  .mobile-writing-tools-header strong { color: #593227; font-family: Georgia, serif; font-size: 1.05rem; }
+  .mobile-writing-tools-header button { align-items: center; background: #fffaf0; border: 1px solid #c5ad88; border-radius: 50%; color: #6d3329; display: inline-flex; font: 400 1.45rem/1 Georgia, serif; height: 32px; justify-content: center; padding: 0 0 3px; width: 32px; }
+  .mobile-writing-tool-group { display: grid; gap: 6px; }
+  .mobile-writing-tool-group button { background: #fffaf0; border: 1px solid #d1c0a5; border-radius: 7px; color: #4d392d; font-size: .74rem; min-height: 40px; padding: 7px 6px; }
+  .mobile-writing-insert-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .mobile-writing-insert-grid button { font-weight: 700; }
+  .mobile-writing-editor-settings { border-top: 1px solid #d4c09e; grid-template-columns: minmax(0, 1fr); padding-top: 10px; }
+  .mobile-writing-editor-settings button { align-items: center; display: flex; font-weight: 700; justify-content: space-between; padding-inline: 11px; }
+  .mobile-writing-editor-settings button strong { color: #7a2f27; font-size: .7rem; letter-spacing: .05em; text-transform: uppercase; }
+  .mobile-writing-editor-settings button[aria-pressed="true"] { background: #f8ecd1; border-color: #a47743; }
+  .mobile-writing-drive-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mobile-writing-drive-actions button { border-color: #9c653d; font-weight: 800; }
   .mobile-writing-save { grid-template-columns: minmax(0, 1fr); }
   .mobile-writing-save button { background: #5d2f26; border-color: #5d2f26; color: #fff8e9; font-weight: 800; }
   .mobile-writing-save button:disabled { background: #a8947b; border-color: #a8947b; color: #f4e7ce; }

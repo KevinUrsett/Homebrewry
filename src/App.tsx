@@ -1854,7 +1854,7 @@ export default function App() {
             {mobileLabels[section]}
           </button>
         ))}
-        <button aria-expanded={mobileToolsOpen} className={mobileToolsOpen || toolPanelOpen ? 'is-selected' : ''} onClick={() => setMobileToolsOpen((open) => !open)} type="button">Tools</button>
+        <button aria-expanded={mobileToolsOpen} className={mobileToolsOpen || toolPanelOpen ? 'is-selected' : ''} onClick={() => { setCaptureMenuOpen(false); setMobileToolsOpen((open) => !open); }} type="button">Tools</button>
       </nav>
 
       {mobileToolsOpen && (
@@ -2129,34 +2129,35 @@ export default function App() {
       )}
       {!ideasOpen && !campaignOpen && !catalogueOpen && !encountersOpen && !mapsOpen && !worldbuildingOpen && mobileSection === 'editor' && (
         <div className="mobile-capture-menu">
-          {captureMenuOpen && <>
-            <div className="mobile-writing-tools" aria-label="Writing tools">
-              <div className="mobile-writing-tool-group" aria-label="Formatting">
+          {captureMenuOpen && (
+            <section aria-label="Quick writing actions" className="mobile-writing-tools" role="dialog">
+              <header className="mobile-writing-tools-header">
+                <div>
+                  <span>Writing tools</span>
+                  <strong>Quick add</strong>
+                </div>
+                <button aria-label="Close quick actions" onClick={() => setCaptureMenuOpen(false)} type="button">×</button>
+              </header>
+              <div className="mobile-writing-tool-group mobile-writing-insert-grid" aria-label="Insert content">
                 <button onClick={() => { insertText('#### '); setCaptureMenuOpen(false); }} type="button">H4</button>
-              </div>
-              <div className="mobile-writing-tool-group" aria-label="Insert blocks">
                 <button onClick={() => { insertText('\n:::note Note\n', '\n:::\n'); setCaptureMenuOpen(false); }} type="button">Note</button>
                 <button onClick={() => { insertText('\n:::descriptive\n', '\n:::\n'); setCaptureMenuOpen(false); }} type="button">Descr</button>
                 <button onClick={() => { insertText('\n:::pagebreak\n'); setCaptureMenuOpen(false); }} type="button">Page</button>
                 <button onClick={() => { document.getElementById('brew-image-input')?.click(); setCaptureMenuOpen(false); }} type="button">Image</button>
                 <button onClick={() => { setCaptureMenuOpen(false); openMaps(); }} type="button">Map</button>
-              </div>
-              <div className="mobile-writing-tool-group" aria-label="Insert content">
                 <button onClick={() => { setCaptureMenuOpen(false); openCatalogue(); }} type="button">Reference</button>
                 <button onClick={() => { setCaptureMenuOpen(false); openEncounters(); }} type="button">Encounter</button>
                 <button onClick={() => { setCaptureMenuOpen(false); setNameGeneratorTarget('editor'); }} type="button">Name</button>
-                <button onClick={() => { setCaptureMenuOpen(false); openMaps(); }} type="button">Maps</button>
               </div>
-              <div className="mobile-writing-tool-group mobile-writing-destinations" aria-label="Editor panels">
-                <button hidden onClick={() => { setCaptureMenuOpen(false); setMobileSection('outline'); }} type="button">Outline</button>
-                <button onClick={openIdeas} type="button">My ideas</button>
+              <div className="mobile-writing-tool-group mobile-writing-editor-settings" aria-label="Editor settings">
+                <button aria-pressed={spellcheckEnabled} onClick={() => setSpellcheckEnabled((current) => { const next = !current; localStorage.setItem('homebrewry-spellcheck', next ? 'on' : 'off'); return next; })} type="button">
+                  <span>Spellcheck</span>
+                  <strong>{spellcheckEnabled ? 'On' : 'Off'}</strong>
+                </button>
+              </div>
+              <div className="mobile-writing-tool-group mobile-writing-drive-actions" aria-label="Drive actions">
                 <button disabled={syncing || savingToDrive} onClick={() => void connectDrive()} type="button">Log in to Drive</button>
-              </div>
-               <div className="mobile-writing-tool-group mobile-writing-destinations" aria-label="Editor settings">
-                 <button aria-pressed={spellcheckEnabled} onClick={() => setSpellcheckEnabled((current) => { const next = !current; localStorage.setItem('homebrewry-spellcheck', next ? 'on' : 'off'); return next; })} type="button">
-                   Spellcheck: {spellcheckEnabled ? 'On' : 'Off'}
-                 </button>
-                 <button disabled={syncing || savingToDrive} onClick={() => void syncToDrive()} type="button">
+                <button disabled={syncing || savingToDrive} onClick={() => void syncToDrive()} type="button">
                   {syncing ? 'Syncing…' : 'Sync to Drive'}
                 </button>
               </div>
@@ -2165,9 +2166,9 @@ export default function App() {
                   {savingToDrive ? 'Saving…' : 'Save to Drive'}
                 </button>
               </div>
-            </div>
-          </>}
-          <button aria-expanded={captureMenuOpen} aria-label="Open writing tools" className="mobile-outline-fab" onClick={() => setCaptureMenuOpen((open) => !open)} type="button">+</button>
+            </section>
+          )}
+          <button aria-expanded={captureMenuOpen} aria-label={captureMenuOpen ? 'Close quick actions' : 'Open quick actions'} className="mobile-outline-fab" onClick={() => setCaptureMenuOpen((open) => !open)} type="button">{captureMenuOpen ? '×' : '+'}</button>
         </div>
       )}
       {driveSaveNotice && (

@@ -127,8 +127,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .dungeon-map-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; }
 .dungeon-map-placement-help { color: #6e4c36; font: 700 .8rem Inter, sans-serif; }
 .dungeon-room-ledger { display: flex; flex-wrap: wrap; gap: 7px; }
-.dungeon-room-ledger button { background: #f5ead2; color: #503225; text-align: left; }
-.dungeon-room-ledger strong { color: #7d382a; margin-right: 5px; }
+.dungeon-room-list-item { align-items: center; background: #f5ead2; border: 1px solid #b99a6b; border-radius: 5px; display: flex; max-width: 100%; overflow: hidden; }
+.dungeon-room-list-item > button:first-child { background: #7d382a; border: 0; border-radius: 0; color: #fff9eb; min-width: 28px; padding: 7px 5px; }
+.dungeon-room-list-item input { background: transparent; border: 0; color: #503225; font: 700 .82rem Inter, sans-serif; min-width: 0; outline: 0; padding: 7px 5px; width: 112px; }
+.dungeon-room-list-item input:focus { background: #fff9eb; }
+.dungeon-room-list-item .dungeon-room-remove { background: transparent; border: 0; border-left: 1px solid #d2b78b; border-radius: 0; color: #8b3329; font-size: 1rem; line-height: 1; padding: 5px 8px 7px; }
 .markdown-editor .cm-markdown-image-preview { position: relative; }
 .markdown-editor .cm-markdown-image-preview.is-missing { background: #f3d3cd; color: #8a2f27; font-family: Inter, sans-serif; font-size: .82rem; line-height: 1.35; max-width: 440px; padding: 8px 10px; width: auto; }
 

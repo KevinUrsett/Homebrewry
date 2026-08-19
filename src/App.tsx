@@ -1531,9 +1531,48 @@ export default function App() {
     const roomLine = `${marker.number} | Room ${marker.number}`;
     const withMarker = `${activeBrew.content.slice(0, closingAt)}\n${markerLine}\n${roomLine}${activeBrew.content.slice(closingAt)}`;
     const hasRoomSection = new RegExp(`^#{1,6}\\s*${marker.number.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:[.:\\s-]|$)`, 'mi').test(withMarker);
-    const nextContent = hasRoomSection ? withMarker : `${withMarker}\n\n#### ${marker.number}. Room ${marker.number}\n\n`;
+    const nextContent = hasRoomSection ? withMarker : `${withMarker}\n\n#### ${marker.number}. Room ${marker.number}\n\n:::descriptive\nRead this aloud.\n:::\n\n`;
     updateContent(nextContent);
     setSaveState(`Room ${marker.number} added to ${title}`);
+  };
+
+  const updateDungeonBlock = (title: string, update: (body: string) => string, successMessage: string) => {
+    if (!activeBrew) return;
+    const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const blockStart = new RegExp(`^:::(?:dungeon\\s+)?${escapedTitle}\\s*$`, 'mi');
+    const startMatch = blockStart.exec(activeBrew.content);
+    if (!startMatch || startMatch.index === undefined) return;
+    const closingAt = activeBrew.content.indexOf('\n:::', startMatch.index + startMatch[0].length);
+    if (closingAt < 0) return;
+    const bodyStart = startMatch.index + startMatch[0].length;
+    updateContent(`${activeBrew.content.slice(0, bodyStart)}${update(activeBrew.content.slice(bodyStart, closingAt))}${activeBrew.content.slice(closingAt)}`);
+    setSaveState(successMessage);
+  };
+
+  const moveDungeonMarker = (title: string, marker: { number: string; x: number; y: number }) => {
+    const escapedNumber = marker.number.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    updateDungeonBlock(title, (body) => body.replace(new RegExp(`^::map-marker\\s+${escapedNumber}\\s+\\d+(?:\\.\\d+)?\\s+\\d+(?:\\.\\d+)?\\s*$`, 'mi'), `::map-marker ${marker.number} ${marker.x.toFixed(2)} ${marker.y.toFixed(2)}`), `Room ${marker.number} moved`);
+  };
+
+  const renameDungeonRoom = (title: string, number: string, roomTitle: string) => {
+    const escapedNumber = number.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (!activeBrew) return;
+    const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const blockStart = new RegExp(`^:::(?:dungeon\\s+)?${escapedTitle}\\s*$`, 'mi');
+    const startMatch = blockStart.exec(activeBrew.content);
+    if (!startMatch || startMatch.index === undefined) return;
+    const closingAt = activeBrew.content.indexOf('\n:::', startMatch.index + startMatch[0].length);
+    if (closingAt < 0) return;
+    const bodyStart = startMatch.index + startMatch[0].length;
+    const body = activeBrew.content.slice(bodyStart, closingAt).replace(new RegExp(`^(\\s*${escapedNumber}\\s*\\|\\s*).*$`, 'mi'), `$1${roomTitle}`);
+    const after = activeBrew.content.slice(closingAt).replace(new RegExp(`^(#{1,6}\\s*${escapedNumber}[.:]\\s*).*$`, 'mi'), `$1${roomTitle}`);
+    updateContent(`${activeBrew.content.slice(0, bodyStart)}${body}${after}`);
+    setSaveState(`Room ${number} renamed`);
+  };
+
+  const removeDungeonRoom = (title: string, number: string) => {
+    const escapedNumber = number.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    updateDungeonBlock(title, (body) => body.split('\n').filter((line) => !new RegExp(`^::map-marker\\s+${escapedNumber}(?:\\s|$)`, 'i').test(line) && !new RegExp(`^\\s*${escapedNumber}\\s*\\|`, 'i').test(line)).join('\n'), `Room ${number} removed from map`);
   };
 
   const rotateImage = async (asset: BrewAsset) => {
@@ -1765,7 +1804,7 @@ export default function App() {
       {!ideasOpen && !campaignOpen && !catalogueOpen && !encountersOpen && !worldbuildingOpen && mobileSection === 'preview' ? (
         <main className="mobile-preview-page" aria-label="Live preview">
           <div className="mobile-preview-page-content">
-            <BrewPreview assets={assetMap} brew={renderedBrew} catalogue={catalogueMap} catalogueCategories={customCatalogueCategories} encounters={encounterMap} onAddDungeonMarker={addDungeonRoomMarker} onAddWorldbuildingNote={addWorldbuildingQuickNote} onDeleteWorldbuildingReference={deleteWorldbuilding} onEncounterOpen={openEncounters} onOpenInWorldbuilding={openWorldbuilding} onReferenceOpen={setReferenceEntry} onWorldbuildingOpen={setWorldbuildingReferenceEntry} worldbuilding={worldbuildingMap} worldbuildingTypes={worldbuildingTypes} />
+            <BrewPreview assets={assetMap} brew={renderedBrew} catalogue={catalogueMap} catalogueCategories={customCatalogueCategories} encounters={encounterMap} onAddDungeonMarker={addDungeonRoomMarker} onAddWorldbuildingNote={addWorldbuildingQuickNote} onDeleteWorldbuildingReference={deleteWorldbuilding} onEncounterOpen={openEncounters} onMoveDungeonMarker={moveDungeonMarker} onOpenInWorldbuilding={openWorldbuilding} onReferenceOpen={setReferenceEntry} onRemoveDungeonRoom={removeDungeonRoom} onRenameDungeonRoom={renameDungeonRoom} onWorldbuildingOpen={setWorldbuildingReferenceEntry} worldbuilding={worldbuildingMap} worldbuildingTypes={worldbuildingTypes} />
           </div>
 
           <button aria-expanded={mobilePreviewOutlineOpen} className="mobile-preview-page-outline-button" onClick={() => setMobilePreviewOutlineOpen((open) => !open)} type="button">Outline</button>
@@ -1991,8 +2030,11 @@ export default function App() {
                   catalogueCategories={customCatalogueCategories}
                   encounters={encounterMap}
                   onAddDungeonMarker={addDungeonRoomMarker}
+                  onMoveDungeonMarker={moveDungeonMarker}
                   onEncounterOpen={openEncounters}
                   onReferenceOpen={setReferenceEntry}
+                  onRemoveDungeonRoom={removeDungeonRoom}
+                  onRenameDungeonRoom={renameDungeonRoom}
                   onAddWorldbuildingNote={addWorldbuildingQuickNote}
                   onDeleteWorldbuildingReference={deleteWorldbuilding}
                   onWorldbuildingOpen={setWorldbuildingReferenceEntry}

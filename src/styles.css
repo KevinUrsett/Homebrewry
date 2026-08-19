@@ -621,6 +621,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .workspace { display: flex; flex: 1; min-height: 0; overflow: hidden; }
   .library-panel, .outline-panel, .editor-pane, .preview-pane { display: none; min-height: 0; }
   .main-panes { display: flex; flex: 1; min-height: 0; min-width: 0; }
+  .app-shell.mobile-library .main-panes, .app-shell.mobile-outline .main-panes { display: none; }
   .app-shell.mobile-library .library-panel, .app-shell.mobile-outline .outline-panel, .app-shell.mobile-editor .editor-pane, .app-shell.mobile-preview .preview-pane { display: flex; flex: 1; min-height: 0; }
   .app-shell.mobile-library .library-panel, .app-shell.mobile-outline .outline-panel { overflow: hidden; }
   .app-shell.mobile-preview .preview-pane { background: #29333d; overflow: auto; overscroll-behavior: contain; padding: 10px; -webkit-overflow-scrolling: touch; }

@@ -20,7 +20,7 @@ type DragState = {
   contentScroller: HTMLElement;
 };
 
-type ContentMode = 'editor';
+type ContentMode = 'editor' | 'preview';
 
 const MOBILE_BREAKPOINT = '(max-width: 820px)';
 const LEFT_GESTURE_THRESHOLD = 48;
@@ -32,6 +32,30 @@ const MAX_SCROLL_SPEED = 58;
 function editorView() {
   const editor = document.querySelector<HTMLElement>('.app-shell.mobile-editor .cm-editor');
   return editor ? EditorView.findFromDOM(editor) : null;
+}
+
+function previewPane() {
+  return document.querySelector<HTMLElement>('.app-shell.mobile-preview .preview-pane');
+}
+
+function previewPosition(element: HTMLElement, scroller: HTMLElement) {
+  return scroller.scrollTop + element.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+}
+
+function readPreviewOutline(scroller: HTMLElement): OutlineItem[] {
+  return Array.from(scroller.querySelectorAll<HTMLElement>('.brew-preview h1, .brew-preview h2, .brew-preview h3, .brew-preview h4, .brew-preview h5, .brew-preview h6'))
+    .map((heading, index) => ({
+      id: heading.id || undefined,
+      level: Number(heading.tagName.slice(1)),
+      title: heading.textContent?.trim() || `Section ${index + 1}`,
+      position: previewPosition(heading, scroller)
+    }));
+}
+
+function contentScroller(mode: ContentMode | null, target: HTMLElement | null) {
+  if (mode === 'editor') return editorView()?.scrollDOM ?? null;
+  if (mode === 'preview') return previewPane();
+  return target;
 }
 
 function readOutline(view: EditorView): OutlineItem[] {
@@ -82,14 +106,15 @@ export function MobileOutlineScrubber() {
       const menu = mobile
         ? document.querySelector<HTMLElement>('.app-shell.mobile-editor .mobile-capture-menu')
         : null;
+      const preview = mobile ? previewPane() : null;
 
-      setTarget(menu);
-      setContentMode(menu ? 'editor' : null);
+      setTarget(menu ?? preview);
+      setContentMode(menu ? 'editor' : preview ? 'preview' : null);
     };
 
     refresh();
     const observer = new MutationObserver(refresh);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'], childList: true, subtree: true });
     return () => observer.disconnect();
   }, []);
 
@@ -114,7 +139,7 @@ export function MobileOutlineScrubber() {
   }, []);
 
   useEffect(() => {
-    const scroller = contentMode === 'editor' ? editorView()?.scrollDOM : target;
+    const scroller = contentScroller(contentMode, target);
     if (!scroller) return undefined;
 
     const updateScrollPercent = () => {
@@ -163,6 +188,11 @@ export function MobileOutlineScrubber() {
       closeWritingTools();
       setOutline(readOutline(view));
       setActivePosition(view.state.selection.main.head);
+    } else if (contentMode === 'preview') {
+      const pane = previewPane();
+      if (!pane) return;
+      setOutline(readPreviewOutline(pane));
+      setActivePosition(pane.scrollTop);
     } else {
       return;
     }
@@ -220,7 +250,7 @@ export function MobileOutlineScrubber() {
   };
 
   const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
-    const scroller = contentMode === 'editor' ? editorView()?.scrollDOM : target;
+    const scroller = contentScroller(contentMode, target);
     if (!scroller) return;
 
     event.preventDefault();
@@ -284,6 +314,12 @@ export function MobileOutlineScrubber() {
         effects: EditorView.scrollIntoView(item.position, { y: 'start', yMargin: 28 })
       });
       view.focus();
+    } else if (contentMode === 'preview') {
+      const pane = previewPane();
+      const heading = item.id ? document.getElementById(item.id) : null;
+      if (!pane || !heading || !pane.contains(heading)) return;
+      const next = previewPosition(heading, pane) - 18;
+      pane.scrollTo({ behavior: 'smooth', top: Math.max(0, next) });
     } else {
       return;
     }

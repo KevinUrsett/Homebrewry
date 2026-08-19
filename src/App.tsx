@@ -88,12 +88,11 @@ const mobileLabels: Record<MobileSection, string> = {
   worldbuilding: 'Worldbuilding'
 };
 
-const mobilePrimarySections = ['library', 'editor', 'preview', 'outline'] as const satisfies readonly MobileSection[];
+const mobilePrimarySections = ['library', 'editor', 'preview', 'encounters'] as const satisfies readonly MobileSection[];
 
 const mobileToolSections = [
   { id: 'catalogue', label: 'Catalogue' },
   { id: 'campaign', label: 'Campaign' },
-  { id: 'encounters', label: 'Encounters' },
   { id: 'maps', label: 'Maps' },
   { id: 'worldbuilding', label: 'Worldbuilding' },
   { id: 'ideas', label: 'My ideas' }
@@ -1748,19 +1747,26 @@ export default function App() {
   }
 
   const renderedBrew = previewBrew ?? activeBrew;
-  const toolPanelOpen = ideasOpen || campaignOpen || catalogueOpen || encountersOpen || mapsOpen || worldbuildingOpen;
+  const toolPanelOpen = ideasOpen || campaignOpen || catalogueOpen || mapsOpen || worldbuildingOpen;
 
   const selectMobilePrimarySection = (section: typeof mobilePrimarySections[number]) => {
     setMobileToolsOpen(false);
     setCaptureMenuOpen(false);
-    setMobileSection(section);
     setCatalogueOpen(false);
     setCampaignOpen(false);
-    setEncountersOpen(false);
     setMapsOpen(false);
     setWorldbuildingOpen(false);
     setIdeasOpen(false);
-    if (section !== 'outline') setPendingInsertion(null);
+    setPendingInsertion(null);
+
+    if (section === 'encounters') {
+      setEncountersOpen(true);
+      setMobileSection('encounters');
+      return;
+    }
+
+    setEncountersOpen(false);
+    setMobileSection(section);
   };
 
   const openMobileTool = (tool: typeof mobileToolSections[number]['id']) => {
@@ -1770,10 +1776,6 @@ export default function App() {
     }
     if (tool === 'campaign') {
       openCampaign();
-      return;
-    }
-    if (tool === 'encounters') {
-      openEncounters();
       return;
     }
     if (tool === 'maps') {

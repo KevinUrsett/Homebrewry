@@ -2055,6 +2055,8 @@ export default function App() {
               onRotateImage={(asset) => { void rotateImage(asset); }}
               onDeleteImage={(asset) => { void deleteImage(asset); }}
               onOpenMaps={openMaps}
+              maps={campaignMapRecords}
+              onOpenCampaignMap={(mapId) => openMaps(campaignMapRecords.get(mapId))}
               onToggleSpellcheck={() => setSpellcheckEnabled((current) => { const next = !current; localStorage.setItem('homebrewry-spellcheck', next ? 'on' : 'off'); return next; })}
               onUndo={undo}
               replaceValue={replaceValue}

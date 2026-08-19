@@ -1506,7 +1506,7 @@ export default function App() {
 
       const syncEverything = async (activeToken: string) => {
         const assetResult = await syncAssets(activeToken, assets, pendingAssetDeletionIds);
-        await replaceAssets(assetResult.assets);
+        const assetCacheResult = await replaceAssets(assetResult.assets);
         setAssets(assetResult.assets);
         if (pendingAssetDeletionIds.length) {
           setPendingAssetDeletionIds([]);
@@ -1519,7 +1519,7 @@ export default function App() {
         const syncedCurrentBrew = campaignResult?.data.currentBrewId;
         if (syncedCurrentBrew && brewResult.brews.some((brew) => brew.id === syncedCurrentBrew)) setActiveId(syncedCurrentBrew);
         const privateMonsterResult = await syncPrivateMonsterCatalogueOnly(activeToken);
-        return { assetResult, brewResult, campaignResult, privateMonsterResult };
+        return { assetResult, assetCacheResult, brewResult, campaignResult, privateMonsterResult };
       };
 
       let result;
@@ -1536,9 +1536,12 @@ export default function App() {
         result = await syncEverything(token);
       }
 
-      const { assetResult, brewResult, campaignResult, privateMonsterResult } = result;
-      setSaveState(`${brewResult.detail}; ${assetResult.detail}; ${campaignResult?.detail ?? 'Campaign data sync already in progress'}; ${privateMonsterResult?.detail ?? 'Private monster catalogue sync already in progress'}`);
-      setDriveSaveNotice({ tone: 'success', message: 'Synced with Google Drive' });
+      const { assetResult, assetCacheResult, brewResult, campaignResult, privateMonsterResult } = result;
+      const cacheNote = assetCacheResult.failedAssetIds.length
+        ? ` ${assetCacheResult.failedAssetIds.length} image${assetCacheResult.failedAssetIds.length === 1 ? '' : 's'} could not be cached on this device, but remain in Drive.`
+        : '';
+      setSaveState(`${brewResult.detail}; ${assetResult.detail}; ${campaignResult?.detail ?? 'Campaign data sync already in progress'}; ${privateMonsterResult?.detail ?? 'Private monster catalogue sync already in progress'}.${cacheNote}`);
+      setDriveSaveNotice({ tone: 'success', message: assetCacheResult.failedAssetIds.length ? 'Synced with Drive — image cache will retry later' : 'Synced with Google Drive' });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Google Drive sync failed';
       setSaveState(message);

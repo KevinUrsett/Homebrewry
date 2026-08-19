@@ -30,7 +30,7 @@ export async function listAssets(): Promise<BrewAsset[]> {
 
 export async function saveAsset(asset: BrewAsset): Promise<void> {
   const database = await getDatabase();
-  await database.put(ASSET_STORE_NAME, asset);
+  await database.put(ASSET_STORE_NAME, await prepareAssetForStorage(asset));
 }
 
 export async function deleteAsset(assetId: string): Promise<void> {
@@ -38,11 +38,36 @@ export async function deleteAsset(assetId: string): Promise<void> {
   await database.delete(ASSET_STORE_NAME, assetId);
 }
 
-export async function replaceAssets(assets: BrewAsset[]): Promise<void> {
+export type AssetCacheResult = {
+  failedAssetIds: string[];
+};
+
+/** Safari can reject a response/File Blob in IndexedDB unless it is rebuilt. */
+async function prepareAssetForStorage(asset: BrewAsset): Promise<BrewAsset> {
+  const blob = new Blob([await asset.blob.arrayBuffer()], { type: asset.mimeType || asset.blob.type });
+  return { ...asset, blob, size: blob.size };
+}
+
+/** The local image cache must never prevent a successful Drive sync. */
+export async function replaceAssets(assets: BrewAsset[]): Promise<AssetCacheResult> {
   const database = await getDatabase();
-  const transaction = database.transaction(ASSET_STORE_NAME, 'readwrite');
-  await Promise.all(assets.map((asset) => transaction.store.put(asset)));
-  await transaction.done;
+  const existing = await database.getAllKeys(ASSET_STORE_NAME) as string[];
+  const failedAssetIds: string[] = [];
+
+  for (const asset of assets) {
+    try {
+      await database.put(ASSET_STORE_NAME, await prepareAssetForStorage(asset));
+    } catch {
+      failedAssetIds.push(asset.id);
+    }
+  }
+
+  if (!failedAssetIds.length) {
+    const incomingIds = new Set(assets.map((asset) => asset.id));
+    await Promise.all(existing.filter((id) => !incomingIds.has(id)).map((id) => database.delete(ASSET_STORE_NAME, id)));
+  }
+
+  return { failedAssetIds };
 }
 
 export async function rotateAsset(asset: BrewAsset): Promise<BrewAsset> {

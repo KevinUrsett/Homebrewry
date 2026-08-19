@@ -3,6 +3,7 @@ import type {
   CampaignDataSnapshot,
   CampaignDataSyncMetadata,
   CampaignEntity,
+  CampaignMapRecord,
   CampaignMap,
   PlotBoard,
   EntityReference,
@@ -215,6 +216,46 @@ function parsePartyMember(value: unknown): PartyMember {
   };
 }
 
+function parseCampaignMapRecord(value: unknown): CampaignMapRecord {
+  if (!isRecord(value) || !Array.isArray(value.rooms) || !Array.isArray(value.markers) || !Array.isArray(value.linkedBrewIds)) throw new Error('Campaign data has an invalid map.');
+  const roomIds = new Set<string>();
+  const rooms = value.rooms.map((room) => {
+    if (!isRecord(room)) throw new Error('Campaign data has an invalid map room.');
+    const id = requiredString(room.id, 'map room ID');
+    const number = nullableNumber(room.number, 'map room number');
+    if (number === null || !Number.isInteger(number) || number < 1 || roomIds.has(id)) throw new Error('Campaign data has an invalid map room.');
+    roomIds.add(id);
+    return {
+      id,
+      number,
+      name: requiredString(room.name, 'map room name'),
+      notes: requiredString(room.notes, 'map room notes'),
+      readAloud: requiredString(room.readAloud, 'map room read-aloud text'),
+      encounterIds: requiredStringArray(room.encounterIds, 'map room encounters'),
+      ...(room.brewSectionId === undefined ? {} : { brewSectionId: requiredString(room.brewSectionId, 'map room brew section') }),
+      updatedAt: requiredString(room.updatedAt, 'map room update time')
+    };
+  });
+  const markers = value.markers.map((marker) => {
+    if (!isRecord(marker) || !roomIds.has(String(marker.roomId))) throw new Error('Campaign data has an invalid map marker.');
+    const x = nullableNumber(marker.x, 'map marker x');
+    const y = nullableNumber(marker.y, 'map marker y');
+    if (x === null || y === null || x < 0 || x > 100 || y < 0 || y > 100) throw new Error('Campaign data has an invalid map marker.');
+    return { roomId: requiredString(marker.roomId, 'map marker room'), x, y };
+  });
+  return {
+    id: requiredString(value.id, 'map ID'),
+    name: requiredString(value.name, 'map name'),
+    ...(value.imageSource === undefined ? {} : { imageSource: requiredString(value.imageSource, 'map image source') }),
+    rooms,
+    markers,
+    linkedBrewIds: requiredStringArray(value.linkedBrewIds, 'map linked brews'),
+    createdAt: requiredString(value.createdAt, 'map creation time'),
+    updatedAt: requiredString(value.updatedAt, 'map update time'),
+    version: nullableNumber(value.version, 'map version') ?? 1
+  };
+}
+
 function parseWorldbuildingEntry(value: unknown): WorldbuildingEntry {
   if (!isRecord(value)) throw new Error('Campaign data has an invalid Worldbuilding entry.');
   const kind = requiredString(value.kind, 'Worldbuilding type');
@@ -347,7 +388,7 @@ export function parseCampaignDataSnapshot(value: unknown): CampaignDataSnapshot 
     throw new Error('This Drive campaign data file is not a supported Homebrewry backup.');
   }
   const schemaVersion = value.schemaVersion;
-  if (schemaVersion !== 1 && schemaVersion !== 2 && schemaVersion !== 3 && schemaVersion !== 4 && schemaVersion !== 5) {
+  if (schemaVersion !== 1 && schemaVersion !== 2 && schemaVersion !== 3 && schemaVersion !== 4 && schemaVersion !== 5 && schemaVersion !== 6) {
     throw new Error('This Drive campaign data file is not a supported Homebrewry backup.');
   }
   if (!Array.isArray(value.encounters) || !Array.isArray(value.partyMembers) || !Array.isArray(value.worldbuildingEntries)) {
@@ -359,13 +400,13 @@ export function parseCampaignDataSnapshot(value: unknown): CampaignDataSnapshot 
   if ((schemaVersion === 4 || schemaVersion === 5) && (!Array.isArray(value.customCatalogueEntries) || !Array.isArray(value.customCatalogueCategories) || !Array.isArray(value.worldbuildingTypes))) {
     throw new Error('This Drive campaign data file has an invalid campaign taxonomy collection.');
   }
-  if (schemaVersion === 5 && (!Array.isArray(value.entities) || !Array.isArray(value.entityReferences) || !Array.isArray(value.worldEvents))) {
+  if ((schemaVersion === 5 || schemaVersion === 6) && (!Array.isArray(value.entities) || !Array.isArray(value.entityReferences) || !Array.isArray(value.worldEvents))) {
     throw new Error('This Drive campaign data file has an invalid Living World collection.');
   }
   const campaignId = schemaVersion >= 5 ? requiredString(value.campaignId, 'campaign ID') : legacyCampaignId(value);
 
   return {
-    schemaVersion: 5,
+    schemaVersion: schemaVersion === 6 ? 6 : 5,
     campaignId,
     updatedAt: requiredString(value.updatedAt, 'campaign update time'),
     encounters: value.encounters.map(parseEncounter),
@@ -388,6 +429,7 @@ export function parseCampaignDataSnapshot(value: unknown): CampaignDataSnapshot 
     ...(value.campaignMap === undefined ? {} : { campaignMap: parseCampaignMap(value.campaignMap) }),
     ...(value.plotBoard === undefined ? {} : { plotBoard: parsePlotBoard(value.plotBoard) }),
     ...(value.currentBrewId === undefined ? {} : { currentBrewId: requiredString(value.currentBrewId, 'current brew ID') })
+    ,...(schemaVersion >= 6 && Array.isArray(value.maps) ? { maps: value.maps.map(parseCampaignMapRecord) } : {})
   };
 }
 
@@ -400,7 +442,7 @@ export function createCampaignDataSnapshot(
   customCatalogueCategories: CustomCatalogueCategory[] = [],
   worldbuildingTypes: WorldbuildingType[] = [],
   brews: Brew[] = [],
-  livingWorld: Pick<CampaignDataSnapshot, 'campaignId' | 'entities' | 'entityReferences' | 'worldEvents' | 'timelineEntries' | 'ideaDrafts' | 'campaignMap' | 'plotBoard' | 'currentBrewId'> = {
+  livingWorld: Pick<CampaignDataSnapshot, 'campaignId' | 'entities' | 'entityReferences' | 'worldEvents' | 'timelineEntries' | 'ideaDrafts' | 'campaignMap' | 'plotBoard' | 'currentBrewId' | 'maps'> = {
     // The current app has one campaign companion file per Drive account.
     // A later multi-campaign migration can replace this file-scoped identity.
     campaignId: 'default-campaign',
@@ -411,7 +453,7 @@ export function createCampaignDataSnapshot(
 ): CampaignDataSnapshot {
   const entities = synchroniseWorldbuildingEntities(livingWorld.campaignId, worldbuildingEntries, livingWorld.entities);
   return {
-    schemaVersion: 5,
+    schemaVersion: 6,
     campaignId: livingWorld.campaignId,
     updatedAt: timestamp,
     encounters: [...encounters],
@@ -428,6 +470,7 @@ export function createCampaignDataSnapshot(
     ...(livingWorld.campaignMap ? { campaignMap: livingWorld.campaignMap } : {}),
     ...(livingWorld.plotBoard ? { plotBoard: livingWorld.plotBoard } : {}),
     ...(livingWorld.currentBrewId ? { currentBrewId: livingWorld.currentBrewId } : {})
+    ,...(livingWorld.maps?.length ? { maps: [...livingWorld.maps] } : {})
   };
 }
 
@@ -445,7 +488,8 @@ export function hasCampaignData(snapshot: CampaignDataSnapshot): boolean {
     || Boolean(snapshot.ideaDrafts?.length)
     || Boolean(snapshot.campaignMap)
     || Boolean(snapshot.plotBoard)
-    || Boolean(snapshot.currentBrewId);
+    || Boolean(snapshot.currentBrewId)
+    || Boolean(snapshot.maps?.length);
 }
 
 export function campaignDataChangedLocally(metadata: CampaignDataSyncMetadata): boolean {
@@ -490,7 +534,7 @@ export function keepBothCampaignData(
   createId: () => string = () => crypto.randomUUID()
 ): CampaignDataSnapshot {
   return {
-    schemaVersion: 5,
+    schemaVersion: 6,
     campaignId: remote.campaignId,
     updatedAt: timestamp,
     encounters: preserveBothRecords(local.encounters, remote.encounters, timestamp, createId),
@@ -506,6 +550,7 @@ export function keepBothCampaignData(
     ...(remote.ideaDrafts || local.ideaDrafts ? { ideaDrafts: [...(remote.ideaDrafts ?? []), ...(local.ideaDrafts ?? []).filter((idea) => !(remote.ideaDrafts ?? []).some((remoteIdea) => remoteIdea.id === idea.id))] } : {}),
     ...(remote.campaignMap || local.campaignMap ? { campaignMap: remote.campaignMap ?? local.campaignMap } : {}),
     ...(remote.plotBoard || local.plotBoard ? { plotBoard: remote.plotBoard ?? local.plotBoard } : {}),
-    ...(remote.currentBrewId || local.currentBrewId ? { currentBrewId: remote.currentBrewId ?? local.currentBrewId } : {})
+    ...(remote.currentBrewId || local.currentBrewId ? { currentBrewId: remote.currentBrewId ?? local.currentBrewId } : {}),
+    ...(remote.maps || local.maps ? { maps: preserveBothRecords(local.maps ?? [], remote.maps ?? [], timestamp, createId) } : {})
   };
 }

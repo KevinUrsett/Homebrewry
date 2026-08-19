@@ -306,8 +306,40 @@ export type LivingWorldData = {
   ideaDrafts?: IdeaDraft[];
   campaignMap?: CampaignMap;
   plotBoard?: PlotBoard;
+  /** Campaign maps are prepared separately and may be placed in any brew. */
+  maps?: CampaignMapRecord[];
   /** Deliberately selected campaign brew, independent from the editor tab. */
   currentBrewId?: string;
+};
+
+export type CampaignMapRoom = {
+  id: string;
+  number: number;
+  name: string;
+  notes: string;
+  readAloud: string;
+  encounterIds: string[];
+  /** Optional heading ID in a linked brew. */
+  brewSectionId?: string;
+  updatedAt: string;
+};
+
+export type CampaignMapMarker = {
+  roomId: string;
+  x: number;
+  y: number;
+};
+
+export type CampaignMapRecord = {
+  id: string;
+  name: string;
+  imageSource?: string;
+  rooms: CampaignMapRoom[];
+  markers: CampaignMapMarker[];
+  linkedBrewIds: string[];
+  createdAt: string;
+  updatedAt: string;
+  version: number;
 };
 
 export const worldbuildingKinds = [
@@ -357,7 +389,8 @@ export type WorldbuildingEntry = {
  * the established brew document schema.
  */
 export type CampaignDataSnapshot = {
-  schemaVersion: 5;
+  /** Schema 5 remains accepted for compatibility with locally staged test/data snapshots. */
+  schemaVersion: 5 | 6;
   campaignId: string;
   updatedAt: string;
   encounters: Encounter[];
@@ -377,6 +410,7 @@ export type CampaignDataSnapshot = {
   plotBoard?: PlotBoard;
   /** Optional manual campaign brew selection. */
   currentBrewId?: string;
+  maps?: CampaignMapRecord[];
 };
 
 export type CampaignDataConflict = {
@@ -422,4 +456,4 @@ export type OutlineItem = {
 };
 
 export type ViewMode = 'split' | 'editor' | 'preview';
-export type MobileSection = 'library' | 'editor' | 'preview' | 'outline' | 'catalogue' | 'campaign' | 'encounters' | 'worldbuilding';
+export type MobileSection = 'library' | 'editor' | 'preview' | 'outline' | 'catalogue' | 'campaign' | 'encounters' | 'maps' | 'worldbuilding';

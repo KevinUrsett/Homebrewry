@@ -8,7 +8,7 @@ import { remarkAutoReferences } from '../lib/autoReferences';
 import { getHeadingId } from '../lib/outline';
 import { parseRendererBlocks, splitRendererPages, type RendererBlock } from '../renderer/blocks';
 import { catalogueCategoryLabel, type CatalogueEntry, type CustomCatalogueCategory } from '../catalogue/types';
-import type { Brew, BrewAsset, Encounter, WorldbuildingEntry, WorldbuildingType } from '../types';
+import type { Brew, BrewAsset, CampaignMapRecord, Encounter, WorldbuildingEntry, WorldbuildingType } from '../types';
 import { CatalogueEntryDetails } from './CatalogueEntryDetails';
 import { WorldbuildingReferenceDetails } from './WorldbuildingReferenceDetails';
 import '../homebrewery-theme.css';
@@ -31,6 +31,7 @@ type BrewPreviewProps = {
   onMoveDungeonMarker?: (title: string, marker: { number: string; x: number; y: number }) => void;
   onRenameDungeonRoom?: (title: string, number: string, roomTitle: string) => void;
   onRemoveDungeonRoom?: (title: string, number: string) => void;
+  maps?: ReadonlyMap<string, CampaignMapRecord>;
 };
 
 type MarkdownRendererProps = {
@@ -51,6 +52,24 @@ type MarkdownRendererProps = {
 };
 
 type RenderDependencies = Omit<MarkdownRendererProps, 'content' | 'getId'>;
+
+function MapBlock({ map, brew, assets, encounters }: { map?: CampaignMapRecord; brew: Brew; assets?: ReadonlyMap<string, BrewAsset>; encounters?: ReadonlyMap<string, Encounter> }) {
+  const [open, setOpen] = useState(false);
+  const [roomId, setRoomId] = useState<string | null>(null);
+  const asset = map?.imageSource?.startsWith('asset://') ? assets?.get(map.imageSource.slice(8)) : undefined;
+  const mapUrl = useMemo(() => asset ? URL.createObjectURL(asset.blob) : map?.imageSource, [asset?.blob, map?.imageSource]);
+  useEffect(() => () => { if (asset && mapUrl) URL.revokeObjectURL(mapUrl); }, [asset, mapUrl]);
+  const room = map?.rooms.find((item) => item.id === roomId) ?? null;
+  const jump = () => {
+    if (!room?.brewSectionId) return;
+    const [brewId, sectionId] = room.brewSectionId.split(':');
+    if (brewId !== brew.id || !sectionId) return;
+    setOpen(false);
+    window.setTimeout(() => document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+  };
+  if (!map) return <section className="brew-map-card is-missing"><small>Map</small><strong>Map unavailable</strong><p>This map may not yet exist on this device.</p></section>;
+  return <section className="brew-map-card"><header><div><small>Campaign map</small><h3>{map.name}</h3><p>{map.rooms.length} numbered area{map.rooms.length === 1 ? '' : 's'}</p></div><button disabled={!mapUrl} onClick={() => setOpen(true)} type="button">Open map</button></header>{open && <div className="dungeon-map-backdrop" onClick={() => setOpen(false)} role="presentation"><section aria-label={`${map.name} map`} className="dungeon-map-dialog map-preview-dialog" onClick={(event) => event.stopPropagation()}><header><div><small>Campaign map</small><h2>{map.name}</h2></div><button aria-label="Close map" onClick={() => setOpen(false)} type="button">×</button></header>{mapUrl ? <div className="dungeon-map-canvas"><img alt={`${map.name} map`} src={mapUrl} />{map.markers.map((marker) => { const item = map.rooms.find((candidate) => candidate.id === marker.roomId); return item ? <button aria-label={`Open ${item.name}`} className="dungeon-room-marker" key={item.id} onClick={() => setRoomId(item.id)} style={{ left: `${marker.x}%`, top: `${marker.y}%` }} type="button">{item.number}</button> : null; })}</div> : <p>Map image unavailable on this device.</p>}{room && <section className="map-preview-room"><header><h3>{room.number}. {room.name}</h3><button onClick={() => setRoomId(null)} type="button">Back to map</button></header>{room.readAloud && <blockquote>{room.readAloud}</blockquote>}{room.notes && <p className="map-preview-notes">{room.notes}</p>}{room.encounterIds.length > 0 && <div className="map-preview-encounters">{room.encounterIds.map((id) => encounters?.get(id)).filter((item): item is Encounter => Boolean(item)).map((encounter) => <span key={encounter.id}>{encounter.name || 'Untitled encounter'}</span>)}</div>}{room.brewSectionId?.startsWith(`${brew.id}:`) && <button className="primary-button" onClick={jump} type="button">Go to room in brew</button>}</section>}</section></div>}</section>;
+}
 
 type CharacterRendererBlock = {
   type: 'statblock' | 'item' | 'spell';
@@ -305,6 +324,8 @@ function renderBlock(
   onMoveDungeonMarker: ((title: string, marker: { number: string; x: number; y: number }) => void) | undefined,
   onRenameDungeonRoom: ((title: string, number: string, roomTitle: string) => void) | undefined,
   onRemoveDungeonRoom: ((title: string, number: string) => void) | undefined,
+  maps: ReadonlyMap<string, CampaignMapRecord> | undefined,
+  brew: Brew,
   key: string
 ) {
   const dependencies: RenderDependencies = {
@@ -329,6 +350,7 @@ function renderBlock(
     return <section className={['brew-homebrewery', ...block.classes].join(' ')} key={key}><MarkdownRenderer content={block.content} getId={getId} {...dependencies} /></section>;
   }
   if (block.type === 'dungeon') return <DungeonBlock assets={assets} block={block} key={key} onAddMarker={onAddDungeonMarker} onMoveMarker={onMoveDungeonMarker} onRemoveRoom={onRemoveDungeonRoom} onRenameRoom={onRenameDungeonRoom} />;
+  if (block.type === 'map') return <MapBlock assets={assets} brew={brew} encounters={encounters} key={key} map={maps?.get(block.mapId)} />;
   if (block.type === 'callout') {
     return (
       <aside className={`brew-callout callout-${block.variant}`} key={key}>
@@ -345,7 +367,7 @@ function renderBlock(
   return <CharacterBlock block={block} getId={getId} key={key} {...dependencies} />;
 }
 
-export const BrewPreview = memo(function BrewPreview({ brew, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen, onOpenInWorldbuilding, onDeleteWorldbuildingReference, onAddWorldbuildingNote, onAddDungeonMarker, onMoveDungeonMarker, onRenameDungeonRoom, onRemoveDungeonRoom }: BrewPreviewProps) {
+export const BrewPreview = memo(function BrewPreview({ brew, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen, onOpenInWorldbuilding, onDeleteWorldbuildingReference, onAddWorldbuildingNote, onAddDungeonMarker, onMoveDungeonMarker, onRenameDungeonRoom, onRemoveDungeonRoom, maps }: BrewPreviewProps) {
   const headingOccurrences = new Map<string, number>();
   const getId = (children: ReactNode) => {
     const text = String(children);
@@ -363,7 +385,7 @@ export const BrewPreview = memo(function BrewPreview({ brew, assets, catalogue, 
     >
       {pages.map((page, pageIndex) => (
         <article className="brew-preview brew-continuous" key={`page-${pageIndex}`}>
-          {page.map((block, blockIndex) => renderBlock(block, getId, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen, onOpenInWorldbuilding, onDeleteWorldbuildingReference, onAddWorldbuildingNote, onAddDungeonMarker, onMoveDungeonMarker, onRenameDungeonRoom, onRemoveDungeonRoom, `page-${pageIndex}-block-${blockIndex}`))}
+          {page.map((block, blockIndex) => renderBlock(block, getId, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen, onOpenInWorldbuilding, onDeleteWorldbuildingReference, onAddWorldbuildingNote, onAddDungeonMarker, onMoveDungeonMarker, onRenameDungeonRoom, onRemoveDungeonRoom, maps, brew, `page-${pageIndex}-block-${blockIndex}`))}
           <span aria-hidden className="brew-page-number">{pageIndex + 1}</span>
         </article>
       ))}

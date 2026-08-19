@@ -7,6 +7,7 @@ export type RendererBlock =
   | { type: 'columns'; content: string }
   | { type: 'wide'; content: string }
   | { type: 'homebrewery'; content: string; classes: string[] }
+  | { type: 'map'; mapId: string }
   | { type: 'dungeon'; title: string; mapSource?: string; rooms: { number: string; title: string }[]; markers: { number: string; x: number; y: number }[] }
   | { type: 'spacer'; size: number }
   | { type: 'pagebreak' }
@@ -36,7 +37,7 @@ export function parseRendererBlocks(source: string): RendererBlock[] {
   };
 
   for (let index = 0; index < lines.length; index += 1) {
-    const directive = lines[index].match(/^:::(note|warning|tip|descriptive|columns|wide|homebrewery|statblock|item|spell|dungeon|pagebreak|columnbreak|spacer)(?:\s+(.+))?\s*$/i);
+    const directive = lines[index].match(/^:::(note|warning|tip|descriptive|columns|wide|homebrewery|statblock|item|spell|dungeon|map|pagebreak|columnbreak|spacer)(?:\s+(.+))?\s*$/i);
     const dungeonShorthand = directive ? null : lines[index].match(/^:::\s*(.+?)\s*$/);
     if (directive || dungeonShorthand) {
       flushMarkdown();
@@ -54,6 +55,11 @@ export function parseRendererBlocks(source: string): RendererBlock[] {
       if (kind === 'spacer') {
         const size = Number.parseInt(argument ?? '1', 10);
         blocks.push({ type: 'spacer', size: Number.isFinite(size) ? Math.max(1, Math.min(size, 8)) : 1 });
+        continue;
+      }
+
+      if (kind === 'map') {
+        blocks.push({ type: 'map', mapId: argument ?? '' });
         continue;
       }
 

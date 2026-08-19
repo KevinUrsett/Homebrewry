@@ -2,8 +2,7 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { CataloguePanel } from './components/CataloguePanel';
 import { CampaignPanel, type PlotBeatDraftSeed } from './components/CampaignPanel';
 import { BrewPreview } from './components/BrewPreview';
-import { DungeonMapEditor } from './components/DungeonMapEditor';
-import { parseRendererBlocks } from './renderer/blocks';
+import { MapsPanel } from './components/MapsPanel';
 import { EncounterPanel } from './components/EncounterPanel';
 import { EditorPane } from './components/EditorPane';
 import { ImportDialog } from './components/ImportDialog';
@@ -75,7 +74,7 @@ import { findCatalogueEntryByName, formatCatalogueReference } from './catalogue/
 import { formatWorldbuildingReference } from './lib/worldbuildingReferences';
 import type { GeneratedName } from './lib/nameGenerator';
 import { catalogueCategoryLabel, catalogueCategoryLabels, type CatalogueCategory, type CatalogueEntry, type CustomCatalogueCategory, type CustomCatalogueEntry } from './catalogue/types';
-import type { Brew, BrewAsset, CampaignDataSyncMetadata, CampaignMap, Encounter, IdeaDraft, LivingWorldData, MobileSection, PartyMember, PlotBoard, PrivateMonsterSyncMetadata, ViewMode, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from './types';
+import type { Brew, BrewAsset, CampaignDataSyncMetadata, CampaignMap, CampaignMapRecord, Encounter, IdeaDraft, LivingWorldData, MobileSection, PartyMember, PlotBoard, PrivateMonsterSyncMetadata, ViewMode, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from './types';
 
 const mobileLabels: Record<MobileSection, string> = {
   library: 'Brews',
@@ -85,6 +84,7 @@ const mobileLabels: Record<MobileSection, string> = {
   catalogue: 'Catalogue',
   campaign: 'Campaign',
   encounters: 'Encounters',
+  maps: 'Maps',
   worldbuilding: 'Worldbuilding'
 };
 
@@ -147,7 +147,8 @@ export default function App() {
   const [worldbuildingOpen, setWorldbuildingOpen] = useState(false);
   const [ideasOpen, setIdeasOpen] = useState(false);
   const [captureMenuOpen, setCaptureMenuOpen] = useState(false);
-  const [editingDungeonTitle, setEditingDungeonTitle] = useState<string | null>(null);
+  const [mapsOpen, setMapsOpen] = useState(false);
+  const [selectedMapId, setSelectedMapId] = useState<string | null>(null);
   const [nameGeneratorTarget, setNameGeneratorTarget] = useState<'editor' | 'worldbuilding' | null>(null);
   const [worldbuildingSelectedId, setWorldbuildingSelectedId] = useState<string | null>(null);
   const [campaignDataSync, setCampaignDataSync] = useState<CampaignDataSyncMetadata | null>(null);
@@ -335,10 +336,8 @@ export default function App() {
     () => deferredBrews.find((brew) => brew.id === activeId) ?? activeBrew,
     [activeBrew, activeId, deferredBrews]
   );
-  const editingDungeon = useMemo(() => {
-    const block = editingDungeonTitle && activeBrew ? parseRendererBlocks(activeBrew.content).find((item) => item.type === 'dungeon' && item.title === editingDungeonTitle) : undefined;
-    return block?.type === 'dungeon' ? block : undefined;
-  }, [activeBrew, editingDungeonTitle]);
+  const campaignMaps = livingWorld.maps ?? [];
+  const campaignMapRecords = useMemo(() => new Map(campaignMaps.map((map) => [map.id, map])), [campaignMaps]);
   const assetMap = useMemo(() => new Map(assets.map((asset) => [asset.id, asset])), [assets]);
   const catalogueEntries = useMemo(
     () => [...baseCatalogueEntries, ...privateMonsterEntries, ...customCatalogueEntries].sort((left, right) => left.category.localeCompare(right.category) || left.name.localeCompare(right.name)),
@@ -490,6 +489,7 @@ export default function App() {
     setCampaignOpen(false);
     setEncountersOpen(false);
     setWorldbuildingOpen(false);
+    setMapsOpen(false);
     setIdeasOpen(false);
     setPendingInsertion(null);
     setMobileSection('catalogue');
@@ -527,9 +527,54 @@ export default function App() {
     setCampaignOpen(false);
     setEncountersOpen(true);
     setWorldbuildingOpen(false);
+    setMapsOpen(false);
     setIdeasOpen(false);
     setPendingInsertion(null);
     setMobileSection('encounters');
+  };
+
+  const openMaps = (map?: CampaignMapRecord) => {
+    if (map) setSelectedMapId(map.id);
+    setCatalogueOpen(false);
+    setCampaignOpen(false);
+    setEncountersOpen(false);
+    setWorldbuildingOpen(false);
+    setIdeasOpen(false);
+    setMapsOpen(true);
+    setPendingInsertion(null);
+    setMobileSection('maps');
+  };
+
+  const persistCampaignMapRecord = (map: CampaignMapRecord) => {
+    const nextLivingWorld = { ...livingWorld, maps: [map, ...(livingWorld.maps ?? []).filter((item) => item.id !== map.id)] };
+    campaignRecordsRef.current = { ...campaignRecordsRef.current, livingWorld: nextLivingWorld };
+    setLivingWorld(nextLivingWorld);
+    void saveLivingWorldData(nextLivingWorld).then((metadata) => noteCampaignDataSaved(metadata, 'Map saved locally')).catch(() => setSaveState('Map save failed'));
+  };
+
+  const createCampaignMapRecord = () => {
+    const now = new Date().toISOString();
+    const map: CampaignMapRecord = { id: crypto.randomUUID(), name: 'New map', rooms: [], markers: [], linkedBrewIds: [], createdAt: now, updatedAt: now, version: 1 };
+    persistCampaignMapRecord(map);
+    setSelectedMapId(map.id);
+  };
+
+  const deleteCampaignMapRecord = (map: CampaignMapRecord) => {
+    if (!window.confirm(`Delete “${map.name || 'Untitled map'}”? Brew map blocks will remain, but show as unavailable.`)) return;
+    const nextLivingWorld = { ...livingWorld, maps: (livingWorld.maps ?? []).filter((item) => item.id !== map.id) };
+    campaignRecordsRef.current = { ...campaignRecordsRef.current, livingWorld: nextLivingWorld };
+    setLivingWorld(nextLivingWorld);
+    setSelectedMapId(nextLivingWorld.maps[0]?.id ?? null);
+    void saveLivingWorldData(nextLivingWorld).then((metadata) => noteCampaignDataSaved(metadata, 'Map deleted locally')).catch(() => setSaveState('Map deletion failed'));
+  };
+
+  const insertCampaignMap = (map: CampaignMapRecord) => {
+    const withBrewLink = activeBrew && !map.linkedBrewIds.includes(activeBrew.id) ? { ...map, linkedBrewIds: [...map.linkedBrewIds, activeBrew.id], updatedAt: new Date().toISOString(), version: map.version + 1 } : map;
+    if (withBrewLink !== map) persistCampaignMapRecord(withBrewLink);
+    insertText(`\n:::map ${map.id}\n`);
+    setMapsOpen(false);
+    setMobileSection('editor');
+    setSaveState(`Inserted “${map.name}” into this brew`);
   };
 
   const openWorldbuilding = (entry?: WorldbuildingEntry) => {
@@ -539,6 +584,7 @@ export default function App() {
     setEncountersOpen(false);
     setWorldbuildingOpen(true);
     setIdeasOpen(false);
+    setMapsOpen(false);
     setPendingInsertion(null);
     setMobileSection('worldbuilding');
   };
@@ -553,6 +599,7 @@ export default function App() {
     setCatalogueOpen(false);
     setEncountersOpen(false);
     setWorldbuildingOpen(false);
+    setMapsOpen(false);
     setIdeasOpen(false);
     setCampaignOpen(true);
     setPendingInsertion(null);
@@ -1504,82 +1551,26 @@ export default function App() {
     }
   };
 
-  const openCurrentDungeonMap = () => {
-    if (!activeBrew) return;
-    const beforeCursor = activeBrew.content.slice(0, selectionRef.current.start);
-    const dungeonDirectives = [...beforeCursor.matchAll(/^:::(?:dungeon\s+)?(.+?)\s*$/gmi)]
-      .filter((match) => !/^(note|warning|tip|descriptive|columns|wide|homebrewery|statblock|item|spell|pagebreak|columnbreak|spacer)(?:\s|$)/i.test(match[1]));
-    const title = dungeonDirectives.at(-1)?.[1]?.trim();
-    setCaptureMenuOpen(false);
-    setMobileSection('preview');
-    window.requestAnimationFrame(() => window.setTimeout(() => {
-      const selector = title ? `.brew-dungeon-card[data-dungeon-title="${CSS.escape(title)}"]` : '.brew-dungeon-card';
-      const card = document.querySelector<HTMLElement>(selector);
-      card?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      card?.querySelector<HTMLButtonElement>('button')?.click();
-    }, 80));
-  };
-
-  const addDungeonRoomMarker = (title: string, marker: { number: string; x: number; y: number }) => {
-    if (!activeBrew) return;
-    const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const blockStart = new RegExp(`^:::(?:dungeon\\s+)?${escapedTitle}\\s*$`, 'mi');
-    const startMatch = blockStart.exec(activeBrew.content);
-    if (!startMatch || startMatch.index === undefined) {
-      setSaveState('Dungeon block could not be found');
-      return;
+  const uploadMapImage = async (file: File): Promise<string | null> => {
+    const suggestedAlt = file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ');
+    const alt = window.prompt('Name this map image:', suggestedAlt);
+    if (alt === null) return null;
+    try {
+      const asset = createAsset(file, alt);
+      await saveAsset(asset);
+      const nextAssets = [asset, ...assets];
+      setAssets(nextAssets);
+      if (accessToken) {
+        const result = await syncAssets(accessToken, nextAssets, pendingAssetDeletionIds);
+        await replaceAssets(result.assets);
+        setAssets(result.assets);
+      }
+      setSaveState('Map image added locally');
+      return `asset://${asset.id}`;
+    } catch (error) {
+      setSaveState(error instanceof Error ? error.message : 'Map image upload failed');
+      return null;
     }
-    const closingAt = activeBrew.content.indexOf('\n:::', startMatch.index + startMatch[0].length);
-    if (closingAt < 0) {
-      setSaveState('Dungeon block needs a closing ::: line');
-      return;
-    }
-    const markerLine = `::map-marker ${marker.number} ${marker.x.toFixed(2)} ${marker.y.toFixed(2)}`;
-    const roomLine = `${marker.number} | Room ${marker.number}`;
-    const withMarker = `${activeBrew.content.slice(0, closingAt)}\n${markerLine}\n${roomLine}${activeBrew.content.slice(closingAt)}`;
-    const hasRoomSection = new RegExp(`^#{1,6}\\s*${marker.number.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:[.:\\s-]|$)`, 'mi').test(withMarker);
-    const nextContent = hasRoomSection ? withMarker : `${withMarker}\n\n#### ${marker.number}. Room ${marker.number}\n\n:::descriptive\n\n:::\n\n`;
-    updateContent(nextContent);
-    setSaveState(`Room ${marker.number} added to ${title}`);
-  };
-
-  const updateDungeonBlock = (title: string, update: (body: string) => string, successMessage: string) => {
-    if (!activeBrew) return;
-    const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const blockStart = new RegExp(`^:::(?:dungeon\\s+)?${escapedTitle}\\s*$`, 'mi');
-    const startMatch = blockStart.exec(activeBrew.content);
-    if (!startMatch || startMatch.index === undefined) return;
-    const closingAt = activeBrew.content.indexOf('\n:::', startMatch.index + startMatch[0].length);
-    if (closingAt < 0) return;
-    const bodyStart = startMatch.index + startMatch[0].length;
-    updateContent(`${activeBrew.content.slice(0, bodyStart)}${update(activeBrew.content.slice(bodyStart, closingAt))}${activeBrew.content.slice(closingAt)}`);
-    setSaveState(successMessage);
-  };
-
-  const moveDungeonMarker = (title: string, marker: { number: string; x: number; y: number }) => {
-    const escapedNumber = marker.number.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    updateDungeonBlock(title, (body) => body.replace(new RegExp(`^::map-marker\\s+${escapedNumber}\\s+\\d+(?:\\.\\d+)?\\s+\\d+(?:\\.\\d+)?\\s*$`, 'mi'), `::map-marker ${marker.number} ${marker.x.toFixed(2)} ${marker.y.toFixed(2)}`), `Room ${marker.number} moved`);
-  };
-
-  const renameDungeonRoom = (title: string, number: string, roomTitle: string) => {
-    const escapedNumber = number.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    if (!activeBrew) return;
-    const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const blockStart = new RegExp(`^:::(?:dungeon\\s+)?${escapedTitle}\\s*$`, 'mi');
-    const startMatch = blockStart.exec(activeBrew.content);
-    if (!startMatch || startMatch.index === undefined) return;
-    const closingAt = activeBrew.content.indexOf('\n:::', startMatch.index + startMatch[0].length);
-    if (closingAt < 0) return;
-    const bodyStart = startMatch.index + startMatch[0].length;
-    const body = activeBrew.content.slice(bodyStart, closingAt).replace(new RegExp(`^(\\s*${escapedNumber}\\s*\\|\\s*).*$`, 'mi'), `$1${roomTitle}`);
-    const after = activeBrew.content.slice(closingAt).replace(new RegExp(`^(#{1,6}\\s*${escapedNumber}[.:]\\s*).*$`, 'mi'), `$1${roomTitle}`);
-    updateContent(`${activeBrew.content.slice(0, bodyStart)}${body}${after}`);
-    setSaveState(`Room ${number} renamed`);
-  };
-
-  const removeDungeonRoom = (title: string, number: string) => {
-    const escapedNumber = number.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    updateDungeonBlock(title, (body) => body.split('\n').filter((line) => !new RegExp(`^::map-marker\\s+${escapedNumber}(?:\\s|$)`, 'i').test(line) && !new RegExp(`^\\s*${escapedNumber}\\s*\\|`, 'i').test(line)).join('\n'), `Room ${number} removed from map`);
   };
 
   const rotateImage = async (asset: BrewAsset) => {
@@ -1748,6 +1739,7 @@ export default function App() {
           <button className={catalogueOpen ? 'is-selected' : ''} onClick={() => catalogueOpen ? setCatalogueOpen(false) : openCatalogue()} type="button">Catalogue</button>
           <button className={campaignOpen ? 'is-selected' : ''} onClick={() => campaignOpen ? setCampaignOpen(false) : openCampaign()} type="button">Campaign</button>
           <button className={encountersOpen ? 'is-selected' : ''} onClick={() => encountersOpen ? setEncountersOpen(false) : openEncounters()} type="button">Encounters</button>
+          <button className={mapsOpen ? 'is-selected' : ''} onClick={() => mapsOpen ? setMapsOpen(false) : openMaps()} type="button">Maps</button>
           <button className={worldbuildingOpen ? 'is-selected' : ''} onClick={() => worldbuildingOpen ? setWorldbuildingOpen(false) : openWorldbuilding()} type="button">Worldbuilding</button>
           <button className={ideasOpen ? 'is-selected' : ''} onClick={() => ideasOpen ? setIdeasOpen(false) : openIdeas()} type="button">My ideas</button>
           <button onClick={() => window.print()} type="button">Print</button>
@@ -1789,6 +1781,10 @@ export default function App() {
                 openEncounters();
                 return;
               }
+              if (section === 'maps') {
+                openMaps();
+                return;
+              }
               if (section === 'worldbuilding') {
                 openWorldbuilding();
                 return;
@@ -1797,6 +1793,7 @@ export default function App() {
               setCatalogueOpen(false);
               setCampaignOpen(false);
               setEncountersOpen(false);
+              setMapsOpen(false);
               setWorldbuildingOpen(false);
               setIdeasOpen(false);
               if (section !== 'outline') setPendingInsertion(null);
@@ -1808,10 +1805,10 @@ export default function App() {
         ))}
       </nav>
 
-      {!ideasOpen && !campaignOpen && !catalogueOpen && !encountersOpen && !worldbuildingOpen && mobileSection === 'preview' ? (
+      {!ideasOpen && !campaignOpen && !catalogueOpen && !encountersOpen && !mapsOpen && !worldbuildingOpen && mobileSection === 'preview' ? (
         <main className="mobile-preview-page" aria-label="Live preview">
           <div className="mobile-preview-page-content">
-            <BrewPreview assets={assetMap} brew={renderedBrew} catalogue={catalogueMap} catalogueCategories={customCatalogueCategories} encounters={encounterMap} onAddWorldbuildingNote={addWorldbuildingQuickNote} onDeleteWorldbuildingReference={deleteWorldbuilding} onEncounterOpen={openEncounters} onOpenInWorldbuilding={openWorldbuilding} onReferenceOpen={setReferenceEntry} onWorldbuildingOpen={setWorldbuildingReferenceEntry} worldbuilding={worldbuildingMap} worldbuildingTypes={worldbuildingTypes} />
+            <BrewPreview assets={assetMap} brew={renderedBrew} catalogue={catalogueMap} catalogueCategories={customCatalogueCategories} encounters={encounterMap} maps={campaignMapRecords} onAddWorldbuildingNote={addWorldbuildingQuickNote} onDeleteWorldbuildingReference={deleteWorldbuilding} onEncounterOpen={openEncounters} onOpenInWorldbuilding={openWorldbuilding} onReferenceOpen={setReferenceEntry} onWorldbuildingOpen={setWorldbuildingReferenceEntry} worldbuilding={worldbuildingMap} worldbuildingTypes={worldbuildingTypes} />
           </div>
 
           <button aria-expanded={mobilePreviewOutlineOpen} className="mobile-preview-page-outline-button" onClick={() => setMobilePreviewOutlineOpen((open) => !open)} type="button">Outline</button>
@@ -1932,6 +1929,20 @@ export default function App() {
           partyMembers={partyMembers}
           selectedId={encounterSelectedId}
         />
+      ) : mapsOpen ? (
+        <MapsPanel
+          assets={assets}
+          brews={brews}
+          encounters={encounters}
+          maps={campaignMaps}
+          onCreate={createCampaignMapRecord}
+          onDelete={deleteCampaignMapRecord}
+          onInsert={insertCampaignMap}
+          onUploadImage={uploadMapImage}
+          onSave={persistCampaignMapRecord}
+          onSelect={setSelectedMapId}
+          selectedId={selectedMapId}
+        />
       ) : worldbuildingOpen ? (
         <WorldbuildingPanel
           catalogue={catalogueMap}
@@ -2023,7 +2034,7 @@ export default function App() {
               assets={assetMap}
               onRotateImage={(asset) => { void rotateImage(asset); }}
               onDeleteImage={(asset) => { void deleteImage(asset); }}
-              onOpenDungeonMap={setEditingDungeonTitle}
+              onOpenMaps={openMaps}
               onToggleSpellcheck={() => setSpellcheckEnabled((current) => { const next = !current; localStorage.setItem('homebrewry-spellcheck', next ? 'on' : 'off'); return next; })}
               onUndo={undo}
               replaceValue={replaceValue}
@@ -2037,6 +2048,7 @@ export default function App() {
                   catalogue={catalogueMap}
                   catalogueCategories={customCatalogueCategories}
                   encounters={encounterMap}
+                  maps={campaignMapRecords}
                   onEncounterOpen={openEncounters}
                   onReferenceOpen={setReferenceEntry}
                   onAddWorldbuildingNote={addWorldbuildingQuickNote}
@@ -2075,7 +2087,7 @@ export default function App() {
           />
         </div>
       )}
-      {!ideasOpen && !campaignOpen && !catalogueOpen && !encountersOpen && !worldbuildingOpen && mobileSection === 'editor' && (
+      {!ideasOpen && !campaignOpen && !catalogueOpen && !encountersOpen && !mapsOpen && !worldbuildingOpen && mobileSection === 'editor' && (
         <div className="mobile-capture-menu">
           {captureMenuOpen && <>
             <div className="mobile-writing-tools" aria-label="Writing tools">
@@ -2087,13 +2099,13 @@ export default function App() {
                 <button onClick={() => { insertText('\n:::descriptive\n', '\n:::\n'); setCaptureMenuOpen(false); }} type="button">Descr</button>
                 <button onClick={() => { insertText('\n:::pagebreak\n'); setCaptureMenuOpen(false); }} type="button">Page</button>
                 <button onClick={() => { document.getElementById('brew-image-input')?.click(); setCaptureMenuOpen(false); }} type="button">Image</button>
-                <button onClick={() => { insertText('\n:::dungeon Dungeon name\n:::\n'); setCaptureMenuOpen(false); }} type="button">Dungeon</button>
+                <button onClick={() => { setCaptureMenuOpen(false); openMaps(); }} type="button">Map</button>
               </div>
               <div className="mobile-writing-tool-group" aria-label="Insert content">
                 <button onClick={() => { setCaptureMenuOpen(false); openCatalogue(); }} type="button">Reference</button>
                 <button onClick={() => { setCaptureMenuOpen(false); openEncounters(); }} type="button">Encounter</button>
                 <button onClick={() => { setCaptureMenuOpen(false); setNameGeneratorTarget('editor'); }} type="button">Name</button>
-                <button onClick={openCurrentDungeonMap} type="button">Map</button>
+                <button onClick={() => { setCaptureMenuOpen(false); openMaps(); }} type="button">Maps</button>
               </div>
               <div className="mobile-writing-tool-group mobile-writing-destinations" aria-label="Editor panels">
                 <button hidden onClick={() => { setCaptureMenuOpen(false); setMobileSection('outline'); }} type="button">Outline</button>
@@ -2218,20 +2230,6 @@ export default function App() {
           onClose={() => setWorldbuildingReferenceEntry(null)}
           onOpenInWorldbuilding={openReferenceInWorldbuilding}
           types={worldbuildingTypes}
-        />
-      )}
-      {editingDungeon && (
-        <DungeonMapEditor
-          assets={assetMap}
-          mapSource={editingDungeon.mapSource}
-          markers={editingDungeon.markers}
-          onAddMarker={(marker) => addDungeonRoomMarker(editingDungeon.title, marker)}
-          onClose={() => setEditingDungeonTitle(null)}
-          onMoveMarker={(marker) => moveDungeonMarker(editingDungeon.title, marker)}
-          onRemoveRoom={(number) => removeDungeonRoom(editingDungeon.title, number)}
-          onRenameRoom={(number, title) => renameDungeonRoom(editingDungeon.title, number, title)}
-          rooms={editingDungeon.rooms}
-          title={editingDungeon.title}
         />
       )}
     </div>

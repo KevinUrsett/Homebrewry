@@ -33,7 +33,7 @@ type EditorPaneProps = {
   assets: ReadonlyMap<string, BrewAsset>;
   onRotateImage: (asset: BrewAsset) => void;
   onDeleteImage: (asset: BrewAsset) => void;
-  onOpenDungeonMap: (title: string) => void;
+  onOpenMaps: () => void;
   onToggleSpellcheck: () => void;
   onFindChange: (value: string) => void;
   onReplaceChange: (value: string) => void;
@@ -70,7 +70,7 @@ export function EditorPane({
   assets,
   onRotateImage,
   onDeleteImage,
-  onOpenDungeonMap,
+  onOpenMaps,
   onToggleSpellcheck,
   onFindChange,
   onReplaceChange,
@@ -91,7 +91,7 @@ export function EditorPane({
         <button onClick={() => onInsert('\n```item\n', '\n```\n')} type="button">Item</button>
         <button onClick={() => onInsert('\n```spell\n', '\n```\n')} type="button">Spell</button>
         <button onClick={() => onInsert('\n:::pagebreak\n')} type="button">Page</button>
-        <button onClick={() => onInsert('\n:::dungeon Dungeon name\n:::\n')} type="button">Dungeon</button>
+        <button onClick={onOpenMaps} type="button">Map</button>
         <button onClick={() => imageInputRef.current?.click()} type="button">Image</button>
         <ReferenceMenu customCategories={customCatalogueCategories} onBrowseCatalogue={onOpenCatalogue} onSelectCategory={onInsertReferenceCategory} />
         <button onClick={onOpenEncounters} type="button">Encounter</button>
@@ -136,7 +136,6 @@ export function EditorPane({
         assets={assets}
         onRotateImage={onRotateImage}
         onDeleteImage={onDeleteImage}
-        onOpenDungeonMap={onOpenDungeonMap}
         onChange={onContentChange}
         spellcheckEnabled={spellcheckEnabled}
         customCatalogueCategories={customCatalogueCategories}

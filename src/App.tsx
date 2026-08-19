@@ -141,7 +141,7 @@ export default function App() {
   const [partyMembers, setPartyMembers] = useState<PartyMember[]>([]);
   const [encountersOpen, setEncountersOpen] = useState(false);
   const [encounterSelectedId, setEncounterSelectedId] = useState<string | null>(null);
-  const [pendingInsertion, setPendingInsertion] = useState<{ label: string; content: string; ideaId?: string } | null>(null);
+  const [pendingInsertion, setPendingInsertion] = useState<{ label: string; content?: string; ideaId?: string; mapId?: string; mapRoomId?: string } | null>(null);
   const [worldbuildingEntries, setWorldbuildingEntries] = useState<WorldbuildingEntry[]>([]);
   const [worldbuildingTypes, setWorldbuildingTypes] = useState<WorldbuildingType[]>([]);
   const [worldbuildingOpen, setWorldbuildingOpen] = useState(false);
@@ -568,13 +568,20 @@ export default function App() {
     void saveLivingWorldData(nextLivingWorld).then((metadata) => noteCampaignDataSaved(metadata, 'Map deleted locally')).catch(() => setSaveState('Map deletion failed'));
   };
 
-  const insertCampaignMap = (map: CampaignMapRecord) => {
-    const withBrewLink = activeBrew && !map.linkedBrewIds.includes(activeBrew.id) ? { ...map, linkedBrewIds: [...map.linkedBrewIds, activeBrew.id], updatedAt: new Date().toISOString(), version: map.version + 1 } : map;
-    if (withBrewLink !== map) persistCampaignMapRecord(withBrewLink);
-    insertText(`\n:::map ${map.id}\n`);
+  const beginCampaignMapInsertion = (map: CampaignMapRecord) => {
+    setPendingInsertion({ label: map.name || 'Untitled map', content: `\n:::map ${map.id}\n`, mapId: map.id });
     setMapsOpen(false);
-    setMobileSection('editor');
-    setSaveState(`Inserted “${map.name}” into this brew`);
+    setMobileSection('outline');
+    setSaveState('Choose an outline section for this map');
+  };
+
+  const beginCampaignMapRoomLink = (map: CampaignMapRecord, roomId: string) => {
+    const room = map.rooms.find((item) => item.id === roomId);
+    if (!room) return;
+    setPendingInsertion({ label: `${map.name || 'Untitled map'} · ${room.name || `Room ${room.number}`}`, mapId: map.id, mapRoomId: room.id });
+    setMapsOpen(false);
+    setMobileSection('outline');
+    setSaveState('Choose an outline section to connect this room');
   };
 
   const openWorldbuilding = (entry?: WorldbuildingEntry) => {
@@ -633,7 +640,20 @@ export default function App() {
 
   const insertPendingAtSection = (item: { id: string } | null) => {
     if (!activeBrew || !pendingInsertion) return;
-    updateContent(insertAtOutlineSectionEnd(activeBrew.content, item?.id ?? null, pendingInsertion.content));
+    if (pendingInsertion.mapId) {
+      const map = (livingWorld.maps ?? []).find((candidate) => candidate.id === pendingInsertion.mapId);
+      if (map) {
+        const now = new Date().toISOString();
+        persistCampaignMapRecord({
+          ...map,
+          linkedBrewIds: map.linkedBrewIds.includes(activeBrew.id) ? map.linkedBrewIds : [...map.linkedBrewIds, activeBrew.id],
+          rooms: pendingInsertion.mapRoomId ? map.rooms.map((room) => room.id === pendingInsertion.mapRoomId ? { ...room, brewSectionId: item ? `${activeBrew.id}:${item.id}` : undefined, updatedAt: now } : room) : map.rooms,
+          updatedAt: now,
+          version: map.version + 1
+        });
+      }
+    }
+    if (pendingInsertion.content) updateContent(insertAtOutlineSectionEnd(activeBrew.content, item?.id ?? null, pendingInsertion.content));
     if (pendingInsertion.ideaId) removeIdeaDraft(pendingInsertion.ideaId, false);
     setPendingInsertion(null);
     setMobileSection('editor');
@@ -1932,12 +1952,12 @@ export default function App() {
       ) : mapsOpen ? (
         <MapsPanel
           assets={assets}
-          brews={brews}
           encounters={encounters}
           maps={campaignMaps}
           onCreate={createCampaignMapRecord}
           onDelete={deleteCampaignMapRecord}
-          onInsert={insertCampaignMap}
+          onInsert={beginCampaignMapInsertion}
+          onLinkRoom={beginCampaignMapRoomLink}
           onUploadImage={uploadMapImage}
           onSave={persistCampaignMapRecord}
           onSelect={setSelectedMapId}
@@ -2064,6 +2084,7 @@ export default function App() {
 
           <OutlinePanel
             insertionLabel={pendingInsertion?.label ?? null}
+            selectionAction={pendingInsertion?.mapRoomId ? 'connect' : 'insert'}
             onCancelInsertion={() => {
               setPendingInsertion(null);
               setSaveState('Placement cancelled');

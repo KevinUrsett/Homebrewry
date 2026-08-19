@@ -121,7 +121,7 @@ export default function App() {
   const [pendingAssetDeletionIds, setPendingAssetDeletionIds] = useState<string[]>(readDeletedAssetIds);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<ViewMode>('split');
+  const [viewMode, setViewMode] = useState<ViewMode>('editor');
   const [mobileSection, setMobileSection] = useState<MobileSection>('editor');
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const [cloudMenuOpen, setCloudMenuOpen] = useState(false);
@@ -1823,6 +1823,7 @@ export default function App() {
                 setCatalogueOpen(false);
                 setCampaignOpen(false);
                 setEncountersOpen(false);
+                setMapsOpen(false);
                 setWorldbuildingOpen(false);
                 setIdeasOpen(false);
                 setPendingInsertion(null);

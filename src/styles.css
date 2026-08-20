@@ -862,3 +862,58 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .map-preview-encounters { display: flex; flex-wrap: wrap; gap: 7px; margin: 10px 0; }
 .map-preview-encounters span { padding: 4px 8px; border-radius: 999px; background: #f2ddb0; font-size: .85rem; font-weight: 700; }
 @media (max-width: 1050px) { .maps-panel { padding: 18px 12px 36px; } .maps-panel .panel-header { align-items: start; } .maps-layout, .map-room-workspace { grid-template-columns: 1fr; } .maps-list { display: flex; overflow: auto; } .maps-list > strong { display: none; } .maps-list > button { min-width: 165px; border-right: 1px solid #e9dbc3; } .map-room-list { display: flex; overflow: auto; border-right: 0; border-bottom: 1px solid #dfceb2; gap: 6px; } .map-room-list > strong { display: none; } .map-room-list button { width: auto; white-space: nowrap; } .map-editor-toolbar { align-items: stretch; } .map-editor-toolbar label, .map-editor-toolbar input { width: 100%; } .map-editor-toolbar button { flex: 1 1 42%; } .maps-canvas > img { max-height: 54vh; } .map-brew-link { flex-wrap: wrap; } }
+
+
+/* Visible, independent filters for the Compendium monster browser. */
+.catalogue-monster-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin: 12px;
+  padding: 11px;
+  border: 1px solid #d7c49f;
+  border-radius: 10px;
+  background: #f8efd9;
+}
+.catalogue-monster-filters legend {
+  padding: 0 5px;
+  color: #705033;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.catalogue-monster-filters label {
+  display: grid;
+  gap: 4px;
+  color: #705033;
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.catalogue-monster-filters select {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 37px;
+  border: 1px solid #cbb58d;
+  border-radius: 7px;
+  background: #fffdf7;
+  color: #392a20;
+  font: 600 .86rem Inter, ui-sans-serif, system-ui, sans-serif;
+  padding: 6px 8px;
+}
+.catalogue-clear-monster-filters {
+  grid-column: 1 / -1;
+  justify-self: start;
+  min-height: 32px;
+  padding: 5px 10px;
+  border: 1px solid #b98d54;
+  border-radius: 7px;
+  background: transparent;
+  color: #70362b;
+  font: 700 .74rem Inter, ui-sans-serif, system-ui, sans-serif;
+}
+@media (max-width: 680px) {
+  .catalogue-monster-filters { margin: 10px 0; padding: 10px; }
+}

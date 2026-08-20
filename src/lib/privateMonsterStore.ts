@@ -3,7 +3,7 @@ import type { PrivateMonsterSyncMetadata } from '../types';
 import { getDatabase, markPrivateMonsterDataChanged, PRIVATE_MONSTER_STORE_NAME } from './brewStore';
 
 function isPrivateMonster(entry: CatalogueEntry): boolean {
-  return entry.category === 'monster' && (entry.source === 'Private import' || entry.source === 'SRD-521 (private import)');
+  return entry.category === 'monster' && (entry.source === 'Private import' || entry.source === 'SRD-521 (private import)' || entry.source.startsWith('Private import · '));
 }
 
 export async function listPrivateMonsterEntries(): Promise<CatalogueEntry[]> {

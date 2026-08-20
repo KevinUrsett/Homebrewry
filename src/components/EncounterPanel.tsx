@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { dataString, entrySummary } from '../catalogue/presentation';
 import type { CatalogueEntry } from '../catalogue/types';
 import {
@@ -53,9 +53,25 @@ type StatField = 'initiative' | 'armorClass' | 'maxHitPoints';
 type StatEditor = { participantId: string; field: StatField; value: string } | null;
 type MonsterSort = 'name' | 'cr-ascending' | 'cr-descending' | 'source' | 'type';
 type EncounterView = 'create' | 'run';
+type CombatLayout = { hpWidth: number; statWidth: number; nameMinimum: number };
 
 const MONSTER_RESULTS_PAGE_SIZE = Number.MAX_SAFE_INTEGER;
 const defaultEncounterDate: BelentorDate = { era: 'AA', year: 641, month: 'Quen', day: 1 };
+const combatLayoutStorageKey = 'homebrewry-combat-layout-v1';
+const defaultCombatLayout: CombatLayout = { hpWidth: 128, statWidth: 74, nameMinimum: 120 };
+
+function readCombatLayout(): CombatLayout {
+  try {
+    const saved = JSON.parse(localStorage.getItem(combatLayoutStorageKey) ?? '{}') as Partial<CombatLayout>;
+    return {
+      hpWidth: Math.min(240, Math.max(96, Number(saved.hpWidth) || defaultCombatLayout.hpWidth)),
+      statWidth: Math.min(130, Math.max(54, Number(saved.statWidth) || defaultCombatLayout.statWidth)),
+      nameMinimum: Math.min(280, Math.max(80, Number(saved.nameMinimum) || defaultCombatLayout.nameMinimum))
+    };
+  } catch {
+    return defaultCombatLayout;
+  }
+}
 
 const asNumber = (value: string): number | null => {
   if (!value.trim()) return null;
@@ -117,6 +133,8 @@ export function EncounterPanel({
 }: EncounterPanelProps) {
   const [monsterQuery, setMonsterQuery] = useState('');
   const [encounterView, setEncounterView] = useState<EncounterView>('create');
+  const [layoutAdjusting, setLayoutAdjusting] = useState(false);
+  const [combatLayout, setCombatLayout] = useState<CombatLayout>(readCombatLayout);
   const [editingEncounter, setEditingEncounter] = useState(false);
   const [monsterSourceFilter, setMonsterSourceFilter] = useState('all');
   const [monsterRulesetFilter, setMonsterRulesetFilter] = useState('all');
@@ -142,6 +160,9 @@ export function EncounterPanel({
   const draggedParticipantId = useRef<string | null>(null);
   const pointerDragSourceId = useRef<string | null>(null);
   const pointerDragTargetId = useRef<string | null>(null);
+  useEffect(() => {
+    try { localStorage.setItem(combatLayoutStorageKey, JSON.stringify(combatLayout)); } catch { /* local-only preference */ }
+  }, [combatLayout]);
   const selected = encounters.find((encounter) => encounter.id === selectedId) ?? encounters[0] ?? null;
   const positionActive = encounters.find((encounter) => encounter.id === campaignPosition?.activeEncounterId);
   const positionPrevious = encounters.find((encounter) => encounter.id === campaignPosition?.previousEncounterId);
@@ -710,7 +731,15 @@ export function EncounterPanel({
         </div>
       )}
 
-      <section className="initiative-panel" aria-label="Initiative tracker">
+      <section
+        className="initiative-panel"
+        aria-label="Initiative tracker"
+        style={{
+          '--combat-hp-width': `${combatLayout.hpWidth}px`,
+          '--combat-stat-width': `${combatLayout.statWidth}px`,
+          '--combat-name-minimum': `${combatLayout.nameMinimum}px`
+        } as CSSProperties}
+      >
           <div className="encounter-section-heading">
             <div><p className="eyebrow">Run combat</p><h2>Initiative</h2></div>
             <div className="initiative-run-actions">
@@ -718,8 +747,17 @@ export function EncounterPanel({
               {selected && <button className="primary-button" disabled={!selected.participants.length} onClick={() => onUpdateEncounter(advanceCombatTurn(selected))} type="button">{selected.status === 'active' ? 'Next turn' : 'Start combat'}</button>}
               {selected?.status === 'active' && <button className="encounter-end-button" onClick={() => onEndCombat(selected)} type="button">End combat</button>}
               {selected && <button className="encounter-add-button" onClick={() => setCombatantPicker('monster')} type="button">Add combatant</button>}
+              <button aria-expanded={layoutAdjusting} className="encounter-layout-button" onClick={() => setLayoutAdjusting((open) => !open)} type="button">Adjust layout</button>
             </div>
           </div>
+          {layoutAdjusting && (
+            <section aria-label="Combat layout controls" className="combat-layout-controls">
+              <label>HP width<input aria-label="HP field width" max="240" min="96" onChange={(event) => setCombatLayout((layout) => ({ ...layout, hpWidth: Number(event.target.value) }))} type="range" value={combatLayout.hpWidth} /><output>{combatLayout.hpWidth}px</output></label>
+              <label>Stat width<input aria-label="Initiative and armor class field width" max="130" min="54" onChange={(event) => setCombatLayout((layout) => ({ ...layout, statWidth: Number(event.target.value) }))} type="range" value={combatLayout.statWidth} /><output>{combatLayout.statWidth}px</output></label>
+              <label>Name room<input aria-label="Combatant name minimum width" max="280" min="80" onChange={(event) => setCombatLayout((layout) => ({ ...layout, nameMinimum: Number(event.target.value) }))} type="range" value={combatLayout.nameMinimum} /><output>{combatLayout.nameMinimum}px</output></label>
+              <button onClick={() => setCombatLayout(defaultCombatLayout)} type="button">Reset</button>
+            </section>
+          )}
           {!selected ? (
             <p className="empty-panel">Choose an encounter to run combat.</p>
           ) : (

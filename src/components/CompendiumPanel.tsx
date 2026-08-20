@@ -1,7 +1,7 @@
 import { lazy, Suspense, useDeferredValue, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { catalogueDataset } from '../catalogue/catalogueData';
 import { createCustomCatalogueEntry, createCustomMonster } from '../catalogue/customEntries';
-import { entrySummary } from '../catalogue/presentation';
+import { dataString, entrySummary } from '../catalogue/presentation';
 import {
   catalogueCategoryLabel,
   catalogueEntryKey,
@@ -109,6 +109,56 @@ type CompendiumItem = {
   source: 'campaign' | 'rules';
   sourceLabel: string;
 };
+
+type MonsterMetadata = {
+  type: string;
+  cr: string;
+  crValue: number | null;
+  size: string;
+  environments: string[];
+};
+
+type MonsterFilters = {
+  type: string;
+  cr: string;
+  size: string;
+  environment: string;
+  sort: MonsterSort;
+};
+
+type MonsterSort = 'name-asc' | 'name-desc' | 'cr-asc' | 'cr-desc' | 'size-asc' | 'size-desc' | 'type-asc';
+
+type MonsterFilterOptions = {
+  types: string[];
+  crs: string[];
+  sizes: string[];
+  environments: string[];
+};
+
+const emptyMonsterMetadata: MonsterMetadata = {
+  type: '',
+  cr: '',
+  crValue: null,
+  size: '',
+  environments: []
+};
+
+const defaultMonsterFilters: MonsterFilters = {
+  type: '',
+  cr: '',
+  size: '',
+  environment: '',
+  sort: 'name-asc'
+};
+
+const monsterSizeDefinitions = [
+  { id: 'T', label: 'Tiny', rank: 1 },
+  { id: 'S', label: 'Small', rank: 2 },
+  { id: 'M', label: 'Medium', rank: 3 },
+  { id: 'L', label: 'Large', rank: 4 },
+  { id: 'H', label: 'Huge', rank: 5 },
+  { id: 'G', label: 'Gargantuan', rank: 6 }
+] as const;
 
 type MonsterEditorState = {
   entry: CustomCatalogueEntry;
@@ -226,6 +276,92 @@ function itemMatches(item: CompendiumItem, category: CompendiumCategory, terms: 
   return !terms || item.searchText.includes(terms);
 }
 
+function titleCaseMonsterValue(value: string): string {
+  return value
+    .trim()
+    .replace(/[-_]+/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toLocaleUpperCase());
+}
+
+function normaliseMonsterType(value: string): string {
+  return value.trim().split('(')[0]?.trim().toLocaleLowerCase() ?? '';
+}
+
+function normaliseMonsterSize(value: string): string {
+  const normalised = value.trim().toLocaleUpperCase();
+  return monsterSizeDefinitions.find((item) => item.id === normalised || item.label.toLocaleUpperCase() === normalised)?.id ?? normalised;
+}
+
+function monsterSizeLabel(value: string): string {
+  return monsterSizeDefinitions.find((item) => item.id === value)?.label ?? titleCaseMonsterValue(value);
+}
+
+function monsterSizeRank(value: string): number | null {
+  return monsterSizeDefinitions.find((item) => item.id === value)?.rank ?? null;
+}
+
+function challengeRatingValue(value: string): number | null {
+  const normalised = value.trim();
+  const fraction = normalised.match(/^(\d+)\s*\/\s*(\d+)/);
+  if (fraction) {
+    const numerator = Number(fraction[1]);
+    const denominator = Number(fraction[2]);
+    return denominator ? numerator / denominator : null;
+  }
+  const number = normalised.match(/^\d+(?:\.\d+)?/);
+  return number ? Number(number[0]) : null;
+}
+
+function environmentValues(value: unknown): string[] {
+  const values = Array.isArray(value) ? value : typeof value === 'string' ? value.split(/[;,]/) : [];
+  return values
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim().toLocaleLowerCase())
+    .filter(Boolean);
+}
+
+function monsterMetadataForCatalogueEntry(entry: CatalogueEntry): MonsterMetadata {
+  if (entry.category !== 'monster') return emptyMonsterMetadata;
+  const type = normaliseMonsterType(dataString(entry, 'type') ?? '');
+  const cr = (dataString(entry, 'cr') ?? '').trim();
+  const size = normaliseMonsterSize(dataString(entry, 'size') ?? '');
+  return {
+    type,
+    cr,
+    crValue: challengeRatingValue(cr),
+    size,
+    environments: environmentValues(entry.data.environments ?? entry.data.environment)
+  };
+}
+
+function monsterMetadataForItem(item: CompendiumItem): MonsterMetadata {
+  return isCatalogueItem(item) ? monsterMetadataForCatalogueEntry(item.entry) : emptyMonsterMetadata;
+}
+
+function monsterMatchesFilters(metadata: MonsterMetadata, filters: MonsterFilters): boolean {
+  if (filters.type && metadata.type !== filters.type) return false;
+  if (filters.cr && metadata.cr !== filters.cr) return false;
+  if (filters.size && metadata.size !== filters.size) return false;
+  if (filters.environment && !metadata.environments.includes(filters.environment)) return false;
+  return true;
+}
+
+function compareOptionalNumbers(left: number | null, right: number | null, direction = 1): number {
+  if (left === null && right === null) return 0;
+  if (left === null) return 1;
+  if (right === null) return -1;
+  return (left - right) * direction;
+}
+
+function compareMonsterMetadata(left: MonsterMetadata, right: MonsterMetadata, sort: MonsterSort): number {
+  if (sort === 'name-asc' || sort === 'name-desc') return 0;
+  if (sort === 'cr-asc') return compareOptionalNumbers(left.crValue, right.crValue);
+  if (sort === 'cr-desc') return compareOptionalNumbers(left.crValue, right.crValue, -1);
+  if (sort === 'size-asc') return compareOptionalNumbers(monsterSizeRank(left.size), monsterSizeRank(right.size));
+  if (sort === 'size-desc') return compareOptionalNumbers(monsterSizeRank(left.size), monsterSizeRank(right.size), -1);
+  return compendiumCollator.compare(left.type, right.type);
+}
+
 function newWorldbuildingKindForCategory(category: CompendiumCategory): WorldbuildingKind {
   const kinds: Partial<Record<FixedCompendiumCategory, WorldbuildingKind>> = {
     characters: 'character',
@@ -315,6 +451,7 @@ export function CompendiumPanel({
   const [category, setCategory] = useState<CompendiumCategory>(() => catalogueSelection ? categoryForCatalogueEntry(catalogueSelection) : 'all');
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
+  const [monsterFilters, setMonsterFilters] = useState<MonsterFilters>(() => ({ ...defaultMonsterFilters }));
   const [editingWorldbuildingId, setEditingWorldbuildingId] = useState<string | null>(null);
   const [monsterEditor, setMonsterEditor] = useState<MonsterEditorState | null>(null);
   const [entryEditor, setEntryEditor] = useState<CatalogueEntryEditorState | null>(null);
@@ -361,12 +498,24 @@ export function CompendiumPanel({
     const rulesItems = catalogueEntries.map((entry) => {
       const itemCategory = categoryForCatalogueEntry(entry);
       const kindLabel = catalogueCategoryLabel(entry.category, customCatalogueCategories);
+      const metadata = monsterMetadataForCatalogueEntry(entry);
       return {
         key: catalogueKey(entry),
         category: itemCategory,
         entry,
         kindLabel,
-        searchText: [entry.name, kindLabel, entry.ruleset, entry.source, entry.type ?? '', ...entrySummary(entry)].join(' ').toLocaleLowerCase(),
+        searchText: [
+          entry.name,
+          kindLabel,
+          entry.ruleset,
+          entry.source,
+          entry.type ?? '',
+          metadata.type,
+          metadata.cr,
+          metadata.size,
+          ...metadata.environments,
+          ...entrySummary(entry)
+        ].join(' ').toLocaleLowerCase(),
         source: 'rules' as const,
         sourceLabel: `${entry.ruleset} · ${entry.source}`
       };
@@ -375,6 +524,30 @@ export function CompendiumPanel({
   }, [catalogueEntries, customCatalogueCategories, types, worldbuildingEntries]);
 
   const itemsByKey = useMemo(() => new Map(allItems.map((item) => [item.key, item])), [allItems]);
+  const monsterMetadataByKey = useMemo(
+    () => new Map(allItems
+      .filter((item) => item.category === 'monsters')
+      .map((item) => [item.key, monsterMetadataForItem(item)] as const)),
+    [allItems]
+  );
+  const monsterFilterOptions = useMemo<MonsterFilterOptions>(() => {
+    const types = new Set<string>();
+    const crs = new Set<string>();
+    const sizes = new Set<string>();
+    const environments = new Set<string>();
+    Array.from(monsterMetadataByKey.values()).forEach((metadata) => {
+      if (metadata.type) types.add(metadata.type);
+      if (metadata.cr) crs.add(metadata.cr);
+      if (metadata.size) sizes.add(metadata.size);
+      metadata.environments.forEach((environment) => environments.add(environment));
+    });
+    return {
+      types: Array.from(types).sort((left, right) => compendiumCollator.compare(left, right)),
+      crs: Array.from(crs).sort((left, right) => compareOptionalNumbers(challengeRatingValue(left), challengeRatingValue(right)) || compendiumCollator.compare(left, right)),
+      sizes: Array.from(sizes).sort((left, right) => compareOptionalNumbers(monsterSizeRank(left), monsterSizeRank(right)) || compendiumCollator.compare(left, right)),
+      environments: Array.from(environments).sort((left, right) => compendiumCollator.compare(left, right))
+    };
+  }, [monsterMetadataByKey]);
   const catalogueByKey = useMemo(
     () => new Map(catalogueEntries.map((entry) => [catalogueEntryKey(entry), entry])),
     [catalogueEntries]
@@ -387,9 +560,28 @@ export function CompendiumPanel({
   const externallySelectedItem = externallySelectedKey ? itemsByKey.get(externallySelectedKey) ?? null : null;
   const activeCategory = externallySelectedItem?.category ?? category;
   const filterTerms = deferredQuery.trim().toLocaleLowerCase();
-  const filteredItems = allItems
-    .filter((item) => itemMatches(item, activeCategory, filterTerms))
-    .sort((left, right) => compendiumCollator.compare(left.entry.name, right.entry.name) || left.source.localeCompare(right.source));
+  const filteredItems = useMemo(() => allItems
+    .filter((item) => {
+      if (!itemMatches(item, activeCategory, filterTerms)) return false;
+      if (activeCategory !== 'monsters') return true;
+      return monsterMatchesFilters(monsterMetadataByKey.get(item.key) ?? emptyMonsterMetadata, monsterFilters);
+    })
+    .sort((left, right) => {
+      if (activeCategory === 'monsters') {
+        const compared = compareMonsterMetadata(
+          monsterMetadataByKey.get(left.key) ?? emptyMonsterMetadata,
+          monsterMetadataByKey.get(right.key) ?? emptyMonsterMetadata,
+          monsterFilters.sort
+        );
+        if (compared) return monsterFilters.sort === 'name-desc'
+          ? -compendiumCollator.compare(left.entry.name, right.entry.name)
+          : compared;
+        if (monsterFilters.sort === 'name-desc') {
+          return -compendiumCollator.compare(left.entry.name, right.entry.name) || left.source.localeCompare(right.source);
+        }
+      }
+      return compendiumCollator.compare(left.entry.name, right.entry.name) || left.source.localeCompare(right.source);
+    }), [activeCategory, allItems, filterTerms, monsterFilters, monsterMetadataByKey]);
   const categoryCounts = useMemo(() => {
     const counts = new Map<CompendiumCategory, number>();
     allItems.forEach((item) => counts.set(item.category, (counts.get(item.category) ?? 0) + 1));
@@ -596,6 +788,13 @@ export function CompendiumPanel({
       ?? customCategoryDefinitions.find((item) => item.id === activeCategory)?.label
       ?? 'Other entries';
   const activeCategoryCount = activeCategory === 'all' ? allItems.length : categoryCounts.get(activeCategory) ?? 0;
+  const activeMonsterFilterCount = [monsterFilters.type, monsterFilters.cr, monsterFilters.size, monsterFilters.environment]
+    .filter(Boolean).length;
+  const hasMonsterRefinements = activeMonsterFilterCount > 0 || monsterFilters.sort !== defaultMonsterFilters.sort;
+  const updateMonsterFilter = <Key extends keyof MonsterFilters>(key: Key, value: MonsterFilters[Key]) => {
+    setMonsterFilters((current) => ({ ...current, [key]: value }));
+  };
+  const resetMonsterFilters = () => setMonsterFilters({ ...defaultMonsterFilters });
 
   const itemSubtitle = (item: CompendiumItem) => {
     if (isCatalogueItem(item)) {
@@ -755,6 +954,19 @@ export function CompendiumPanel({
           <section className="compendium-library-panel" aria-label="Compendium library">
             {browserMode === 'library' ? <>
               <input aria-label="Search compendium" className="search-input compendium-search" onChange={(event) => setQuery(event.target.value)} placeholder={`Search ${activeCategoryLabel.toLocaleLowerCase()}…`} value={query} />
+              {activeCategory === 'monsters' && <section className="monster-refinement" aria-label="Monster filters">
+                <header className="monster-refinement-heading">
+                  <div><p className="eyebrow">Monster search</p><strong>Filter & sort</strong></div>
+                  {hasMonsterRefinements && <button className="monster-filter-reset" onClick={resetMonsterFilters} type="button">Reset</button>}
+                </header>
+                <div className="monster-filter-grid">
+                  <label>Type<select aria-label="Filter monsters by type" onChange={(event) => updateMonsterFilter('type', event.target.value)} value={monsterFilters.type}><option value="">All types</option>{monsterFilterOptions.types.map((type) => <option key={type} value={type}>{titleCaseMonsterValue(type)}</option>)}</select></label>
+                  <label>CR<select aria-label="Filter monsters by challenge rating" onChange={(event) => updateMonsterFilter('cr', event.target.value)} value={monsterFilters.cr}><option value="">All CRs</option>{monsterFilterOptions.crs.map((cr) => <option key={cr} value={cr}>CR {cr}</option>)}</select></label>
+                  <label>Size<select aria-label="Filter monsters by size" onChange={(event) => updateMonsterFilter('size', event.target.value)} value={monsterFilters.size}><option value="">All sizes</option>{monsterFilterOptions.sizes.map((size) => <option key={size} value={size}>{monsterSizeLabel(size)}</option>)}</select></label>
+                  <label>Environment<select aria-label="Filter monsters by environment" onChange={(event) => updateMonsterFilter('environment', event.target.value)} value={monsterFilters.environment}><option value="">All environments</option>{monsterFilterOptions.environments.map((environment) => <option key={environment} value={environment}>{titleCaseMonsterValue(environment)}</option>)}</select></label>
+                  <label className="monster-sort-control">Sort<select aria-label="Sort monsters" onChange={(event) => updateMonsterFilter('sort', event.target.value as MonsterSort)} value={monsterFilters.sort}><option value="name-asc">Name A–Z</option><option value="name-desc">Name Z–A</option><option value="cr-asc">CR: low to high</option><option value="cr-desc">CR: high to low</option><option value="size-asc">Size: small to large</option><option value="size-desc">Size: large to small</option><option value="type-asc">Type A–Z</option></select></label>
+                </div>
+              </section>}
               <header className="compendium-results-heading"><div><p className="eyebrow">{catalogueLoading ? 'Loading references' : `${filteredItems.length.toLocaleString()} shown`}</p><h2>{activeCategoryLabel}</h2></div><span>{activeCategoryCount.toLocaleString()} total</span></header>
               <div className="compendium-results">
                 {filteredItems.map((item) => <button className="compendium-result" key={item.key} onClick={() => selectItem(item)} type="button"><strong>{item.entry.name}</strong><span>{itemSubtitle(item)}</span><small>{item.sourceLabel}</small></button>)}

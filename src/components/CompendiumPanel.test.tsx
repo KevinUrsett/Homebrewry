@@ -14,7 +14,27 @@ const monster: CatalogueEntry = {
   category: 'monster',
   name: 'Aboleth',
   description: 'An ancient aberration.',
-  data: { type: 'aberration' },
+  data: {
+    size: 'L',
+    type: 'aberration',
+    cr: '10',
+    environments: ['underdark', 'underwater']
+  },
+  source: 'SRD-521',
+  ruleset: '5.5e'
+};
+
+const wolf: CatalogueEntry = {
+  id: 'wolf',
+  category: 'monster',
+  name: 'Wolf',
+  description: 'A hunting beast.',
+  data: {
+    size: 'M',
+    type: 'beast',
+    cr: '1/4',
+    environments: ['forest', 'grassland']
+  },
   source: 'SRD-521',
   ruleset: '5.5e'
 };
@@ -47,7 +67,7 @@ async function renderCompendium(onCreateWorldbuilding = vi.fn(), catalogueSelect
   await act(async () => {
     root.render(
       <CompendiumPanel
-        catalogueEntries={[monster]}
+        catalogueEntries={[monster, wolf]}
         catalogueError={null}
         catalogueLoading={false}
         catalogueSelection={catalogueSelection}
@@ -93,6 +113,61 @@ describe('CompendiumPanel', () => {
     const results = Array.from(container.querySelectorAll('.compendium-result')).map((item) => item.textContent);
     expect(results.join(' ')).toContain('Aboleth');
     expect(results.join(' ')).toContain('Ashling');
+  });
+
+  it('filters catalogue monsters by type, CR, size, and environment', async () => {
+    const container = await renderCompendium();
+    const categoryButton = Array.from(container.querySelectorAll('button')).find((button) => button.textContent?.includes('Category'));
+    await act(async () => categoryButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    const monsterCategory = Array.from(container.querySelectorAll('.compendium-category-list button')).find((button) => button.textContent?.includes('Monsters'));
+    await act(async () => monsterCategory?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    const type = container.querySelector('select[aria-label="Filter monsters by type"]') as HTMLSelectElement;
+    const challenge = container.querySelector('select[aria-label="Filter monsters by challenge rating"]') as HTMLSelectElement;
+    const size = container.querySelector('select[aria-label="Filter monsters by size"]') as HTMLSelectElement;
+    const environment = container.querySelector('select[aria-label="Filter monsters by environment"]') as HTMLSelectElement;
+    expect(type).toBeTruthy();
+    expect(challenge).toBeTruthy();
+    expect(size).toBeTruthy();
+    expect(environment).toBeTruthy();
+
+    await act(async () => {
+      type.value = 'beast';
+      type.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(container.querySelector('.compendium-results')?.textContent).toContain('Wolf');
+    expect(container.querySelector('.compendium-results')?.textContent).not.toContain('Aboleth');
+
+    await act(async () => {
+      type.value = '';
+      type.dispatchEvent(new Event('change', { bubbles: true }));
+      challenge.value = '10';
+      challenge.dispatchEvent(new Event('change', { bubbles: true }));
+      size.value = 'L';
+      size.dispatchEvent(new Event('change', { bubbles: true }));
+      environment.value = 'underdark';
+      environment.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    const filtered = container.querySelector('.compendium-results')?.textContent ?? '';
+    expect(filtered).toContain('Aboleth');
+    expect(filtered).not.toContain('Wolf');
+  });
+
+  it('sorts monsters by challenge rating', async () => {
+    const container = await renderCompendium();
+    const categoryButton = Array.from(container.querySelectorAll('button')).find((button) => button.textContent?.includes('Category'));
+    await act(async () => categoryButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    const monsterCategory = Array.from(container.querySelectorAll('.compendium-category-list button')).find((button) => button.textContent?.includes('Monsters'));
+    await act(async () => monsterCategory?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    const sort = container.querySelector('select[aria-label="Sort monsters"]') as HTMLSelectElement;
+    await act(async () => {
+      sort.value = 'cr-asc';
+      sort.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    const names = Array.from(container.querySelectorAll('.compendium-result')).map((result) => result.textContent);
+    expect(names[0]).toContain('Wolf');
+    expect(names[1]).toContain('Aboleth');
   });
 
   it('creates a campaign Monster when Monsters is the selected category', async () => {

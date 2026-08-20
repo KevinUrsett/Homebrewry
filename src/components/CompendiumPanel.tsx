@@ -111,6 +111,7 @@ type CompendiumItem = {
 };
 
 type MonsterMetadata = {
+  source: string;
   type: string;
   cr: string;
   crValue: number | null;
@@ -119,6 +120,7 @@ type MonsterMetadata = {
 };
 
 type MonsterFilters = {
+  source: string;
   type: string;
   cr: string;
   size: string;
@@ -129,6 +131,7 @@ type MonsterFilters = {
 type MonsterSort = 'name-asc' | 'name-desc' | 'cr-asc' | 'cr-desc' | 'size-asc' | 'size-desc' | 'type-asc';
 
 type MonsterFilterOptions = {
+  sources: string[];
   types: string[];
   crs: string[];
   sizes: string[];
@@ -136,6 +139,7 @@ type MonsterFilterOptions = {
 };
 
 const emptyMonsterMetadata: MonsterMetadata = {
+  source: '',
   type: '',
   cr: '',
   crValue: null,
@@ -144,6 +148,7 @@ const emptyMonsterMetadata: MonsterMetadata = {
 };
 
 const defaultMonsterFilters: MonsterFilters = {
+  source: '',
   type: '',
   cr: '',
   size: '',
@@ -322,10 +327,12 @@ function environmentValues(value: unknown): string[] {
 
 function monsterMetadataForCatalogueEntry(entry: CatalogueEntry): MonsterMetadata {
   if (entry.category !== 'monster') return emptyMonsterMetadata;
+  const source = entry.source.trim();
   const type = normaliseMonsterType(dataString(entry, 'type') ?? '');
   const cr = (dataString(entry, 'cr') ?? '').trim();
   const size = normaliseMonsterSize(dataString(entry, 'size') ?? '');
   return {
+    source,
     type,
     cr,
     crValue: challengeRatingValue(cr),
@@ -335,10 +342,12 @@ function monsterMetadataForCatalogueEntry(entry: CatalogueEntry): MonsterMetadat
 }
 
 function monsterMetadataForItem(item: CompendiumItem): MonsterMetadata {
-  return isCatalogueItem(item) ? monsterMetadataForCatalogueEntry(item.entry) : emptyMonsterMetadata;
+  if (isCatalogueItem(item)) return monsterMetadataForCatalogueEntry(item.entry);
+  return item.category === 'monsters' ? { ...emptyMonsterMetadata, source: 'Campaign' } : emptyMonsterMetadata;
 }
 
 function monsterMatchesFilters(metadata: MonsterMetadata, filters: MonsterFilters): boolean {
+  if (filters.source && metadata.source !== filters.source) return false;
   if (filters.type && metadata.type !== filters.type) return false;
   if (filters.cr && metadata.cr !== filters.cr) return false;
   if (filters.size && metadata.size !== filters.size) return false;
@@ -531,17 +540,20 @@ export function CompendiumPanel({
     [allItems]
   );
   const monsterFilterOptions = useMemo<MonsterFilterOptions>(() => {
+    const sources = new Set<string>();
     const types = new Set<string>();
     const crs = new Set<string>();
     const sizes = new Set<string>();
     const environments = new Set<string>();
     Array.from(monsterMetadataByKey.values()).forEach((metadata) => {
+      if (metadata.source) sources.add(metadata.source);
       if (metadata.type) types.add(metadata.type);
       if (metadata.cr) crs.add(metadata.cr);
       if (metadata.size) sizes.add(metadata.size);
       metadata.environments.forEach((environment) => environments.add(environment));
     });
     return {
+      sources: Array.from(sources).sort((left, right) => compendiumCollator.compare(left, right)),
       types: Array.from(types).sort((left, right) => compendiumCollator.compare(left, right)),
       crs: Array.from(crs).sort((left, right) => compareOptionalNumbers(challengeRatingValue(left), challengeRatingValue(right)) || compendiumCollator.compare(left, right)),
       sizes: Array.from(sizes).sort((left, right) => compareOptionalNumbers(monsterSizeRank(left), monsterSizeRank(right)) || compendiumCollator.compare(left, right)),
@@ -788,7 +800,7 @@ export function CompendiumPanel({
       ?? customCategoryDefinitions.find((item) => item.id === activeCategory)?.label
       ?? 'Other entries';
   const activeCategoryCount = activeCategory === 'all' ? allItems.length : categoryCounts.get(activeCategory) ?? 0;
-  const activeMonsterFilterCount = [monsterFilters.type, monsterFilters.cr, monsterFilters.size, monsterFilters.environment]
+  const activeMonsterFilterCount = [monsterFilters.source, monsterFilters.type, monsterFilters.cr, monsterFilters.size, monsterFilters.environment]
     .filter(Boolean).length;
   const hasMonsterRefinements = activeMonsterFilterCount > 0 || monsterFilters.sort !== defaultMonsterFilters.sort;
   const updateMonsterFilter = <Key extends keyof MonsterFilters>(key: Key, value: MonsterFilters[Key]) => {
@@ -960,6 +972,7 @@ export function CompendiumPanel({
                   {hasMonsterRefinements && <button className="monster-filter-reset" onClick={resetMonsterFilters} type="button">Reset</button>}
                 </header>
                 <div className="monster-filter-grid">
+                  <label className="monster-source-control">Source<select aria-label="Filter monsters by source" onChange={(event) => updateMonsterFilter('source', event.target.value)} value={monsterFilters.source}><option value="">All sources</option>{monsterFilterOptions.sources.map((source) => <option key={source} value={source}>{source}</option>)}</select></label>
                   <label>Type<select aria-label="Filter monsters by type" onChange={(event) => updateMonsterFilter('type', event.target.value)} value={monsterFilters.type}><option value="">All types</option>{monsterFilterOptions.types.map((type) => <option key={type} value={type}>{titleCaseMonsterValue(type)}</option>)}</select></label>
                   <label>CR<select aria-label="Filter monsters by challenge rating" onChange={(event) => updateMonsterFilter('cr', event.target.value)} value={monsterFilters.cr}><option value="">All CRs</option>{monsterFilterOptions.crs.map((cr) => <option key={cr} value={cr}>CR {cr}</option>)}</select></label>
                   <label>Size<select aria-label="Filter monsters by size" onChange={(event) => updateMonsterFilter('size', event.target.value)} value={monsterFilters.size}><option value="">All sizes</option>{monsterFilterOptions.sizes.map((size) => <option key={size} value={size}>{monsterSizeLabel(size)}</option>)}</select></label>

@@ -20,7 +20,7 @@ const monster: CatalogueEntry = {
     cr: '10',
     environments: ['underdark', 'underwater']
   },
-  source: 'SRD-521',
+  source: 'Monster Manual',
   ruleset: '5.5e'
 };
 
@@ -123,10 +123,12 @@ describe('CompendiumPanel', () => {
     await act(async () => monsterCategory?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
     const type = container.querySelector('select[aria-label="Filter monsters by type"]') as HTMLSelectElement;
+    const source = container.querySelector('select[aria-label="Filter monsters by source"]') as HTMLSelectElement;
     const challenge = container.querySelector('select[aria-label="Filter monsters by challenge rating"]') as HTMLSelectElement;
     const size = container.querySelector('select[aria-label="Filter monsters by size"]') as HTMLSelectElement;
     const environment = container.querySelector('select[aria-label="Filter monsters by environment"]') as HTMLSelectElement;
     expect(type).toBeTruthy();
+    expect(source).toBeTruthy();
     expect(challenge).toBeTruthy();
     expect(size).toBeTruthy();
     expect(environment).toBeTruthy();
@@ -139,6 +141,22 @@ describe('CompendiumPanel', () => {
     expect(container.querySelector('.compendium-results')?.textContent).not.toContain('Aboleth');
 
     await act(async () => {
+      source.value = 'Monster Manual';
+      source.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(container.querySelector('.compendium-results')?.textContent).not.toContain('Wolf');
+    expect(container.querySelector('.compendium-results')?.textContent).not.toContain('Aboleth');
+
+    await act(async () => {
+      type.value = '';
+      type.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(container.querySelector('.compendium-results')?.textContent).toContain('Aboleth');
+    expect(container.querySelector('.compendium-results')?.textContent).not.toContain('Wolf');
+
+    await act(async () => {
+      source.value = '';
+      source.dispatchEvent(new Event('change', { bubbles: true }));
       type.value = '';
       type.dispatchEvent(new Event('change', { bubbles: true }));
       challenge.value = '10';

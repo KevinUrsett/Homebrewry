@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { CataloguePanel } from './components/CataloguePanel';
+import { CompendiumPanel } from './components/CompendiumPanel';
 import { CampaignPanel, type PlotBeatDraftSeed } from './components/CampaignPanel';
 import { BrewPreview } from './components/BrewPreview';
 import { MapsPanel } from './components/MapsPanel';
@@ -12,7 +12,6 @@ import { NameGeneratorDialog } from './components/NameGeneratorDialog';
 import { OutlinePanel } from './components/OutlinePanel';
 import { PrivateMonsterImportDialog } from './components/PrivateMonsterImportDialog';
 import { ReferenceDialog } from './components/ReferenceDialog';
-import { WorldbuildingPanel } from './components/WorldbuildingPanel';
 import { WorldbuildingReferenceDialog } from './components/WorldbuildingReferenceDialog';
 import { checkForPwaUpdate } from './components/PwaUpdateNotice';
 import type { MarkdownEditorHandle } from './components/MarkdownEditor';
@@ -140,7 +139,6 @@ export default function App() {
   const [customCatalogueCategories, setCustomCatalogueCategories] = useState<CustomCatalogueCategory[]>([]);
   const [catalogueLoading, setCatalogueLoading] = useState(true);
   const [catalogueError, setCatalogueError] = useState<string | null>(null);
-  const [catalogueOpen, setCatalogueOpen] = useState(false);
   const [campaignOpen, setCampaignOpen] = useState(false);
   const [plotBeatDraftSeed, setPlotBeatDraftSeed] = useState<PlotBeatDraftSeed | null>(null);
   const [privateMonsterImportOpen, setPrivateMonsterImportOpen] = useState(false);
@@ -494,14 +492,14 @@ export default function App() {
   const openCatalogue = (entry?: CatalogueEntry) => {
     setMobileToolsOpen(false);
     setCatalogueSelection(entry ?? null);
-    setCatalogueOpen(true);
+    setWorldbuildingSelectedId(null);
     setCampaignOpen(false);
     setEncountersOpen(false);
-    setWorldbuildingOpen(false);
+    setWorldbuildingOpen(true);
     setMapsOpen(false);
     setIdeasOpen(false);
     setPendingInsertion(null);
-    setMobileSection('catalogue');
+    setMobileSection('worldbuilding');
   };
 
   const importMonsterArchive = async (file: File): Promise<PrivateMonsterImportReport> => {
@@ -533,7 +531,6 @@ export default function App() {
   const openEncounters = (encounter?: Encounter) => {
     setMobileToolsOpen(false);
     if (encounter) setEncounterSelectedId(encounter.id);
-    setCatalogueOpen(false);
     setCampaignOpen(false);
     setEncountersOpen(true);
     setWorldbuildingOpen(false);
@@ -546,7 +543,6 @@ export default function App() {
   const openMaps = (map?: CampaignMapRecord) => {
     setMobileToolsOpen(false);
     if (map) setSelectedMapId(map.id);
-    setCatalogueOpen(false);
     setCampaignOpen(false);
     setEncountersOpen(false);
     setWorldbuildingOpen(false);
@@ -598,7 +594,7 @@ export default function App() {
   const openWorldbuilding = (entry?: WorldbuildingEntry) => {
     setMobileToolsOpen(false);
     if (entry) setWorldbuildingSelectedId(entry.id);
-    setCatalogueOpen(false);
+    setCatalogueSelection(null);
     setCampaignOpen(false);
     setEncountersOpen(false);
     setWorldbuildingOpen(true);
@@ -609,7 +605,6 @@ export default function App() {
   };
 
   const closeCompendium = () => {
-    setCatalogueOpen(false);
     setWorldbuildingOpen(false);
     setMobileSection('editor');
   };
@@ -622,7 +617,6 @@ export default function App() {
 
   const openCampaign = () => {
     setMobileToolsOpen(false);
-    setCatalogueOpen(false);
     setEncountersOpen(false);
     setWorldbuildingOpen(false);
     setMapsOpen(false);
@@ -641,7 +635,8 @@ export default function App() {
   const insertCatalogueReference = (entry: CatalogueEntry) => {
     insertText(formatCatalogueReference(entry));
     setReferenceEntry(null);
-    setCatalogueOpen(false);
+    setCatalogueSelection(null);
+    setWorldbuildingOpen(false);
     setMobileSection('editor');
   };
 
@@ -832,7 +827,6 @@ export default function App() {
   const openPlotBeatComposer = (seed: PlotBeatDraftSeed) => {
     setPlotBeatDraftSeed(seed);
     setCampaignOpen(true);
-    setCatalogueOpen(false);
     setEncountersOpen(false);
     setWorldbuildingOpen(false);
     setMobileSection('campaign');
@@ -854,8 +848,8 @@ export default function App() {
     });
   };
 
-  const createNewWorldbuildingEntry = () => {
-    const entry = createWorldbuildingEntry();
+  const createNewWorldbuildingEntry = (kind: WorldbuildingKind = 'custom') => {
+    const entry = createWorldbuildingEntry('Untitled entry', kind);
     persistWorldbuildingEntry(entry);
     setWorldbuildingSelectedId(entry.id);
     return entry.id;
@@ -1398,7 +1392,6 @@ export default function App() {
 
   const openIdeas = () => {
     setMobileToolsOpen(false);
-    setCatalogueOpen(false);
     setCampaignOpen(false);
     setEncountersOpen(false);
     setWorldbuildingOpen(false);
@@ -1752,12 +1745,11 @@ export default function App() {
   }
 
   const renderedBrew = previewBrew ?? activeBrew;
-  const toolPanelOpen = ideasOpen || campaignOpen || catalogueOpen || mapsOpen || worldbuildingOpen;
+  const toolPanelOpen = ideasOpen || campaignOpen || mapsOpen || worldbuildingOpen;
 
   const selectMobilePrimarySection = (section: typeof mobilePrimarySections[number]) => {
     setMobileToolsOpen(false);
     setCaptureMenuOpen(false);
-    setCatalogueOpen(false);
     setCampaignOpen(false);
     setMapsOpen(false);
     setWorldbuildingOpen(false);
@@ -1823,7 +1815,6 @@ export default function App() {
               key={mode}
               onClick={() => {
                 setViewMode(mode);
-                setCatalogueOpen(false);
                 setCampaignOpen(false);
                 setEncountersOpen(false);
                 setMapsOpen(false);
@@ -1836,7 +1827,7 @@ export default function App() {
               {mode === 'editor' ? 'Editor' : mode === 'preview' ? 'Preview' : 'Split'}
             </button>
           ))}
-          <button className={catalogueOpen || worldbuildingOpen ? 'is-selected' : ''} onClick={() => catalogueOpen || worldbuildingOpen ? closeCompendium() : openWorldbuilding()} type="button">Compendium</button>
+          <button className={worldbuildingOpen ? 'is-selected' : ''} onClick={() => worldbuildingOpen ? closeCompendium() : openWorldbuilding()} type="button">Compendium</button>
           <button className={campaignOpen ? 'is-selected' : ''} onClick={() => campaignOpen ? setCampaignOpen(false) : openCampaign()} type="button">Campaign</button>
           <button className={encountersOpen ? 'is-selected' : ''} onClick={() => encountersOpen ? setEncountersOpen(false) : openEncounters()} type="button">Encounters</button>
           <button className={mapsOpen ? 'is-selected' : ''} onClick={() => mapsOpen ? setMapsOpen(false) : openMaps()} type="button">Maps</button>
@@ -1916,31 +1907,6 @@ export default function App() {
           worldEvents={livingWorld.worldEvents}
           worldbuildingEntries={worldbuildingEntries}
         />
-      ) : catalogueOpen ? (
-        <CataloguePanel
-          key={catalogueSelection?.id ?? 'browse'}
-          entries={catalogueEntries}
-          error={catalogueError}
-          loading={catalogueLoading}
-          customEntryCount={customCatalogueEntries.length}
-          customCategories={customCatalogueCategories}
-          onCreateCustomCategory={createNewCustomCatalogueCategory}
-          onCreateCatalogueReference={createCatalogueReference}
-          onCreateWorldbuildingReference={createWorldbuildingReference}
-          onDeleteCustomEntry={deleteGenericCustomEntry}
-          onDeleteCustomMonster={deleteCustomMonster}
-          onInsertReference={insertCatalogueReference}
-          onOpenPrivateMonsterImport={() => setPrivateMonsterImportOpen(true)}
-          onOpenEntries={openWorldbuilding}
-          onReferenceOpen={setReferenceEntry}
-          onSaveCustomEntry={saveGenericCustomEntry}
-          onSaveCustomMonster={saveCustomMonster}
-          onWorldbuildingOpen={setWorldbuildingReferenceEntry}
-          privateMonsterCount={privateMonsterEntries.length}
-          selectedEntry={catalogueSelection}
-          worldbuilding={worldbuildingMap}
-          worldbuildingTypes={worldbuildingTypes}
-        />
       ) : encountersOpen ? (
         <EncounterPanel
           encounters={encounters}
@@ -1984,36 +1950,52 @@ export default function App() {
           selectedId={selectedMapId}
         />
       ) : worldbuildingOpen ? (
-        <WorldbuildingPanel
-          catalogue={catalogueMap}
-          catalogueCategories={customCatalogueCategories}
+        <CompendiumPanel
+          catalogueEntries={catalogueEntries}
+          catalogueError={catalogueError}
+          catalogueLoading={catalogueLoading}
+          catalogueSelection={catalogueSelection}
+          customCatalogueCategories={customCatalogueCategories}
+          customEntryCount={customCatalogueEntries.length}
           currentStateByEntityId={currentStateByEntityId}
           entitiesByWorldbuildingId={entityByWorldbuildingId}
-          entries={worldbuildingEntries}
           hasDriveBackup={Boolean(campaignDataSync?.drive)}
-          syncState={campaignDataSync?.syncState ?? 'local'}
-          onCreate={createNewWorldbuildingEntry}
-          onOpenCatalogue={openCatalogue}
-          onOpenNameGenerator={() => setNameGeneratorTarget('worldbuilding')}
-          onCreateType={createNewWorldbuildingType}
           onCreateCatalogueReference={createCatalogueReference}
-          onCreateWorldbuildingReference={createWorldbuildingReference}
           onCreateCuratedReferences={createCuratedReferences}
+          onCreateCustomCategory={createNewCustomCatalogueCategory}
           onCreateSuggestedEntries={createSuggestedWorldbuildingEntries}
+          onCreateType={createNewWorldbuildingType}
+          onCreateWorldbuilding={createNewWorldbuildingEntry}
+          onCreateWorldbuildingReference={createWorldbuildingReference}
+          onDeleteCustomEntry={deleteGenericCustomEntry}
+          onDeleteCustomMonster={deleteCustomMonster}
+          onDeleteWorldbuilding={deleteWorldbuilding}
+          onInsertReference={insertCatalogueReference}
+          onOpenNameGenerator={() => setNameGeneratorTarget('worldbuilding')}
+          onOpenPrivateMonsterImport={() => setPrivateMonsterImportOpen(true)}
+          onSaveCustomEntry={saveGenericCustomEntry}
+          onSaveCustomMonster={saveCustomMonster}
+          onSelectCatalogue={(entry) => {
+            setCatalogueSelection(entry);
+            if (entry) setWorldbuildingSelectedId(null);
+          }}
+          onSelectWorldbuilding={(id) => {
+            setCatalogueSelection(null);
+            setWorldbuildingSelectedId(id);
+          }}
+          onSetNpcStatus={setNpcStatus}
+          onUpdateWorldbuilding={persistWorldbuildingEntry}
+          privateMonsterCount={privateMonsterEntries.length}
+          selectedWorldbuildingId={worldbuildingSelectedId}
+          syncState={campaignDataSync?.syncState ?? 'local'}
           onCreatePlotBeat={createPlotBeatFromWorldbuilding}
-          onDelete={deleteWorldbuilding}
           onEncounterOpen={(encounterId) => {
             const encounter = encounters.find((item) => item.id === encounterId);
             if (encounter) openEncounters(encounter);
           }}
-          onReferenceOpen={setReferenceEntry}
-          onSetNpcStatus={setNpcStatus}
-          onSelect={setWorldbuildingSelectedId}
-          onUpdate={persistWorldbuildingEntry}
-          onWorldbuildingOpen={setWorldbuildingReferenceEntry}
-          selectedId={worldbuildingSelectedId}
           types={worldbuildingTypes}
-          worldbuilding={worldbuildingMap}
+          worldbuildingEntries={worldbuildingEntries}
+          worldbuildingMap={worldbuildingMap}
           worldEvents={livingWorld.worldEvents}
         />
       ) : (
@@ -2131,7 +2113,7 @@ export default function App() {
           />
         </div>
       )}
-      {!ideasOpen && !campaignOpen && !catalogueOpen && !encountersOpen && !mapsOpen && !worldbuildingOpen && mobileSection === 'editor' && (
+      {!ideasOpen && !campaignOpen && !encountersOpen && !mapsOpen && !worldbuildingOpen && mobileSection === 'editor' && (
         <div className="mobile-capture-menu">
           {captureMenuOpen && (
             <section aria-label="Quick writing actions" className="mobile-writing-tools" role="dialog">

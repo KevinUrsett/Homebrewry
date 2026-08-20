@@ -557,6 +557,53 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .worldbuilding-context-menu button:hover, .worldbuilding-context-menu button:focus-visible { background: #ead1a3; }
 .mobile-reference-selection-action { display: none; }
 
+/* One shared browser for campaign material and the offline SRD. The category rail
+   stays separate from results so a long rules list never obscures the way back to
+   campaign entries. */
+.compendium-page { background: #e5ded0; display: flex; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; padding: clamp(15px, 2.5vw, 34px); }
+.compendium-page-header { align-items: end; display: flex; gap: 18px; justify-content: space-between; margin: 0 auto 16px; max-width: 1440px; width: 100%; }
+.compendium-page-header h1 { color: #4e2f24; font-family: "Nodesto Caps Condensed", Georgia, serif; font-size: clamp(2.2rem, 5vw, 3.35rem); letter-spacing: .03em; line-height: .9; margin: 0; }
+.compendium-page-header p:not(.eyebrow) { color: #654e3b; margin: 6px 0 0; max-width: 760px; }
+.compendium-view-switcher { display: inline-flex; gap: 5px; }
+.compendium-view-switcher button { background: #f1e5cf; border: 1px solid #cdb795; border-radius: 6px; color: #5d4535; font-size: .78rem; font-weight: 800; padding: 8px 10px; }
+.compendium-view-switcher button.is-selected { background: #5d2f26; border-color: #5d2f26; color: #fffaf0; }
+.compendium-new-type { align-items: end; background: #fffaf0; border: 1px solid #cbb99d; box-shadow: 0 8px 20px rgb(45 28 16 / 12%); display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) auto auto; margin: 0 auto 14px; max-width: 1440px; padding: 10px; width: 100%; }
+.compendium-new-type label { color: #71553e; display: grid; font-size: .7rem; font-weight: 800; gap: 4px; letter-spacing: .05em; text-transform: uppercase; }
+.compendium-new-type input { background: #fffdf7; border: 1px solid #cbb99d; border-radius: 5px; color: #39291f; padding: 8px; }
+.compendium-new-type button { background: #f7f0df; border: 1px solid #ad9576; border-radius: 5px; color: #422f25; padding: 8px 10px; }
+.compendium-new-type .primary-button { background: #5d2f26; border-color: #5d2f26; color: #fffaf0; }
+.compendium-new-type p { color: #8a2f27; font-size: .8rem; grid-column: 1 / -1; margin: 0; }
+.compendium-workspace { background: #fffaf0; border: 1px solid #cbb99d; box-shadow: 0 10px 28px rgb(45 28 16 / 15%); display: grid; flex: 1; grid-template-columns: minmax(430px, 510px) minmax(0, 1fr); margin: 0 auto; max-width: 1440px; min-height: 0; width: 100%; }
+.compendium-browser { background: #f7f0df; border-right: 1px solid #d8c9ae; display: grid; gap: 0; grid-template-columns: minmax(155px, .85fr) minmax(200px, 1.15fr); grid-template-rows: auto auto auto minmax(0, 1fr); min-height: 0; }
+.compendium-browser .search-input { grid-column: 1 / -1; margin-bottom: 7px; }
+.compendium-browser-tabs { display: grid; gap: 5px; grid-column: 1 / -1; grid-template-columns: 1fr 1fr; margin: 0 12px 9px; }
+.compendium-browser-tabs button { background: #f1e5cf; border: 1px solid #cdb795; border-radius: 5px; color: #5d4535; font-size: .75rem; font-weight: 800; padding: 7px 5px; }
+.compendium-browser-tabs button.is-selected { background: #5d2f26; border-color: #5d2f26; color: #fffaf0; }
+.compendium-browser-tabs span { background: rgb(255 250 240 / 35%); border-radius: 999px; font-size: .65rem; margin-left: 3px; padding: 1px 5px; }
+.compendium-category-list { border-right: 1px solid #d8c9ae; grid-column: 1; grid-row: 3 / 5; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 0 7px 10px; }
+.compendium-category-list > button, .compendium-category-group button { align-items: center; background: transparent; border: 0; border-left: 3px solid transparent; color: #493329; display: grid; gap: 6px; grid-template-columns: 21px minmax(0, 1fr) auto; min-height: 32px; padding: 5px 7px; text-align: left; width: 100%; }
+.compendium-category-list > button:hover, .compendium-category-group button:hover { background: #ede0c9; }
+.compendium-category-list > button.is-selected, .compendium-category-group button.is-selected { background: #ead1a3; border-left-color: #7a2f27; color: #5d2f26; }
+.compendium-category-list > button > span:nth-child(2), .compendium-category-group button > span:nth-child(2) { font-size: .73rem; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.compendium-category-list small, .compendium-category-group small { color: #806c5a; font-size: .65rem; font-weight: 700; }
+.compendium-category-mark { align-items: center; background: #efe0bf; border: 1px solid #c4a36e; border-radius: 50%; color: #6a2f26; display: inline-flex; font-size: .58rem; font-weight: 900; height: 18px; justify-content: center; width: 18px; }
+.compendium-category-group { border-top: 1px solid #e0d3bd; margin-top: 6px; padding-top: 5px; }
+.compendium-category-group > p { color: #8b642f; font-size: .59rem; font-weight: 900; letter-spacing: .08em; margin: 0 7px 3px; text-transform: uppercase; }
+.compendium-results-heading { align-items: center; color: #806c5a; display: flex; font-size: .7rem; font-weight: 700; gap: 7px; grid-column: 2; grid-row: 3; justify-content: space-between; padding: 0 10px 7px; }
+.compendium-results-heading button { background: #fffaf0; border: 1px solid #c7ae88; border-radius: 4px; color: #493329; font-size: .63rem; font-weight: 800; padding: 5px 6px; }
+.compendium-results { display: flex; flex-direction: column; gap: 3px; grid-column: 2; grid-row: 4; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 0 7px 10px; }
+.compendium-result { background: transparent; border: 0; border-left: 3px solid transparent; color: #382b24; content-visibility: auto; contain-intrinsic-size: auto 62px; display: grid; gap: 2px; padding: 8px 9px; text-align: left; }
+.compendium-result:hover { background: #ede0c9; }
+.compendium-result.is-selected { background: #ead1a3; border-left-color: #7a2f27; }
+.compendium-result strong { font-size: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.compendium-result span, .compendium-result small { color: #806c5a; font-size: .64rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.compendium-result small { color: #8b642f; font-size: .58rem; font-weight: 700; }
+.compendium-browser.is-reference-inbox { display: flex; flex-direction: column; }
+.compendium-browser.is-reference-inbox .search-input { margin-bottom: 7px; }
+.compendium-browser.is-reference-inbox .reference-inbox { flex: 1; }
+.compendium-details { background: #fffdf7; color: #39291f; min-width: 0; overflow: auto; overscroll-behavior: contain; padding: clamp(20px, 3.5vw, 42px); }
+.compendium-calendar-panel { background: #fffaf0; border: 1px solid #cbb99d; box-shadow: 0 10px 28px rgb(45 28 16 / 15%); flex: 1; margin: 0 auto; max-width: 1440px; overflow: auto; padding: clamp(18px, 3vw, 34px); width: 100%; }
+
 .pwa-update-notice { align-items: center; background: #3a2b22; border: 1px solid #d0ad70; border-radius: 8px; bottom: max(16px, env(safe-area-inset-bottom)); box-shadow: 0 8px 24px rgb(35 21 12 / 30%); color: #fff8e9; display: flex; font-size: .82rem; gap: 10px; left: 50%; max-width: calc(100vw - 28px); padding: 9px 10px 9px 13px; position: fixed; transform: translateX(-50%); width: max-content; z-index: 70; }
 .pwa-update-notice button { background: #e0b55f; border: 1px solid #f0d28d; border-radius: 5px; color: #3a2b22; font: 800 .73rem "Scaly Sans", Inter, sans-serif; padding: 7px 9px; white-space: nowrap; }
 .pwa-update-notice .pwa-update-dismiss { background: transparent; border-color: transparent; color: #fff8e9; font: 400 1.35rem/1 Georgia, serif; padding: 0 2px 2px; }
@@ -644,7 +691,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .brew-preview { min-height: calc(100vh - 156px); padding: 28px 22px; }
   .brew-preview h1 { font-size: 2rem; }
   .brew-columns { column-count: 1; }
-  .catalogue-page, .campaign-page, .encounter-page, .worldbuilding-page, .ideas-page, .maps-panel { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+  .catalogue-page, .campaign-page, .encounter-page, .worldbuilding-page, .compendium-page, .ideas-page, .maps-panel { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
   .catalogue-page { display: block; padding: 12px; }
   .encounter-page, .worldbuilding-page { min-height: 0; padding: 12px; }
   .catalogue-page-header { align-items: flex-start; flex-direction: column; gap: 8px; margin-bottom: 12px; }
@@ -675,6 +722,28 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .worldbuilding-browser { border-bottom: 1px solid #d8c9ae; border-right: 0; max-height: 370px; }
   .worldbuilding-browser.is-reference-inbox { max-height: min(68dvh, 610px); }
   .worldbuilding-details { min-height: 55vh; padding: 22px 17px; }
+  .compendium-page { display: block; padding: 12px; }
+  .compendium-page-header { align-items: flex-start; flex-direction: column; gap: 9px; margin-bottom: 12px; }
+  .compendium-page-header .page-header-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  .compendium-page-header .page-header-actions > * { min-width: 0; }
+  .compendium-page-header .page-header-actions > .compendium-view-switcher { grid-column: 1 / -1; }
+  .compendium-page-header .page-header-actions > .sync-badge { justify-self: start; }
+  .compendium-page-header .page-header-actions > button { min-height: 40px; }
+  .compendium-new-type { grid-template-columns: 1fr 1fr; }
+  .compendium-new-type label { grid-column: 1 / -1; }
+  .compendium-workspace { display: block; min-height: 0; width: auto; }
+  .compendium-browser { display: flex; min-height: 0; }
+  .compendium-browser .search-input { margin-bottom: 7px; }
+  .compendium-browser-tabs { flex: 0 0 auto; }
+  .compendium-category-list { border-bottom: 1px solid #d8c9ae; border-right: 0; display: grid; flex: 0 0 auto; gap: 6px; grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: min(45dvh, 390px); overflow: auto; padding: 0 9px 9px; }
+  .compendium-category-list > button, .compendium-category-group button { min-height: 38px; }
+  .compendium-category-group { display: contents; }
+  .compendium-category-group > p { display: none; }
+  .compendium-results-heading { flex: 0 0 auto; padding: 9px 12px 7px; }
+  .compendium-results { flex: 0 0 min(44dvh, 390px); min-height: 250px; }
+  .compendium-browser.is-reference-inbox { max-height: min(68dvh, 610px); }
+  .compendium-details { min-height: 55vh; padding: 22px 17px; }
+  .compendium-calendar-panel { min-height: 70vh; padding: 17px 12px; width: auto; }
   .worldbuilding-meta-grid { grid-template-columns: 1fr; }
   .worldbuilding-preview-header { align-items: flex-start; flex-direction: column; }
   .worldbuilding-current-state { grid-template-columns: 1fr; }

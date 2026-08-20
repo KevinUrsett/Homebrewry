@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState, type FormEvent } from 'react';
 import type { CatalogueCategory, CustomCatalogueCategory } from '../catalogue/types';
-import { BelentorCalendar } from './BelentorCalendar';
 import { MarkdownEditor } from './MarkdownEditor';
 import { ReferenceContent } from './ReferenceContent';
 import { campaignStoragePresentation } from '../lib/campaignStorageStatus';
@@ -13,6 +12,11 @@ import { worldbuildingKindLabel, worldbuildingKindLabels, worldbuildingKinds, to
 import type { CatalogueEntry } from '../catalogue/types';
 import type { Brew, CampaignEntity, Encounter, EntityCurrentState, SyncState, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType, WorldEvent } from '../types';
 import '../unresolved-references.css';
+
+const BelentorCalendar = lazy(async () => {
+  const module = await import('./BelentorCalendar');
+  return { default: module.BelentorCalendar };
+});
 
 type WorldbuildingPanelProps = {
   entries: WorldbuildingEntry[];
@@ -80,7 +84,7 @@ function toDraft(entry: WorldbuildingEntry): EntryDraft {
   return { name: entry.name, kind: entry.kind, aliases: entry.aliases, notes: entry.notes };
 }
 
-type EntryEditorProps = {
+export type EntryEditorProps = {
   entry: WorldbuildingEntry;
   types: readonly WorldbuildingType[];
   catalogueCategories: readonly CustomCatalogueCategory[];
@@ -90,7 +94,7 @@ type EntryEditorProps = {
   onCreateCatalogueReference: (name: string, category: CatalogueCategory) => Promise<string | null> | string | null;
 };
 
-function WorldbuildingEntryEditor({ entry, types, catalogueCategories, onCancel, onSave, onCreateWorldbuildingReference, onCreateCatalogueReference }: EntryEditorProps) {
+export function WorldbuildingEntryEditor({ entry, types, catalogueCategories, onCancel, onSave, onCreateWorldbuildingReference, onCreateCatalogueReference }: EntryEditorProps) {
   const [draft, setDraft] = useState<EntryDraft>(() => toDraft(entry));
   const options = useMemo(() => [
     ...worldbuildingKinds.map((kind) => ({ id: kind, name: worldbuildingKindLabels[kind] })),
@@ -118,7 +122,7 @@ function WorldbuildingEntryEditor({ entry, types, catalogueCategories, onCancel,
   );
 }
 
-type EntryPreviewProps = {
+export type EntryPreviewProps = {
   entry: WorldbuildingEntry;
   types: readonly WorldbuildingType[];
   catalogue: ReadonlyMap<string, CatalogueEntry>;
@@ -157,7 +161,7 @@ function NpcStateControls({ currentState, onSetStatus }: { currentState?: Entity
   );
 }
 
-function WorldbuildingEntryPreview({ entry, types, catalogue, worldbuilding, catalogueCategories, onDelete, onEdit, onReferenceOpen, onWorldbuildingOpen, onEncounterOpen, onCreatePlotBeat, entity, currentState, onSetNpcStatus, connections, combatNotes }: EntryPreviewProps) {
+export function WorldbuildingEntryPreview({ entry, types, catalogue, worldbuilding, catalogueCategories, onDelete, onEdit, onReferenceOpen, onWorldbuildingOpen, onEncounterOpen, onCreatePlotBeat, entity, currentState, onSetNpcStatus, connections, combatNotes }: EntryPreviewProps) {
   return (
     <article className="worldbuilding-entry worldbuilding-entry-preview" aria-label={entry.name}>
       <header className="worldbuilding-preview-header"><div><p className="eyebrow">{worldbuildingKindLabel(entry.kind, types)}</p><h2>{entry.name}</h2>{entry.aliases.length > 0 && <p className="worldbuilding-preview-aliases">Also known as {entry.aliases.join(' · ')}</p>}</div><button className="primary-button" onClick={onEdit} type="button">Edit</button></header>
@@ -205,7 +209,7 @@ function WorldbuildingEntryPreview({ entry, types, catalogue, worldbuilding, cat
   );
 }
 
-type ReferenceInboxProps = {
+export type ReferenceInboxProps = {
   curatedReferences: readonly CuratedReference[];
   query: string;
   types: readonly WorldbuildingType[];
@@ -215,7 +219,7 @@ type ReferenceInboxProps = {
   onDismissNames: (names: readonly string[]) => void;
 };
 
-function ReferenceInbox({ curatedReferences, query, types, unresolved, onCreateCuratedReferences, onCreateSuggestedEntries, onDismissNames }: ReferenceInboxProps) {
+export function ReferenceInbox({ curatedReferences, query, types, unresolved, onCreateCuratedReferences, onCreateSuggestedEntries, onDismissNames }: ReferenceInboxProps) {
   const [tab, setTab] = useState<ReferenceInboxTab>('pantheon');
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [suggestedKinds, setSuggestedKinds] = useState<Record<string, WorldbuildingKind>>({});
@@ -416,7 +420,7 @@ export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBac
 
       {pageMode === 'entries' && addingType && <form className="worldbuilding-new-type" onSubmit={submitType}><label>New Worldbuilding type<input autoFocus onChange={(event) => setTypeName(event.target.value)} placeholder="Tavern, deity, ship…" value={typeName} /></label><button type="button" onClick={() => { setAddingType(false); setTypeError(null); }}>Cancel</button><button className="primary-button" type="submit">Add type</button>{typeError && <p role="alert">{typeError}</p>}</form>}
 
-      {pageMode === 'calendar' ? <BelentorCalendar /> : (
+      {pageMode === 'calendar' ? <Suspense fallback={<p className="empty-panel">Opening calendar…</p>}><BelentorCalendar /></Suspense> : (
         <section className="worldbuilding-workspace">
           <aside className={`worldbuilding-browser ${browserMode === 'suggestions' ? 'is-reference-inbox' : ''}`} aria-label="Worldbuilding entries">
             <input aria-label="Search worldbuilding" className="search-input" onChange={(event) => setQuery(event.target.value)} placeholder="Search towns, people, roads…" value={query} />

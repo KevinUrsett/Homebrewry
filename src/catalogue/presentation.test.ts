@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cataloguePlainText, entrySummary, speedText } from './presentation';
+import { cataloguePlainText, entrySummary, monsterCreatureType, monsterSourceLabel, speedText } from './presentation';
 import type { CatalogueEntry } from './types';
 
 describe('catalogue presentation', () => {
@@ -19,6 +19,17 @@ describe('catalogue presentation', () => {
     };
 
     expect(entrySummary(entry)).toEqual(['M humanoid NG', 'AC 14 · HP 27 · CR 1/2']);
+  });
+
+  it('groups creature types independently of source annotations', () => {
+    const entry: CatalogueEntry = {
+      id: 'wolf', category: 'monster', name: 'Wolf', description: '',
+      data: { type: 'beast (Monster Manual)' },
+      source: 'Private import · Monster Manual', ruleset: '2014'
+    };
+
+    expect(monsterCreatureType(entry)).toBe('beast');
+    expect(monsterSourceLabel(entry)).toBe('Monster Manual');
   });
 
   it('supports a plain-language speed field in a custom monster', () => {

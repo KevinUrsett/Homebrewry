@@ -722,28 +722,30 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .worldbuilding-browser { border-bottom: 1px solid #d8c9ae; border-right: 0; max-height: 370px; }
   .worldbuilding-browser.is-reference-inbox { max-height: min(68dvh, 610px); }
   .worldbuilding-details { min-height: 55vh; padding: 22px 17px; }
-  .compendium-page { display: block; padding: 12px; }
-  .compendium-page-header { align-items: flex-start; flex-direction: column; gap: 9px; margin-bottom: 12px; }
-  .compendium-page-header .page-header-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
-  .compendium-page-header .page-header-actions > * { min-width: 0; }
+  /* The Compendium is a single vertical document on a phone.  In particular, do
+     not let its desktop browser grid retain any minimum column widths here. */
+  .compendium-page { box-sizing: border-box; display: block; inline-size: 100%; max-inline-size: 100%; min-inline-size: 0; overflow-x: hidden; padding: 12px; }
+  .compendium-page-header { align-items: flex-start; flex-direction: column; gap: 9px; inline-size: 100%; margin-bottom: 12px; max-inline-size: 100%; min-inline-size: 0; }
+  .compendium-page-header .page-header-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); inline-size: 100%; max-inline-size: 100%; min-inline-size: 0; }
+  .compendium-page-header .page-header-actions > * { max-inline-size: 100%; min-width: 0; }
   .compendium-page-header .page-header-actions > .compendium-view-switcher { grid-column: 1 / -1; }
   .compendium-page-header .page-header-actions > .sync-badge { justify-self: start; }
-  .compendium-page-header .page-header-actions > button { min-height: 40px; }
-  .compendium-new-type { grid-template-columns: 1fr 1fr; }
-  .compendium-new-type label { grid-column: 1 / -1; }
-  .compendium-workspace { display: block; min-height: 0; width: auto; }
-  .compendium-browser { display: flex; min-height: 0; }
-  .compendium-browser .search-input { margin-bottom: 7px; }
-  .compendium-browser-tabs { flex: 0 0 auto; }
-  .compendium-category-list { border-bottom: 1px solid #d8c9ae; border-right: 0; display: grid; flex: 0 0 auto; gap: 6px; grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: min(45dvh, 390px); overflow: auto; padding: 0 9px 9px; }
-  .compendium-category-list > button, .compendium-category-group button { min-height: 38px; }
+  .compendium-page-header .page-header-actions > button { min-height: 40px; overflow-wrap: anywhere; white-space: normal; }
+  .compendium-new-type { box-sizing: border-box; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); inline-size: 100%; max-inline-size: 100%; min-inline-size: 0; }
+  .compendium-new-type label { grid-column: 1 / -1; min-width: 0; }
+  .compendium-workspace { box-sizing: border-box; display: block; inline-size: 100%; max-inline-size: 100%; min-height: 0; min-inline-size: 0; overflow-x: hidden; width: 100%; }
+  .compendium-browser { border-bottom: 1px solid #d8c9ae; border-right: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto auto auto; inline-size: 100%; max-inline-size: 100%; min-height: 0; min-inline-size: 0; }
+  .compendium-browser .search-input { box-sizing: border-box; grid-column: 1; grid-row: 1; margin-bottom: 7px; max-width: calc(100% - 24px); min-width: 0; }
+  .compendium-browser-tabs { grid-column: 1; grid-row: 2; margin-bottom: 9px; min-width: 0; }
+  .compendium-category-list { border-bottom: 1px solid #d8c9ae; border-right: 0; display: grid; gap: 6px; grid-column: 1; grid-row: 3; grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: min(45dvh, 390px); min-width: 0; overflow: auto; padding: 0 9px 9px; }
+  .compendium-category-list > button, .compendium-category-group button { min-height: 38px; min-width: 0; }
   .compendium-category-group { display: contents; }
   .compendium-category-group > p { display: none; }
-  .compendium-results-heading { flex: 0 0 auto; padding: 9px 12px 7px; }
-  .compendium-results { flex: 0 0 min(44dvh, 390px); min-height: 250px; }
-  .compendium-browser.is-reference-inbox { max-height: min(68dvh, 610px); }
-  .compendium-details { min-height: 55vh; padding: 22px 17px; }
-  .compendium-calendar-panel { min-height: 70vh; padding: 17px 12px; width: auto; }
+  .compendium-results-heading { grid-column: 1; grid-row: 4; min-width: 0; padding: 9px 12px 7px; }
+  .compendium-results { grid-column: 1; grid-row: 5; max-height: min(44dvh, 390px); min-height: 250px; min-width: 0; overflow: auto; }
+  .compendium-browser.is-reference-inbox { display: flex; flex-direction: column; max-height: min(68dvh, 610px); }
+  .compendium-details { box-sizing: border-box; inline-size: 100%; max-inline-size: 100%; min-height: 55vh; min-inline-size: 0; overflow-x: hidden; padding: 22px 17px; }
+  .compendium-calendar-panel { box-sizing: border-box; inline-size: 100%; max-inline-size: 100%; min-height: 70vh; min-inline-size: 0; padding: 17px 12px; width: 100%; }
   .worldbuilding-meta-grid { grid-template-columns: 1fr; }
   .worldbuilding-preview-header { align-items: flex-start; flex-direction: column; }
   .worldbuilding-current-state { grid-template-columns: 1fr; }

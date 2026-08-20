@@ -380,7 +380,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .encounter-library { background: #f7f0df; border-right: 1px solid #d8c9ae; display: flex; flex-direction: column; min-width: 0; }
 .encounter-sidebar-heading { align-items: center; border-bottom: 1px solid #d8c9ae; color: #594132; display: flex; font-size: .72rem; font-weight: 800; justify-content: space-between; letter-spacing: .08em; padding: 12px; text-transform: uppercase; }
 .encounter-sidebar-heading span:last-child { color: #8b642f; }
-.encounter-list { border-bottom: 1px solid #d8c9ae; display: flex; flex-direction: column; max-height: 250px; overflow: auto; padding: 6px; }
+.encounter-list { border-bottom: 1px solid #d8c9ae; display: flex; flex: 0 0 var(--saved-encounter-list-height, 370px); flex-direction: column; height: var(--saved-encounter-list-height, 370px); max-height: none; overflow: auto; padding: 6px; }
 .encounter-list-item { background: transparent; border: 0; border-left: 3px solid transparent; color: #39291f; display: grid; gap: 3px; padding: 9px; text-align: left; }
 .encounter-list-item:hover { background: #ede0c9; }
 .encounter-list-item.is-selected { background: #ead1a3; border-left-color: #7a2f27; }
@@ -661,8 +661,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .encounter-page-header { align-items: flex-start; flex-direction: column; gap: 9px; margin-bottom: 12px; }
   .page-header-actions { justify-content: flex-start; }
   .encounter-workspace { display: block; min-height: 0; }
-  .encounter-library { border-bottom: 1px solid #d8c9ae; border-right: 0; max-height: 580px; }
-  .encounter-list { max-height: 210px; }
+  .encounter-library { border-bottom: 1px solid #d8c9ae; border-right: 0; max-height: none; }
+  .encounter-list { max-height: none; }
   .encounter-setup, .initiative-panel { min-height: 0; padding: 19px 15px; }
   .initiative-panel { border-left: 0; border-top: 1px solid #d8c9ae; }
   .combatant-fields { grid-template-columns: repeat(2, minmax(0, 1fr)) auto repeat(2, minmax(0, 1fr)) auto; }

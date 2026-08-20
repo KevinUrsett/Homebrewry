@@ -5,6 +5,14 @@ reviewed or reverted without disturbing the shared application theme. */
 .encounter-view-tabs button { background: #f7f0df; border: 1px solid #ad9576; border-radius: 6px; color: #422f25; font-size: .78rem; padding: 8px 10px; }
 .encounter-view-tabs button.is-selected { background: #5d2f26; border-color: #5d2f26; color: #fffaf0; font-weight: 800; }
 .initiative-run-actions { align-items: center; display: flex; gap: 7px; }
+.encounter-sidebar-heading > div { align-items: center; display: flex; gap: 8px; }
+.encounter-list-size-button { background: #fffaf0; border: 1px solid #b89e7a; border-radius: 999px; color: #5d2f26; font-size: .64rem; font-weight: 800; letter-spacing: .04em; padding: 3px 7px; text-transform: uppercase; }
+.encounter-list-size-button[aria-expanded="true"] { background: #ead1a3; border-color: #a87438; }
+.encounter-list-size-controls { align-items: center; background: #fbf2df; border-bottom: 1px solid #d8c9ae; display: flex; gap: 9px; padding: 8px 12px; }
+.encounter-list-size-controls label { align-items: center; color: #6b5141; display: grid; flex: 1; font-size: .68rem; font-weight: 800; gap: 6px; grid-template-columns: auto minmax(0, 1fr) auto; letter-spacing: .04em; text-transform: uppercase; }
+.encounter-list-size-controls input { accent-color: #7a382b; min-width: 0; width: 100%; }
+.encounter-list-size-controls output { color: #8a6b52; font-size: .7rem; text-transform: none; }
+.encounter-list-size-controls button { background: #fffaf0; border: 1px solid #ad9576; border-radius: 5px; color: #5d2f26; font-size: .7rem; font-weight: 800; min-height: 30px; padding: 5px 8px; }
 .encounter-view-run .encounter-library { display: none; }
 .encounter-view-run .encounter-workspace { display: contents; }
 .encounter-view-run .encounter-setup > :not(.encounter-combatant-picker-backdrop) { display: none; }
@@ -413,9 +421,9 @@ reviewed or reverted without disturbing the shared application theme. */
 
 .combatant-summary-row {
   align-items: center;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 4px;
+  grid-template-columns: minmax(96px, 128px) repeat(2, minmax(54px, 74px)) auto;
   margin-top: 3px;
 }
 
@@ -463,7 +471,7 @@ reviewed or reverted without disturbing the shared application theme. */
   background: #f5e5c5;
   border-color: #ba8c48;
   display: flex;
-  flex: 1 1 106px;
+  min-width: 0;
   gap: 5px;
   justify-content: space-between;
   min-height: 30px;
@@ -494,6 +502,11 @@ reviewed or reverted without disturbing the shared application theme. */
   min-height: 24px;
   min-width: 24px;
   padding: 1px 4px;
+}
+
+@media (max-width: 700px) {
+  .encounter-list-size-controls { align-items: stretch; flex-wrap: wrap; }
+  .encounter-list-size-controls label { flex-basis: 100%; }
 }
 
 .combatant-stat-editor,

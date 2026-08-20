@@ -231,8 +231,24 @@ function sanitizeValue(value: unknown, depth = 0): unknown | undefined {
   return sanitized;
 }
 
-function sourceHasSrd521(value: unknown): boolean {
-  return Array.isArray(value) && value.some((source) => isRecord(source) && source.name === 'SRD-521');
+const sourceAliases: Record<string, string> = {
+  MM: 'Monster Manual',
+  MTF: "Mordenkainen's Tome of Foes",
+  MPMM: 'Mordenkainen Presents: Monsters of the Multiverse',
+  VGM: "Volo's Guide to Monsters",
+  FTD: "Fizban's Treasury of Dragons",
+  BGG: "Bigby Presents: Glory of the Giants"
+};
+
+function privateImportSource(value: unknown): string {
+  const names = Array.isArray(value)
+    ? value.flatMap((source) => isRecord(source) ? [stringValue(source.name, 120)?.trim()] : []).filter((name): name is string => Boolean(name))
+    : [];
+  const unique = [...new Set(names)];
+  if (unique.length === 1 && unique[0] === 'SRD-521') return 'SRD-521 (private import)';
+  const source = unique.find((name) => name !== 'SRD-521');
+  if (!source) return 'Private import';
+  return `Private import · ${sourceAliases[source.toUpperCase()] ?? source}`;
 }
 
 function normalizePrivateMonsters(records: unknown[], existingMonsterIds: ReadonlySet<string>): Omit<PrivateMonsterImportReport, 'imageFileCount'> {
@@ -268,7 +284,7 @@ function normalizePrivateMonsters(records: unknown[], existingMonsterIds: Readon
       name,
       description,
       data: rawData,
-      source: sourceHasSrd521(candidate.sources) ? 'SRD-521 (private import)' : 'Private import',
+      source: privateImportSource(candidate.sources),
       ruleset,
       type: stringValue(candidate.type, 120) ?? undefined,
       columns: normalizeColumns(candidate.columns),

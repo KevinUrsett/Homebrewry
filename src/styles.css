@@ -376,6 +376,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .encounter-page-header h1 { color: #4e2f24; font-family: "Nodesto Caps Condensed", Georgia, serif; font-size: clamp(2.2rem, 5vw, 3.35rem); letter-spacing: .03em; line-height: .9; margin: 0; }
 .encounter-page-header p:not(.eyebrow) { color: #654e3b; margin: 6px 0 0; max-width: 700px; }
 .page-header-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 9px; justify-content: flex-end; }
+.page-header-actions > button { background: #fffaf0; border: 1px solid #ad9576; border-radius: 6px; color: #422f25; font-size: .8rem; font-weight: 700; padding: 8px 10px; }
+.page-header-actions > .primary-button { background: #5d2f26; border-color: #5d2f26; color: #fffaf0; }
+.compendium-switch-button { background: #efe0bf !important; border-color: #a87a42 !important; color: #523225 !important; }
 .encounter-workspace { background: #fffaf0; border: 1px solid #cbb99d; box-shadow: 0 10px 28px rgb(45 28 16 / 15%); display: grid; grid-template-columns: minmax(235px, 285px) minmax(300px, 1fr) minmax(305px, 410px); margin: 0 auto; max-width: 1440px; min-height: min(780px, calc(100vh - 150px)); }
 .encounter-library { background: #f7f0df; border-right: 1px solid #d8c9ae; display: flex; flex-direction: column; min-width: 0; }
 .encounter-sidebar-heading { align-items: center; border-bottom: 1px solid #d8c9ae; color: #594132; display: flex; font-size: .72rem; font-weight: 800; justify-content: space-between; letter-spacing: .08em; padding: 12px; text-transform: uppercase; }

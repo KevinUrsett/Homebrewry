@@ -81,20 +81,19 @@ const mobileLabels: Record<MobileSection, string> = {
   editor: 'Edit',
   preview: 'Preview',
   outline: 'Outline',
-  catalogue: 'Catalogue',
+  catalogue: 'Compendium',
   campaign: 'Campaign',
   encounters: 'Encounters',
   maps: 'Maps',
-  worldbuilding: 'Worldbuilding'
+  worldbuilding: 'Compendium'
 };
 
 const mobilePrimarySections = ['library', 'editor', 'preview', 'encounters'] as const satisfies readonly MobileSection[];
 
 const mobileToolSections = [
-  { id: 'catalogue', label: 'Catalogue' },
+  { id: 'compendium', label: 'Compendium' },
   { id: 'campaign', label: 'Campaign' },
   { id: 'maps', label: 'Maps' },
-  { id: 'worldbuilding', label: 'Worldbuilding' },
   { id: 'ideas', label: 'My ideas' }
 ] as const;
 
@@ -607,6 +606,12 @@ export default function App() {
     setMapsOpen(false);
     setPendingInsertion(null);
     setMobileSection('worldbuilding');
+  };
+
+  const closeCompendium = () => {
+    setCatalogueOpen(false);
+    setWorldbuildingOpen(false);
+    setMobileSection('editor');
   };
 
   const openReferenceInCatalogue = () => {
@@ -1770,8 +1775,8 @@ export default function App() {
   };
 
   const openMobileTool = (tool: typeof mobileToolSections[number]['id']) => {
-    if (tool === 'catalogue') {
-      openCatalogue();
+    if (tool === 'compendium') {
+      openWorldbuilding();
       return;
     }
     if (tool === 'campaign') {
@@ -1780,10 +1785,6 @@ export default function App() {
     }
     if (tool === 'maps') {
       openMaps();
-      return;
-    }
-    if (tool === 'worldbuilding') {
-      openWorldbuilding();
       return;
     }
     openIdeas();
@@ -1835,11 +1836,10 @@ export default function App() {
               {mode === 'editor' ? 'Editor' : mode === 'preview' ? 'Preview' : 'Split'}
             </button>
           ))}
-          <button className={catalogueOpen ? 'is-selected' : ''} onClick={() => catalogueOpen ? setCatalogueOpen(false) : openCatalogue()} type="button">Catalogue</button>
+          <button className={catalogueOpen || worldbuildingOpen ? 'is-selected' : ''} onClick={() => catalogueOpen || worldbuildingOpen ? closeCompendium() : openWorldbuilding()} type="button">Compendium</button>
           <button className={campaignOpen ? 'is-selected' : ''} onClick={() => campaignOpen ? setCampaignOpen(false) : openCampaign()} type="button">Campaign</button>
           <button className={encountersOpen ? 'is-selected' : ''} onClick={() => encountersOpen ? setEncountersOpen(false) : openEncounters()} type="button">Encounters</button>
           <button className={mapsOpen ? 'is-selected' : ''} onClick={() => mapsOpen ? setMapsOpen(false) : openMaps()} type="button">Maps</button>
-          <button className={worldbuildingOpen ? 'is-selected' : ''} onClick={() => worldbuildingOpen ? setWorldbuildingOpen(false) : openWorldbuilding()} type="button">Worldbuilding</button>
           <button className={ideasOpen ? 'is-selected' : ''} onClick={() => ideasOpen ? setIdeasOpen(false) : openIdeas()} type="button">My ideas</button>
           <button onClick={() => window.print()} type="button">Print</button>
       </nav>
@@ -1931,6 +1931,7 @@ export default function App() {
           onDeleteCustomMonster={deleteCustomMonster}
           onInsertReference={insertCatalogueReference}
           onOpenPrivateMonsterImport={() => setPrivateMonsterImportOpen(true)}
+          onOpenEntries={openWorldbuilding}
           onReferenceOpen={setReferenceEntry}
           onSaveCustomEntry={saveGenericCustomEntry}
           onSaveCustomMonster={saveCustomMonster}
@@ -1992,6 +1993,7 @@ export default function App() {
           hasDriveBackup={Boolean(campaignDataSync?.drive)}
           syncState={campaignDataSync?.syncState ?? 'local'}
           onCreate={createNewWorldbuildingEntry}
+          onOpenCatalogue={openCatalogue}
           onOpenNameGenerator={() => setNameGeneratorTarget('worldbuilding')}
           onCreateType={createNewWorldbuildingType}
           onCreateCatalogueReference={createCatalogueReference}

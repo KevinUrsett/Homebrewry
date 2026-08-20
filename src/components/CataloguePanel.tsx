@@ -22,6 +22,7 @@ type CataloguePanelProps = {
   error: string | null;
   onInsertReference: (entry: CatalogueEntry) => void;
   onOpenPrivateMonsterImport: () => void;
+  onOpenEntries?: () => void;
   onSaveCustomMonster: (entry: CustomCatalogueEntry) => Promise<void>;
   onDeleteCustomMonster: (entry: CustomCatalogueEntry) => Promise<void>;
   onSaveCustomEntry: (entry: CustomCatalogueEntry) => Promise<void>;
@@ -57,6 +58,7 @@ export function CataloguePanel({
   error,
   onInsertReference,
   onOpenPrivateMonsterImport,
+  onOpenEntries = () => undefined,
   onSaveCustomMonster,
   onDeleteCustomMonster,
   onSaveCustomEntry,
@@ -170,11 +172,11 @@ export function CataloguePanel({
   };
 
   return (
-    <main className="catalogue-page" aria-label="Rules catalogue">
+    <main className="catalogue-page" aria-label="Compendium rules and monsters">
       <header className="catalogue-page-header">
         <div>
-          <p className="eyebrow">Offline reference</p>
-          <h1>Catalogue</h1>
+          <p className="eyebrow">Compendium</p>
+          <h1>Rules &amp; monsters</h1>
           <p>
             {loading
               ? 'Loading the SRD reference data…'
@@ -182,6 +184,7 @@ export function CataloguePanel({
           </p>
         </div>
         <div className="catalogue-header-actions">
+          <button className="compendium-switch-button" onClick={onOpenEntries} type="button">Entries</button>
           <button onClick={beginNewEntry} type="button">New entry</button>
           <button onClick={beginNewMonster} type="button">New custom monster</button>
           <button onClick={() => setCategoryCreatorOpen((open) => !open)} type="button">New category</button>

@@ -28,6 +28,16 @@ const dragon: CatalogueEntry = {
   ruleset: '5.5e'
 };
 
+const manualBeast: CatalogueEntry = {
+  id: 'manual-beast-id',
+  category: 'monster',
+  name: 'Bear',
+  description: 'A creature from a different book.',
+  data: { type: 'beast (Monster Manual)', cr: '1', size: 'Medium', environments: ['forest'] },
+  source: 'Private import · Monster Manual',
+  ruleset: '5e'
+};
+
 const mounted: Array<{ container: HTMLDivElement; root: Root }> = [];
 const originalScrollIntoView = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollIntoView');
 
@@ -78,6 +88,47 @@ describe('CataloguePanel', () => {
 
     expect(container.querySelector('.catalogue-result.is-selected')?.textContent).toContain('Adult Blue Dragon');
     expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
+  });
+
+  it('shows source separately from creature type in the Compendium monster filters', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push({ container, root });
+
+    await act(async () => {
+      root.render(
+        <CataloguePanel
+          entries={[aboleth, manualBeast]}
+          error={null}
+          loading={false}
+          onDeleteCustomMonster={vi.fn().mockResolvedValue(undefined)}
+          onCreateCatalogueReference={vi.fn()}
+          onCreateWorldbuildingReference={vi.fn()}
+          onInsertReference={vi.fn()}
+          onOpenPrivateMonsterImport={vi.fn()}
+          onReferenceOpen={vi.fn()}
+          onSaveCustomMonster={vi.fn().mockResolvedValue(undefined)}
+          onSaveCustomEntry={vi.fn().mockResolvedValue(undefined)}
+          onDeleteCustomEntry={vi.fn().mockResolvedValue(undefined)}
+          onCreateCustomCategory={vi.fn()}
+          customEntryCount={0}
+          customCategories={[]}
+          privateMonsterCount={0}
+          selectedEntry={aboleth}
+          onWorldbuildingOpen={vi.fn()}
+          worldbuilding={new Map()}
+          worldbuildingTypes={[]}
+        />
+      );
+    });
+
+    const source = container.querySelector<HTMLSelectElement>('[aria-label="Filter monsters by source"]');
+    const type = container.querySelector<HTMLSelectElement>('[aria-label="Filter monsters by type"]');
+    expect(source?.textContent).toContain('All sources');
+    expect(source?.textContent).toContain('Monster Manual');
+    expect(type?.textContent).toContain('Beast');
+    expect(type?.textContent).not.toContain('Monster Manual');
   });
 
   it('creates a campaign-owned monster draft from the selected monster', async () => {

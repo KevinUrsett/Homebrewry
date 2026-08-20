@@ -19,7 +19,9 @@ export const worldbuildingKindLabels: Record<BuiltInWorldbuildingKind, string> =
   event: 'Event',
   deity: 'Deity',
   item: 'Item',
-  creature: 'Creature',
+  // Keep the stored `creature` kind stable for existing brews and Drive data,
+  // but present it as the clearer, player-facing "Monster" everywhere.
+  creature: 'Monster',
   custom: 'Custom'
 };
 

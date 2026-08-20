@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState, type FormEvent } from 'react';
 import type { CatalogueCategory, CustomCatalogueCategory } from '../catalogue/types';
-import { BelentorCalendar } from './BelentorCalendar';
 import { MarkdownEditor } from './MarkdownEditor';
 import { ReferenceContent } from './ReferenceContent';
 import { campaignStoragePresentation } from '../lib/campaignStorageStatus';
@@ -14,6 +13,11 @@ import type { CatalogueEntry } from '../catalogue/types';
 import type { Brew, CampaignEntity, Encounter, EntityCurrentState, SyncState, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType, WorldEvent } from '../types';
 import '../unresolved-references.css';
 
+const BelentorCalendar = lazy(async () => {
+  const module = await import('./BelentorCalendar');
+  return { default: module.BelentorCalendar };
+});
+
 type WorldbuildingPanelProps = {
   entries: WorldbuildingEntry[];
   selectedId: string | null;
@@ -24,6 +28,7 @@ type WorldbuildingPanelProps = {
   worldbuilding: ReadonlyMap<string, WorldbuildingEntry>;
   catalogueCategories: readonly CustomCatalogueCategory[];
   onCreate: () => string | null | void;
+  onOpenCatalogue?: () => void;
   onOpenNameGenerator?: () => void;
   onCreateType: (name: string) => string | null;
   onCreateWorldbuildingReference: (name: string, kind: WorldbuildingKind) => Promise<string | null> | string | null;
@@ -79,7 +84,7 @@ function toDraft(entry: WorldbuildingEntry): EntryDraft {
   return { name: entry.name, kind: entry.kind, aliases: entry.aliases, notes: entry.notes };
 }
 
-type EntryEditorProps = {
+export type EntryEditorProps = {
   entry: WorldbuildingEntry;
   types: readonly WorldbuildingType[];
   catalogueCategories: readonly CustomCatalogueCategory[];
@@ -89,7 +94,7 @@ type EntryEditorProps = {
   onCreateCatalogueReference: (name: string, category: CatalogueCategory) => Promise<string | null> | string | null;
 };
 
-function WorldbuildingEntryEditor({ entry, types, catalogueCategories, onCancel, onSave, onCreateWorldbuildingReference, onCreateCatalogueReference }: EntryEditorProps) {
+export function WorldbuildingEntryEditor({ entry, types, catalogueCategories, onCancel, onSave, onCreateWorldbuildingReference, onCreateCatalogueReference }: EntryEditorProps) {
   const [draft, setDraft] = useState<EntryDraft>(() => toDraft(entry));
   const options = useMemo(() => [
     ...worldbuildingKinds.map((kind) => ({ id: kind, name: worldbuildingKindLabels[kind] })),
@@ -117,7 +122,7 @@ function WorldbuildingEntryEditor({ entry, types, catalogueCategories, onCancel,
   );
 }
 
-type EntryPreviewProps = {
+export type EntryPreviewProps = {
   entry: WorldbuildingEntry;
   types: readonly WorldbuildingType[];
   catalogue: ReadonlyMap<string, CatalogueEntry>;
@@ -156,7 +161,7 @@ function NpcStateControls({ currentState, onSetStatus }: { currentState?: Entity
   );
 }
 
-function WorldbuildingEntryPreview({ entry, types, catalogue, worldbuilding, catalogueCategories, onDelete, onEdit, onReferenceOpen, onWorldbuildingOpen, onEncounterOpen, onCreatePlotBeat, entity, currentState, onSetNpcStatus, connections, combatNotes }: EntryPreviewProps) {
+export function WorldbuildingEntryPreview({ entry, types, catalogue, worldbuilding, catalogueCategories, onDelete, onEdit, onReferenceOpen, onWorldbuildingOpen, onEncounterOpen, onCreatePlotBeat, entity, currentState, onSetNpcStatus, connections, combatNotes }: EntryPreviewProps) {
   return (
     <article className="worldbuilding-entry worldbuilding-entry-preview" aria-label={entry.name}>
       <header className="worldbuilding-preview-header"><div><p className="eyebrow">{worldbuildingKindLabel(entry.kind, types)}</p><h2>{entry.name}</h2>{entry.aliases.length > 0 && <p className="worldbuilding-preview-aliases">Also known as {entry.aliases.join(' · ')}</p>}</div><button className="primary-button" onClick={onEdit} type="button">Edit</button></header>
@@ -204,7 +209,7 @@ function WorldbuildingEntryPreview({ entry, types, catalogue, worldbuilding, cat
   );
 }
 
-type ReferenceInboxProps = {
+export type ReferenceInboxProps = {
   curatedReferences: readonly CuratedReference[];
   query: string;
   types: readonly WorldbuildingType[];
@@ -214,7 +219,7 @@ type ReferenceInboxProps = {
   onDismissNames: (names: readonly string[]) => void;
 };
 
-function ReferenceInbox({ curatedReferences, query, types, unresolved, onCreateCuratedReferences, onCreateSuggestedEntries, onDismissNames }: ReferenceInboxProps) {
+export function ReferenceInbox({ curatedReferences, query, types, unresolved, onCreateCuratedReferences, onCreateSuggestedEntries, onDismissNames }: ReferenceInboxProps) {
   const [tab, setTab] = useState<ReferenceInboxTab>('pantheon');
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [suggestedKinds, setSuggestedKinds] = useState<Record<string, WorldbuildingKind>>({});
@@ -284,7 +289,7 @@ function ReferenceInbox({ curatedReferences, query, types, unresolved, onCreateC
   </div>;
 }
 
-export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBackup = false, types, catalogue, worldbuilding, catalogueCategories, onCreate, onOpenNameGenerator = () => undefined, onCreateType, onCreateWorldbuildingReference, onCreateCatalogueReference, onDelete, onSelect, onUpdate, onReferenceOpen, onWorldbuildingOpen, onEncounterOpen = () => undefined, entitiesByWorldbuildingId = new Map(), currentStateByEntityId = new Map(), worldEvents = [], onSetNpcStatus = () => undefined, onCreatePlotBeat = () => undefined, onCreateCuratedReferences = () => undefined, onCreateSuggestedEntries = () => undefined }: WorldbuildingPanelProps) {
+export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBackup = false, types, catalogue, worldbuilding, catalogueCategories, onCreate, onOpenCatalogue = () => undefined, onOpenNameGenerator = () => undefined, onCreateType, onCreateWorldbuildingReference, onCreateCatalogueReference, onDelete, onSelect, onUpdate, onReferenceOpen, onWorldbuildingOpen, onEncounterOpen = () => undefined, entitiesByWorldbuildingId = new Map(), currentStateByEntityId = new Map(), worldEvents = [], onSetNpcStatus = () => undefined, onCreatePlotBeat = () => undefined, onCreateCuratedReferences = () => undefined, onCreateSuggestedEntries = () => undefined }: WorldbuildingPanelProps) {
   const [pageMode, setPageMode] = useState<WorldbuildingPageMode>('entries');
   const [query, setQuery] = useState('');
   const [kind, setKind] = useState<WorldbuildingKind | 'all'>('all');
@@ -395,11 +400,11 @@ export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBac
   };
 
   return (
-    <main className="worldbuilding-page" aria-label="Worldbuilding">
+    <main className="worldbuilding-page" aria-label="Compendium entries">
       <header className="worldbuilding-page-header">
         <div>
-          <p className="eyebrow">Campaign reference</p>
-          <h1>Worldbuilding</h1>
+          <p className="eyebrow">Compendium</p>
+          <h1>Compendium</h1>
           <p>{pageMode === 'entries' ? 'Capture campaign places, people, history, and factions independently from each brew.' : 'Review the shared calendar of Belentor and the Celestial Handful.'}</p>
         </div>
         <div className="page-header-actions">
@@ -407,6 +412,7 @@ export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBac
             <button aria-selected={pageMode === 'entries'} className={pageMode === 'entries' ? 'is-selected' : ''} onClick={() => switchPage('entries')} role="tab" type="button">Entries</button>
             <button aria-selected={pageMode === 'calendar'} className={pageMode === 'calendar' ? 'is-selected' : ''} onClick={() => switchPage('calendar')} role="tab" type="button">Calendar</button>
           </div>
+          <button className="compendium-switch-button" onClick={onOpenCatalogue} type="button">Rules &amp; monsters</button>
           <span className={`sync-badge sync-${storage.tone}`} title={storage.title}>{storage.label}</span>
           {pageMode === 'entries' && <><button onClick={onOpenNameGenerator} type="button">Name generator</button><button onClick={() => setAddingType((open) => !open)} type="button">New type</button><button className="primary-button" onClick={createEntry} type="button">New entry</button></>}
         </div>
@@ -414,7 +420,7 @@ export function WorldbuildingPanel({ entries, selectedId, syncState, hasDriveBac
 
       {pageMode === 'entries' && addingType && <form className="worldbuilding-new-type" onSubmit={submitType}><label>New Worldbuilding type<input autoFocus onChange={(event) => setTypeName(event.target.value)} placeholder="Tavern, deity, ship…" value={typeName} /></label><button type="button" onClick={() => { setAddingType(false); setTypeError(null); }}>Cancel</button><button className="primary-button" type="submit">Add type</button>{typeError && <p role="alert">{typeError}</p>}</form>}
 
-      {pageMode === 'calendar' ? <BelentorCalendar /> : (
+      {pageMode === 'calendar' ? <Suspense fallback={<p className="empty-panel">Opening calendar…</p>}><BelentorCalendar /></Suspense> : (
         <section className="worldbuilding-workspace">
           <aside className={`worldbuilding-browser ${browserMode === 'suggestions' ? 'is-reference-inbox' : ''}`} aria-label="Worldbuilding entries">
             <input aria-label="Search worldbuilding" className="search-input" onChange={(event) => setQuery(event.target.value)} placeholder="Search towns, people, roads…" value={query} />

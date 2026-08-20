@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import { dataString, entrySummary } from '../catalogue/presentation';
 import type { CatalogueEntry } from '../catalogue/types';
 import {
@@ -56,6 +56,16 @@ type EncounterView = 'create' | 'run';
 
 const MONSTER_RESULTS_PAGE_SIZE = Number.MAX_SAFE_INTEGER;
 const defaultEncounterDate: BelentorDate = { era: 'AA', year: 641, month: 'Quen', day: 1 };
+const savedEncounterListHeightKey = 'homebrewry-saved-encounter-list-height-v1';
+const defaultSavedEncounterListHeight = 370;
+
+function readSavedEncounterListHeight() {
+  try {
+    return Math.min(620, Math.max(260, Number(localStorage.getItem(savedEncounterListHeightKey)) || defaultSavedEncounterListHeight));
+  } catch {
+    return defaultSavedEncounterListHeight;
+  }
+}
 
 const asNumber = (value: string): number | null => {
   if (!value.trim()) return null;
@@ -117,6 +127,8 @@ export function EncounterPanel({
 }: EncounterPanelProps) {
   const [monsterQuery, setMonsterQuery] = useState('');
   const [encounterView, setEncounterView] = useState<EncounterView>('create');
+  const [savedListAdjusting, setSavedListAdjusting] = useState(false);
+  const [savedListHeight, setSavedListHeight] = useState(readSavedEncounterListHeight);
   const [editingEncounter, setEditingEncounter] = useState(false);
   const [monsterSourceFilter, setMonsterSourceFilter] = useState('all');
   const [monsterRulesetFilter, setMonsterRulesetFilter] = useState('all');
@@ -208,6 +220,12 @@ export function EncounterPanel({
     setPartyName('');
     setPartyArmorClass('');
     setPartyHitPoints('');
+  };
+
+  const changeSavedListHeight = (value: number) => {
+    const next = Math.min(620, Math.max(260, value));
+    setSavedListHeight(next);
+    try { localStorage.setItem(savedEncounterListHeightKey, String(next)); } catch { /* local-only preference */ }
   };
 
   const clearCombatantEditors = () => {
@@ -386,8 +404,14 @@ export function EncounterPanel({
       </header>
 
       <section className="encounter-workspace">
-        <aside className="encounter-library" aria-label="Saved encounters">
-          <div className="encounter-sidebar-heading"><span>Saved encounters</span><span>{encounters.length}</span></div>
+        <aside className="encounter-library" aria-label="Saved encounters" style={{ '--saved-encounter-list-height': `${savedListHeight}px` } as CSSProperties}>
+          <div className="encounter-sidebar-heading"><span>Saved encounters</span><div><button aria-expanded={savedListAdjusting} className="encounter-list-size-button" onClick={() => setSavedListAdjusting((open) => !open)} type="button">Resize</button><span>{encounters.length}</span></div></div>
+          {savedListAdjusting && (
+            <div className="encounter-list-size-controls">
+              <label>List height<input aria-label="Saved encounters list height" max="620" min="260" onChange={(event) => changeSavedListHeight(Number(event.target.value))} type="range" value={savedListHeight} /><output>{savedListHeight}px</output></label>
+              <button onClick={() => changeSavedListHeight(defaultSavedEncounterListHeight)} type="button">Reset</button>
+            </div>
+          )}
           <div className="encounter-list">
             {encounters.map((encounter) => (
               <article className={`encounter-list-item ${selected?.id === encounter.id ? 'is-selected' : ''}`} key={encounter.id}>

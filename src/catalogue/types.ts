@@ -5,8 +5,10 @@ export const catalogueCategories = [
   'item',
   'monster',
   'npc',
+  'race',
   'rule',
   'species',
+  'vehicle',
   'spell',
   'subclass',
   'table'
@@ -69,8 +71,10 @@ export const catalogueCategoryLabels: Record<BuiltInCatalogueCategory, string> =
   item: 'Items',
   monster: 'Monsters',
   npc: 'NPCs',
+  race: 'Races (Legacy)',
   rule: 'Rules',
   species: 'Species',
+  vehicle: 'Vehicles',
   spell: 'Spells',
   subclass: 'Subclasses',
   table: 'Tables'

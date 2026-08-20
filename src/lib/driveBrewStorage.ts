@@ -35,14 +35,17 @@ export async function loadBrewsFromDrive(accessToken: string): Promise<Brew[]> {
   if (isLocalPreviewMode()) return [];
   const remote = await listRemoteBrews(accessToken);
   const seenFileIds = new Set<string>();
+  const seenBrewIds = new Set<string>();
   const loaded: Brew[] = [];
 
   for (const item of remote) {
-    if (seenFileIds.has(item.file.id)) continue;
+    const brewId = item.brew.id || item.file.id;
+    if (seenFileIds.has(item.file.id) || seenBrewIds.has(brewId)) continue;
     seenFileIds.add(item.file.id);
+    seenBrewIds.add(brewId);
     loaded.push(asSynced({
       ...item.brew,
-      id: item.brew.id || item.file.id
+      id: brewId
     }, item.file));
   }
 
@@ -51,16 +54,8 @@ export async function loadBrewsFromDrive(accessToken: string): Promise<Brew[]> {
 
 export async function saveBrewToDrive(accessToken: string, brew: Brew): Promise<Brew> {
   if (isLocalPreviewMode()) return asLocalPreview(brew);
-  const looksLikeDuplicate = Boolean(
-    brew.drive
-      && brew.version === 1
-      && new Date(brew.createdAt).getTime() > new Date(brew.drive.lastSyncedAt).getTime()
-  );
-  const candidate: Brew = looksLikeDuplicate
-    ? { ...brew, drive: undefined, conflict: undefined, syncState: 'pending' }
-    : brew;
-  const file = await uploadBrew(accessToken, candidate, candidate.drive?.revisionId);
-  return asSynced(candidate, file);
+  const file = await uploadBrew(accessToken, brew, brew.drive?.revisionId);
+  return asSynced(brew, file);
 }
 
 export async function deleteBrewFromDrive(accessToken: string, brew: Brew): Promise<void> {

@@ -102,6 +102,24 @@ type DriveSaveNotice = {
 };
 
 const deletedAssetStorageKey = 'homebrewry-deleted-assets';
+const activeBrewStorageKey = 'homebrewry-active-brew-id';
+
+function readRememberedActiveBrewId(): string | null {
+  try {
+    return sessionStorage.getItem(activeBrewStorageKey);
+  } catch {
+    return null;
+  }
+}
+
+function rememberActiveBrewId(id: string | null) {
+  try {
+    if (id) sessionStorage.setItem(activeBrewStorageKey, id);
+    else sessionStorage.removeItem(activeBrewStorageKey);
+  } catch {
+    // Session storage is optional; brew selection still has a safe fallback.
+  }
+}
 
 function readDeletedAssetIds(): string[] {
   try {
@@ -265,8 +283,8 @@ export default function App() {
           });
         }
         setPrivateMonsterSync(storedPrivateMonsterSync);
-        const savedCurrentBrew = syncedLivingWorld.currentBrewId;
-        setActiveId(storedBrews.some((brew) => brew.id === savedCurrentBrew) ? savedCurrentBrew! : storedBrews[0]?.id ?? null);
+        const preferredBrewId = readRememberedActiveBrewId() ?? syncedLivingWorld.currentBrewId;
+        setActiveId(storedBrews.some((brew) => brew.id === preferredBrewId) ? preferredBrewId! : storedBrews[0]?.id ?? null);
         setEncounterSelectedId(storedEncounters[0]?.id ?? null);
         setWorldbuildingSelectedId(storedWorldbuildingEntries[0]?.id ?? null);
         setSaveState('Saved locally');
@@ -274,6 +292,10 @@ export default function App() {
       .catch(() => setSaveState('Local storage is unavailable'))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    rememberActiveBrewId(activeId);
+  }, [activeId]);
 
   useEffect(() => {
     let cancelled = false;

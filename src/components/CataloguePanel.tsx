@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { catalogueDataset } from '../catalogue/catalogueData';
 import { createCustomCatalogueEntry, createCustomMonster } from '../catalogue/customEntries';
-import { entrySummary } from '../catalogue/presentation';
+import { dataString, entrySummary, monsterCreatureType, monsterSourceLabel } from '../catalogue/presentation';
 import {
   catalogueCategories,
   catalogueCategoryLabel,
@@ -52,6 +52,28 @@ type CatalogueEntryEditorState = {
   mode: 'create' | 'edit';
 };
 
+type MonsterSort = 'name' | 'cr-ascending' | 'cr-descending' | 'source' | 'type';
+
+function monsterDataList(entry: CatalogueEntry, key: string): string[] {
+  const value = entry.data[key];
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string | number => typeof item === 'string' || typeof item === 'number').map(String).map((item) => item.trim()).filter(Boolean);
+  }
+  const single = dataString(entry, key)?.trim();
+  return single ? [single] : [];
+}
+
+function challengeRatingValue(challengeRating: string): number {
+  const fraction = challengeRating.match(/^(\d+)\s*\/\s*(\d+)$/);
+  if (fraction) return Number(fraction[1]) / Number(fraction[2]);
+  const parsed = Number.parseFloat(challengeRating);
+  return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
+}
+
+function titleCase(value: string): string {
+  return value.replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 export function CataloguePanel({
   entries,
   loading,
@@ -77,6 +99,12 @@ export function CataloguePanel({
 }: CataloguePanelProps) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<CatalogueCategory | 'all'>(() => selectedEntry?.category ?? 'monster');
+  const [monsterSource, setMonsterSource] = useState('all');
+  const [monsterType, setMonsterType] = useState('all');
+  const [monsterCr, setMonsterCr] = useState('all');
+  const [monsterSize, setMonsterSize] = useState('all');
+  const [monsterEnvironment, setMonsterEnvironment] = useState('all');
+  const [monsterSort, setMonsterSort] = useState<MonsterSort>('name');
   const [selectedId, setSelectedId] = useState<string | null>(() => selectedEntry?.id ?? null);
   const [monsterEditor, setMonsterEditor] = useState<MonsterEditorState | null>(null);
   const [entryEditor, setEntryEditor] = useState<CatalogueEntryEditorState | null>(null);
@@ -85,17 +113,57 @@ export function CataloguePanel({
   const [actionError, setActionError] = useState<string | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
+  const monsters = useMemo(() => entries.filter((entry) => entry.category === 'monster'), [entries]);
+  const sourceOptions = useMemo(() => Array.from(new Set(monsters.map((entry) => entry.source).filter(Boolean)))
+    .sort((left, right) => monsterSourceLabel({ ...monsters[0], source: left }).localeCompare(monsterSourceLabel({ ...monsters[0], source: right }))), [monsters]);
+  const typeOptions = useMemo(() => Array.from(new Set(monsters.map(monsterCreatureType).filter(Boolean))).sort(), [monsters]);
+  const crOptions = useMemo(() => Array.from(new Set(monsters.map((entry) => dataString(entry, 'cr')?.trim()).filter((value): value is string => Boolean(value))))
+    .sort((left, right) => challengeRatingValue(left) - challengeRatingValue(right) || left.localeCompare(right)), [monsters]);
+  const sizeOptions = useMemo(() => Array.from(new Set(monsters.map((entry) => dataString(entry, 'size')?.trim()).filter((value): value is string => Boolean(value)))).sort(), [monsters]);
+  const environmentOptions = useMemo(() => Array.from(new Set(monsters.flatMap((entry) => monsterDataList(entry, 'environments')))).sort(), [monsters]);
+
   const filtered = useMemo(() => {
     const terms = query.trim().toLowerCase();
-    return entries.filter((entry) => {
+    const matchingEntries = entries.filter((entry) => {
       if (category !== 'all' && entry.category !== category) return false;
+      if (category === 'monster') {
+        if (monsterSource !== 'all' && entry.source !== monsterSource) return false;
+        if (monsterType !== 'all' && monsterCreatureType(entry) !== monsterType) return false;
+        if (monsterCr !== 'all' && dataString(entry, 'cr')?.trim() !== monsterCr) return false;
+        if (monsterSize !== 'all' && dataString(entry, 'size')?.trim() !== monsterSize) return false;
+        if (monsterEnvironment !== 'all' && !monsterDataList(entry, 'environments').includes(monsterEnvironment)) return false;
+      }
       if (!terms) return true;
-      return [entry.name, entry.category, ...entrySummary(entry)]
+      return [entry.name, entry.category, entry.source, ...entrySummary(entry)]
         .join(' ')
         .toLowerCase()
         .includes(terms);
     });
-  }, [category, entries, query]);
+    if (category !== 'monster') return matchingEntries;
+    return matchingEntries.sort((left, right) => {
+      if (monsterSort === 'cr-ascending' || monsterSort === 'cr-descending') {
+        const comparison = challengeRatingValue(dataString(left, 'cr') ?? '') - challengeRatingValue(dataString(right, 'cr') ?? '');
+        if (comparison) return monsterSort === 'cr-ascending' ? comparison : -comparison;
+      }
+      if (monsterSort === 'source') {
+        const comparison = monsterSourceLabel(left).localeCompare(monsterSourceLabel(right));
+        if (comparison) return comparison;
+      }
+      if (monsterSort === 'type') {
+        const comparison = monsterCreatureType(left).localeCompare(monsterCreatureType(right));
+        if (comparison) return comparison;
+      }
+      return left.name.localeCompare(right.name);
+    });
+  }, [category, entries, monsterCr, monsterEnvironment, monsterSize, monsterSort, monsterSource, monsterType, query]);
+  const monsterFiltersActive = [monsterSource, monsterType, monsterCr, monsterSize, monsterEnvironment].some((value) => value !== 'all');
+  const resetMonsterFilters = () => {
+    setMonsterSource('all');
+    setMonsterType('all');
+    setMonsterCr('all');
+    setMonsterSize('all');
+    setMonsterEnvironment('all');
+  };
 
   const visible = filtered.slice(0, MAX_VISIBLE_RESULTS);
   const selected = filtered.find((entry) => entry.id === selectedId)
@@ -219,7 +287,52 @@ export function CataloguePanel({
             </select>
             <span aria-hidden="true" className="catalogue-category-chevron">⌄</span>
           </div>
-          <p className="catalogue-result-count">{filtered.length.toLocaleString()} matches</p>
+          {category === 'monster' && (
+            <fieldset className="catalogue-monster-filters">
+              <legend>Monster filters</legend>
+              <label>Source
+                <select aria-label="Filter monsters by source" onChange={(event) => setMonsterSource(event.target.value)} value={monsterSource}>
+                  <option value="all">All sources</option>
+                  {sourceOptions.map((source) => <option key={source} value={source}>{monsterSourceLabel({ ...monsters[0], source })}</option>)}
+                </select>
+              </label>
+              <label>Type
+                <select aria-label="Filter monsters by type" onChange={(event) => setMonsterType(event.target.value)} value={monsterType}>
+                  <option value="all">All types</option>
+                  {typeOptions.map((type) => <option key={type} value={type}>{titleCase(type)}</option>)}
+                </select>
+              </label>
+              <label>CR
+                <select aria-label="Filter monsters by challenge rating" onChange={(event) => setMonsterCr(event.target.value)} value={monsterCr}>
+                  <option value="all">All CRs</option>
+                  {crOptions.map((cr) => <option key={cr} value={cr}>CR {cr}</option>)}
+                </select>
+              </label>
+              <label>Size
+                <select aria-label="Filter monsters by size" onChange={(event) => setMonsterSize(event.target.value)} value={monsterSize}>
+                  <option value="all">All sizes</option>
+                  {sizeOptions.map((size) => <option key={size} value={size}>{titleCase(size)}</option>)}
+                </select>
+              </label>
+              <label>Environment
+                <select aria-label="Filter monsters by environment" onChange={(event) => setMonsterEnvironment(event.target.value)} value={monsterEnvironment}>
+                  <option value="all">All environments</option>
+                  {environmentOptions.map((environment) => <option key={environment} value={environment}>{titleCase(environment)}</option>)}
+                </select>
+              </label>
+              <label>Sort
+                <select aria-label="Sort monsters" onChange={(event) => setMonsterSort(event.target.value as MonsterSort)} value={monsterSort}>
+                  <option value="name">Name A–Z</option>
+                  <option value="cr-ascending">CR low → high</option>
+                  <option value="cr-descending">CR high → low</option>
+                  <option value="type">Creature type</option>
+                  <option value="source">Source</option>
+                </select>
+              </label>
+              {monsterFiltersActive && <button className="catalogue-clear-monster-filters" onClick={resetMonsterFilters} type="button">Clear filters</button>}
+            </fieldset>
+          )}
+          <p className="catalogue-result-count">{filtered.length.toLocaleString()} matches{category === 'monster' && monsterSource === 'all' ? ' · all sources' : ''}</p>
           <div className="catalogue-results" ref={resultsRef}>
             {visible.map((entry) => (
               <button

@@ -5,7 +5,11 @@ export const MAX_PRIVATE_MONSTERS = 2_500;
 
 type UnknownRecord = Record<string, unknown>;
 
-const privateMonsterSources = new Set(['Private import', 'SRD-521 (private import)']);
+function isPrivateMonsterSource(source: string): boolean {
+  return source === 'Private import'
+    || source === 'SRD-521 (private import)'
+    || source.startsWith('Private import · ');
+}
 const omittedAssetKeys = new Set(['image', 'images', 'imageurl', 'token', 'tokenurl', 'portrait', 'avatar']);
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -81,7 +85,7 @@ function normalizeSyncedPrivateMonster(value: unknown): CatalogueEntry | null {
     || description === null
     || !ruleset
     || !source
-    || !privateMonsterSources.has(source)
+    || !isPrivateMonsterSource(source)
     || !isRecord(rawData)
     || (value.type !== undefined && type === null)
   ) {
@@ -135,7 +139,7 @@ export function createPrivateMonsterCatalogueSnapshot(
   entries: CatalogueEntry[],
   updatedAt = new Date().toISOString()
 ): PrivateMonsterCatalogueSnapshot {
-  if (entries.length > MAX_PRIVATE_MONSTERS || entries.some((entry) => !privateMonsterSources.has(entry.source) || entry.category !== 'monster')) {
+  if (entries.length > MAX_PRIVATE_MONSTERS || entries.some((entry) => !isPrivateMonsterSource(entry.source) || entry.category !== 'monster')) {
     throw new Error('Only normalized private monster entries can be synced.');
   }
   return parsePrivateMonsterCatalogueSnapshot({

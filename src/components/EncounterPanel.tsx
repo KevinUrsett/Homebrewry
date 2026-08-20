@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, type CSSProperties } from 'react';
-import { dataString, entrySummary } from '../catalogue/presentation';
+import { dataString, entrySummary, monsterCreatureType, monsterSourceLabel } from '../catalogue/presentation';
 import type { CatalogueEntry } from '../catalogue/types';
 import {
   addMonstersToEncounter,
@@ -164,7 +164,11 @@ export function EncounterPanel({
   const availableNpcEntities = npcEntities.filter((entity) => currentStateByEntityId.get(entity.id)?.fields.status?.value !== 'dead');
   const unavailableNpcEntities = npcEntities.filter((entity) => currentStateByEntityId.get(entity.id)?.fields.status?.value === 'dead');
   const monsterSourceOptions = useMemo(
-    () => [...new Set(monsters.map((monster) => monster.source.trim()).filter(Boolean))].sort((left, right) => left.localeCompare(right)),
+    () => [...new Map(
+      monsters
+        .map((monster) => [monster.source.trim(), monsterSourceLabel(monster)] as const)
+        .filter(([source]) => Boolean(source))
+    ).entries()].sort(([, left], [, right]) => left.localeCompare(right)),
     [monsters]
   );
   const monsterRulesetOptions = useMemo(
@@ -176,13 +180,13 @@ export function EncounterPanel({
     [monsters]
   );
   const monsterTypeOptions = useMemo(
-    () => [...new Set(monsters.map((monster) => dataString(monster, 'type')?.trim()).filter((value): value is string => Boolean(value)))].sort((left, right) => left.localeCompare(right)),
+    () => [...new Set(monsters.map(monsterCreatureType).filter(Boolean))].sort((left, right) => left.localeCompare(right)),
     [monsters]
   );
   const monsterMatches = useMemo(() => {
     const terms = monsterQuery.trim().toLowerCase();
     const filtered = monsters.filter((monster) => {
-      const type = dataString(monster, 'type')?.trim() ?? '';
+      const type = monsterCreatureType(monster);
       const cr = dataString(monster, 'cr')?.trim() ?? '';
       const matchesText = !terms || [monster.name, monster.source, type, cr, ...entrySummary(monster)].join(' ').toLowerCase().includes(terms);
       return matchesText
@@ -194,8 +198,8 @@ export function EncounterPanel({
     return [...filtered].sort((left, right) => {
       if (monsterSort === 'cr-ascending') return challengeRatingValue(left) - challengeRatingValue(right) || left.name.localeCompare(right.name);
       if (monsterSort === 'cr-descending') return challengeRatingValue(right) - challengeRatingValue(left) || left.name.localeCompare(right.name);
-      if (monsterSort === 'source') return left.source.localeCompare(right.source) || left.name.localeCompare(right.name);
-      if (monsterSort === 'type') return (dataString(left, 'type') ?? '').localeCompare(dataString(right, 'type') ?? '') || left.name.localeCompare(right.name);
+      if (monsterSort === 'source') return monsterSourceLabel(left).localeCompare(monsterSourceLabel(right)) || left.name.localeCompare(right.name);
+      if (monsterSort === 'type') return monsterCreatureType(left).localeCompare(monsterCreatureType(right)) || left.name.localeCompare(right.name);
       return left.name.localeCompare(right.name);
     });
   }, [monsterCrFilter, monsterQuery, monsterRulesetFilter, monsterSort, monsterSourceFilter, monsterTypeFilter, monsters]);
@@ -654,7 +658,7 @@ export function EncounterPanel({
                         <label>Source
                           <select onChange={(event) => { setMonsterSourceFilter(event.target.value); setVisibleMonsterCount(MONSTER_RESULTS_PAGE_SIZE); }} value={monsterSourceFilter}>
                             <option value="all">All sources</option>
-                            {monsterSourceOptions.map((source) => <option key={source} value={source}>{source}</option>)}
+                            {monsterSourceOptions.map(([source, label]) => <option key={source} value={source}>{label}</option>)}
                           </select>
                         </label>
                         <label>Edition

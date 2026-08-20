@@ -1,5 +1,24 @@
 import type { CatalogueEntry } from './types';
 
+const dndCreatureTypes = [
+  'aberration', 'beast', 'celestial', 'construct', 'dragon', 'elemental', 'fey',
+  'fiend', 'giant', 'humanoid', 'monstrosity', 'ooze', 'plant', 'undead'
+] as const;
+
+/** Returns the base D&D creature type, independent of source books and subtypes. */
+export function monsterCreatureType(entry: CatalogueEntry): string {
+  const rawType = dataString(entry, 'type')?.trim() ?? '';
+  const normalized = rawType.toLocaleLowerCase();
+  const matched = dndCreatureTypes.find((type) => normalized.split(/[^a-z]+/).includes(type));
+  return matched ?? rawType.split('(')[0].trim().toLocaleLowerCase();
+}
+
+/** Keeps the imported-library marker out of the source filter's visible label. */
+export function monsterSourceLabel(entry: CatalogueEntry): string {
+  const importedPrefix = 'Private import · ';
+  return entry.source.startsWith(importedPrefix) ? entry.source.slice(importedPrefix.length).trim() || 'Private import' : entry.source;
+}
+
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

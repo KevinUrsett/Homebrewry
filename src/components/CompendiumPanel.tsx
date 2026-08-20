@@ -1,4 +1,4 @@
-import { lazy, Suspense, useDeferredValue, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { lazy, Suspense, useDeferredValue, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { catalogueDataset } from '../catalogue/catalogueData';
 import { createCustomCatalogueEntry, createCustomMonster } from '../catalogue/customEntries';
 import { entrySummary } from '../catalogue/presentation';
@@ -323,7 +323,10 @@ export function CompendiumPanel({
   const [brews, setBrews] = useState<Brew[]>([]);
   const [encounters, setEncounters] = useState<Encounter[]>([]);
   const [dismissedNames, setDismissedNames] = useState<Set<string>>(() => new Set());
-  const resultsRef = useRef<HTMLDivElement>(null);
+  const [detailOpen, setDetailOpen] = useState(() => Boolean(catalogueSelection || selectedWorldbuildingId));
+  const [localSelectedKey, setLocalSelectedKey] = useState<string | null>(null);
+  const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
+  const [actionMenuOpen, setActionMenuOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -372,28 +375,24 @@ export function CompendiumPanel({
     () => new Map(catalogueEntries.map((entry) => [catalogueEntryKey(entry), entry])),
     [catalogueEntries]
   );
-  const activeCategory = catalogueSelection ? categoryForCatalogueEntry(catalogueSelection) : category;
-  const filteredItems = useMemo(() => {
-    const terms = deferredQuery.trim().toLocaleLowerCase();
-    return allItems
-      .filter((item) => itemMatches(item, activeCategory, terms))
-      .sort((left, right) => compendiumCollator.compare(left.entry.name, right.entry.name) || left.source.localeCompare(right.source));
-  }, [activeCategory, allItems, deferredQuery]);
-  const categoryCounts = useMemo(() => {
-    const counts = new Map<CompendiumCategory, number>();
-    allItems.forEach((item) => counts.set(item.category, (counts.get(item.category) ?? 0) + 1));
-    return counts;
-  }, [allItems]);
   const externallySelectedKey = catalogueSelection
     ? catalogueKey(catalogueSelection)
     : selectedWorldbuildingId
       ? `campaign:${selectedWorldbuildingId}`
       : null;
-  const selected = (externallySelectedKey ? filteredItems.find((item) => item.key === externallySelectedKey) : null) ?? filteredItems[0] ?? null;
-
-  useEffect(() => {
-    resultsRef.current?.querySelector<HTMLButtonElement>('.compendium-result.is-selected')?.scrollIntoView?.({ block: 'nearest' });
-  }, [selected?.key]);
+  const externallySelectedItem = externallySelectedKey ? itemsByKey.get(externallySelectedKey) ?? null : null;
+  const activeCategory = externallySelectedItem?.category ?? category;
+  const filterTerms = deferredQuery.trim().toLocaleLowerCase();
+  const filteredItems = allItems
+    .filter((item) => itemMatches(item, activeCategory, filterTerms))
+    .sort((left, right) => compendiumCollator.compare(left.entry.name, right.entry.name) || left.source.localeCompare(right.source));
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<CompendiumCategory, number>();
+    allItems.forEach((item) => counts.set(item.category, (counts.get(item.category) ?? 0) + 1));
+    return counts;
+  }, [allItems]);
+  const selected = externallySelectedItem ?? (localSelectedKey ? itemsByKey.get(localSelectedKey) ?? null : null);
+  const displayingDetail = detailOpen || Boolean(selected);
 
   const knownNames = useMemo(() => [
     ...worldbuildingEntries.flatMap((entry) => [entry.name, ...entry.aliases]),
@@ -413,11 +412,10 @@ export function CompendiumPanel({
   const editingWorldbuilding = editingWorldbuildingId === selectedWorldbuilding?.id;
   const selectedEntity = selectedWorldbuilding ? entitiesByWorldbuildingId.get(selectedWorldbuilding.id) : undefined;
   const selectedCurrentState = selectedEntity ? currentStateByEntityId.get(selectedEntity.id) : undefined;
-  const selectedConnections = useMemo(
-    () => selectedWorldbuilding ? findWorldbuildingConnections(selectedWorldbuilding, brews, encounters, worldbuildingEntries) : [],
-    [brews, encounters, selectedWorldbuilding, worldbuildingEntries]
-  );
-  const combatNotes = useMemo(() => {
+  const selectedConnections = selectedWorldbuilding
+    ? findWorldbuildingConnections(selectedWorldbuilding, brews, encounters, worldbuildingEntries)
+    : [];
+  const combatNotes = (() => {
     if (!selectedEntity) return [];
     const encountersById = new Map(encounters.map((encounter) => [encounter.id, encounter]));
     return worldEvents
@@ -429,12 +427,15 @@ export function CompendiumPanel({
         occurredAt: event.occurredAt
       }))
       .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
-  }, [encounters, selectedEntity, worldEvents]);
+  })();
   const storage = campaignStoragePresentation(syncState, hasDriveBackup);
 
   const selectItem = (item: CompendiumItem) => {
     if (editingWorldbuilding && item.key !== selected?.key && !window.confirm('Discard unsaved campaign entry changes?')) return;
     setCategory(item.category);
+    setBrowserMode('library');
+    setDetailOpen(true);
+    setLocalSelectedKey(item.key);
     setEditingWorldbuildingId(null);
     setMonsterEditor(null);
     setEntryEditor(null);
@@ -446,6 +447,10 @@ export function CompendiumPanel({
   const selectCategory = (next: CompendiumCategory) => {
     if (editingWorldbuilding && !window.confirm('Discard unsaved campaign entry changes?')) return;
     setCategory(next);
+    setBrowserMode('library');
+    setCategoryPickerOpen(false);
+    setDetailOpen(false);
+    setLocalSelectedKey(null);
     setEditingWorldbuildingId(null);
     setMonsterEditor(null);
     setEntryEditor(null);
@@ -478,6 +483,9 @@ export function CompendiumPanel({
     const id = onCreateWorldbuilding(newWorldbuildingKindForCategory(activeCategory));
     if (!id) return;
     setBrowserMode('library');
+    setActionMenuOpen(false);
+    setDetailOpen(true);
+    setLocalSelectedKey(null);
     setEditingWorldbuildingId(id);
   };
 
@@ -485,6 +493,9 @@ export function CompendiumPanel({
     setActionError(null);
     setCategory('monsters');
     setBrowserMode('library');
+    setActionMenuOpen(false);
+    setDetailOpen(true);
+    setLocalSelectedKey(null);
     onSelectCatalogue(null);
     onSelectWorldbuilding(null);
     setMonsterEditor({ entry: createCustomMonster(), mode: 'create' });
@@ -496,6 +507,7 @@ export function CompendiumPanel({
     const rulesCategory = catalogueCategoryForCategory(activeCategory, customCatalogueCategories);
     if (!rulesCategory) {
       setActionError('Choose a rules category first, or create a campaign entry instead.');
+      setActionMenuOpen(false);
       return;
     }
     if (rulesCategory === 'monster') {
@@ -503,6 +515,9 @@ export function CompendiumPanel({
       return;
     }
     setActionError(null);
+    setActionMenuOpen(false);
+    setDetailOpen(true);
+    setLocalSelectedKey(null);
     setEntryEditor({ entry: createCustomCatalogueEntry('Untitled entry', rulesCategory), mode: 'create' });
     setMonsterEditor(null);
     setEditingWorldbuildingId(null);
@@ -510,6 +525,7 @@ export function CompendiumPanel({
 
   const beginMonsterDuplicate = (entry: CatalogueEntry) => {
     setActionError(null);
+    setDetailOpen(true);
     setMonsterEditor({ entry: createCustomMonster(entry), mode: 'create' });
     setEntryEditor(null);
   };
@@ -519,6 +535,8 @@ export function CompendiumPanel({
     void onDeleteCustomMonster(entry)
       .then(() => {
         setMonsterEditor(null);
+        setDetailOpen(false);
+        setLocalSelectedKey(null);
         onSelectCatalogue(null);
       })
       .catch((reason) => setActionError(reason instanceof Error ? reason.message : 'Could not delete the custom monster.'));
@@ -529,6 +547,8 @@ export function CompendiumPanel({
     void onDeleteCustomEntry(entry)
       .then(() => {
         setEntryEditor(null);
+        setDetailOpen(false);
+        setLocalSelectedKey(null);
         onSelectCatalogue(null);
       })
       .catch((reason) => setActionError(reason instanceof Error ? reason.message : 'Could not delete the custom entry.'));
@@ -566,152 +586,184 @@ export function CompendiumPanel({
     shortLabel: item.name.slice(0, 1).toLocaleUpperCase()
   }));
 
+  const activeCategoryLabel = activeCategory === 'all'
+    ? 'All entries'
+    : compendiumCategories.find((item) => item.id === activeCategory)?.label
+      ?? customCategoryDefinitions.find((item) => item.id === activeCategory)?.label
+      ?? 'Other entries';
+  const activeCategoryCount = activeCategory === 'all' ? allItems.length : categoryCounts.get(activeCategory) ?? 0;
+
+  const itemSubtitle = (item: CompendiumItem) => {
+    if (isCatalogueItem(item)) {
+      return entrySummary(item.entry).filter(Boolean).join(' · ') || item.kindLabel;
+    }
+    const campaignEntry = item.entry as WorldbuildingEntry;
+    const notes = campaignEntry.notes.trim().replace(/\s+/g, ' ');
+    return notes ? `${item.kindLabel} · ${notes}` : item.kindLabel;
+  };
+
+  const closeDetail = () => {
+    if (editingWorldbuilding && !window.confirm('Discard unsaved campaign entry changes?')) return;
+    setDetailOpen(false);
+    setLocalSelectedKey(null);
+    setEditingWorldbuildingId(null);
+    setMonsterEditor(null);
+    setEntryEditor(null);
+    setActionError(null);
+    onSelectCatalogue(null);
+    onSelectWorldbuilding(null);
+  };
+
+  const openInbox = () => {
+    if (editingWorldbuilding && !window.confirm('Discard unsaved campaign entry changes?')) return;
+    setBrowserMode('inbox');
+    setDetailOpen(false);
+    setLocalSelectedKey(null);
+    setCategoryPickerOpen(false);
+    setActionMenuOpen(false);
+    setEditingWorldbuildingId(null);
+    setMonsterEditor(null);
+    setEntryEditor(null);
+    onSelectCatalogue(null);
+    onSelectWorldbuilding(null);
+  };
+
+  const openLibrary = () => {
+    setBrowserMode('library');
+    setQuery('');
+  };
+
+  const detailContent = monsterEditor ? (
+    <CustomMonsterEditor
+      customCategories={customCatalogueCategories}
+      entry={monsterEditor.entry}
+      key={`${monsterEditor.entry.id}-${monsterEditor.entry.version}`}
+      mode={monsterEditor.mode}
+      onCancel={closeDetail}
+      onCreateCatalogueReference={onCreateCatalogueReference}
+      onCreateWorldbuildingReference={onCreateWorldbuildingReference}
+      onSave={async (entry) => { await onSaveCustomMonster(entry); onSelectCatalogue(entry); }}
+      worldbuildingTypes={types}
+    />
+  ) : entryEditor ? (
+    <CustomCatalogueEntryEditor
+      categoryLabel={catalogueCategoryLabel(entryEditor.entry.category, customCatalogueCategories)}
+      customCategories={customCatalogueCategories}
+      entry={entryEditor.entry}
+      key={`${entryEditor.entry.id}-${entryEditor.entry.version}`}
+      mode={entryEditor.mode}
+      onCancel={closeDetail}
+      onCreateCatalogueReference={onCreateCatalogueReference}
+      onCreateWorldbuildingReference={onCreateWorldbuildingReference}
+      onSave={async (entry) => { await onSaveCustomEntry(entry); onSelectCatalogue(entry); }}
+      worldbuildingTypes={types}
+    />
+  ) : selectedWorldbuilding ? (
+    editingWorldbuilding ? (
+      <WorldbuildingEntryEditor
+        catalogueCategories={customCatalogueCategories}
+        entry={selectedWorldbuilding}
+        key={selectedWorldbuilding.id}
+        onCancel={() => setEditingWorldbuildingId(null)}
+        onCreateCatalogueReference={onCreateCatalogueReference}
+        onCreateWorldbuildingReference={onCreateWorldbuildingReference}
+        onSave={(entry) => { onUpdateWorldbuilding(entry); setEditingWorldbuildingId(null); }}
+        types={types}
+      />
+    ) : (
+      <WorldbuildingEntryPreview
+        catalogue={catalogueByKey}
+        catalogueCategories={customCatalogueCategories}
+        combatNotes={combatNotes}
+        connections={selectedConnections}
+        currentState={selectedCurrentState}
+        entity={selectedEntity}
+        entry={selectedWorldbuilding}
+        onCreatePlotBeat={() => onCreatePlotBeat(selectedWorldbuilding, selectedEntity)}
+        onDelete={(entry) => { onDeleteWorldbuilding(entry); closeDetail(); }}
+        onEdit={() => setEditingWorldbuildingId(selectedWorldbuilding.id)}
+        onEncounterOpen={onEncounterOpen}
+        onReferenceOpen={selectCatalogue}
+        onSetNpcStatus={(status) => onSetNpcStatus(selectedWorldbuilding, status)}
+        onWorldbuildingOpen={selectWorldbuilding}
+        types={types}
+        worldbuilding={worldbuildingMap}
+      />
+    )
+  ) : selectedCatalogue ? (
+    <>
+      <CatalogueEntryDetails
+        actions={<div className="catalogue-entry-action-list"><button className="primary-button" onClick={() => onInsertReference(selectedCatalogue)} type="button">Insert reference into brew</button>{selectedCatalogue.category === 'monster' && <button onClick={() => beginMonsterDuplicate(selectedCatalogue)} type="button">Duplicate as custom monster</button>}{selectedCatalogue.category === 'monster' && selectedCatalogue.source === 'Custom' && <><button onClick={() => setMonsterEditor({ entry: selectedCatalogue as CustomCatalogueEntry, mode: 'edit' })} type="button">Edit custom monster</button><button className="quiet-danger" onClick={() => deleteCustomMonster(selectedCatalogue as CustomCatalogueEntry)} type="button">Delete custom monster</button></>}{selectedCatalogue.category !== 'monster' && selectedCatalogue.source === 'Custom' && <><button onClick={() => setEntryEditor({ entry: selectedCatalogue as CustomCatalogueEntry, mode: 'edit' })} type="button">Edit custom entry</button><button className="quiet-danger" onClick={() => deleteCustomEntry(selectedCatalogue as CustomCatalogueEntry)} type="button">Delete custom entry</button></>}</div>}
+        categoryLabel={catalogueCategoryLabel(selectedCatalogue.category, customCatalogueCategories)}
+        entry={selectedCatalogue}
+        references={{ catalogue: catalogueByKey, catalogueCategories: customCatalogueCategories, onReferenceOpen: selectCatalogue, onWorldbuildingOpen: selectWorldbuilding, worldbuilding: worldbuildingMap, worldbuildingTypes: types }}
+      />
+      {actionError && <p className="catalogue-error catalogue-inline-error" role="alert">{actionError}</p>}
+    </>
+  ) : <p className="empty-panel">Opening the new entry…</p>;
+
   if (mode === 'calendar') {
     return (
-      <main className="compendium-page" aria-label="Compendium calendar">
-        <header className="compendium-page-header">
-          <div><p className="eyebrow">Campaign and rules</p><h1>Compendium</h1><p>Keep campaign material and tabletop reference data in one dependable library.</p></div>
-          <div className="page-header-actions">
-            <div className="compendium-view-switcher" role="tablist" aria-label="Compendium views">
-              <button aria-selected={false} onClick={() => setMode('library')} role="tab" type="button">Library</button>
-              <button aria-selected className="is-selected" role="tab" type="button">Calendar</button>
-            </div>
-            <span className={`sync-badge sync-${storage.tone}`} title={storage.title}>{storage.label}</span>
-          </div>
-        </header>
-        <section className="compendium-calendar-panel"><Suspense fallback={<p className="empty-panel">Opening calendar…</p>}><BelentorCalendar /></Suspense></section>
+      <main className="compendium-page compendium-calendar-page" aria-label="Compendium calendar">
+        <div className="compendium-library-shell">
+          <header className="compendium-page-header">
+            <div><p className="eyebrow">Campaign preparation</p><h1>Calendar</h1><p>Keep the Belentorian calendar close to your campaign material.</p></div>
+            <div className="compendium-toolbar"><button onClick={() => setMode('library')} type="button">← Compendium</button><span className={`sync-badge sync-${storage.tone}`} title={storage.title}>{storage.label}</span></div>
+          </header>
+          <section className="compendium-calendar-panel"><Suspense fallback={<p className="empty-panel">Opening calendar…</p>}><BelentorCalendar /></Suspense></section>
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="compendium-page" aria-label="Compendium">
-      <header className="compendium-page-header">
-        <div>
-          <p className="eyebrow">Campaign and rules</p>
-          <h1>Compendium</h1>
-          <p>{worldbuildingEntries.length.toLocaleString()} campaign entr{worldbuildingEntries.length === 1 ? 'y' : 'ies'} · {(catalogueEntries.length - privateMonsterCount - customEntryCount).toLocaleString()} offline {catalogueDataset.version} references · everything is browsed together.</p>
-        </div>
-        <div className="page-header-actions">
-          <div className="compendium-view-switcher" role="tablist" aria-label="Compendium views">
-            <button aria-selected className="is-selected" role="tab" type="button">Library</button>
-            <button aria-selected={false} onClick={() => setMode('calendar')} role="tab" type="button">Calendar</button>
-          </div>
-          <span className={`sync-badge sync-${storage.tone}`} title={storage.title}>{storage.label}</span>
-          <button onClick={onOpenNameGenerator} type="button">Name generator</button>
-          <button onClick={() => setAddingType((open) => !open)} type="button">New type</button>
-          <button onClick={() => setAddingCategory((open) => !open)} type="button">New category</button>
-          <button onClick={onOpenPrivateMonsterImport} type="button">Import monsters</button>
-          <button className="primary-button" onClick={createCampaignEntry} type="button">New campaign entry</button>
-          <button className="primary-button" onClick={beginNewMonster} type="button">New monster</button>
-        </div>
-      </header>
+    <main className={`compendium-page ${displayingDetail ? 'is-detail-open' : ''}`} aria-label="Compendium">
+      {displayingDetail ? (
+        <section className="compendium-detail-shell" aria-live="polite">
+          <header className="compendium-detail-header">
+            <button onClick={closeDetail} type="button">← Compendium</button>
+            <div><p className="eyebrow">{monsterEditor ? 'New custom monster' : entryEditor ? 'New rules entry' : selected?.kindLabel ?? activeCategoryLabel}</p><strong>{monsterEditor ? monsterEditor.entry.name : entryEditor ? entryEditor.entry.name : selected?.entry.name ?? 'New entry'}</strong></div>
+            <span className={`sync-badge sync-${storage.tone}`} title={storage.title}>{storage.label}</span>
+          </header>
+          <div className="compendium-detail-content">{detailContent}</div>
+        </section>
+      ) : (
+        <div className="compendium-library-shell">
+          <header className="compendium-page-header">
+            <div>
+              <p className="eyebrow">Campaign and rules</p>
+              <h1>Compendium</h1>
+              <p>{worldbuildingEntries.length.toLocaleString()} campaign entr{worldbuildingEntries.length === 1 ? 'y' : 'ies'} and {(catalogueEntries.length - privateMonsterCount - customEntryCount).toLocaleString()} offline {catalogueDataset.version} references in one library.</p>
+            </div>
+            <div className="compendium-toolbar" aria-label="Compendium actions">
+              <button aria-expanded={categoryPickerOpen} onClick={() => setCategoryPickerOpen(true)} type="button"><span>Category</span><strong>{activeCategoryLabel}</strong></button>
+              <button onClick={openInbox} type="button">Inbox <span>{curatedReferences.length + unresolved.length}</span></button>
+              <button onClick={() => setMode('calendar')} type="button">Calendar</button>
+              <button className="primary-button" onClick={() => setActionMenuOpen(true)} type="button">+ Add</button>
+              <span className={`sync-badge sync-${storage.tone}`} title={storage.title}>{storage.label}</span>
+            </div>
+          </header>
 
-      {catalogueError && <p className="catalogue-error">The rules reference data could not load: {catalogueError}</p>}
-      {addingType && <form className="compendium-new-type" onSubmit={submitType}><label>New campaign type<input autoFocus onChange={(event) => setTypeName(event.target.value)} placeholder="Tavern, ship, vehicle…" value={typeName} /></label><button onClick={() => { setAddingType(false); setTypeError(null); }} type="button">Cancel</button><button className="primary-button" type="submit">Add type</button>{typeError && <p role="alert">{typeError}</p>}</form>}
-      {addingCategory && <form className="compendium-new-type" onSubmit={submitCategory}><label>New rules category<input autoFocus onChange={(event) => setCategoryName(event.target.value)} placeholder="Vehicles, hazards, relics…" value={categoryName} /></label><button onClick={() => setAddingCategory(false)} type="button">Cancel</button><button className="primary-button" type="submit">Add category</button></form>}
+          {catalogueError && <p className="catalogue-error">The rules reference data could not load: {catalogueError}</p>}
+          {addingType && <form className="compendium-new-type" onSubmit={submitType}><label>New campaign type<input autoFocus onChange={(event) => setTypeName(event.target.value)} placeholder="Tavern, ship, vehicle…" value={typeName} /></label><button onClick={() => { setAddingType(false); setTypeError(null); }} type="button">Cancel</button><button className="primary-button" type="submit">Add type</button>{typeError && <p role="alert">{typeError}</p>}</form>}
+          {addingCategory && <form className="compendium-new-type" onSubmit={submitCategory}><label>New rules category<input autoFocus onChange={(event) => setCategoryName(event.target.value)} placeholder="Vehicles, hazards, relics…" value={categoryName} /></label><button onClick={() => setAddingCategory(false)} type="button">Cancel</button><button className="primary-button" type="submit">Add category</button></form>}
 
-      <section className="compendium-workspace">
-        <aside className={`compendium-browser ${browserMode === 'inbox' ? 'is-reference-inbox' : ''}`} aria-label="Compendium browser">
-          <input aria-label="Search compendium" className="search-input" onChange={(event) => setQuery(event.target.value)} placeholder="Search entries, monsters, spells…" value={query} />
-          <div className="compendium-browser-tabs" role="tablist" aria-label="Compendium browser mode">
-            <button aria-selected={browserMode === 'library'} className={browserMode === 'library' ? 'is-selected' : ''} onClick={() => setBrowserMode('library')} role="tab" type="button">Library <span>{allItems.length}</span></button>
-            <button aria-selected={browserMode === 'inbox'} className={browserMode === 'inbox' ? 'is-selected' : ''} onClick={() => setBrowserMode('inbox')} role="tab" type="button">Reference inbox <span>{curatedReferences.length + unresolved.length}</span></button>
-          </div>
-          {browserMode === 'library' ? (
-            <>
-              <nav className="compendium-category-list" aria-label="Compendium categories">
-                <button className={activeCategory === 'all' ? 'is-selected' : ''} onClick={() => selectCategory('all')} type="button"><span className="compendium-category-mark">A</span><span>All entries</span><small>{allItems.length}</small></button>
-                {(['Campaign', 'Rules'] as const).map((group) => (
-                  <div className="compendium-category-group" key={group}>
-                    <p>{group}</p>
-                    {compendiumCategories.filter((item) => item.group === group).map((item) => (
-                      <button className={activeCategory === item.id ? 'is-selected' : ''} key={item.id} onClick={() => selectCategory(item.id)} type="button"><span className="compendium-category-mark">{item.shortLabel}</span><span>{item.label}</span><small>{categoryCounts.get(item.id) ?? 0}</small></button>
-                    ))}
-                  </div>
-                ))}
-                {customCategoryDefinitions.length > 0 && <div className="compendium-category-group"><p>Custom</p>{customCategoryDefinitions.map((item) => <button className={activeCategory === item.id ? 'is-selected' : ''} key={item.id} onClick={() => selectCategory(item.id)} type="button"><span className="compendium-category-mark">{item.shortLabel}</span><span>{item.label}</span><small>{categoryCounts.get(item.id) ?? 0}</small></button>)}</div>}
-              </nav>
-              <div className="compendium-results-heading"><span>{catalogueLoading ? 'Loading references…' : `${filteredItems.length.toLocaleString()} match${filteredItems.length === 1 ? '' : 'es'}`}</span>{showRulesAction && <button onClick={beginNewRulesEntry} type="button">New rules entry</button>}</div>
-              <div className="compendium-results" ref={resultsRef}>
-                {filteredItems.map((item) => <button className={`compendium-result ${selected?.key === item.key ? 'is-selected' : ''}`} key={item.key} onClick={() => selectItem(item)} type="button"><strong>{item.entry.name}</strong><span>{item.kindLabel}</span><small>{item.sourceLabel}</small></button>)}
+          <section className="compendium-library-panel" aria-label="Compendium library">
+            {browserMode === 'library' ? <>
+              <input aria-label="Search compendium" className="search-input compendium-search" onChange={(event) => setQuery(event.target.value)} placeholder={`Search ${activeCategoryLabel.toLocaleLowerCase()}…`} value={query} />
+              <header className="compendium-results-heading"><div><p className="eyebrow">{catalogueLoading ? 'Loading references' : `${filteredItems.length.toLocaleString()} shown`}</p><h2>{activeCategoryLabel}</h2></div><span>{activeCategoryCount.toLocaleString()} total</span></header>
+              <div className="compendium-results">
+                {filteredItems.map((item) => <button className="compendium-result" key={item.key} onClick={() => selectItem(item)} type="button"><strong>{item.entry.name}</strong><span>{itemSubtitle(item)}</span><small>{item.sourceLabel}</small></button>)}
                 {!catalogueLoading && !filteredItems.length && <p className="empty-panel">No entries match that search.</p>}
               </div>
-            </>
-          ) : <ReferenceInbox curatedReferences={curatedReferences} onCreateCuratedReferences={onCreateCuratedReferences} onCreateSuggestedEntries={onCreateSuggestedEntries} onDismissNames={(names) => setDismissedNames((current) => new Set([...current, ...names.map((name) => name.toLocaleLowerCase())]))} query={query} types={types} unresolved={unresolved} />}
-        </aside>
+            </> : <div className="compendium-inbox-view"><header><button onClick={openLibrary} type="button">← Library</button><div><p className="eyebrow">Review queue</p><h2>Reference inbox</h2></div></header><input aria-label="Search reference inbox" className="search-input compendium-search" onChange={(event) => setQuery(event.target.value)} placeholder="Filter names to review…" value={query} /><ReferenceInbox curatedReferences={curatedReferences} onCreateCuratedReferences={onCreateCuratedReferences} onCreateSuggestedEntries={onCreateSuggestedEntries} onDismissNames={(names) => setDismissedNames((current) => new Set([...current, ...names.map((name) => name.toLocaleLowerCase())]))} query={query} types={types} unresolved={unresolved} /></div>}
+          </section>
+        </div>
+      )}
 
-        <section className="compendium-details" aria-live="polite">
-          {monsterEditor ? (
-            <CustomMonsterEditor
-              customCategories={customCatalogueCategories}
-              entry={monsterEditor.entry}
-              key={`${monsterEditor.entry.id}-${monsterEditor.entry.version}`}
-              mode={monsterEditor.mode}
-              onCancel={() => setMonsterEditor(null)}
-              onCreateCatalogueReference={onCreateCatalogueReference}
-              onCreateWorldbuildingReference={onCreateWorldbuildingReference}
-              onSave={async (entry) => { await onSaveCustomMonster(entry); onSelectCatalogue(entry); }}
-              worldbuildingTypes={types}
-            />
-          ) : entryEditor ? (
-            <CustomCatalogueEntryEditor
-              categoryLabel={catalogueCategoryLabel(entryEditor.entry.category, customCatalogueCategories)}
-              customCategories={customCatalogueCategories}
-              entry={entryEditor.entry}
-              key={`${entryEditor.entry.id}-${entryEditor.entry.version}`}
-              mode={entryEditor.mode}
-              onCancel={() => setEntryEditor(null)}
-              onCreateCatalogueReference={onCreateCatalogueReference}
-              onCreateWorldbuildingReference={onCreateWorldbuildingReference}
-              onSave={async (entry) => { await onSaveCustomEntry(entry); onSelectCatalogue(entry); }}
-              worldbuildingTypes={types}
-            />
-          ) : selectedWorldbuilding ? (
-            editingWorldbuilding ? (
-              <WorldbuildingEntryEditor
-                catalogueCategories={customCatalogueCategories}
-                entry={selectedWorldbuilding}
-                key={selectedWorldbuilding.id}
-                onCancel={() => setEditingWorldbuildingId(null)}
-                onCreateCatalogueReference={onCreateCatalogueReference}
-                onCreateWorldbuildingReference={onCreateWorldbuildingReference}
-                onSave={(entry) => { onUpdateWorldbuilding(entry); setEditingWorldbuildingId(null); }}
-                types={types}
-              />
-            ) : (
-              <WorldbuildingEntryPreview
-                catalogue={catalogueByKey}
-                catalogueCategories={customCatalogueCategories}
-                combatNotes={combatNotes}
-                connections={selectedConnections}
-                currentState={selectedCurrentState}
-                entity={selectedEntity}
-                entry={selectedWorldbuilding}
-                onCreatePlotBeat={() => onCreatePlotBeat(selectedWorldbuilding, selectedEntity)}
-                onDelete={onDeleteWorldbuilding}
-                onEdit={() => setEditingWorldbuildingId(selectedWorldbuilding.id)}
-                onEncounterOpen={onEncounterOpen}
-                onReferenceOpen={selectCatalogue}
-                onSetNpcStatus={(status) => onSetNpcStatus(selectedWorldbuilding, status)}
-                onWorldbuildingOpen={selectWorldbuilding}
-                types={types}
-                worldbuilding={worldbuildingMap}
-              />
-            )
-          ) : selectedCatalogue ? (
-            <>
-              <CatalogueEntryDetails
-                actions={<div className="catalogue-entry-action-list"><button className="primary-button" onClick={() => onInsertReference(selectedCatalogue)} type="button">Insert reference into brew</button>{selectedCatalogue.category === 'monster' && <button onClick={() => beginMonsterDuplicate(selectedCatalogue)} type="button">Duplicate as custom monster</button>}{selectedCatalogue.category === 'monster' && selectedCatalogue.source === 'Custom' && <><button onClick={() => setMonsterEditor({ entry: selectedCatalogue as CustomCatalogueEntry, mode: 'edit' })} type="button">Edit custom monster</button><button className="quiet-danger" onClick={() => deleteCustomMonster(selectedCatalogue as CustomCatalogueEntry)} type="button">Delete custom monster</button></>}{selectedCatalogue.category !== 'monster' && selectedCatalogue.source === 'Custom' && <><button onClick={() => setEntryEditor({ entry: selectedCatalogue as CustomCatalogueEntry, mode: 'edit' })} type="button">Edit custom entry</button><button className="quiet-danger" onClick={() => deleteCustomEntry(selectedCatalogue as CustomCatalogueEntry)} type="button">Delete custom entry</button></>}</div>}
-                categoryLabel={catalogueCategoryLabel(selectedCatalogue.category, customCatalogueCategories)}
-                entry={selectedCatalogue}
-                references={{ catalogue: catalogueByKey, catalogueCategories: customCatalogueCategories, onReferenceOpen: selectCatalogue, onWorldbuildingOpen: selectWorldbuilding, worldbuilding: worldbuildingMap, worldbuildingTypes: types }}
-              />
-              {actionError && <p className="catalogue-error catalogue-inline-error" role="alert">{actionError}</p>}
-            </>
-          ) : <p className="empty-panel">Choose a campaign entry or reference to inspect it.</p>}
-        </section>
-      </section>
+      {categoryPickerOpen && <div aria-modal="true" className="compendium-dialog-backdrop" onMouseDown={() => setCategoryPickerOpen(false)} role="dialog"><section className="compendium-category-dialog" onMouseDown={(event) => event.stopPropagation()}><header><div><p className="eyebrow">Compendium</p><h2>Browse by category</h2><p>Choose what you want to look through.</p></div><button aria-label="Close categories" onClick={() => setCategoryPickerOpen(false)} type="button">×</button></header><nav className="compendium-category-list" aria-label="Compendium categories"><button className={activeCategory === 'all' ? 'is-selected' : ''} onClick={() => selectCategory('all')} type="button"><span className="compendium-category-mark">A</span><span>All entries</span><small>{allItems.length}</small></button>{(['Campaign', 'Rules'] as const).map((group) => <div className="compendium-category-group" key={group}><p>{group}</p>{compendiumCategories.filter((item) => item.group === group).map((item) => <button className={activeCategory === item.id ? 'is-selected' : ''} key={item.id} onClick={() => selectCategory(item.id)} type="button"><span className="compendium-category-mark">{item.shortLabel}</span><span>{item.label}</span><small>{categoryCounts.get(item.id) ?? 0}</small></button>)}</div>)}{customCategoryDefinitions.length > 0 && <div className="compendium-category-group"><p>Custom</p>{customCategoryDefinitions.map((item) => <button className={activeCategory === item.id ? 'is-selected' : ''} key={item.id} onClick={() => selectCategory(item.id)} type="button"><span className="compendium-category-mark">{item.shortLabel}</span><span>{item.label}</span><small>{categoryCounts.get(item.id) ?? 0}</small></button>)}</div>}</nav></section></div>}
+
+      {actionMenuOpen && <div aria-modal="true" className="compendium-dialog-backdrop" onMouseDown={() => setActionMenuOpen(false)} role="dialog"><section className="compendium-actions-dialog" onMouseDown={(event) => event.stopPropagation()}><header><div><p className="eyebrow">Compendium</p><h2>Add or manage</h2></div><button aria-label="Close add menu" onClick={() => setActionMenuOpen(false)} type="button">×</button></header><div><button className="primary-button" onClick={createCampaignEntry} type="button">New campaign entry</button><button disabled={!showRulesAction} onClick={beginNewRulesEntry} type="button">New rules entry{showRulesAction ? ` · ${activeCategoryLabel}` : ''}</button><button onClick={beginNewMonster} type="button">New custom monster</button><button onClick={() => { setActionMenuOpen(false); onOpenNameGenerator(); }} type="button">Generate names</button><button onClick={() => { setActionMenuOpen(false); setAddingType(true); }} type="button">New campaign type</button><button onClick={() => { setActionMenuOpen(false); setAddingCategory(true); }} type="button">New rules category</button><button onClick={() => { setActionMenuOpen(false); onOpenPrivateMonsterImport(); }} type="button">Import monsters</button></div></section></div>}
     </main>
   );
 }

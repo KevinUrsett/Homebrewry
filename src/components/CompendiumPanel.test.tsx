@@ -16,11 +16,11 @@ const monster: CatalogueEntry = {
   description: 'An ancient aberration.',
   data: {
     size: 'L',
-    type: 'aberration',
+    type: 'aberration, Monster Manual',
     cr: '10',
     environments: ['underdark', 'underwater']
   },
-  source: 'Monster Manual',
+  source: 'Private import',
   ruleset: '5.5e'
 };
 
@@ -31,7 +31,7 @@ const wolf: CatalogueEntry = {
   description: 'A hunting beast.',
   data: {
     size: 'M',
-    type: 'beast',
+    type: "beast, Mordenkainen's Tome Of Foes",
     cr: '1/4',
     environments: ['forest', 'grassland']
   },

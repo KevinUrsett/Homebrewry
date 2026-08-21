@@ -293,8 +293,12 @@ function titleCaseMonsterValue(value: string): string {
     .replace(/\b\w/g, (letter) => letter.toLocaleUpperCase());
 }
 
-function normaliseMonsterType(value: string): string {
-  return value.trim().split(/[\[(]/)[0]?.trim().toLocaleLowerCase() ?? '';
+function monsterTypeParts(value: string): { source: string; type: string } {
+  const [rawType = '', ...sourceParts] = value.trim().split(',');
+  return {
+    type: rawType.split(/[\[(]/)[0]?.trim().toLocaleLowerCase() ?? '',
+    source: sourceParts.join(',').trim()
+  };
 }
 
 function normaliseMonsterSize(value: string): string {
@@ -337,14 +341,14 @@ function sourceValues(value: unknown): string[] {
 
 function monsterMetadataForCatalogueEntry(entry: CatalogueEntry): MonsterMetadata {
   if (entry.category !== 'monster') return emptyMonsterMetadata;
-  const sources = sourceValues(entry.data.sources);
-  const type = normaliseMonsterType(dataString(entry, 'type') ?? '');
+  const typeParts = monsterTypeParts(dataString(entry, 'type') ?? '');
+  const sources = Array.from(new Set([...sourceValues(entry.data.sources), ...sourceValues(typeParts.source)]));
   const cr = (dataString(entry, 'cr') ?? '').trim();
   const size = normaliseMonsterSize(dataString(entry, 'size') ?? '');
   return {
     sources: sources.length ? sources : sourceValues(entry.source),
     importSource: entry.source.trim(),
-    type,
+    type: typeParts.type,
     cr,
     crValue: challengeRatingValue(cr),
     size,

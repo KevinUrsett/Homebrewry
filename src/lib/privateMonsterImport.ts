@@ -235,6 +235,11 @@ function sourceHasSrd521(value: unknown): boolean {
   return Array.isArray(value) && value.some((source) => isRecord(source) && source.name === 'SRD-521');
 }
 
+function sourceNames(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((source) => isRecord(source) && typeof source.name === 'string' && source.name.trim() ? [source.name.trim()] : []);
+}
+
 function normalizePrivateMonsters(records: unknown[], existingMonsterIds: ReadonlySet<string>): Omit<PrivateMonsterImportReport, 'imageFileCount'> {
   const entries: CatalogueEntry[] = [];
   const seenIds = new Set<string>();
@@ -267,7 +272,7 @@ function normalizePrivateMonsters(records: unknown[], existingMonsterIds: Readon
       category: 'monster',
       name,
       description,
-      data: rawData,
+      data: { ...rawData, sources: sourceNames(candidate.sources) },
       source: sourceHasSrd521(candidate.sources) ? 'SRD-521 (private import)' : 'Private import',
       ruleset,
       type: stringValue(candidate.type, 120) ?? undefined,

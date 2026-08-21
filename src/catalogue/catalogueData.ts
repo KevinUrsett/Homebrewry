@@ -50,6 +50,11 @@ function stringValue(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;
 }
 
+function sourceNames(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((source) => isRecord(source) && typeof source.name === 'string' && source.name.trim() ? [source.name.trim()] : []);
+}
+
 function hasSrdSource(value: unknown): boolean {
   return Array.isArray(value) && value.some((source) => isRecord(source) && source.name === 'SRD-521');
 }
@@ -81,7 +86,7 @@ export function normalizeCatalogueEntries(category: CatalogueCategory, records: 
       category,
       name: record.name,
       description: stringValue(record.descr) ?? '',
-      data: isRecord(record.data) ? record.data : {},
+      data: { ...(isRecord(record.data) ? record.data : {}), sources: sourceNames(record.sources) },
       source: 'SRD-521',
       ruleset: stringValue(attributes.ruleset) ?? '5.5e',
       type: stringValue(record.type),

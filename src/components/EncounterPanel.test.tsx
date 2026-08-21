@@ -196,12 +196,22 @@ describe('EncounterPanel monster browser', () => {
     await act(async () => { Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Add combatant')?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
     await act(async () => { Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Catalogue')?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
 
-    const bookSource = container.querySelector('select[aria-label="Filter encounter monsters by book source"]') as HTMLSelectElement;
-    const type = container.querySelector('select[aria-label="Filter encounter monsters by type"]') as HTMLSelectElement;
-    const challenge = container.querySelector('select[aria-label="Filter encounter monsters by challenge rating"]') as HTMLSelectElement;
-    const size = container.querySelector('select[aria-label="Filter encounter monsters by size"]') as HTMLSelectElement;
-    const environment = container.querySelector('select[aria-label="Filter encounter monsters by environment"]') as HTMLSelectElement;
-    const importSource = container.querySelector('select[aria-label="Filter encounter monsters by import source"]') as HTMLSelectElement;
+    const search = container.querySelector<HTMLInputElement>('input[placeholder="Search monsters…"]');
+    const filterTrigger = container.querySelector<HTMLButtonElement>('button[aria-controls="encounter-monster-filter-dialog"]');
+    expect(search).toBeTruthy();
+    expect(filterTrigger).toBeTruthy();
+    expect(container.querySelector('#encounter-monster-filter-dialog')).toBeNull();
+    await act(async () => filterTrigger?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    const filterDrawer = container.querySelector<HTMLElement>('#encounter-monster-filter-dialog');
+    expect(filterDrawer).toBeTruthy();
+    expect(filterDrawer?.contains(search ?? null)).toBe(false);
+    const bookSource = filterDrawer?.querySelector('select[aria-label="Filter encounter monsters by book source"]') as HTMLSelectElement;
+    const type = filterDrawer?.querySelector('select[aria-label="Filter encounter monsters by type"]') as HTMLSelectElement;
+    const challenge = filterDrawer?.querySelector('select[aria-label="Filter encounter monsters by challenge rating"]') as HTMLSelectElement;
+    const size = filterDrawer?.querySelector('select[aria-label="Filter encounter monsters by size"]') as HTMLSelectElement;
+    const environment = filterDrawer?.querySelector('select[aria-label="Filter encounter monsters by environment"]') as HTMLSelectElement;
+    const importSource = filterDrawer?.querySelector('select[aria-label="Filter encounter monsters by import source"]') as HTMLSelectElement;
     expect(bookSource).toBeTruthy();
     expect(Array.from(bookSource.options).map((option) => option.textContent)).toContain('Monster Manual');
     expect(Array.from(bookSource.options).map((option) => option.textContent)).not.toContain('Private import');
@@ -209,7 +219,7 @@ describe('EncounterPanel monster browser', () => {
     expect(challenge).toBeTruthy();
     expect(size).toBeTruthy();
     expect(environment).toBeTruthy();
-    expect(container.querySelector('.encounter-monster-advanced-filters')?.textContent).toContain('Import source');
+    expect(filterDrawer?.querySelector('.encounter-monster-advanced-filters')?.textContent).toContain('Import source');
 
     await act(async () => {
       bookSource.value = 'Monster Manual';
@@ -226,7 +236,7 @@ describe('EncounterPanel monster browser', () => {
     expect(container.querySelector('.encounter-monster-results')?.textContent).toContain('Displacer Beast');
     expect(container.querySelector('.encounter-monster-results')?.textContent).not.toContain('Aboleth');
 
-    const clearFilters = container.querySelector<HTMLButtonElement>('button[aria-label="Clear encounter monster filters"]');
+    const clearFilters = filterDrawer?.querySelector<HTMLButtonElement>('button[aria-label="Clear encounter monster filters"]');
     await act(async () => clearFilters?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     await act(async () => {
       challenge.value = '1';
@@ -239,13 +249,16 @@ describe('EncounterPanel monster browser', () => {
     expect(container.querySelector('.encounter-monster-results')?.textContent).toContain('Dire Wolf');
     expect(container.querySelector('.encounter-monster-results')?.textContent).not.toContain('Displacer Beast');
 
-    await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Clear encounter monster filters"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    await act(async () => filterDrawer?.querySelector<HTMLButtonElement>('button[aria-label="Clear encounter monster filters"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     await act(async () => {
       importSource.value = 'Private import';
       importSource.dispatchEvent(new Event('change', { bubbles: true }));
     });
     expect(container.querySelector('.encounter-monster-results')?.textContent).toContain('Aboleth');
     expect(container.querySelector('.encounter-monster-results')?.textContent).not.toContain('Displacer Beast');
+
+    await act(async () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })));
+    expect(container.querySelector('#encounter-monster-filter-dialog')).toBeNull();
   });
 
   it('keeps the picker open after adding a monster so several can be added', async () => {

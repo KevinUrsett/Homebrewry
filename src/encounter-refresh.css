@@ -257,6 +257,71 @@ reviewed or reverted without disturbing the shared application theme. */
   text-transform: none;
 }
 
+.encounter-monster-mobile-filter-summary {
+  display: none;
+}
+
+.encounter-monster-filter-trigger {
+  align-items: center;
+  background: #fffdf7;
+  border: 1px solid #b79770;
+  border-radius: 7px;
+  color: #4c352a;
+  display: flex;
+  font: 800 .8rem "Scaly Sans", Inter, sans-serif;
+  justify-content: space-between;
+  min-height: 42px;
+  padding: 9px 11px;
+  text-align: left;
+}
+
+.encounter-monster-filter-trigger > span {
+  background: #6d3027;
+  border-radius: 999px;
+  color: #fffaf0;
+  font-size: .68rem;
+  line-height: 1;
+  min-width: 1.45rem;
+  padding: 4px 5px;
+  text-align: center;
+}
+
+.encounter-monster-filter-chip-row {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+
+.encounter-monster-filter-chip {
+  align-items: center;
+  background: #f3dfba;
+  border: 1px solid #b99464;
+  border-radius: 999px;
+  color: #4c352a;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font: 800 .7rem "Scaly Sans", Inter, sans-serif;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 32px;
+  padding: 6px 9px;
+}
+
+.encounter-monster-filter-chip > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.encounter-monster-filter-chip > span:last-child {
+  color: #7a2f27;
+  font-size: 1rem;
+  line-height: .7;
+}
+
 .encounter-monster-filters {
   display: grid;
   gap: 8px;
@@ -316,6 +381,104 @@ reviewed or reverted without disturbing the shared application theme. */
   gap: 8px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: 8px;
+}
+
+.encounter-monster-filter-trigger:focus-visible,
+.encounter-monster-filter-chip:focus-visible,
+.encounter-monster-filter-reset:focus-visible {
+  outline: 3px solid rgb(184 134 55 / 42%);
+  outline-offset: 2px;
+}
+
+.encounter-monster-filter-backdrop {
+  align-items: center;
+  background: rgb(30 20 15 / 58%);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 20px;
+  position: fixed;
+  z-index: 2;
+}
+
+.encounter-monster-filter-dialog {
+  background: #fffaf0;
+  border: 1px solid #c19862;
+  border-radius: 10px;
+  box-shadow: 0 20px 48px rgb(29 18 10 / 42%);
+  max-height: min(760px, calc(100dvh - 40px));
+  overflow: auto;
+  width: min(620px, 100%);
+}
+
+.encounter-monster-filter-dialog > header {
+  align-items: flex-start;
+  border-bottom: 1px solid #ddc9a9;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 20px 20px 14px;
+}
+
+.encounter-monster-filter-dialog h3 {
+  color: #5d2f26;
+  font-family: Georgia, serif;
+  font-size: 1.45rem;
+  line-height: 1;
+  margin: 4px 0 0;
+}
+
+.encounter-monster-filter-dialog header p:not(.eyebrow) {
+  color: #715e4e;
+  font-size: .8rem;
+  margin: 7px 0 0;
+}
+
+.encounter-monster-filter-dialog header > button {
+  background: #6d3027;
+  border: 1px solid #6d3027;
+  border-radius: 6px;
+  color: #fffaf0;
+  font-size: 1.3rem;
+  height: 36px;
+  line-height: 1;
+  width: 36px;
+}
+
+.encounter-monster-filter-dialog .encounter-monster-filters {
+  margin-top: 0;
+  padding: 16px 20px;
+}
+
+.encounter-monster-filter-dialog-actions {
+  align-items: center;
+  background: #fffaf0;
+  border-top: 1px solid #ddc9a9;
+  bottom: 0;
+  display: flex;
+  gap: 9px;
+  justify-content: flex-end;
+  padding: 13px 20px 16px;
+  position: sticky;
+}
+
+.encounter-monster-filter-reset {
+  background: #fffaf0;
+  border: 1px solid #b79770;
+  border-radius: 7px;
+  color: #4c352a;
+  font: 800 .72rem "Scaly Sans", Inter, sans-serif;
+  padding: 7px 9px;
+}
+
+.encounter-monster-filter-dialog-actions .primary-button {
+  background: #6d3027;
+  border: 1px solid #6d3027;
+  border-radius: 7px;
+  color: #fffaf0;
+  font: 800 .78rem "Scaly Sans", Inter, sans-serif;
+  min-height: 38px;
+  padding: 8px 11px;
 }
 
 .encounter-party-picker {
@@ -674,6 +837,20 @@ reviewed or reverted without disturbing the shared application theme. */
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .encounter-monster-filter-heading {
+    display: none;
+  }
+
+  .encounter-monster-mobile-filter-summary {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .encounter-monster-filters--inline {
+    display: none;
+  }
+
   .encounter-monster-book-source-control,
   .encounter-monster-sort-control {
     grid-column: 1 / -1;
@@ -681,6 +858,38 @@ reviewed or reverted without disturbing the shared application theme. */
 
   .encounter-monster-advanced-filters > div {
     grid-template-columns: 1fr;
+  }
+
+  .encounter-monster-filter-backdrop {
+    align-items: flex-start;
+    overflow-y: auto;
+    padding: calc(12px + env(safe-area-inset-top)) 10px calc(20px + env(safe-area-inset-bottom));
+  }
+
+  .encounter-monster-filter-dialog {
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top));
+    width: 100%;
+  }
+
+  .encounter-monster-filter-dialog > header {
+    padding: 17px 16px 13px;
+  }
+
+  .encounter-monster-filter-dialog h3 {
+    font-size: 1.35rem;
+  }
+
+  .encounter-monster-filter-dialog .encounter-monster-filters {
+    padding: 13px 12px 15px;
+  }
+
+  .encounter-monster-filter-dialog-actions {
+    gap: 8px;
+    padding: 11px 12px calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .encounter-monster-filter-dialog-actions .primary-button {
+    flex: 1;
   }
 }
 

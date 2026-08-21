@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import {
   challengeRatingValue,
   compareMonsterMetadata,
@@ -8,6 +8,7 @@ import {
   monsterMetadataForCatalogueEntry,
   monsterSizeLabel,
   monsterSizeRank,
+  monsterSortLabel,
   titleCaseMonsterValue,
   type MonsterFilterFields,
   type MonsterSort
@@ -68,6 +69,21 @@ type EncounterMonsterFilters = MonsterFilterFields & {
   ruleset: string;
   sort: MonsterSort;
 };
+type EncounterMonsterFilterOptions = {
+  sources: string[];
+  importSources: string[];
+  types: string[];
+  crs: string[];
+  sizes: string[];
+  environments: string[];
+  rulesets: string[];
+};
+type EncounterMonsterFilterControlsProps = {
+  filters: EncounterMonsterFilters;
+  options: EncounterMonsterFilterOptions;
+  onFilterChange: <Key extends keyof EncounterMonsterFilters>(key: Key, value: EncounterMonsterFilters[Key]) => void;
+  variant: 'inline' | 'drawer';
+};
 type EncounterView = 'create' | 'run';
 
 const MONSTER_RESULTS_PAGE_SIZE = Number.MAX_SAFE_INTEGER;
@@ -85,6 +101,78 @@ const defaultEncounterMonsterFilters: EncounterMonsterFilters = {
   ruleset: '',
   sort: 'name-asc'
 };
+
+function encounterRulesetLabel(ruleset: string) {
+  return ruleset === '5.5e' ? 'D&D 5.5e / One D&D' : ruleset;
+}
+
+function EncounterMonsterFilterControls({ filters, onFilterChange, options, variant }: EncounterMonsterFilterControlsProps) {
+  const [advancedOpen, setAdvancedOpen] = useState(Boolean(filters.importSource || filters.ruleset));
+  const activeAdvancedFilterCount = Number(Boolean(filters.importSource)) + Number(Boolean(filters.ruleset));
+
+  return (
+    <div aria-label="Monster filters" className={`encounter-monster-filters encounter-monster-filters--${variant}`}>
+      <label className="encounter-monster-book-source-control">Book source
+        <select aria-label="Filter encounter monsters by book source" onChange={(event) => onFilterChange('source', event.target.value)} value={filters.source}>
+          <option value="">All book sources</option>
+          {options.sources.map((source) => <option key={source} value={source}>{source}</option>)}
+        </select>
+      </label>
+      <label>Type
+        <select aria-label="Filter encounter monsters by type" onChange={(event) => onFilterChange('type', event.target.value)} value={filters.type}>
+          <option value="">All types</option>
+          {options.types.map((type) => <option key={type} value={type}>{titleCaseMonsterValue(type)}</option>)}
+        </select>
+      </label>
+      <label>CR
+        <select aria-label="Filter encounter monsters by challenge rating" onChange={(event) => onFilterChange('cr', event.target.value)} value={filters.cr}>
+          <option value="">All CRs</option>
+          {options.crs.map((cr) => <option key={cr} value={cr}>CR {cr}</option>)}
+        </select>
+      </label>
+      <label>Size
+        <select aria-label="Filter encounter monsters by size" onChange={(event) => onFilterChange('size', event.target.value)} value={filters.size}>
+          <option value="">All sizes</option>
+          {options.sizes.map((size) => <option key={size} value={size}>{monsterSizeLabel(size)}</option>)}
+        </select>
+      </label>
+      <label>Environment
+        <select aria-label="Filter encounter monsters by environment" onChange={(event) => onFilterChange('environment', event.target.value)} value={filters.environment}>
+          <option value="">All environments</option>
+          {options.environments.map((environment) => <option key={environment} value={environment}>{titleCaseMonsterValue(environment)}</option>)}
+        </select>
+      </label>
+      <label className="encounter-monster-sort-control">Sort
+        <select aria-label="Sort encounter monsters" onChange={(event) => onFilterChange('sort', event.target.value as MonsterSort)} value={filters.sort}>
+          <option value="name-asc">Name A–Z</option>
+          <option value="name-desc">Name Z–A</option>
+          <option value="cr-asc">CR: low to high</option>
+          <option value="cr-desc">CR: high to low</option>
+          <option value="size-asc">Size: small to large</option>
+          <option value="size-desc">Size: large to small</option>
+          <option value="type-asc">Type A–Z</option>
+        </select>
+      </label>
+      <details className="encounter-monster-advanced-filters" onToggle={(event) => setAdvancedOpen(event.currentTarget.open)} open={advancedOpen}>
+        <summary>Advanced filters{activeAdvancedFilterCount ? ` (${activeAdvancedFilterCount})` : ''}</summary>
+        <div>
+          <label>Import source
+            <select aria-label="Filter encounter monsters by import source" onChange={(event) => onFilterChange('importSource', event.target.value)} value={filters.importSource}>
+              <option value="">All import sources</option>
+              {options.importSources.map((source) => <option key={source} value={source}>{source}</option>)}
+            </select>
+          </label>
+          <label>Edition
+            <select aria-label="Filter encounter monsters by edition" onChange={(event) => onFilterChange('ruleset', event.target.value)} value={filters.ruleset}>
+              <option value="">All editions</option>
+              {options.rulesets.map((ruleset) => <option key={ruleset} value={ruleset}>{encounterRulesetLabel(ruleset)}</option>)}
+            </select>
+          </label>
+        </div>
+      </details>
+    </div>
+  );
+}
 
 function readSavedEncounterListHeight() {
   try {
@@ -142,7 +230,7 @@ export function EncounterPanel({
   const [savedListHeight, setSavedListHeight] = useState(readSavedEncounterListHeight);
   const [editingEncounter, setEditingEncounter] = useState(false);
   const [monsterFilters, setMonsterFilters] = useState<EncounterMonsterFilters>(() => ({ ...defaultEncounterMonsterFilters }));
-  const [monsterAdvancedFiltersOpen, setMonsterAdvancedFiltersOpen] = useState(false);
+  const [monsterFiltersOpen, setMonsterFiltersOpen] = useState(false);
   const [partyName, setPartyName] = useState('');
   const [partyArmorClass, setPartyArmorClass] = useState('');
   const [partyHitPoints, setPartyHitPoints] = useState('');
@@ -171,6 +259,16 @@ export function EncounterPanel({
   const orderedParticipants = selected ? sortCombatants(selected.participants.filter((participant) => !unavailableParticipants.some((item) => item.id === participant.id))) : [];
   const availableNpcEntities = npcEntities.filter((entity) => currentStateByEntityId.get(entity.id)?.fields.status?.value !== 'dead');
   const unavailableNpcEntities = npcEntities.filter((entity) => currentStateByEntityId.get(entity.id)?.fields.status?.value === 'dead');
+
+  useEffect(() => {
+    if (!monsterFiltersOpen) return undefined;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMonsterFiltersOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [monsterFiltersOpen]);
+
   const monsterMetadataById = useMemo(
     () => new Map(monsters.map((monster) => [monster.id, monsterMetadataForCatalogueEntry(monster)] as const)),
     [monsters]
@@ -280,14 +378,48 @@ export function EncounterPanel({
     setVisibleMonsterCount(MONSTER_RESULTS_PAGE_SIZE);
   };
 
-  const hasActiveMonsterFilters = Object.entries(monsterFilters).some(([key, value]) => value !== defaultEncounterMonsterFilters[key as keyof EncounterMonsterFilters]);
-  const activeAdvancedMonsterFilterCount = Number(Boolean(monsterFilters.importSource)) + Number(Boolean(monsterFilters.ruleset));
+  const activeMonsterFilterChips: Array<{ key: keyof EncounterMonsterFilters; label: string; value: string }> = [
+    { key: 'source' as const, label: 'Book', value: monsterFilters.source },
+    { key: 'importSource' as const, label: 'Import', value: monsterFilters.importSource },
+    { key: 'type' as const, label: 'Type', value: monsterFilters.type ? titleCaseMonsterValue(monsterFilters.type) : '' },
+    { key: 'cr' as const, label: 'CR', value: monsterFilters.cr },
+    { key: 'size' as const, label: 'Size', value: monsterFilters.size ? monsterSizeLabel(monsterFilters.size) : '' },
+    { key: 'environment' as const, label: 'Environment', value: monsterFilters.environment ? titleCaseMonsterValue(monsterFilters.environment) : '' },
+    { key: 'ruleset' as const, label: 'Edition', value: monsterFilters.ruleset ? encounterRulesetLabel(monsterFilters.ruleset) : '' },
+    ...(monsterFilters.sort !== defaultEncounterMonsterFilters.sort
+      ? [{ key: 'sort' as const, label: 'Sort', value: monsterSortLabel(monsterFilters.sort) }]
+      : [])
+  ].filter((chip) => Boolean(chip.value));
+  const activeMonsterFilterCount = activeMonsterFilterChips.length;
+  const hasActiveMonsterFilters = activeMonsterFilterCount > 0;
+  const clearMonsterFilter = (key: keyof EncounterMonsterFilters) => {
+    switch (key) {
+      case 'source': updateMonsterFilter('source', ''); break;
+      case 'importSource': updateMonsterFilter('importSource', ''); break;
+      case 'type': updateMonsterFilter('type', ''); break;
+      case 'cr': updateMonsterFilter('cr', ''); break;
+      case 'size': updateMonsterFilter('size', ''); break;
+      case 'environment': updateMonsterFilter('environment', ''); break;
+      case 'ruleset': updateMonsterFilter('ruleset', ''); break;
+      case 'sort': updateMonsterFilter('sort', defaultEncounterMonsterFilters.sort); break;
+    }
+  };
+
+  const closeCombatantPicker = () => {
+    setMonsterFiltersOpen(false);
+    setCombatantPicker(null);
+  };
+
+  const openCombatantPicker = (picker: Exclude<CombatantPicker, null>) => {
+    setMonsterFiltersOpen(false);
+    setCombatantPicker(picker);
+  };
 
   /** On touch screens, close the large picker before the tracker reflows. This
    * avoids leaving an inert scroll layer above the newly added combatant. */
   const addCombatantAndClosePicker = (next: Encounter) => {
     onUpdateEncounter(next);
-    setCombatantPicker(null);
+    closeCombatantPicker();
     setMonsterQuery('');
     setVisibleMonsterCount(MONSTER_RESULTS_PAGE_SIZE);
     clearCombatantEditors();
@@ -301,7 +433,7 @@ export function EncounterPanel({
 
   const selectEncounter = (id: string) => {
     setIsEditingName(false);
-    setCombatantPicker(null);
+    closeCombatantPicker();
     clearCombatantEditors();
     onSelectEncounter(id);
   };
@@ -589,7 +721,7 @@ export function EncounterPanel({
               <section className={`encounter-section encounter-tracker-summary ${selected.participants.length ? '' : 'is-empty'}`}>
                 <div className="encounter-section-heading">
                   <div><p className="eyebrow">Tracker</p><h2>{selected.participants.length} combatant{selected.participants.length === 1 ? '' : 's'}</h2></div>
-                  <button className="encounter-add-button tracker-add-button" onClick={() => setCombatantPicker('monster')} type="button">Add combatants</button>
+                <button className="encounter-add-button tracker-add-button" onClick={() => openCombatantPicker('monster')} type="button">Add combatants</button>
                 </div>
                 <p className="encounter-helper">
                   {selected.participants.length
@@ -613,7 +745,7 @@ export function EncounterPanel({
                 <div
                   className="encounter-combatant-picker-backdrop"
                   onMouseDown={(event) => {
-                    if (event.target === event.currentTarget) setCombatantPicker(null);
+                    if (event.target === event.currentTarget) closeCombatantPicker();
                   }}
                   role="presentation"
                 >
@@ -631,12 +763,12 @@ export function EncounterPanel({
                               : `${monsterMatches.length.toLocaleString()} monster match${monsterMatches.length === 1 ? '' : 'es'}`}
                       </span>
                     </div>
-                    <button aria-label="Close combatant picker" className="encounter-picker-close" onClick={() => setCombatantPicker(null)} type="button">×</button>
+                    <button aria-label="Close combatant picker" className="encounter-picker-close" onClick={closeCombatantPicker} type="button">×</button>
                   </div>
                   <div className="encounter-picker-tabs" role="tablist" aria-label="Combatant source">
-                    <button aria-selected={combatantPicker === 'party'} className={combatantPicker === 'party' ? 'is-selected' : ''} onClick={() => setCombatantPicker('party')} role="tab" type="button">Party</button>
-                    <button aria-selected={combatantPicker === 'npc'} className={combatantPicker === 'npc' ? 'is-selected' : ''} onClick={() => setCombatantPicker('npc')} role="tab" type="button">Worldbuilding NPCs</button>
-                    <button aria-selected={combatantPicker === 'monster'} className={combatantPicker === 'monster' ? 'is-selected' : ''} onClick={() => setCombatantPicker('monster')} role="tab" type="button">Catalogue</button>
+                    <button aria-selected={combatantPicker === 'party'} className={combatantPicker === 'party' ? 'is-selected' : ''} onClick={() => openCombatantPicker('party')} role="tab" type="button">Party</button>
+                    <button aria-selected={combatantPicker === 'npc'} className={combatantPicker === 'npc' ? 'is-selected' : ''} onClick={() => openCombatantPicker('npc')} role="tab" type="button">Worldbuilding NPCs</button>
+                    <button aria-selected={combatantPicker === 'monster'} className={combatantPicker === 'monster' ? 'is-selected' : ''} onClick={() => openCombatantPicker('monster')} role="tab" type="button">Catalogue</button>
                   </div>
 
                   {combatantPicker === 'party' ? (
@@ -695,66 +827,13 @@ export function EncounterPanel({
                         <span>Filter &amp; sort</span>
                         {hasActiveMonsterFilters && <button aria-label="Clear encounter monster filters" className="encounter-monster-filter-clear" onClick={resetMonsterFilters} type="button">Clear filters</button>}
                       </div>
-                      <div className="encounter-monster-filters" aria-label="Monster filters">
-                        <label className="encounter-monster-book-source-control">Book source
-                          <select aria-label="Filter encounter monsters by book source" onChange={(event) => updateMonsterFilter('source', event.target.value)} value={monsterFilters.source}>
-                            <option value="">All book sources</option>
-                            {monsterFilterOptions.sources.map((source) => <option key={source} value={source}>{source}</option>)}
-                          </select>
-                        </label>
-                        <label>Type
-                          <select aria-label="Filter encounter monsters by type" onChange={(event) => updateMonsterFilter('type', event.target.value)} value={monsterFilters.type}>
-                            <option value="">All types</option>
-                            {monsterFilterOptions.types.map((type) => <option key={type} value={type}>{titleCaseMonsterValue(type)}</option>)}
-                          </select>
-                        </label>
-                        <label>CR
-                          <select aria-label="Filter encounter monsters by challenge rating" onChange={(event) => updateMonsterFilter('cr', event.target.value)} value={monsterFilters.cr}>
-                            <option value="">All CRs</option>
-                            {monsterFilterOptions.crs.map((cr) => <option key={cr} value={cr}>CR {cr}</option>)}
-                          </select>
-                        </label>
-                        <label>Size
-                          <select aria-label="Filter encounter monsters by size" onChange={(event) => updateMonsterFilter('size', event.target.value)} value={monsterFilters.size}>
-                            <option value="">All sizes</option>
-                            {monsterFilterOptions.sizes.map((size) => <option key={size} value={size}>{monsterSizeLabel(size)}</option>)}
-                          </select>
-                        </label>
-                        <label>Environment
-                          <select aria-label="Filter encounter monsters by environment" onChange={(event) => updateMonsterFilter('environment', event.target.value)} value={monsterFilters.environment}>
-                            <option value="">All environments</option>
-                            {monsterFilterOptions.environments.map((environment) => <option key={environment} value={environment}>{titleCaseMonsterValue(environment)}</option>)}
-                          </select>
-                        </label>
-                        <label className="encounter-monster-sort-control">Sort
-                          <select aria-label="Sort encounter monsters" onChange={(event) => updateMonsterFilter('sort', event.target.value as MonsterSort)} value={monsterFilters.sort}>
-                            <option value="name-asc">Name A–Z</option>
-                            <option value="name-desc">Name Z–A</option>
-                            <option value="cr-asc">CR: low to high</option>
-                            <option value="cr-desc">CR: high to low</option>
-                            <option value="size-asc">Size: small to large</option>
-                            <option value="size-desc">Size: large to small</option>
-                            <option value="type-asc">Type A–Z</option>
-                          </select>
-                        </label>
-                        <details className="encounter-monster-advanced-filters" onToggle={(event) => setMonsterAdvancedFiltersOpen(event.currentTarget.open)} open={monsterAdvancedFiltersOpen}>
-                          <summary>Advanced filters{activeAdvancedMonsterFilterCount ? ` (${activeAdvancedMonsterFilterCount})` : ''}</summary>
-                          <div>
-                            <label>Import source
-                              <select aria-label="Filter encounter monsters by import source" onChange={(event) => updateMonsterFilter('importSource', event.target.value)} value={monsterFilters.importSource}>
-                                <option value="">All import sources</option>
-                                {monsterFilterOptions.importSources.map((source) => <option key={source} value={source}>{source}</option>)}
-                              </select>
-                            </label>
-                            <label>Edition
-                              <select aria-label="Filter encounter monsters by edition" onChange={(event) => updateMonsterFilter('ruleset', event.target.value)} value={monsterFilters.ruleset}>
-                                <option value="">All editions</option>
-                                {monsterFilterOptions.rulesets.map((ruleset) => <option key={ruleset} value={ruleset}>{ruleset === '5.5e' ? 'D&D 5.5e / One D&D' : ruleset}</option>)}
-                              </select>
-                            </label>
-                          </div>
-                        </details>
+                      <div className="encounter-monster-mobile-filter-summary">
+                        <button aria-controls="encounter-monster-filter-dialog" aria-expanded={monsterFiltersOpen} aria-label={hasActiveMonsterFilters ? `Open filters, ${activeMonsterFilterCount} active` : 'Open filters'} className="encounter-monster-filter-trigger" onClick={() => setMonsterFiltersOpen(true)} type="button">Filter &amp; sort{hasActiveMonsterFilters && <span>{activeMonsterFilterCount}</span>}</button>
+                        {hasActiveMonsterFilters && <div aria-label="Active encounter monster filters" className="encounter-monster-filter-chip-row">
+                          {activeMonsterFilterChips.map((chip) => <button aria-label={`Clear ${chip.label} filter`} className="encounter-monster-filter-chip" key={chip.key} onClick={() => clearMonsterFilter(chip.key)} type="button"><span>{chip.label}: {chip.value}</span><span aria-hidden="true">×</span></button>)}
+                        </div>}
                       </div>
+                      <EncounterMonsterFilterControls filters={monsterFilters} onFilterChange={updateMonsterFilter} options={monsterFilterOptions} variant="inline" />
                       <div className="encounter-monster-results">
                         {visibleMonsterMatches.map((monster) => (
                           <div className="encounter-monster-result" key={monster.id}>
@@ -779,6 +858,33 @@ export function EncounterPanel({
                     </>
                   )}
                 </section>
+                {combatantPicker === 'monster' && monsterFiltersOpen && (
+                  <div
+                    aria-labelledby="encounter-monster-filter-dialog-title"
+                    aria-modal="true"
+                    className="encounter-monster-filter-backdrop"
+                    onMouseDown={(event) => {
+                      if (event.target === event.currentTarget) setMonsterFiltersOpen(false);
+                    }}
+                    role="dialog"
+                  >
+                    <section className="encounter-monster-filter-dialog" id="encounter-monster-filter-dialog" onMouseDown={(event) => event.stopPropagation()}>
+                      <header>
+                        <div>
+                          <p className="eyebrow">Catalogue monsters</p>
+                          <h3 id="encounter-monster-filter-dialog-title">Filters &amp; sort</h3>
+                          <p aria-live="polite">{monsterMatches.length.toLocaleString()} monster{monsterMatches.length === 1 ? '' : 's'} shown</p>
+                        </div>
+                        <button aria-label="Close encounter monster filters" onClick={() => setMonsterFiltersOpen(false)} type="button">×</button>
+                      </header>
+                      <EncounterMonsterFilterControls filters={monsterFilters} onFilterChange={updateMonsterFilter} options={monsterFilterOptions} variant="drawer" />
+                      <footer className="encounter-monster-filter-dialog-actions">
+                        {hasActiveMonsterFilters && <button aria-label="Clear encounter monster filters" className="encounter-monster-filter-reset" onClick={resetMonsterFilters} type="button">Clear filters</button>}
+                        <button className="primary-button" onClick={() => setMonsterFiltersOpen(false)} type="button">Show {monsterMatches.length.toLocaleString()} monster{monsterMatches.length === 1 ? '' : 's'}</button>
+                      </footer>
+                    </section>
+                  </div>
+                )}
                 </div>
               )}
               {unavailableParticipants.length > 0 && (
@@ -820,7 +926,7 @@ export function EncounterPanel({
               {selected?.activeCombatantId && <span className="initiative-current">Current turn</span>}
               {selected && <button className="primary-button" disabled={!selected.participants.length} onClick={() => onUpdateEncounter(advanceCombatTurn(selected))} type="button">{selected.status === 'active' ? 'Next turn' : 'Start combat'}</button>}
               {selected?.status === 'active' && <button className="encounter-end-button" onClick={() => onEndCombat(selected)} type="button">End combat</button>}
-              {selected && <button className="encounter-add-button" onClick={() => setCombatantPicker('monster')} type="button">Add combatant</button>}
+              {selected && <button className="encounter-add-button" onClick={() => openCombatantPicker('monster')} type="button">Add combatant</button>}
             </div>
           </div>
           {!selected ? (

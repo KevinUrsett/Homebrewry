@@ -342,11 +342,11 @@ function sourceValues(value: unknown): string[] {
 function monsterMetadataForCatalogueEntry(entry: CatalogueEntry): MonsterMetadata {
   if (entry.category !== 'monster') return emptyMonsterMetadata;
   const typeParts = monsterTypeParts(dataString(entry, 'type') ?? '');
-  const sources = Array.from(new Set([...sourceValues(entry.data.sources), ...sourceValues(typeParts.source)]));
+  const bookSources = sourceValues(typeParts.source);
   const cr = (dataString(entry, 'cr') ?? '').trim();
   const size = normaliseMonsterSize(dataString(entry, 'size') ?? '');
   return {
-    sources: sources.length ? sources : sourceValues(entry.source),
+    sources: bookSources,
     importSource: entry.source.trim(),
     type: typeParts.type,
     cr,
@@ -358,7 +358,7 @@ function monsterMetadataForCatalogueEntry(entry: CatalogueEntry): MonsterMetadat
 
 function monsterMetadataForItem(item: CompendiumItem): MonsterMetadata {
   if (isCatalogueItem(item)) return monsterMetadataForCatalogueEntry(item.entry);
-  return item.category === 'monsters' ? { ...emptyMonsterMetadata, sources: ['Campaign'], importSource: 'Campaign' } : emptyMonsterMetadata;
+  return item.category === 'monsters' ? { ...emptyMonsterMetadata, importSource: 'Campaign' } : emptyMonsterMetadata;
 }
 
 function monsterMatchesFilters(metadata: MonsterMetadata, filters: MonsterFilters): boolean {
@@ -991,7 +991,7 @@ export function CompendiumPanel({
                   {hasMonsterRefinements && <button className="monster-filter-reset" onClick={resetMonsterFilters} type="button">Reset</button>}
                 </header>
                 <div className="monster-filter-grid">
-                  <label className="monster-source-control">Source<select aria-label="Filter monsters by source" onChange={(event) => updateMonsterFilter('source', event.target.value)} value={monsterFilters.source}><option value="">All sources</option>{monsterFilterOptions.sources.map((source) => <option key={source} value={source}>{source}</option>)}</select></label>
+                  <label className="monster-source-control">Book source<select aria-label="Filter monsters by book source" onChange={(event) => updateMonsterFilter('source', event.target.value)} value={monsterFilters.source}><option value="">All book sources</option>{monsterFilterOptions.sources.map((source) => <option key={source} value={source}>{source}</option>)}</select></label>
                   <label>Import source<select aria-label="Filter monsters by import source" onChange={(event) => updateMonsterFilter('importSource', event.target.value)} value={monsterFilters.importSource}><option value="">All import sources</option>{monsterFilterOptions.importSources.map((source) => <option key={source} value={source}>{source}</option>)}</select></label>
                   <label>Type<select aria-label="Filter monsters by type" onChange={(event) => updateMonsterFilter('type', event.target.value)} value={monsterFilters.type}><option value="">All types</option>{monsterFilterOptions.types.map((type) => <option key={type} value={type}>{titleCaseMonsterValue(type)}</option>)}</select></label>
                   <label>CR<select aria-label="Filter monsters by challenge rating" onChange={(event) => updateMonsterFilter('cr', event.target.value)} value={monsterFilters.cr}><option value="">All CRs</option>{monsterFilterOptions.crs.map((cr) => <option key={cr} value={cr}>CR {cr}</option>)}</select></label>

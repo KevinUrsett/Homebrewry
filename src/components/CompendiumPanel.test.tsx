@@ -123,12 +123,13 @@ describe('CompendiumPanel', () => {
     await act(async () => monsterCategory?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
     const type = container.querySelector('select[aria-label="Filter monsters by type"]') as HTMLSelectElement;
-    const source = container.querySelector('select[aria-label="Filter monsters by source"]') as HTMLSelectElement;
+    const source = container.querySelector('select[aria-label="Filter monsters by book source"]') as HTMLSelectElement;
     const challenge = container.querySelector('select[aria-label="Filter monsters by challenge rating"]') as HTMLSelectElement;
     const size = container.querySelector('select[aria-label="Filter monsters by size"]') as HTMLSelectElement;
     const environment = container.querySelector('select[aria-label="Filter monsters by environment"]') as HTMLSelectElement;
     expect(type).toBeTruthy();
     expect(source).toBeTruthy();
+    expect(Array.from(source.options).map((option) => option.textContent)).not.toContain('Private import');
     expect(challenge).toBeTruthy();
     expect(size).toBeTruthy();
     expect(environment).toBeTruthy();

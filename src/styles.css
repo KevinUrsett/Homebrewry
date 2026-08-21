@@ -587,11 +587,31 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .monster-refinement-heading .eyebrow { margin: 0; }
 .monster-refinement-heading strong { color: #5d2f26; font-family: "Bookinsanity Bold", Georgia, serif; font-size: 1.02rem; line-height: 1.05; }
 .monster-filter-reset { background: #fffaf0; border: 1px solid #b79770; border-radius: 7px; color: #4c352a; font: 800 .72rem "Scaly Sans", Inter, sans-serif; padding: 7px 9px; }
+.monster-mobile-filter-summary { display: none; }
+.monster-filter-trigger { align-items: center; background: #fffdf7; border: 1px solid #b79770; border-radius: 7px; color: #4c352a; display: flex; font: 800 .8rem "Scaly Sans", Inter, sans-serif; justify-content: space-between; min-height: 42px; padding: 9px 11px; text-align: left; }
+.monster-filter-trigger > span { background: #6d3027; border-radius: 999px; color: #fffaf0; font-size: .68rem; line-height: 1; min-width: 1.45rem; padding: 4px 5px; text-align: center; }
+.monster-filter-chip-row { display: flex; gap: 6px; overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: 2px; scrollbar-width: thin; }
+.monster-filter-chip { align-items: center; background: #f3dfba; border: 1px solid #b99464; border-radius: 999px; color: #4c352a; display: inline-flex; flex: 0 0 auto; font: 800 .7rem "Scaly Sans", Inter, sans-serif; gap: 6px; max-width: 100%; min-height: 32px; padding: 6px 9px; }
+.monster-filter-chip > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.monster-filter-chip > span:last-child { color: #7a2f27; font-size: 1rem; line-height: .7; }
 .monster-filter-grid { display: grid; gap: 9px; grid-template-columns: repeat(8, minmax(0, 1fr)); }
 .monster-source-control { grid-column: span 2; }
+.monster-sort-control { grid-column: span 2; }
 .monster-filter-grid label { color: #6d5843; display: grid; font: 800 .66rem/1 "Scaly Sans", Inter, sans-serif; gap: 5px; letter-spacing: .055em; min-width: 0; text-transform: uppercase; }
 .monster-filter-grid select { background: #fffdf7; border: 1px solid #c4ad8a; border-radius: 7px; box-sizing: border-box; color: #39291f; font: .86rem/1.15 "Scaly Sans", Inter, sans-serif; min-width: 0; padding: 9px 27px 9px 9px; width: 100%; }
-.monster-filter-grid select:focus-visible, .monster-filter-reset:focus-visible { outline: 3px solid rgb(184 134 55 / 42%); outline-offset: 2px; }
+.monster-advanced-filters { background: #f4e5ca; border: 1px solid #d6bd94; border-radius: 7px; grid-column: 1 / -1; min-width: 0; }
+.monster-advanced-filters > summary { color: #71553e; cursor: pointer; font: 800 .66rem "Scaly Sans", Inter, sans-serif; letter-spacing: .055em; padding: 10px 9px; text-transform: uppercase; }
+.monster-advanced-filters[open] > summary { border-bottom: 1px solid #d6bd94; }
+.monster-advanced-filters > label { padding: 9px; }
+.monster-filter-grid select:focus-visible, .monster-filter-reset:focus-visible, .monster-filter-trigger:focus-visible, .monster-filter-chip:focus-visible { outline: 3px solid rgb(184 134 55 / 42%); outline-offset: 2px; }
+.monster-filter-dialog { background: #fffaf0; border: 1px solid #c19862; box-shadow: 0 20px 48px rgb(29 18 10 / 42%); max-height: min(760px, calc(100dvh - 40px)); overflow: auto; width: min(620px, 100%); }
+.monster-filter-dialog > header { align-items: start; border-bottom: 1px solid #ddc9a9; display: flex; gap: 12px; justify-content: space-between; padding: 20px 20px 14px; }
+.monster-filter-dialog h2 { color: #5d2f26; font-family: "Bookinsanity Bold", Georgia, serif; font-size: 1.75rem; line-height: 1; margin: 4px 0 0; }
+.monster-filter-dialog header p:not(.eyebrow) { color: #715e4e; font-size: .8rem; margin: 7px 0 0; }
+.monster-filter-dialog header > button { background: #6d3027; border: 1px solid #6d3027; border-radius: 6px; color: #fffaf0; font-size: 1.3rem; height: 36px; line-height: 1; width: 36px; }
+.monster-filter-dialog .monster-filter-grid { padding: 16px 20px; }
+.monster-filter-dialog-actions { align-items: center; background: #fffaf0; border-top: 1px solid #ddc9a9; bottom: 0; display: flex; gap: 9px; justify-content: flex-end; padding: 13px 20px 16px; position: sticky; }
+.monster-filter-dialog-actions .primary-button { background: #6d3027; border: 1px solid #6d3027; border-radius: 7px; color: #fffaf0; font: 800 .78rem "Scaly Sans", Inter, sans-serif; min-height: 38px; padding: 8px 11px; }
 .compendium-results-heading { align-items: center; border-bottom: 1px solid #ddc9a9; display: flex; justify-content: space-between; padding: 10px 18px 13px; }
 .compendium-results-heading h2, .compendium-inbox-view h2 { color: #5d2f26; font-family: "Bookinsanity Bold", Georgia, serif; font-size: 1.55rem; line-height: 1; margin: 3px 0 0; }
 .compendium-results-heading > span { color: #806c5a; font-size: .74rem; font-weight: 800; text-align: right; }
@@ -790,6 +810,15 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .worldbuilding-state-editor { align-items: stretch; flex-direction: column; }
   .worldbuilding-context-menu { bottom: 12px; left: 12px !important; max-height: min(530px, calc(100dvh - 24px)); right: 12px; top: auto !important; transform: none; }
   .mobile-reference-selection-action { background: #5d2f26; border: 1px solid #d6af6d; border-radius: 999px; bottom: calc(env(safe-area-inset-bottom) + 84px); box-shadow: 0 7px 20px rgb(35 21 12 / 30%); color: #fffaf0; display: block; font: 800 .74rem "Scaly Sans", Inter, sans-serif; left: 50%; max-width: calc(100vw - 38px); overflow: hidden; padding: 10px 14px; position: fixed; text-overflow: ellipsis; transform: translateX(-50%); white-space: nowrap; z-index: 45; }
+  .monster-mobile-filter-summary { display: grid; gap: 8px; }
+  .monster-filter-grid--inline { display: none; }
+  .compendium-dialog-backdrop.monster-filter-dialog-backdrop { align-items: flex-start; overflow-y: auto; padding: calc(12px + env(safe-area-inset-top)) 10px 20px; }
+  .monster-filter-dialog { max-height: calc(100dvh - 24px - env(safe-area-inset-top)); width: 100%; }
+  .monster-filter-dialog > header { padding: 17px 16px 13px; }
+  .monster-filter-dialog h2 { font-size: 1.55rem; }
+  .monster-filter-dialog .monster-filter-grid { padding: 13px 12px 15px; }
+  .monster-filter-dialog-actions { gap: 8px; padding: 11px 12px calc(12px + env(safe-area-inset-bottom)); }
+  .monster-filter-dialog-actions .primary-button { flex: 1; }
 }
 
 @media print {

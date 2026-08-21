@@ -161,6 +161,32 @@ const defaultMonsterFilters: MonsterFilters = {
   sort: 'name-asc'
 };
 
+type MonsterFilterControlsProps = {
+  filters: MonsterFilters;
+  options: MonsterFilterOptions;
+  onFilterChange: <Key extends keyof MonsterFilters>(key: Key, value: MonsterFilters[Key]) => void;
+  variant: 'inline' | 'drawer';
+};
+
+function MonsterFilterControls({ filters, onFilterChange, options, variant }: MonsterFilterControlsProps) {
+  const [advancedOpen, setAdvancedOpen] = useState(Boolean(filters.importSource));
+
+  return (
+    <div className={`monster-filter-grid monster-filter-grid--${variant}`}>
+      <label className="monster-source-control">Book source<select aria-label="Filter monsters by book source" onChange={(event) => onFilterChange('source', event.target.value)} value={filters.source}><option value="">All book sources</option>{options.sources.map((source) => <option key={source} value={source}>{source}</option>)}</select></label>
+      <label>Type<select aria-label="Filter monsters by type" onChange={(event) => onFilterChange('type', event.target.value)} value={filters.type}><option value="">All types</option>{options.types.map((type) => <option key={type} value={type}>{titleCaseMonsterValue(type)}</option>)}</select></label>
+      <label>CR<select aria-label="Filter monsters by challenge rating" onChange={(event) => onFilterChange('cr', event.target.value)} value={filters.cr}><option value="">All CRs</option>{options.crs.map((cr) => <option key={cr} value={cr}>CR {cr}</option>)}</select></label>
+      <label>Size<select aria-label="Filter monsters by size" onChange={(event) => onFilterChange('size', event.target.value)} value={filters.size}><option value="">All sizes</option>{options.sizes.map((size) => <option key={size} value={size}>{monsterSizeLabel(size)}</option>)}</select></label>
+      <label>Environment<select aria-label="Filter monsters by environment" onChange={(event) => onFilterChange('environment', event.target.value)} value={filters.environment}><option value="">All environments</option>{options.environments.map((environment) => <option key={environment} value={environment}>{titleCaseMonsterValue(environment)}</option>)}</select></label>
+      <label className="monster-sort-control">Sort<select aria-label="Sort monsters" onChange={(event) => onFilterChange('sort', event.target.value as MonsterSort)} value={filters.sort}><option value="name-asc">Name A–Z</option><option value="name-desc">Name Z–A</option><option value="cr-asc">CR: low to high</option><option value="cr-desc">CR: high to low</option><option value="size-asc">Size: small to large</option><option value="size-desc">Size: large to small</option><option value="type-asc">Type A–Z</option></select></label>
+      <details className="monster-advanced-filters" onToggle={(event) => setAdvancedOpen(event.currentTarget.open)} open={advancedOpen}>
+        <summary>Advanced filters</summary>
+        <label>Import source<select aria-label="Filter monsters by import source" onChange={(event) => onFilterChange('importSource', event.target.value)} value={filters.importSource}><option value="">All import sources</option>{options.importSources.map((source) => <option key={source} value={source}>{source}</option>)}</select></label>
+      </details>
+    </div>
+  );
+}
+
 const monsterSizeDefinitions = [
   { id: 'T', label: 'Tiny', rank: 1 },
   { id: 'S', label: 'Small', rank: 2 },
@@ -296,7 +322,7 @@ function titleCaseMonsterValue(value: string): string {
 function monsterTypeParts(value: string): { source: string; type: string } {
   const [rawType = '', ...sourceParts] = value.trim().split(',');
   return {
-    type: rawType.split(/[\[(]/)[0]?.trim().toLocaleLowerCase() ?? '',
+    type: rawType.split(/[[()]/)[0]?.trim().toLocaleLowerCase() ?? '',
     source: sourceParts.join(',').trim()
   };
 }
@@ -308,6 +334,19 @@ function normaliseMonsterSize(value: string): string {
 
 function monsterSizeLabel(value: string): string {
   return monsterSizeDefinitions.find((item) => item.id === value)?.label ?? titleCaseMonsterValue(value);
+}
+
+function monsterSortLabel(value: MonsterSort): string {
+  const labels: Record<MonsterSort, string> = {
+    'name-asc': 'Name A–Z',
+    'name-desc': 'Name Z–A',
+    'cr-asc': 'CR: low to high',
+    'cr-desc': 'CR: high to low',
+    'size-asc': 'Size: small to large',
+    'size-desc': 'Size: large to small',
+    'type-asc': 'Type A–Z'
+  };
+  return labels[value];
 }
 
 function monsterSizeRank(value: string): number | null {
@@ -477,6 +516,7 @@ export function CompendiumPanel({
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
   const [monsterFilters, setMonsterFilters] = useState<MonsterFilters>(() => ({ ...defaultMonsterFilters }));
+  const [monsterFiltersOpen, setMonsterFiltersOpen] = useState(false);
   const [editingWorldbuildingId, setEditingWorldbuildingId] = useState<string | null>(null);
   const [monsterEditor, setMonsterEditor] = useState<MonsterEditorState | null>(null);
   const [entryEditor, setEntryEditor] = useState<CatalogueEntryEditorState | null>(null);
@@ -590,6 +630,16 @@ export function CompendiumPanel({
       : null;
   const externallySelectedItem = externallySelectedKey ? itemsByKey.get(externallySelectedKey) ?? null : null;
   const activeCategory = externallySelectedItem?.category ?? category;
+
+  useEffect(() => {
+    if (!monsterFiltersOpen) return undefined;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMonsterFiltersOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [monsterFiltersOpen]);
+
   const filterTerms = deferredQuery.trim().toLocaleLowerCase();
   const filteredItems = useMemo(() => allItems
     .filter((item) => {
@@ -676,6 +726,7 @@ export function CompendiumPanel({
     setCategory(next);
     setBrowserMode('library');
     setCategoryPickerOpen(false);
+    setMonsterFiltersOpen(false);
     setDetailOpen(false);
     setLocalSelectedKey(null);
     setEditingWorldbuildingId(null);
@@ -819,11 +870,32 @@ export function CompendiumPanel({
       ?? customCategoryDefinitions.find((item) => item.id === activeCategory)?.label
       ?? 'Other entries';
   const activeCategoryCount = activeCategory === 'all' ? allItems.length : categoryCounts.get(activeCategory) ?? 0;
-  const activeMonsterFilterCount = [monsterFilters.source, monsterFilters.importSource, monsterFilters.type, monsterFilters.cr, monsterFilters.size, monsterFilters.environment]
-    .filter(Boolean).length;
-  const hasMonsterRefinements = activeMonsterFilterCount > 0 || monsterFilters.sort !== defaultMonsterFilters.sort;
+  const activeMonsterFilterChips: Array<{ key: keyof MonsterFilters; label: string; value: string }> = [
+    { key: 'source' as const, label: 'Book', value: monsterFilters.source },
+    { key: 'importSource' as const, label: 'Import', value: monsterFilters.importSource },
+    { key: 'type' as const, label: 'Type', value: monsterFilters.type ? titleCaseMonsterValue(monsterFilters.type) : '' },
+    { key: 'cr' as const, label: 'CR', value: monsterFilters.cr },
+    { key: 'size' as const, label: 'Size', value: monsterFilters.size ? monsterSizeLabel(monsterFilters.size) : '' },
+    { key: 'environment' as const, label: 'Environment', value: monsterFilters.environment ? titleCaseMonsterValue(monsterFilters.environment) : '' },
+    ...(monsterFilters.sort !== defaultMonsterFilters.sort
+      ? [{ key: 'sort' as const, label: 'Sort', value: monsterSortLabel(monsterFilters.sort) }]
+      : [])
+  ].filter((chip) => Boolean(chip.value));
+  const activeMonsterFilterCount = activeMonsterFilterChips.length;
+  const hasMonsterRefinements = activeMonsterFilterCount > 0;
   const updateMonsterFilter = <Key extends keyof MonsterFilters>(key: Key, value: MonsterFilters[Key]) => {
     setMonsterFilters((current) => ({ ...current, [key]: value }));
+  };
+  const clearMonsterFilter = (key: keyof MonsterFilters) => {
+    switch (key) {
+      case 'source': updateMonsterFilter('source', ''); break;
+      case 'importSource': updateMonsterFilter('importSource', ''); break;
+      case 'type': updateMonsterFilter('type', ''); break;
+      case 'cr': updateMonsterFilter('cr', ''); break;
+      case 'size': updateMonsterFilter('size', ''); break;
+      case 'environment': updateMonsterFilter('environment', ''); break;
+      case 'sort': updateMonsterFilter('sort', defaultMonsterFilters.sort); break;
+    }
   };
   const resetMonsterFilters = () => setMonsterFilters({ ...defaultMonsterFilters });
 
@@ -988,17 +1060,15 @@ export function CompendiumPanel({
               {activeCategory === 'monsters' && <section className="monster-refinement" aria-label="Monster filters">
                 <header className="monster-refinement-heading">
                   <div><p className="eyebrow">Monster search</p><strong>Filter & sort</strong></div>
-                  {hasMonsterRefinements && <button className="monster-filter-reset" onClick={resetMonsterFilters} type="button">Reset</button>}
+                  {hasMonsterRefinements && <button className="monster-filter-reset" onClick={resetMonsterFilters} type="button">Clear filters</button>}
                 </header>
-                <div className="monster-filter-grid">
-                  <label className="monster-source-control">Book source<select aria-label="Filter monsters by book source" onChange={(event) => updateMonsterFilter('source', event.target.value)} value={monsterFilters.source}><option value="">All book sources</option>{monsterFilterOptions.sources.map((source) => <option key={source} value={source}>{source}</option>)}</select></label>
-                  <label>Import source<select aria-label="Filter monsters by import source" onChange={(event) => updateMonsterFilter('importSource', event.target.value)} value={monsterFilters.importSource}><option value="">All import sources</option>{monsterFilterOptions.importSources.map((source) => <option key={source} value={source}>{source}</option>)}</select></label>
-                  <label>Type<select aria-label="Filter monsters by type" onChange={(event) => updateMonsterFilter('type', event.target.value)} value={monsterFilters.type}><option value="">All types</option>{monsterFilterOptions.types.map((type) => <option key={type} value={type}>{titleCaseMonsterValue(type)}</option>)}</select></label>
-                  <label>CR<select aria-label="Filter monsters by challenge rating" onChange={(event) => updateMonsterFilter('cr', event.target.value)} value={monsterFilters.cr}><option value="">All CRs</option>{monsterFilterOptions.crs.map((cr) => <option key={cr} value={cr}>CR {cr}</option>)}</select></label>
-                  <label>Size<select aria-label="Filter monsters by size" onChange={(event) => updateMonsterFilter('size', event.target.value)} value={monsterFilters.size}><option value="">All sizes</option>{monsterFilterOptions.sizes.map((size) => <option key={size} value={size}>{monsterSizeLabel(size)}</option>)}</select></label>
-                  <label>Environment<select aria-label="Filter monsters by environment" onChange={(event) => updateMonsterFilter('environment', event.target.value)} value={monsterFilters.environment}><option value="">All environments</option>{monsterFilterOptions.environments.map((environment) => <option key={environment} value={environment}>{titleCaseMonsterValue(environment)}</option>)}</select></label>
-                  <label className="monster-sort-control">Sort<select aria-label="Sort monsters" onChange={(event) => updateMonsterFilter('sort', event.target.value as MonsterSort)} value={monsterFilters.sort}><option value="name-asc">Name A–Z</option><option value="name-desc">Name Z–A</option><option value="cr-asc">CR: low to high</option><option value="cr-desc">CR: high to low</option><option value="size-asc">Size: small to large</option><option value="size-desc">Size: large to small</option><option value="type-asc">Type A–Z</option></select></label>
+                <div className="monster-mobile-filter-summary">
+                  <button aria-controls="monster-filter-dialog" aria-expanded={monsterFiltersOpen} aria-label={hasMonsterRefinements ? `Open filters, ${activeMonsterFilterCount} active` : 'Open filters'} className="monster-filter-trigger" onClick={() => setMonsterFiltersOpen(true)} type="button">Filter & sort{hasMonsterRefinements && <span>{activeMonsterFilterCount}</span>}</button>
+                  {hasMonsterRefinements && <div aria-label="Active monster filters" className="monster-filter-chip-row">
+                    {activeMonsterFilterChips.map((chip) => <button aria-label={`Clear ${chip.label} filter`} className="monster-filter-chip" key={chip.key} onClick={() => clearMonsterFilter(chip.key)} type="button"><span>{chip.label}: {chip.value}</span><span aria-hidden="true">×</span></button>)}
+                  </div>}
                 </div>
+                <MonsterFilterControls filters={monsterFilters} onFilterChange={updateMonsterFilter} options={monsterFilterOptions} variant="inline" />
               </section>}
               <header className="compendium-results-heading"><div><p className="eyebrow">{catalogueLoading ? 'Loading references' : `${filteredItems.length.toLocaleString()} shown`}</p><h2>{activeCategoryLabel}</h2></div><span>{activeCategoryCount.toLocaleString()} total</span></header>
               <div className="compendium-results">
@@ -1009,6 +1079,8 @@ export function CompendiumPanel({
           </section>
         </div>
       )}
+
+      {browserMode === 'library' && activeCategory === 'monsters' && monsterFiltersOpen && <div aria-labelledby="monster-filter-dialog-title" aria-modal="true" className="compendium-dialog-backdrop monster-filter-dialog-backdrop" onMouseDown={() => setMonsterFiltersOpen(false)} role="dialog"><section className="monster-filter-dialog" id="monster-filter-dialog" onMouseDown={(event) => event.stopPropagation()}><header><div><p className="eyebrow">Monster search</p><h2 id="monster-filter-dialog-title">Filters & sort</h2><p aria-live="polite">{filteredItems.length.toLocaleString()} monster{filteredItems.length === 1 ? '' : 's'} shown</p></div><button aria-label="Close monster filters" onClick={() => setMonsterFiltersOpen(false)} type="button">×</button></header><MonsterFilterControls filters={monsterFilters} onFilterChange={updateMonsterFilter} options={monsterFilterOptions} variant="drawer" /><footer className="monster-filter-dialog-actions">{hasMonsterRefinements && <button className="monster-filter-reset" onClick={resetMonsterFilters} type="button">Clear filters</button>}<button className="primary-button" onClick={() => setMonsterFiltersOpen(false)} type="button">Show {filteredItems.length.toLocaleString()} monster{filteredItems.length === 1 ? '' : 's'}</button></footer></section></div>}
 
       {categoryPickerOpen && <div aria-modal="true" className="compendium-dialog-backdrop" onMouseDown={() => setCategoryPickerOpen(false)} role="dialog"><section className="compendium-category-dialog" onMouseDown={(event) => event.stopPropagation()}><header><div><p className="eyebrow">Compendium</p><h2>Browse by category</h2><p>Choose what you want to look through.</p></div><button aria-label="Close categories" onClick={() => setCategoryPickerOpen(false)} type="button">×</button></header><nav className="compendium-category-list" aria-label="Compendium categories"><button className={activeCategory === 'all' ? 'is-selected' : ''} onClick={() => selectCategory('all')} type="button"><span className="compendium-category-mark">A</span><span>All entries</span><small>{allItems.length}</small></button>{(['Campaign', 'Rules'] as const).map((group) => <div className="compendium-category-group" key={group}><p>{group}</p>{compendiumCategories.filter((item) => item.group === group).map((item) => <button className={activeCategory === item.id ? 'is-selected' : ''} key={item.id} onClick={() => selectCategory(item.id)} type="button"><span className="compendium-category-mark">{item.shortLabel}</span><span>{item.label}</span><small>{categoryCounts.get(item.id) ?? 0}</small></button>)}</div>)}{customCategoryDefinitions.length > 0 && <div className="compendium-category-group"><p>Custom</p>{customCategoryDefinitions.map((item) => <button className={activeCategory === item.id ? 'is-selected' : ''} key={item.id} onClick={() => selectCategory(item.id)} type="button"><span className="compendium-category-mark">{item.shortLabel}</span><span>{item.label}</span><small>{categoryCounts.get(item.id) ?? 0}</small></button>)}</div>}</nav></section></div>}
 

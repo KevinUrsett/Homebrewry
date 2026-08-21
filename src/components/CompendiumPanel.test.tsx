@@ -172,6 +172,33 @@ describe('CompendiumPanel', () => {
     expect(filtered).not.toContain('Wolf');
   });
 
+  it('keeps mobile monster filters behind a compact, dismissible drawer', async () => {
+    const container = await renderCompendium();
+    const categoryButton = Array.from(container.querySelectorAll('button')).find((button) => button.textContent?.includes('Category'));
+    await act(async () => categoryButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    const monsterCategory = Array.from(container.querySelectorAll('.compendium-category-list button')).find((button) => button.textContent?.includes('Monsters'));
+    await act(async () => monsterCategory?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    const filterTrigger = container.querySelector('button[aria-controls="monster-filter-dialog"]') as HTMLButtonElement;
+    expect(filterTrigger.textContent).toContain('Filter & sort');
+    expect(container.querySelector('details.monster-advanced-filters')?.textContent).toContain('Import source');
+
+    await act(async () => filterTrigger.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    const drawer = container.querySelector('#monster-filter-dialog') as HTMLElement;
+    expect(drawer).toBeTruthy();
+    expect(filterTrigger.getAttribute('aria-expanded')).toBe('true');
+
+    const source = drawer.querySelector('select[aria-label="Filter monsters by book source"]') as HTMLSelectElement;
+    await act(async () => {
+      source.value = 'Monster Manual';
+      source.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(container.querySelector('button[aria-label="Clear Book filter"]')?.textContent).toContain('Monster Manual');
+
+    await act(async () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+    expect(container.querySelector('#monster-filter-dialog')).toBeNull();
+  });
+
   it('sorts monsters by challenge rating', async () => {
     const container = await renderCompendium();
     const categoryButton = Array.from(container.querySelectorAll('button')).find((button) => button.textContent?.includes('Category'));

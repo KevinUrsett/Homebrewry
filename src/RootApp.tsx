@@ -97,6 +97,8 @@ export default function RootApp() {
       const brewCount = await loadLandingData(token);
       setDriveStatus(`${brewCount} brew${brewCount === 1 ? '' : 's'} ready. Google Drive is connected for this session.`);
       setConnectionPhase('ready');
+      setPendingDestination('library');
+      setWorkspaceOpen(true);
     } catch (error) {
       setConnectionPhase('error');
       setDriveStatus(error instanceof Error ? error.message : 'Google Drive connection failed.');

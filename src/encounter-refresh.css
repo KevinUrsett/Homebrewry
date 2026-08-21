@@ -398,7 +398,7 @@ reviewed or reverted without disturbing the shared application theme. */
   justify-content: center;
   padding: 20px;
   position: fixed;
-  z-index: 2;
+  z-index: 41;
 }
 
 .encounter-monster-filter-dialog {

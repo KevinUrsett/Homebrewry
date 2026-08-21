@@ -742,14 +742,15 @@ export function EncounterPanel({
               </section>
 
               {combatantPicker && (
-                <div
-                  className="encounter-combatant-picker-backdrop"
-                  onMouseDown={(event) => {
-                    if (event.target === event.currentTarget) closeCombatantPicker();
-                  }}
-                  role="presentation"
-                >
-                <section aria-label="Add combatant" aria-modal="true" className="encounter-picker" role="dialog">
+                <>
+                  <div
+                    className="encounter-combatant-picker-backdrop"
+                    onMouseDown={(event) => {
+                      if (event.target === event.currentTarget) closeCombatantPicker();
+                    }}
+                    role="presentation"
+                  >
+                  <section aria-label="Add combatant" aria-modal="true" className="encounter-picker" role="dialog">
                   <div className="encounter-picker-header">
                     <div>
                       <h3>Add combatant</h3>
@@ -857,7 +858,8 @@ export function EncounterPanel({
                       </div>
                     </>
                   )}
-                </section>
+                  </section>
+                  </div>
                 {combatantPicker === 'monster' && monsterFiltersOpen && (
                   <div
                     aria-labelledby="encounter-monster-filter-dialog-title"
@@ -885,7 +887,7 @@ export function EncounterPanel({
                     </section>
                   </div>
                 )}
-                </div>
+                </>
               )}
               {unavailableParticipants.length > 0 && (
                 <section className="unavailable-combatants" aria-label="Unavailable combatants">

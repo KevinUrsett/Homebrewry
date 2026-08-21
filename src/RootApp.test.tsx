@@ -98,4 +98,33 @@ describe('RootApp Drive landing', () => {
     expect(container.querySelector('output')?.textContent).toBe('library');
     expect(container.textContent).not.toContain('Browse all brews');
   });
+
+  it('keeps the create-brew screen available when Drive is empty', async () => {
+    requestDriveAccess.mockResolvedValue('drive-token');
+    loadBrewsFromDrive.mockResolvedValue([]);
+    replaceBrews.mockResolvedValue(undefined);
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      callback(0);
+      return 0;
+    });
+
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push({ container, root });
+
+    await act(async () => {
+      root.render(<RootApp />);
+    });
+
+    const connect = Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Connect Google Drive');
+    await act(async () => {
+      connect?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(container.querySelector('.app-shell')).toBeNull();
+    expect(container.textContent).toContain('Your Drive library is empty.');
+  });
 });

@@ -137,6 +137,117 @@ describe('EncounterPanel monster browser', () => {
     expect(container.querySelectorAll('.encounter-monster-result')).toHaveLength(31);
   });
 
+  it('uses the Compendium book-source filters when adding catalogue monsters', async () => {
+    const filterableMonsters: CatalogueEntry[] = [
+      {
+        id: 'aboleth',
+        category: 'monster',
+        name: 'Aboleth',
+        description: '',
+        data: { size: 'L', type: 'aberration, Monster Manual', cr: '10', environments: ['underdark'] },
+        source: 'Private import',
+        ruleset: '5.5e'
+      },
+      {
+        id: 'displacer-beast',
+        category: 'monster',
+        name: 'Displacer Beast',
+        description: '',
+        data: { size: 'L', type: 'beast, Monster Manual', cr: '3', environments: ['forest'] },
+        source: 'SRD-521',
+        ruleset: '5.5e'
+      },
+      {
+        id: 'dire-wolf',
+        category: 'monster',
+        name: 'Dire Wolf',
+        description: '',
+        data: { size: 'L', type: "beast, Mordenkainen's Tome Of Foes", cr: '1', environments: ['forest'] },
+        source: 'SRD-521',
+        ruleset: '5e'
+      }
+    ];
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push({ container, root });
+
+    await act(async () => {
+      root.render(
+        <EncounterPanel
+          encounters={[encounter]}
+          loading={false}
+          monsters={filterableMonsters}
+          onCreateEncounter={vi.fn()}
+          onCreatePartyMember={vi.fn()}
+          onDeleteEncounter={vi.fn()}
+          onDeletePartyMember={vi.fn()}
+          onInsertReference={vi.fn()}
+          onSelectEncounter={vi.fn()}
+          onUpdateEncounter={vi.fn()}
+          onUpdatePartyMember={vi.fn()}
+          partyMembers={[]}
+          selectedId={encounter.id}
+          syncState="synced"
+        />
+      );
+    });
+
+    await act(async () => { Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Add combatant')?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+    await act(async () => { Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Catalogue')?.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+
+    const bookSource = container.querySelector('select[aria-label="Filter encounter monsters by book source"]') as HTMLSelectElement;
+    const type = container.querySelector('select[aria-label="Filter encounter monsters by type"]') as HTMLSelectElement;
+    const challenge = container.querySelector('select[aria-label="Filter encounter monsters by challenge rating"]') as HTMLSelectElement;
+    const size = container.querySelector('select[aria-label="Filter encounter monsters by size"]') as HTMLSelectElement;
+    const environment = container.querySelector('select[aria-label="Filter encounter monsters by environment"]') as HTMLSelectElement;
+    const importSource = container.querySelector('select[aria-label="Filter encounter monsters by import source"]') as HTMLSelectElement;
+    expect(bookSource).toBeTruthy();
+    expect(Array.from(bookSource.options).map((option) => option.textContent)).toContain('Monster Manual');
+    expect(Array.from(bookSource.options).map((option) => option.textContent)).not.toContain('Private import');
+    expect(Array.from(type.options).map((option) => option.value)).toEqual(['', 'aberration', 'beast']);
+    expect(challenge).toBeTruthy();
+    expect(size).toBeTruthy();
+    expect(environment).toBeTruthy();
+    expect(container.querySelector('.encounter-monster-advanced-filters')?.textContent).toContain('Import source');
+
+    await act(async () => {
+      bookSource.value = 'Monster Manual';
+      bookSource.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(container.querySelector('.encounter-monster-results')?.textContent).toContain('Aboleth');
+    expect(container.querySelector('.encounter-monster-results')?.textContent).toContain('Displacer Beast');
+    expect(container.querySelector('.encounter-monster-results')?.textContent).not.toContain('Dire Wolf');
+
+    await act(async () => {
+      type.value = 'beast';
+      type.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(container.querySelector('.encounter-monster-results')?.textContent).toContain('Displacer Beast');
+    expect(container.querySelector('.encounter-monster-results')?.textContent).not.toContain('Aboleth');
+
+    const clearFilters = container.querySelector<HTMLButtonElement>('button[aria-label="Clear encounter monster filters"]');
+    await act(async () => clearFilters?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    await act(async () => {
+      challenge.value = '1';
+      challenge.dispatchEvent(new Event('change', { bubbles: true }));
+      size.value = 'L';
+      size.dispatchEvent(new Event('change', { bubbles: true }));
+      environment.value = 'forest';
+      environment.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(container.querySelector('.encounter-monster-results')?.textContent).toContain('Dire Wolf');
+    expect(container.querySelector('.encounter-monster-results')?.textContent).not.toContain('Displacer Beast');
+
+    await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Clear encounter monster filters"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    await act(async () => {
+      importSource.value = 'Private import';
+      importSource.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(container.querySelector('.encounter-monster-results')?.textContent).toContain('Aboleth');
+    expect(container.querySelector('.encounter-monster-results')?.textContent).not.toContain('Displacer Beast');
+  });
+
   it('keeps the picker open after adding a monster so several can be added', async () => {
     const container = document.createElement('div');
     document.body.append(container);

@@ -232,11 +232,36 @@ reviewed or reverted without disturbing the shared application theme. */
   padding: 4px 7px;
 }
 
+.encounter-monster-filter-heading {
+  align-items: center;
+  color: #71553e;
+  display: flex;
+  font-size: .66rem;
+  font-weight: 800;
+  justify-content: space-between;
+  letter-spacing: .05em;
+  margin-top: 10px;
+  text-transform: uppercase;
+}
+
+.encounter-monster-filter-clear {
+  background: transparent;
+  border: 0;
+  color: #7a2f27;
+  font: inherit;
+  letter-spacing: inherit;
+  padding: 3px 0;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  text-transform: none;
+}
+
 .encounter-monster-filters {
   display: grid;
   gap: 8px;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  margin-top: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 6px;
 }
 
 .encounter-monster-filters label {
@@ -259,6 +284,38 @@ reviewed or reverted without disturbing the shared application theme. */
   padding: 7px 6px;
   text-transform: none;
   width: 100%;
+}
+
+.encounter-monster-book-source-control {
+  grid-column: span 2;
+}
+
+.encounter-monster-sort-control,
+.encounter-monster-advanced-filters {
+  grid-column: 1 / -1;
+}
+
+.encounter-monster-advanced-filters {
+  border-top: 1px solid #decdb1;
+  color: #71553e;
+  margin-top: 2px;
+  padding-top: 8px;
+}
+
+.encounter-monster-advanced-filters summary {
+  cursor: pointer;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  list-style-position: inside;
+  text-transform: uppercase;
+}
+
+.encounter-monster-advanced-filters > div {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 8px;
 }
 
 .encounter-party-picker {
@@ -615,6 +672,15 @@ reviewed or reverted without disturbing the shared application theme. */
 
   .encounter-monster-filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .encounter-monster-book-source-control,
+  .encounter-monster-sort-control {
+    grid-column: 1 / -1;
+  }
+
+  .encounter-monster-advanced-filters > div {
+    grid-template-columns: 1fr;
   }
 }
 

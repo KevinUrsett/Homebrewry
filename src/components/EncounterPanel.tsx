@@ -1,5 +1,18 @@
 import { useMemo, useRef, useState, type CSSProperties } from 'react';
-import { dataString, entrySummary } from '../catalogue/presentation';
+import {
+  challengeRatingValue,
+  compareMonsterMetadata,
+  compareOptionalNumbers,
+  emptyMonsterMetadata,
+  monsterMatchesFilters,
+  monsterMetadataForCatalogueEntry,
+  monsterSizeLabel,
+  monsterSizeRank,
+  titleCaseMonsterValue,
+  type MonsterFilterFields,
+  type MonsterSort
+} from '../catalogue/monsterMetadata';
+import { entrySummary } from '../catalogue/presentation';
 import type { CatalogueEntry } from '../catalogue/types';
 import {
   addMonstersToEncounter,
@@ -51,13 +64,27 @@ type EncounterPanelProps = {
 type CombatantPicker = 'party' | 'npc' | 'monster' | null;
 type StatField = 'initiative' | 'armorClass' | 'maxHitPoints';
 type StatEditor = { participantId: string; field: StatField; value: string } | null;
-type MonsterSort = 'name' | 'cr-ascending' | 'cr-descending' | 'source' | 'type';
+type EncounterMonsterFilters = MonsterFilterFields & {
+  ruleset: string;
+  sort: MonsterSort;
+};
 type EncounterView = 'create' | 'run';
 
 const MONSTER_RESULTS_PAGE_SIZE = Number.MAX_SAFE_INTEGER;
 const defaultEncounterDate: BelentorDate = { era: 'AA', year: 641, month: 'Quen', day: 1 };
 const savedEncounterListHeightKey = 'homebrewry-saved-encounter-list-height-v1';
 const defaultSavedEncounterListHeight = 370;
+const monsterCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+const defaultEncounterMonsterFilters: EncounterMonsterFilters = {
+  source: '',
+  importSource: '',
+  type: '',
+  cr: '',
+  size: '',
+  environment: '',
+  ruleset: '',
+  sort: 'name-asc'
+};
 
 function readSavedEncounterListHeight() {
   try {
@@ -72,22 +99,6 @@ const asNumber = (value: string): number | null => {
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
 };
-
-function challengeRatingNumber(challengeRating: string | undefined) {
-  if (!challengeRating) return Number.POSITIVE_INFINITY;
-  if (challengeRating.includes('/')) {
-    const [numerator, denominator] = challengeRating.split('/').map(Number);
-    return Number.isFinite(numerator) && Number.isFinite(denominator) && denominator !== 0
-      ? numerator / denominator
-      : Number.POSITIVE_INFINITY;
-  }
-  const value = Number(challengeRating);
-  return Number.isFinite(value) ? value : Number.POSITIVE_INFINITY;
-}
-
-function challengeRatingValue(monster: CatalogueEntry) {
-  return challengeRatingNumber(dataString(monster, 'cr')?.trim());
-}
 
 function participantPatch(
   encounter: Encounter,
@@ -130,11 +141,8 @@ export function EncounterPanel({
   const [savedListAdjusting, setSavedListAdjusting] = useState(false);
   const [savedListHeight, setSavedListHeight] = useState(readSavedEncounterListHeight);
   const [editingEncounter, setEditingEncounter] = useState(false);
-  const [monsterSourceFilter, setMonsterSourceFilter] = useState('all');
-  const [monsterRulesetFilter, setMonsterRulesetFilter] = useState('all');
-  const [monsterCrFilter, setMonsterCrFilter] = useState('all');
-  const [monsterTypeFilter, setMonsterTypeFilter] = useState('all');
-  const [monsterSort, setMonsterSort] = useState<MonsterSort>('name');
+  const [monsterFilters, setMonsterFilters] = useState<EncounterMonsterFilters>(() => ({ ...defaultEncounterMonsterFilters }));
+  const [monsterAdvancedFiltersOpen, setMonsterAdvancedFiltersOpen] = useState(false);
   const [partyName, setPartyName] = useState('');
   const [partyArmorClass, setPartyArmorClass] = useState('');
   const [partyHitPoints, setPartyHitPoints] = useState('');
@@ -163,42 +171,71 @@ export function EncounterPanel({
   const orderedParticipants = selected ? sortCombatants(selected.participants.filter((participant) => !unavailableParticipants.some((item) => item.id === participant.id))) : [];
   const availableNpcEntities = npcEntities.filter((entity) => currentStateByEntityId.get(entity.id)?.fields.status?.value !== 'dead');
   const unavailableNpcEntities = npcEntities.filter((entity) => currentStateByEntityId.get(entity.id)?.fields.status?.value === 'dead');
-  const monsterSourceOptions = useMemo(
-    () => [...new Set(monsters.map((monster) => monster.source.trim()).filter(Boolean))].sort((left, right) => left.localeCompare(right)),
+  const monsterMetadataById = useMemo(
+    () => new Map(monsters.map((monster) => [monster.id, monsterMetadataForCatalogueEntry(monster)] as const)),
     [monsters]
   );
-  const monsterRulesetOptions = useMemo(
-    () => [...new Set(monsters.map((monster) => monster.ruleset.trim()).filter(Boolean))].sort((left, right) => left.localeCompare(right)),
-    [monsters]
-  );
-  const monsterCrOptions = useMemo(
-    () => [...new Set(monsters.map((monster) => dataString(monster, 'cr')?.trim()).filter((value): value is string => Boolean(value)))].sort((left, right) => challengeRatingNumber(left) - challengeRatingNumber(right) || left.localeCompare(right)),
-    [monsters]
-  );
-  const monsterTypeOptions = useMemo(
-    () => [...new Set(monsters.map((monster) => dataString(monster, 'type')?.trim()).filter((value): value is string => Boolean(value)))].sort((left, right) => left.localeCompare(right)),
-    [monsters]
-  );
+  const monsterFilterOptions = useMemo(() => {
+    const sources = new Set<string>();
+    const importSources = new Set<string>();
+    const types = new Set<string>();
+    const crs = new Set<string>();
+    const sizes = new Set<string>();
+    const environments = new Set<string>();
+    const rulesets = new Set<string>();
+
+    monsters.forEach((monster) => {
+      const metadata = monsterMetadataById.get(monster.id) ?? emptyMonsterMetadata;
+      metadata.sources.forEach((source) => sources.add(source));
+      if (metadata.importSource) importSources.add(metadata.importSource);
+      if (metadata.type) types.add(metadata.type);
+      if (metadata.cr) crs.add(metadata.cr);
+      if (metadata.size) sizes.add(metadata.size);
+      metadata.environments.forEach((environment) => environments.add(environment));
+      if (monster.ruleset.trim()) rulesets.add(monster.ruleset.trim());
+    });
+
+    return {
+      sources: Array.from(sources).sort((left, right) => monsterCollator.compare(left, right)),
+      importSources: Array.from(importSources).sort((left, right) => monsterCollator.compare(left, right)),
+      types: Array.from(types).sort((left, right) => monsterCollator.compare(left, right)),
+      crs: Array.from(crs).sort((left, right) => compareOptionalNumbers(challengeRatingValue(left), challengeRatingValue(right)) || monsterCollator.compare(left, right)),
+      sizes: Array.from(sizes).sort((left, right) => compareOptionalNumbers(monsterSizeRank(left), monsterSizeRank(right)) || monsterCollator.compare(left, right)),
+      environments: Array.from(environments).sort((left, right) => monsterCollator.compare(left, right)),
+      rulesets: Array.from(rulesets).sort((left, right) => monsterCollator.compare(left, right))
+    };
+  }, [monsterMetadataById, monsters]);
   const monsterMatches = useMemo(() => {
     const terms = monsterQuery.trim().toLowerCase();
     const filtered = monsters.filter((monster) => {
-      const type = dataString(monster, 'type')?.trim() ?? '';
-      const cr = dataString(monster, 'cr')?.trim() ?? '';
-      const matchesText = !terms || [monster.name, monster.source, type, cr, ...entrySummary(monster)].join(' ').toLowerCase().includes(terms);
+      const metadata = monsterMetadataById.get(monster.id) ?? emptyMonsterMetadata;
+      const matchesText = !terms || [
+        monster.name,
+        monster.source,
+        monster.ruleset,
+        ...metadata.sources,
+        metadata.type,
+        metadata.cr,
+        metadata.size,
+        ...metadata.environments,
+        ...entrySummary(monster)
+      ].join(' ').toLowerCase().includes(terms);
       return matchesText
-        && (monsterSourceFilter === 'all' || monster.source === monsterSourceFilter)
-        && (monsterRulesetFilter === 'all' || monster.ruleset === monsterRulesetFilter)
-        && (monsterCrFilter === 'all' || cr === monsterCrFilter)
-        && (monsterTypeFilter === 'all' || type === monsterTypeFilter);
+        && monsterMatchesFilters(metadata, monsterFilters)
+        && (!monsterFilters.ruleset || monster.ruleset === monsterFilters.ruleset);
     });
     return [...filtered].sort((left, right) => {
-      if (monsterSort === 'cr-ascending') return challengeRatingValue(left) - challengeRatingValue(right) || left.name.localeCompare(right.name);
-      if (monsterSort === 'cr-descending') return challengeRatingValue(right) - challengeRatingValue(left) || left.name.localeCompare(right.name);
-      if (monsterSort === 'source') return left.source.localeCompare(right.source) || left.name.localeCompare(right.name);
-      if (monsterSort === 'type') return (dataString(left, 'type') ?? '').localeCompare(dataString(right, 'type') ?? '') || left.name.localeCompare(right.name);
-      return left.name.localeCompare(right.name);
+      const compared = compareMonsterMetadata(
+        monsterMetadataById.get(left.id) ?? emptyMonsterMetadata,
+        monsterMetadataById.get(right.id) ?? emptyMonsterMetadata,
+        monsterFilters.sort
+      );
+      if (compared) return compared;
+      return monsterFilters.sort === 'name-desc'
+        ? -monsterCollator.compare(left.name, right.name)
+        : monsterCollator.compare(left.name, right.name);
     });
-  }, [monsterCrFilter, monsterQuery, monsterRulesetFilter, monsterSort, monsterSourceFilter, monsterTypeFilter, monsters]);
+  }, [monsterFilters, monsterMetadataById, monsterQuery, monsters]);
   const visibleMonsterMatches = useMemo(
     () => monsterMatches.slice(0, visibleMonsterCount),
     [monsterMatches, visibleMonsterCount]
@@ -232,6 +269,19 @@ export function EncounterPanel({
     setHitPointEditorId(null);
     setStatEditor(null);
   };
+
+  const updateMonsterFilter = <Key extends keyof EncounterMonsterFilters>(key: Key, value: EncounterMonsterFilters[Key]) => {
+    setMonsterFilters((current) => ({ ...current, [key]: value }));
+    setVisibleMonsterCount(MONSTER_RESULTS_PAGE_SIZE);
+  };
+
+  const resetMonsterFilters = () => {
+    setMonsterFilters({ ...defaultEncounterMonsterFilters });
+    setVisibleMonsterCount(MONSTER_RESULTS_PAGE_SIZE);
+  };
+
+  const hasActiveMonsterFilters = Object.entries(monsterFilters).some(([key, value]) => value !== defaultEncounterMonsterFilters[key as keyof EncounterMonsterFilters]);
+  const activeAdvancedMonsterFilterCount = Number(Boolean(monsterFilters.importSource)) + Number(Boolean(monsterFilters.ruleset));
 
   /** On touch screens, close the large picker before the tracker reflows. This
    * avoids leaving an inert scroll layer above the newly added combatant. */
@@ -641,40 +691,69 @@ export function EncounterPanel({
                         placeholder="Search monsters…"
                         value={monsterQuery}
                       />
+                      <div className="encounter-monster-filter-heading">
+                        <span>Filter &amp; sort</span>
+                        {hasActiveMonsterFilters && <button aria-label="Clear encounter monster filters" className="encounter-monster-filter-clear" onClick={resetMonsterFilters} type="button">Clear filters</button>}
+                      </div>
                       <div className="encounter-monster-filters" aria-label="Monster filters">
-                        <label>Sort
-                          <select onChange={(event) => { setMonsterSort(event.target.value as MonsterSort); setVisibleMonsterCount(MONSTER_RESULTS_PAGE_SIZE); }} value={monsterSort}>
-                            <option value="name">Name A–Z</option>
-                            <option value="cr-ascending">CR: low to high</option>
-                            <option value="cr-descending">CR: high to low</option>
-                            <option value="type">Creature type</option>
-                            <option value="source">Source</option>
-                          </select>
-                        </label>
-                        <label>Source
-                          <select onChange={(event) => { setMonsterSourceFilter(event.target.value); setVisibleMonsterCount(MONSTER_RESULTS_PAGE_SIZE); }} value={monsterSourceFilter}>
-                            <option value="all">All sources</option>
-                            {monsterSourceOptions.map((source) => <option key={source} value={source}>{source}</option>)}
-                          </select>
-                        </label>
-                        <label>Edition
-                          <select onChange={(event) => { setMonsterRulesetFilter(event.target.value); setVisibleMonsterCount(MONSTER_RESULTS_PAGE_SIZE); }} value={monsterRulesetFilter}>
-                            <option value="all">All editions</option>
-                            {monsterRulesetOptions.map((ruleset) => <option key={ruleset} value={ruleset}>{ruleset === '5.5e' ? 'D&D 5.5e / One D&D' : ruleset}</option>)}
-                          </select>
-                        </label>
-                        <label>CR
-                          <select onChange={(event) => { setMonsterCrFilter(event.target.value); setVisibleMonsterCount(MONSTER_RESULTS_PAGE_SIZE); }} value={monsterCrFilter}>
-                            <option value="all">All CRs</option>
-                            {monsterCrOptions.map((cr) => <option key={cr} value={cr}>CR {cr}</option>)}
+                        <label className="encounter-monster-book-source-control">Book source
+                          <select aria-label="Filter encounter monsters by book source" onChange={(event) => updateMonsterFilter('source', event.target.value)} value={monsterFilters.source}>
+                            <option value="">All book sources</option>
+                            {monsterFilterOptions.sources.map((source) => <option key={source} value={source}>{source}</option>)}
                           </select>
                         </label>
                         <label>Type
-                          <select onChange={(event) => { setMonsterTypeFilter(event.target.value); setVisibleMonsterCount(MONSTER_RESULTS_PAGE_SIZE); }} value={monsterTypeFilter}>
-                            <option value="all">All types</option>
-                            {monsterTypeOptions.map((type) => <option key={type} value={type}>{type}</option>)}
+                          <select aria-label="Filter encounter monsters by type" onChange={(event) => updateMonsterFilter('type', event.target.value)} value={monsterFilters.type}>
+                            <option value="">All types</option>
+                            {monsterFilterOptions.types.map((type) => <option key={type} value={type}>{titleCaseMonsterValue(type)}</option>)}
                           </select>
                         </label>
+                        <label>CR
+                          <select aria-label="Filter encounter monsters by challenge rating" onChange={(event) => updateMonsterFilter('cr', event.target.value)} value={monsterFilters.cr}>
+                            <option value="">All CRs</option>
+                            {monsterFilterOptions.crs.map((cr) => <option key={cr} value={cr}>CR {cr}</option>)}
+                          </select>
+                        </label>
+                        <label>Size
+                          <select aria-label="Filter encounter monsters by size" onChange={(event) => updateMonsterFilter('size', event.target.value)} value={monsterFilters.size}>
+                            <option value="">All sizes</option>
+                            {monsterFilterOptions.sizes.map((size) => <option key={size} value={size}>{monsterSizeLabel(size)}</option>)}
+                          </select>
+                        </label>
+                        <label>Environment
+                          <select aria-label="Filter encounter monsters by environment" onChange={(event) => updateMonsterFilter('environment', event.target.value)} value={monsterFilters.environment}>
+                            <option value="">All environments</option>
+                            {monsterFilterOptions.environments.map((environment) => <option key={environment} value={environment}>{titleCaseMonsterValue(environment)}</option>)}
+                          </select>
+                        </label>
+                        <label className="encounter-monster-sort-control">Sort
+                          <select aria-label="Sort encounter monsters" onChange={(event) => updateMonsterFilter('sort', event.target.value as MonsterSort)} value={monsterFilters.sort}>
+                            <option value="name-asc">Name A–Z</option>
+                            <option value="name-desc">Name Z–A</option>
+                            <option value="cr-asc">CR: low to high</option>
+                            <option value="cr-desc">CR: high to low</option>
+                            <option value="size-asc">Size: small to large</option>
+                            <option value="size-desc">Size: large to small</option>
+                            <option value="type-asc">Type A–Z</option>
+                          </select>
+                        </label>
+                        <details className="encounter-monster-advanced-filters" onToggle={(event) => setMonsterAdvancedFiltersOpen(event.currentTarget.open)} open={monsterAdvancedFiltersOpen}>
+                          <summary>Advanced filters{activeAdvancedMonsterFilterCount ? ` (${activeAdvancedMonsterFilterCount})` : ''}</summary>
+                          <div>
+                            <label>Import source
+                              <select aria-label="Filter encounter monsters by import source" onChange={(event) => updateMonsterFilter('importSource', event.target.value)} value={monsterFilters.importSource}>
+                                <option value="">All import sources</option>
+                                {monsterFilterOptions.importSources.map((source) => <option key={source} value={source}>{source}</option>)}
+                              </select>
+                            </label>
+                            <label>Edition
+                              <select aria-label="Filter encounter monsters by edition" onChange={(event) => updateMonsterFilter('ruleset', event.target.value)} value={monsterFilters.ruleset}>
+                                <option value="">All editions</option>
+                                {monsterFilterOptions.rulesets.map((ruleset) => <option key={ruleset} value={ruleset}>{ruleset === '5.5e' ? 'D&D 5.5e / One D&D' : ruleset}</option>)}
+                              </select>
+                            </label>
+                          </div>
+                        </details>
                       </div>
                       <div className="encounter-monster-results">
                         {visibleMonsterMatches.map((monster) => (

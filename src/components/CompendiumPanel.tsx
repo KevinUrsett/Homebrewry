@@ -294,7 +294,7 @@ function titleCaseMonsterValue(value: string): string {
 }
 
 function normaliseMonsterType(value: string): string {
-  return value.trim().split('(')[0]?.trim().toLocaleLowerCase() ?? '';
+  return value.trim().split(/[\[(]/)[0]?.trim().toLocaleLowerCase() ?? '';
 }
 
 function normaliseMonsterSize(value: string): string {

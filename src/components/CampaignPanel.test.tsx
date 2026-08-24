@@ -64,7 +64,7 @@ describe('CampaignPanel card arrangement', () => {
     expect(JSON.parse(localStorage.getItem(cardOrderStorageKey) ?? '{}').overview).toEqual(ids);
   });
 
-  it('reorders the Plot board and Campaign map workspaces and stores the preference locally', async () => {
+  it('reorders the Plot board and Campaign map with the detail cards and stores the preference locally', async () => {
     const container = document.createElement('div');
     document.body.append(container);
     const root = createRoot(container);
@@ -94,8 +94,8 @@ describe('CampaignPanel card arrangement', () => {
     const move = container.querySelector<HTMLButtonElement>('[aria-label="Move Campaign map up"]');
     await act(async () => move?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
-    const ids = Array.from(container.querySelectorAll<HTMLElement>('.campaign-workspace-stack [data-campaign-card-id]')).map((card) => card.dataset.campaignCardId);
-    expect(ids).toEqual(['campaign-map', 'plot-board']);
-    expect(JSON.parse(localStorage.getItem(cardOrderStorageKey) ?? '{}').workspaces).toEqual(ids);
+    const ids = Array.from(container.querySelectorAll<HTMLElement>('.campaign-grid [data-campaign-card-id]')).map((card) => card.dataset.campaignCardId);
+    expect(ids).toEqual(['encounter-path', 'active-quests', 'important-entities', 'recent-events', 'campaign-map', 'plot-board']);
+    expect(JSON.parse(localStorage.getItem(cardOrderStorageKey) ?? '{}').details).toEqual(ids);
   });
 });

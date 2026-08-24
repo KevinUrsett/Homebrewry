@@ -59,9 +59,9 @@ describe('CampaignPanel card arrangement', () => {
     const move = container.querySelector<HTMLButtonElement>('[aria-label="Move Current brew down"]');
     await act(async () => move?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
-    const ids = Array.from(container.querySelectorAll<HTMLElement>('.campaign-hero-grid [data-campaign-card-id]')).map((card) => card.dataset.campaignCardId);
-    expect(ids).toEqual(['party-location', 'current-brew', 'campaign-now']);
-    expect(JSON.parse(localStorage.getItem(cardOrderStorageKey) ?? '{}').overview).toEqual(ids);
+    const ids = Array.from(container.querySelectorAll<HTMLElement>('.campaign-dashboard-grid [data-campaign-card-id]')).map((card) => card.dataset.campaignCardId);
+    expect(ids.slice(0, 3)).toEqual(['party-location', 'current-brew', 'campaign-now']);
+    expect(JSON.parse(localStorage.getItem(cardOrderStorageKey) ?? '{}').all).toEqual(ids);
   });
 
   it('reorders the Plot board and Campaign map with the detail cards and stores the preference locally', async () => {
@@ -94,8 +94,8 @@ describe('CampaignPanel card arrangement', () => {
     const move = container.querySelector<HTMLButtonElement>('[aria-label="Move Campaign map up"]');
     await act(async () => move?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
-    const ids = Array.from(container.querySelectorAll<HTMLElement>('.campaign-grid [data-campaign-card-id]')).map((card) => card.dataset.campaignCardId);
-    expect(ids).toEqual(['encounter-path', 'active-quests', 'important-entities', 'recent-events', 'campaign-map', 'plot-board']);
-    expect(JSON.parse(localStorage.getItem(cardOrderStorageKey) ?? '{}').details).toEqual(ids);
+    const ids = Array.from(container.querySelectorAll<HTMLElement>('.campaign-dashboard-grid [data-campaign-card-id]')).map((card) => card.dataset.campaignCardId);
+    expect(ids).toEqual(['current-brew', 'party-location', 'campaign-now', 'encounter-path', 'active-quests', 'important-entities', 'recent-events', 'campaign-map', 'plot-board']);
+    expect(JSON.parse(localStorage.getItem(cardOrderStorageKey) ?? '{}').all).toEqual(ids);
   });
 });

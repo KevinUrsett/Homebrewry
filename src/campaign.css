@@ -8,6 +8,9 @@
 .campaign-page-actions small { color: #806c5a; font-size: .73rem; }
 .campaign-hero-grid, .campaign-grid { display: grid; gap: 14px; margin-top: 24px; }
 .campaign-hero-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.campaign-dashboard-grid { display: grid; gap: 14px; grid-template-columns: repeat(6, minmax(0, 1fr)); margin-top: 24px; }
+.campaign-dashboard-grid > .campaign-overview-card { grid-column: span 2; }
+.campaign-dashboard-grid > .campaign-card { grid-column: span 3; }
 .campaign-hero-grid article, .campaign-card { background: #fffaf0; border: 1px solid #d8c9ae; border-radius: 9px; box-shadow: 0 8px 22px rgb(48 31 18 / 8%); padding: 17px; }
 .campaign-sortable-card { position: relative; transition: opacity .15s ease, transform .15s ease; }
 .campaign-sortable-card.is-arranging { outline: 2px dashed #b88950; outline-offset: 2px; padding-top: 49px; }
@@ -32,7 +35,7 @@
 .campaign-card span { color: #806c5a; font-size: .68rem; text-transform: capitalize; }
 .campaign-card strong { font-size: .88rem; }
 .campaign-card p { color: #806c5a; font-size: .8rem; }
-@media (max-width: 720px) { .campaign-page-header { align-items: flex-start; flex-direction: column; gap: 10px; }.campaign-page-actions { justify-content: flex-start; }.campaign-hero-grid, .campaign-grid { grid-template-columns: 1fr; } .campaign-page { padding: 18px 14px; } .campaign-current-brew select { font-size: 16px; } }
+@media (max-width: 720px) { .campaign-page-header { align-items: flex-start; flex-direction: column; gap: 10px; }.campaign-page-actions { justify-content: flex-start; }.campaign-hero-grid, .campaign-grid, .campaign-dashboard-grid { grid-template-columns: 1fr; } .campaign-dashboard-grid > .campaign-overview-card, .campaign-dashboard-grid > .campaign-card, .campaign-card-full-width { grid-column: 1; } .campaign-page { padding: 18px 14px; } .campaign-current-brew select { font-size: 16px; } }
 .campaign-timeline { background: #fffaf0; border: 1px solid #d8c9ae; border-radius: 10px; box-shadow: 0 8px 22px rgb(48 31 18 / 8%); margin-top: 16px; padding: clamp(16px, 3vw, 28px); }
 .campaign-timeline > header { align-items: end; display: flex; gap: 14px; justify-content: space-between; }
 .campaign-timeline h2 { color: #5d2f26; font-family: "Nodesto Caps Condensed", Georgia, serif; font-size: 2.1rem; line-height: .9; margin: 0; }

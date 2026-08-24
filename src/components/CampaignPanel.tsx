@@ -32,20 +32,18 @@ type CampaignPanelProps = {
 const entityLabel = (entity: CampaignEntity) => entity.kind === 'npc' ? 'NPC' : entity.kind;
 const campaignCardOrderStorageKey = 'homebrewry-campaign-card-order-v1';
 
-const campaignCardDefaults = {
-  overview: ['current-brew', 'party-location', 'campaign-now'],
-  details: ['encounter-path', 'active-quests', 'important-entities', 'recent-events', 'plot-board', 'campaign-map']
-} as const;
+const overviewCardIds = ['current-brew', 'party-location', 'campaign-now'] as const;
+const detailCardIds = ['encounter-path', 'active-quests', 'important-entities', 'recent-events', 'plot-board', 'campaign-map'] as const;
+const campaignCardDefaults = [...overviewCardIds, ...detailCardIds] as const;
 
-type CampaignCardGroup = keyof typeof campaignCardDefaults;
-type OverviewCardId = (typeof campaignCardDefaults.overview)[number];
-type DetailCardId = (typeof campaignCardDefaults.details)[number];
-type CampaignCardId = OverviewCardId | DetailCardId;
-type CampaignCardOrder = Record<CampaignCardGroup, CampaignCardId[]>;
-type CardDrag = { group: CampaignCardGroup; id: CampaignCardId };
+type OverviewCardId = (typeof overviewCardIds)[number];
+type DetailCardId = (typeof detailCardIds)[number];
+type CampaignCardId = (typeof campaignCardDefaults)[number];
+type CampaignCardOrder = { all: CampaignCardId[] };
+type CardDrag = { id: CampaignCardId };
 
-function normaliseCardOrder(group: CampaignCardGroup, saved: unknown): CampaignCardId[] {
-  const defaults = campaignCardDefaults[group] as readonly CampaignCardId[];
+function normaliseCardOrder(saved: unknown): CampaignCardId[] {
+  const defaults = campaignCardDefaults as readonly CampaignCardId[];
   const allowed = new Set<CampaignCardId>(defaults);
   const values = Array.isArray(saved)
     ? saved.filter((item): item is CampaignCardId => typeof item === 'string' && allowed.has(item as CampaignCardId))
@@ -54,17 +52,12 @@ function normaliseCardOrder(group: CampaignCardGroup, saved: unknown): CampaignC
 }
 
 function readCampaignCardOrder(): CampaignCardOrder {
-  const fallback = (): CampaignCardOrder => ({
-    overview: [...campaignCardDefaults.overview],
-    details: [...campaignCardDefaults.details]
-  });
+  const fallback = (): CampaignCardOrder => ({ all: [...campaignCardDefaults] });
   if (typeof window === 'undefined') return fallback();
   try {
-    const saved = JSON.parse(window.localStorage.getItem(campaignCardOrderStorageKey) ?? '{}') as Partial<CampaignCardOrder>;
-    return {
-      overview: normaliseCardOrder('overview', saved.overview),
-      details: normaliseCardOrder('details', saved.details)
-    };
+    const saved = JSON.parse(window.localStorage.getItem(campaignCardOrderStorageKey) ?? '{}') as Partial<CampaignCardOrder> & { overview?: unknown; details?: unknown };
+    const legacyOrder = [...(Array.isArray(saved.overview) ? saved.overview : []), ...(Array.isArray(saved.details) ? saved.details : [])];
+    return { all: normaliseCardOrder(saved.all ?? legacyOrder) };
   } catch {
     return fallback();
   }
@@ -80,13 +73,12 @@ function persistCampaignCardOrder(order: CampaignCardOrder) {
 
 type SortableCampaignCardProps = {
   id: CampaignCardId;
-  group: CampaignCardGroup;
   label: string;
   className: string;
   children: ReactNode;
   arranging: boolean;
   dragging: boolean;
-  onMove: (group: CampaignCardGroup, id: CampaignCardId, direction: -1 | 1) => void;
+  onMove: (id: CampaignCardId, direction: -1 | 1) => void;
   onDragStart: (event: DragEvent<HTMLButtonElement>, drag: CardDrag) => void;
   onDragEnd: () => void;
   onDrop: (event: DragEvent<HTMLElement>, target: CardDrag) => void;
@@ -95,17 +87,16 @@ type SortableCampaignCardProps = {
   onPointerEnd: (event: ReactPointerEvent<HTMLButtonElement>) => void;
 };
 
-function SortableCampaignCard({ id, group, label, className, children, arranging, dragging, onMove, onDragStart, onDragEnd, onDrop, onPointerStart, onPointerMove, onPointerEnd }: SortableCampaignCardProps) {
-  const drag = { group, id };
+function SortableCampaignCard({ id, label, className, children, arranging, dragging, onMove, onDragStart, onDragEnd, onDrop, onPointerStart, onPointerMove, onPointerEnd }: SortableCampaignCardProps) {
+  const drag = { id };
   return <article
     className={`${className} campaign-sortable-card ${arranging ? 'is-arranging' : ''} ${dragging ? 'is-dragging' : ''}`}
-    data-campaign-card-group={group}
     data-campaign-card-id={id}
     onDragOver={arranging ? (event) => event.preventDefault() : undefined}
     onDrop={arranging ? (event) => onDrop(event, drag) : undefined}
   >
     {arranging && <div className="campaign-card-arrange-controls" aria-label={`Arrange ${label}`}>
-      <button aria-label={`Move ${label} up`} onClick={() => onMove(group, id, -1)} type="button">↑</button>
+      <button aria-label={`Move ${label} up`} onClick={() => onMove(id, -1)} type="button">↑</button>
       <button
         aria-label={`Drag ${label} to reposition`}
         className="campaign-card-arrange-handle"
@@ -118,7 +109,7 @@ function SortableCampaignCard({ id, group, label, className, children, arranging
         onPointerUp={onPointerEnd}
         type="button"
       >⋮⋮</button>
-      <button aria-label={`Move ${label} down`} onClick={() => onMove(group, id, 1)} type="button">↓</button>
+      <button aria-label={`Move ${label} down`} onClick={() => onMove(id, 1)} type="button">↓</button>
     </div>}
     {children}
   </article>;
@@ -143,31 +134,30 @@ export function CampaignPanel({ position, partyLocation, brews, encounters, enti
   };
 
   const reorderCards = (source: CardDrag, target: CardDrag) => {
-    if (source.group !== target.group || source.id === target.id) return;
-    const nextGroupOrder = [...cardOrder[source.group]];
-    const sourceIndex = nextGroupOrder.indexOf(source.id);
+    if (source.id === target.id) return;
+    const nextOrder = [...cardOrder.all];
+    const sourceIndex = nextOrder.indexOf(source.id);
     if (sourceIndex < 0) return;
-    nextGroupOrder.splice(sourceIndex, 1);
-    const targetIndex = nextGroupOrder.indexOf(target.id);
+    nextOrder.splice(sourceIndex, 1);
+    const targetIndex = nextOrder.indexOf(target.id);
     if (targetIndex < 0) return;
-    nextGroupOrder.splice(targetIndex, 0, source.id);
-    saveCardOrder({ ...cardOrder, [source.group]: nextGroupOrder });
+    nextOrder.splice(targetIndex, 0, source.id);
+    saveCardOrder({ all: nextOrder });
   };
 
-  const moveCard = (group: CampaignCardGroup, id: CampaignCardId, direction: -1 | 1) => {
-    const groupOrder = [...cardOrder[group]];
-    const currentIndex = groupOrder.indexOf(id);
+  const moveCard = (id: CampaignCardId, direction: -1 | 1) => {
+    const nextOrder = [...cardOrder.all];
+    const currentIndex = nextOrder.indexOf(id);
     const nextIndex = currentIndex + direction;
-    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= groupOrder.length) return;
-    [groupOrder[currentIndex], groupOrder[nextIndex]] = [groupOrder[nextIndex], groupOrder[currentIndex]];
-    saveCardOrder({ ...cardOrder, [group]: groupOrder });
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= nextOrder.length) return;
+    [nextOrder[currentIndex], nextOrder[nextIndex]] = [nextOrder[nextIndex], nextOrder[currentIndex]];
+    saveCardOrder({ all: nextOrder });
   };
 
   const dragFromPoint = (clientX: number, clientY: number): CardDrag | null => {
     const card = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>('[data-campaign-card-id]');
-    const group = card?.dataset.campaignCardGroup as CampaignCardGroup | undefined;
     const id = card?.dataset.campaignCardId as CampaignCardId | undefined;
-    return group && id && campaignCardDefaults[group].includes(id as never) ? { group, id } : null;
+    return id && campaignCardDefaults.includes(id) ? { id } : null;
   };
 
   const startPointerDrag = (event: ReactPointerEvent<HTMLButtonElement>, drag: CardDrag) => {
@@ -210,15 +200,18 @@ export function CampaignPanel({ position, partyLocation, brews, encounters, enti
   const overviewLabels: Record<OverviewCardId, string> = { 'current-brew': 'Current brew', 'party-location': 'Party location', 'campaign-now': 'Campaign now' };
   const detailLabels: Record<DetailCardId, string> = { 'encounter-path': 'Encounter path', 'active-quests': 'Active quests', 'important-entities': 'Important entities', 'recent-events': 'Recent world events', 'plot-board': 'Plot board', 'campaign-map': 'Campaign map' };
   const handleDragStart = (event: DragEvent<HTMLButtonElement>, drag: CardDrag) => { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('application/x-homebrewry-campaign-card', JSON.stringify(drag)); setDraggingCard(drag.id); };
-  const handleDrop = (event: DragEvent<HTMLElement>, target: CardDrag) => { event.preventDefault(); try { const source = JSON.parse(event.dataTransfer.getData('application/x-homebrewry-campaign-card')) as CardDrag; if (source?.group && source?.id) reorderCards(source, target); } catch { /* Ignore items dragged from outside the dashboard. */ } setDraggingCard(null); };
+  const handleDrop = (event: DragEvent<HTMLElement>, target: CardDrag) => { event.preventDefault(); try { const source = JSON.parse(event.dataTransfer.getData('application/x-homebrewry-campaign-card')) as CardDrag; if (source?.id) reorderCards(source, target); } catch { /* Ignore items dragged from outside the dashboard. */ } setDraggingCard(null); };
 
   return <main className="campaign-page" aria-label="Campaign dashboard">
-    <header className="campaign-page-header"><div><p className="eyebrow">Generated campaign state</p><h1>Campaign</h1><p>Current status assembled from encounters, explicit links, and World Events.</p></div><div className="campaign-page-actions"><button aria-pressed={arrangingCards} className={arrangingCards ? 'is-selected' : ''} onClick={() => { setArrangingCards((current) => !current); setDraggingCard(null); pointerDragRef.current = null; }} type="button">{arrangingCards ? 'Done arranging' : 'Arrange cards'}</button>{arrangingCards && <><small>Drag ⋮⋮, or use ↑ and ↓.</small><button onClick={() => saveCardOrder({ overview: [...campaignCardDefaults.overview], details: [...campaignCardDefaults.details] })} type="button">Reset order</button></>}</div></header>
-    <section className="campaign-hero-grid">
-      {cardOrder.overview.map((id) => <SortableCampaignCard className={id === 'current-brew' ? 'campaign-current-brew' : ''} dragging={draggingCard === id} group="overview" id={id as OverviewCardId} key={id} label={overviewLabels[id as OverviewCardId]} arranging={arrangingCards} onDragEnd={() => setDraggingCard(null)} onDragStart={handleDragStart} onDrop={handleDrop} onMove={moveCard} onPointerEnd={finishPointerDrag} onPointerMove={movePointerDrag} onPointerStart={startPointerDrag}>{overviewCards[id as OverviewCardId]}</SortableCampaignCard>)}
-    </section>
-    <section className="campaign-grid">
-      {cardOrder.details.map((id) => <SortableCampaignCard className={id === 'plot-board' || id === 'campaign-map' ? 'campaign-workspace campaign-card-full-width' : 'campaign-card'} dragging={draggingCard === id} group="details" id={id as DetailCardId} key={id} label={detailLabels[id as DetailCardId]} arranging={arrangingCards} onDragEnd={() => setDraggingCard(null)} onDragStart={handleDragStart} onDrop={handleDrop} onMove={moveCard} onPointerEnd={finishPointerDrag} onPointerMove={movePointerDrag} onPointerStart={startPointerDrag}>{detailCards[id as DetailCardId]}</SortableCampaignCard>)}
+    <header className="campaign-page-header"><div><p className="eyebrow">Generated campaign state</p><h1>Campaign</h1><p>Current status assembled from encounters, explicit links, and World Events.</p></div><div className="campaign-page-actions"><button aria-pressed={arrangingCards} className={arrangingCards ? 'is-selected' : ''} onClick={() => { setArrangingCards((current) => !current); setDraggingCard(null); pointerDragRef.current = null; }} type="button">{arrangingCards ? 'Done arranging' : 'Arrange cards'}</button>{arrangingCards && <><small>Drag ⋮⋮, or use ↑ and ↓.</small><button onClick={() => saveCardOrder({ all: [...campaignCardDefaults] })} type="button">Reset order</button></>}</div></header>
+    <section className="campaign-dashboard-grid">
+      {cardOrder.all.map((id) => {
+        const isOverview = overviewCardIds.includes(id as OverviewCardId);
+        const className = isOverview ? `campaign-overview-card ${id === 'current-brew' ? 'campaign-current-brew' : ''}` : id === 'plot-board' || id === 'campaign-map' ? 'campaign-workspace campaign-card-full-width' : 'campaign-card';
+        const label = isOverview ? overviewLabels[id as OverviewCardId] : detailLabels[id as DetailCardId];
+        const content = isOverview ? overviewCards[id as OverviewCardId] : detailCards[id as DetailCardId];
+        return <SortableCampaignCard className={className} dragging={draggingCard === id} id={id} key={id} label={label} arranging={arrangingCards} onDragEnd={() => setDraggingCard(null)} onDragStart={handleDragStart} onDrop={handleDrop} onMove={moveCard} onPointerEnd={finishPointerDrag} onPointerMove={movePointerDrag} onPointerStart={startPointerDrag}>{content}</SortableCampaignCard>;
+      })}
     </section>
   </main>;
 }

@@ -5,8 +5,8 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Brew } from '../types';
 
-vi.mock('./CampaignMapPanel', () => ({ CampaignMapPanel: () => null }));
-vi.mock('./PlotBoardPanel', () => ({ PlotBoardPanel: () => null }));
+vi.mock('./CampaignMapPanel', () => ({ CampaignMapPanel: () => <section>Campaign map</section> }));
+vi.mock('./PlotBoardPanel', () => ({ PlotBoardPanel: () => <section>Plot board</section> }));
 
 import { CampaignPanel } from './CampaignPanel';
 
@@ -62,5 +62,40 @@ describe('CampaignPanel card arrangement', () => {
     const ids = Array.from(container.querySelectorAll<HTMLElement>('.campaign-hero-grid [data-campaign-card-id]')).map((card) => card.dataset.campaignCardId);
     expect(ids).toEqual(['party-location', 'current-brew', 'campaign-now']);
     expect(JSON.parse(localStorage.getItem(cardOrderStorageKey) ?? '{}').overview).toEqual(ids);
+  });
+
+  it('reorders the Plot board and Campaign map workspaces and stores the preference locally', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push({ container, root });
+
+    await act(async () => {
+      root.render(<CampaignPanel
+        brews={[brew]}
+        currentStateByEntityId={new Map()}
+        encounters={[]}
+        entities={[]}
+        entityReferences={[]}
+        onOpenEncounter={vi.fn()}
+        onOpenEntity={vi.fn()}
+        onSaveCampaignMap={vi.fn()}
+        onSavePlotBoard={vi.fn()}
+        onSetCurrentBrew={vi.fn()}
+        partyLocation={null}
+        position={null}
+        worldEvents={[]}
+        worldbuildingEntries={[]}
+      />);
+    });
+
+    const arrange = Array.from(container.querySelectorAll<HTMLButtonElement>('button')).find((button) => button.textContent === 'Arrange cards');
+    await act(async () => arrange?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    const move = container.querySelector<HTMLButtonElement>('[aria-label="Move Campaign map up"]');
+    await act(async () => move?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    const ids = Array.from(container.querySelectorAll<HTMLElement>('.campaign-workspace-stack [data-campaign-card-id]')).map((card) => card.dataset.campaignCardId);
+    expect(ids).toEqual(['campaign-map', 'plot-board']);
+    expect(JSON.parse(localStorage.getItem(cardOrderStorageKey) ?? '{}').workspaces).toEqual(ids);
   });
 });

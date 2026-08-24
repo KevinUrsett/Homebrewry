@@ -17,6 +17,8 @@
 .campaign-card-arrange-controls button:hover { background: #efdcb8; border-color: #986f41; }
 .campaign-card-arrange-handle { cursor: grab; letter-spacing: -2px; touch-action: none; }
 .campaign-card-arrange-handle:active { cursor: grabbing; }
+.campaign-workspace.is-arranging { padding-top: 0; }
+.campaign-workspace.is-arranging .plot-board-section, .campaign-workspace.is-arranging .campaign-map-section { margin-top: 49px; }
 .campaign-hero-grid span, .campaign-card > h2 { color: #806c5a; font-size: .7rem; letter-spacing: .08em; margin: 0; text-transform: uppercase; }
 .campaign-hero-grid strong { color: #5d2f26; display: block; font-family: Georgia, serif; font-size: 1.12rem; margin: 8px 0; }
 .campaign-hero-grid small { color: #725d48; display: block; line-height: 1.35; }

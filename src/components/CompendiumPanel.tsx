@@ -2,6 +2,13 @@ import { lazy, Suspense, useDeferredValue, useEffect, useMemo, useState, type Fo
 import { catalogueDataset } from '../catalogue/catalogueData';
 import { createCustomCatalogueEntry, createCustomMonster } from '../catalogue/customEntries';
 import {
+  emptyItemMetadata,
+  itemMatchesFilters,
+  itemMetadataForCatalogueEntry,
+  titleCaseItemValue,
+  type ItemFilterFields
+} from '../catalogue/itemMetadata';
+import {
   challengeRatingValue,
   compareMonsterMetadata,
   compareOptionalNumbers,
@@ -149,6 +156,21 @@ const defaultMonsterFilters: MonsterFilters = {
   sort: 'name-asc'
 };
 
+type ItemFilters = ItemFilterFields;
+
+type ItemFilterOptions = {
+  sources: string[];
+  types: string[];
+  rarities: string[];
+};
+
+const defaultItemFilters: ItemFilters = {
+  source: '',
+  type: '',
+  rarity: '',
+  attunement: ''
+};
+
 type MonsterFilterControlsProps = {
   filters: MonsterFilters;
   options: MonsterFilterOptions;
@@ -171,6 +193,24 @@ function MonsterFilterControls({ filters, onFilterChange, options, variant }: Mo
         <summary>Advanced filters</summary>
         <label>Import source<select aria-label="Filter monsters by import source" onChange={(event) => onFilterChange('importSource', event.target.value)} value={filters.importSource}><option value="">All import sources</option>{options.importSources.map((source) => <option key={source} value={source}>{source}</option>)}</select></label>
       </details>
+    </div>
+  );
+}
+
+type ItemFilterControlsProps = {
+  filters: ItemFilters;
+  options: ItemFilterOptions;
+  onFilterChange: <Key extends keyof ItemFilters>(key: Key, value: ItemFilters[Key]) => void;
+  variant: 'inline' | 'drawer';
+};
+
+function ItemFilterControls({ filters, onFilterChange, options, variant }: ItemFilterControlsProps) {
+  return (
+    <div className={`monster-filter-grid monster-filter-grid--${variant}`}>
+      <label className="monster-source-control">Book source<select aria-label="Filter items by book source" onChange={(event) => onFilterChange('source', event.target.value)} value={filters.source}><option value="">All book sources</option>{options.sources.map((source) => <option key={source} value={source}>{source}</option>)}</select></label>
+      <label>Item type<select aria-label="Filter items by type" onChange={(event) => onFilterChange('type', event.target.value)} value={filters.type}><option value="">All item types</option>{options.types.map((type) => <option key={type} value={type}>{titleCaseItemValue(type)}</option>)}</select></label>
+      <label>Rarity<select aria-label="Filter items by rarity" onChange={(event) => onFilterChange('rarity', event.target.value)} value={filters.rarity}><option value="">All rarities</option>{options.rarities.map((rarity) => <option key={rarity} value={rarity}>{titleCaseItemValue(rarity)}</option>)}</select></label>
+      <label>Attunement<select aria-label="Filter items by attunement" onChange={(event) => onFilterChange('attunement', event.target.value as ItemFilters['attunement'])} value={filters.attunement}><option value="">All items</option><option value="required">Requires attunement</option><option value="not-required">No attunement</option></select></label>
     </div>
   );
 }
@@ -387,6 +427,8 @@ export function CompendiumPanel({
   const deferredQuery = useDeferredValue(query);
   const [monsterFilters, setMonsterFilters] = useState<MonsterFilters>(() => ({ ...defaultMonsterFilters }));
   const [monsterFiltersOpen, setMonsterFiltersOpen] = useState(false);
+  const [itemFilters, setItemFilters] = useState<ItemFilters>(() => ({ ...defaultItemFilters }));
+  const [itemFiltersOpen, setItemFiltersOpen] = useState(false);
   const [editingWorldbuildingId, setEditingWorldbuildingId] = useState<string | null>(null);
   const [monsterEditor, setMonsterEditor] = useState<MonsterEditorState | null>(null);
   const [entryEditor, setEntryEditor] = useState<CatalogueEntryEditorState | null>(null);
@@ -465,6 +507,12 @@ export function CompendiumPanel({
       .map((item) => [item.key, monsterMetadataForItem(item)] as const)),
     [allItems]
   );
+  const itemMetadataByKey = useMemo(
+    () => new Map(allItems
+      .filter((item) => item.category === 'items')
+      .map((item) => [item.key, isCatalogueItem(item) ? itemMetadataForCatalogueEntry(item.entry) : emptyItemMetadata] as const)),
+    [allItems]
+  );
   const monsterFilterOptions = useMemo<MonsterFilterOptions>(() => {
     const sources = new Set<string>();
     const importSources = new Set<string>();
@@ -489,6 +537,21 @@ export function CompendiumPanel({
       environments: Array.from(environments).sort((left, right) => compendiumCollator.compare(left, right))
     };
   }, [monsterMetadataByKey]);
+  const itemFilterOptions = useMemo<ItemFilterOptions>(() => {
+    const sources = new Set<string>();
+    const types = new Set<string>();
+    const rarities = new Set<string>();
+    Array.from(itemMetadataByKey.values()).forEach((metadata) => {
+      metadata.sources.forEach((source) => sources.add(source));
+      if (metadata.type) types.add(metadata.type);
+      if (metadata.rarity) rarities.add(metadata.rarity);
+    });
+    return {
+      sources: Array.from(sources).sort((left, right) => compendiumCollator.compare(left, right)),
+      types: Array.from(types).sort((left, right) => compendiumCollator.compare(left, right)),
+      rarities: Array.from(rarities).sort((left, right) => compendiumCollator.compare(left, right))
+    };
+  }, [itemMetadataByKey]);
   const catalogueByKey = useMemo(
     () => new Map(catalogueEntries.map((entry) => [catalogueEntryKey(entry), entry])),
     [catalogueEntries]
@@ -510,12 +573,22 @@ export function CompendiumPanel({
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [monsterFiltersOpen]);
 
+  useEffect(() => {
+    if (!itemFiltersOpen) return undefined;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setItemFiltersOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [itemFiltersOpen]);
+
   const filterTerms = deferredQuery.trim().toLocaleLowerCase();
   const filteredItems = useMemo(() => allItems
     .filter((item) => {
       if (!itemMatches(item, activeCategory, filterTerms)) return false;
-      if (activeCategory !== 'monsters') return true;
-      return monsterMatchesFilters(monsterMetadataByKey.get(item.key) ?? emptyMonsterMetadata, monsterFilters);
+      if (activeCategory === 'monsters') return monsterMatchesFilters(monsterMetadataByKey.get(item.key) ?? emptyMonsterMetadata, monsterFilters);
+      if (activeCategory === 'items') return itemMatchesFilters(itemMetadataByKey.get(item.key) ?? emptyItemMetadata, itemFilters);
+      return true;
     })
     .sort((left, right) => {
       if (activeCategory === 'monsters') {
@@ -532,7 +605,7 @@ export function CompendiumPanel({
         }
       }
       return compendiumCollator.compare(left.entry.name, right.entry.name) || left.source.localeCompare(right.source);
-    }), [activeCategory, allItems, filterTerms, monsterFilters, monsterMetadataByKey]);
+    }), [activeCategory, allItems, filterTerms, itemFilters, itemMetadataByKey, monsterFilters, monsterMetadataByKey]);
   const categoryCounts = useMemo(() => {
     const counts = new Map<CompendiumCategory, number>();
     allItems.forEach((item) => counts.set(item.category, (counts.get(item.category) ?? 0) + 1));
@@ -597,6 +670,7 @@ export function CompendiumPanel({
     setBrowserMode('library');
     setCategoryPickerOpen(false);
     setMonsterFiltersOpen(false);
+    setItemFiltersOpen(false);
     setDetailOpen(false);
     setLocalSelectedKey(null);
     setEditingWorldbuildingId(null);
@@ -768,6 +842,19 @@ export function CompendiumPanel({
     }
   };
   const resetMonsterFilters = () => setMonsterFilters({ ...defaultMonsterFilters });
+  const activeItemFilterChips: Array<{ key: keyof ItemFilters; label: string; value: string }> = [
+    { key: 'source' as const, label: 'Book', value: itemFilters.source },
+    { key: 'type' as const, label: 'Type', value: itemFilters.type ? titleCaseItemValue(itemFilters.type) : '' },
+    { key: 'rarity' as const, label: 'Rarity', value: itemFilters.rarity ? titleCaseItemValue(itemFilters.rarity) : '' },
+    { key: 'attunement' as const, label: 'Attunement', value: itemFilters.attunement === 'required' ? 'Required' : itemFilters.attunement === 'not-required' ? 'None' : '' }
+  ].filter((chip) => Boolean(chip.value));
+  const activeItemFilterCount = activeItemFilterChips.length;
+  const hasItemRefinements = activeItemFilterCount > 0;
+  const updateItemFilter = <Key extends keyof ItemFilters>(key: Key, value: ItemFilters[Key]) => {
+    setItemFilters((current) => ({ ...current, [key]: value }));
+  };
+  const clearItemFilter = (key: keyof ItemFilters) => updateItemFilter(key, defaultItemFilters[key]);
+  const resetItemFilters = () => setItemFilters({ ...defaultItemFilters });
 
   const itemSubtitle = (item: CompendiumItem) => {
     if (isCatalogueItem(item)) {
@@ -953,6 +1040,19 @@ export function CompendiumPanel({
                 </div>
                 <MonsterFilterControls filters={monsterFilters} onFilterChange={updateMonsterFilter} options={monsterFilterOptions} variant="inline" />
               </section>}
+              {activeCategory === 'items' && <section className="monster-refinement" aria-label="Item filters">
+                <header className="monster-refinement-heading">
+                  <div><p className="eyebrow">Item search</p><strong>Filters</strong></div>
+                  {hasItemRefinements && <button className="monster-filter-reset" onClick={resetItemFilters} type="button">Clear filters</button>}
+                </header>
+                <div className="monster-mobile-filter-summary">
+                  <button aria-controls="item-filter-dialog" aria-expanded={itemFiltersOpen} aria-label={hasItemRefinements ? `Open item filters, ${activeItemFilterCount} active` : 'Open item filters'} className="monster-filter-trigger" onClick={() => setItemFiltersOpen(true)} type="button">Filters{hasItemRefinements && <span>{activeItemFilterCount}</span>}</button>
+                  {hasItemRefinements && <div aria-label="Active item filters" className="monster-filter-chip-row">
+                    {activeItemFilterChips.map((chip) => <button aria-label={`Clear ${chip.label} filter`} className="monster-filter-chip" key={chip.key} onClick={() => clearItemFilter(chip.key)} type="button"><span>{chip.label}: {chip.value}</span><span aria-hidden="true">×</span></button>)}
+                  </div>}
+                </div>
+                <ItemFilterControls filters={itemFilters} onFilterChange={updateItemFilter} options={itemFilterOptions} variant="inline" />
+              </section>}
               <header className="compendium-results-heading"><div><p className="eyebrow">{catalogueLoading ? 'Loading references' : `${filteredItems.length.toLocaleString()} shown`}</p><h2>{activeCategoryLabel}</h2></div><span>{activeCategoryCount.toLocaleString()} total</span></header>
               <div className="compendium-results">
                 {filteredItems.map((item) => <button className="compendium-result" key={item.key} onClick={() => selectItem(item)} type="button"><strong>{item.entry.name}</strong><span>{itemSubtitle(item)}</span><small>{item.sourceLabel}</small></button>)}
@@ -964,6 +1064,8 @@ export function CompendiumPanel({
       )}
 
       {browserMode === 'library' && activeCategory === 'monsters' && monsterFiltersOpen && <div aria-labelledby="monster-filter-dialog-title" aria-modal="true" className="compendium-dialog-backdrop monster-filter-dialog-backdrop" onMouseDown={() => setMonsterFiltersOpen(false)} role="dialog"><section className="monster-filter-dialog" id="monster-filter-dialog" onMouseDown={(event) => event.stopPropagation()}><header><div><p className="eyebrow">Monster search</p><h2 id="monster-filter-dialog-title">Filters & sort</h2><p aria-live="polite">{filteredItems.length.toLocaleString()} monster{filteredItems.length === 1 ? '' : 's'} shown</p></div><button aria-label="Close monster filters" onClick={() => setMonsterFiltersOpen(false)} type="button">×</button></header><MonsterFilterControls filters={monsterFilters} onFilterChange={updateMonsterFilter} options={monsterFilterOptions} variant="drawer" /><footer className="monster-filter-dialog-actions">{hasMonsterRefinements && <button className="monster-filter-reset" onClick={resetMonsterFilters} type="button">Clear filters</button>}<button className="primary-button" onClick={() => setMonsterFiltersOpen(false)} type="button">Show {filteredItems.length.toLocaleString()} monster{filteredItems.length === 1 ? '' : 's'}</button></footer></section></div>}
+
+      {browserMode === 'library' && activeCategory === 'items' && itemFiltersOpen && <div aria-labelledby="item-filter-dialog-title" aria-modal="true" className="compendium-dialog-backdrop monster-filter-dialog-backdrop" onMouseDown={() => setItemFiltersOpen(false)} role="dialog"><section className="monster-filter-dialog" id="item-filter-dialog" onMouseDown={(event) => event.stopPropagation()}><header><div><p className="eyebrow">Item search</p><h2 id="item-filter-dialog-title">Filters</h2><p aria-live="polite">{filteredItems.length.toLocaleString()} item{filteredItems.length === 1 ? '' : 's'} shown</p></div><button aria-label="Close item filters" onClick={() => setItemFiltersOpen(false)} type="button">×</button></header><ItemFilterControls filters={itemFilters} onFilterChange={updateItemFilter} options={itemFilterOptions} variant="drawer" /><footer className="monster-filter-dialog-actions">{hasItemRefinements && <button className="monster-filter-reset" onClick={resetItemFilters} type="button">Clear filters</button>}<button className="primary-button" onClick={() => setItemFiltersOpen(false)} type="button">Show {filteredItems.length.toLocaleString()} item{filteredItems.length === 1 ? '' : 's'}</button></footer></section></div>}
 
       {categoryPickerOpen && <div aria-modal="true" className="compendium-dialog-backdrop" onMouseDown={() => setCategoryPickerOpen(false)} role="dialog"><section className="compendium-category-dialog" onMouseDown={(event) => event.stopPropagation()}><header><div><p className="eyebrow">Compendium</p><h2>Browse by category</h2><p>Choose what you want to look through.</p></div><button aria-label="Close categories" onClick={() => setCategoryPickerOpen(false)} type="button">×</button></header><nav className="compendium-category-list" aria-label="Compendium categories"><button className={activeCategory === 'all' ? 'is-selected' : ''} onClick={() => selectCategory('all')} type="button"><span className="compendium-category-mark">A</span><span>All entries</span><small>{allItems.length}</small></button>{(['Campaign', 'Rules'] as const).map((group) => <div className="compendium-category-group" key={group}><p>{group}</p>{compendiumCategories.filter((item) => item.group === group).map((item) => <button className={activeCategory === item.id ? 'is-selected' : ''} key={item.id} onClick={() => selectCategory(item.id)} type="button"><span className="compendium-category-mark">{item.shortLabel}</span><span>{item.label}</span><small>{categoryCounts.get(item.id) ?? 0}</small></button>)}</div>)}{customCategoryDefinitions.length > 0 && <div className="compendium-category-group"><p>Custom</p>{customCategoryDefinitions.map((item) => <button className={activeCategory === item.id ? 'is-selected' : ''} key={item.id} onClick={() => selectCategory(item.id)} type="button"><span className="compendium-category-mark">{item.shortLabel}</span><span>{item.label}</span><small>{categoryCounts.get(item.id) ?? 0}</small></button>)}</div>}</nav></section></div>}
 

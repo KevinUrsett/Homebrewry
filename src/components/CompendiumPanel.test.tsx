@@ -39,6 +39,35 @@ const wolf: CatalogueEntry = {
   ruleset: '5.5e'
 };
 
+const staffOfSparks: CatalogueEntry = {
+  id: 'staff-of-sparks',
+  category: 'item',
+  name: 'Staff of Sparks',
+  description: 'A staff that flashes with contained lightning.',
+  data: {
+    sources: ["Dungeon Master's Guide"],
+    type: 'staff',
+    rarity: 'rare',
+    attunement: true
+  },
+  source: 'Private import',
+  ruleset: '5.5e'
+};
+
+const cloakOfFeathers: CatalogueEntry = {
+  id: 'cloak-of-feathers',
+  category: 'item',
+  name: 'Cloak of Feathers',
+  description: 'A cloak that always falls slowly.',
+  data: {
+    sources: ["Player's Handbook"],
+    type: 'wondrousItem',
+    rarity: 'uncommon'
+  },
+  source: 'SRD-521',
+  ruleset: '5.5e'
+};
+
 const campaignMonster: WorldbuildingEntry = {
   id: 'ashling',
   name: 'Ashling',
@@ -67,7 +96,7 @@ async function renderCompendium(onCreateWorldbuilding = vi.fn(), catalogueSelect
   await act(async () => {
     root.render(
       <CompendiumPanel
-        catalogueEntries={[monster, wolf]}
+        catalogueEntries={[monster, wolf, staffOfSparks, cloakOfFeathers]}
         catalogueError={null}
         catalogueLoading={false}
         catalogueSelection={catalogueSelection}
@@ -197,6 +226,55 @@ describe('CompendiumPanel', () => {
 
     await act(async () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
     expect(container.querySelector('#monster-filter-dialog')).toBeNull();
+  });
+
+  it('filters items by book source, type, rarity, and attunement', async () => {
+    const container = await renderCompendium();
+    const categoryButton = Array.from(container.querySelectorAll('button')).find((button) => button.textContent?.includes('Category'));
+    await act(async () => categoryButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    const itemCategory = Array.from(container.querySelectorAll('.compendium-category-list button')).find((button) => button.textContent?.includes('Items'));
+    await act(async () => itemCategory?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    const source = container.querySelector('select[aria-label="Filter items by book source"]') as HTMLSelectElement;
+    const type = container.querySelector('select[aria-label="Filter items by type"]') as HTMLSelectElement;
+    const rarity = container.querySelector('select[aria-label="Filter items by rarity"]') as HTMLSelectElement;
+    const attunement = container.querySelector('select[aria-label="Filter items by attunement"]') as HTMLSelectElement;
+    expect(Array.from(source.options).map((option) => option.textContent)).toContain("Dungeon Master's Guide");
+    expect(Array.from(source.options).map((option) => option.textContent)).not.toContain('Private import');
+
+    await act(async () => {
+      source.value = "Dungeon Master's Guide";
+      source.dispatchEvent(new Event('change', { bubbles: true }));
+      type.value = 'staff';
+      type.dispatchEvent(new Event('change', { bubbles: true }));
+      rarity.value = 'rare';
+      rarity.dispatchEvent(new Event('change', { bubbles: true }));
+      attunement.value = 'required';
+      attunement.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(container.querySelector('.compendium-results')?.textContent).toContain('Staff of Sparks');
+    expect(container.querySelector('.compendium-results')?.textContent).not.toContain('Cloak of Feathers');
+
+    await act(async () => {
+      source.value = '';
+      source.dispatchEvent(new Event('change', { bubbles: true }));
+      type.value = '';
+      type.dispatchEvent(new Event('change', { bubbles: true }));
+      rarity.value = '';
+      rarity.dispatchEvent(new Event('change', { bubbles: true }));
+      attunement.value = 'not-required';
+      attunement.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(container.querySelector('.compendium-results')?.textContent).toContain('Cloak of Feathers');
+    expect(container.querySelector('.compendium-results')?.textContent).not.toContain('Staff of Sparks');
+
+    const filterTrigger = container.querySelector('button[aria-controls="item-filter-dialog"]') as HTMLButtonElement;
+    await act(async () => filterTrigger.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(container.querySelector('#item-filter-dialog')).toBeTruthy();
+    expect(filterTrigger.getAttribute('aria-expanded')).toBe('true');
+
+    await act(async () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+    expect(container.querySelector('#item-filter-dialog')).toBeNull();
   });
 
   it('sorts monsters by challenge rating', async () => {

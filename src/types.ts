@@ -1,4 +1,5 @@
 import type { CatalogueEntry, CustomCatalogueCategory, CustomCatalogueEntry } from './catalogue/types';
+import type { MonsterEquipment } from './catalogue/magicItems';
 
 export type RendererSettings = {
   accentColor: string;
@@ -75,6 +76,8 @@ export type EncounterParticipant = {
     category: 'monster';
     id: string;
   };
+  /** Magic equipment applied only to this combatant in this encounter. */
+  encounterEquipment?: MonsterEquipment[];
   armorClass: number | null;
   maxHitPoints: number | null;
   currentHitPoints: number | null;

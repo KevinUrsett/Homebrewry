@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolvedMonsterActions, resolvedMonsterWeaponActions, weaponActionText } from './magicItems';
+import { resolvedMonsterActions, resolvedMonsterEquipment, resolvedMonsterWeaponActions, weaponActionText } from './magicItems';
 import type { CatalogueEntry } from './types';
 
 const stormfang: CatalogueEntry = {
@@ -77,5 +77,21 @@ describe('magic equipment', () => {
 
     expect(actions[0]?.text).toBe('_Melee Attack Roll:_ +6, reach 5 ft. _Hit:_ 7 (1d6 +4) Piercing damage plus 1d6 lightning damage.');
     expect(actions[1]?.text).toBe('_Ranged Attack Roll:_ +5, range 80/320 ft. _Hit:_ 6 (1d6 + 3) Piercing damage.');
+  });
+
+  it('overlays encounter equipment without changing the compendium monster', () => {
+    const baseMonster: CatalogueEntry = {
+      ...guard,
+      data: {
+        actions: [{ name: 'Shortsword', text: '_Melee Attack Roll:_ +5, reach 5 ft. _Hit:_ 6 (1d6 + 3) Piercing damage.' }]
+      }
+    };
+    const encounterEquipment = resolvedMonsterEquipment(baseMonster, [{ itemId: 'stormfang', actionIndexes: [0] }]);
+    const encounterActions = resolvedMonsterActions(baseMonster, new Map([['item:stormfang', stormfang]]), encounterEquipment);
+    const sourceActions = resolvedMonsterActions(baseMonster, new Map([['item:stormfang', stormfang]]));
+
+    expect(encounterActions[0]?.text).toBe('_Melee Attack Roll:_ +6, reach 5 ft. _Hit:_ 7 (1d6 +4) Piercing damage plus 1d6 lightning damage.');
+    expect(sourceActions[0]?.text).toBe('_Melee Attack Roll:_ +5, reach 5 ft. _Hit:_ 6 (1d6 + 3) Piercing damage.');
+    expect(baseMonster.data.actions).toEqual([{ name: 'Shortsword', text: '_Melee Attack Roll:_ +5, reach 5 ft. _Hit:_ 6 (1d6 + 3) Piercing damage.' }]);
   });
 });

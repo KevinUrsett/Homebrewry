@@ -62,9 +62,13 @@ export function magicWeaponForItem(entry: CatalogueEntry | null | undefined): Ma
   };
 }
 
-export function monsterEquipment(entry: CatalogueEntry): MonsterEquipment[] {
+/** Safely reads equipment stored either on a catalogue monster or on an
+ * encounter participant. Encounter data is user-authored and may predate the
+ * current schema, so it is intentionally treated as untrusted input. */
+export function normaliseMonsterEquipment(value: unknown): MonsterEquipment[] {
   const seen = new Set<string>();
-  return dataArray(entry, 'equipment').flatMap((candidate) => {
+  const candidates = Array.isArray(value) ? value : [];
+  return candidates.flatMap((candidate) => {
     if (!isRecord(candidate)) return [];
     const itemId = text(candidate.itemId, 180);
     if (!itemId || seen.has(itemId) || seen.size >= 50) return [];
@@ -74,6 +78,28 @@ export function monsterEquipment(entry: CatalogueEntry): MonsterEquipment[] {
       : [];
     return [{ itemId, actionIndexes }];
   });
+}
+
+export function monsterEquipment(entry: CatalogueEntry): MonsterEquipment[] {
+  return normaliseMonsterEquipment(dataArray(entry, 'equipment'));
+}
+
+/**
+ * Encounter equipment is an overlay, never a mutation of the source monster.
+ * If a temporary weapon targets an Action, it replaces any source weapon that
+ * targeted that same Action for this encounter's rendered stat block.
+ */
+export function resolvedMonsterEquipment(entry: CatalogueEntry, encounterEquipment?: readonly MonsterEquipment[]): MonsterEquipment[] {
+  const temporary = normaliseMonsterEquipment(encounterEquipment);
+  if (!temporary.length) return monsterEquipment(entry);
+
+  const temporaryActionIndexes = new Set(temporary.flatMap((item) => item.actionIndexes));
+  const source = monsterEquipment(entry).flatMap((item) => {
+    const actionIndexes = item.actionIndexes.filter((index) => !temporaryActionIndexes.has(index));
+    return actionIndexes.length || !item.actionIndexes.length ? [{ ...item, actionIndexes }] : [];
+  });
+  const sourceIds = new Set(source.map((item) => item.itemId));
+  return [...source, ...temporary.filter((item) => !sourceIds.has(item.itemId))];
 }
 
 function replaceAttackModifier(value: string, bonus: number): string {
@@ -109,8 +135,8 @@ export function applyMagicWeaponToActionText(value: string, weapon: MagicWeapon)
   return next;
 }
 
-export function resolvedMonsterActions(entry: CatalogueEntry, catalogue: ReadonlyMap<string, CatalogueEntry>): Record<string, unknown>[] {
-  const equipped = monsterEquipment(entry);
+export function resolvedMonsterActions(entry: CatalogueEntry, catalogue: ReadonlyMap<string, CatalogueEntry>, equipment = monsterEquipment(entry)): Record<string, unknown>[] {
+  const equipped = normaliseMonsterEquipment(equipment);
   return dataRecords(entry, 'actions').map((action, actionIndex) => {
     const itemId = equipped.find((item) => item.actionIndexes.includes(actionIndex))?.itemId;
     const weapon = magicWeaponForItem(itemId ? catalogue.get(`item:${itemId}`) : null);
@@ -147,8 +173,8 @@ export function magicWeaponItems(entries: readonly CatalogueEntry[]): CatalogueE
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 
-export function resolvedMonsterWeaponActions(entry: CatalogueEntry, catalogue: ReadonlyMap<string, CatalogueEntry>): ResolvedMonsterWeaponAction[] {
-  const equipmentIds = new Set(monsterEquipment(entry).map((item) => item.itemId));
+export function resolvedMonsterWeaponActions(entry: CatalogueEntry, catalogue: ReadonlyMap<string, CatalogueEntry>, equipment = monsterEquipment(entry)): ResolvedMonsterWeaponAction[] {
+  const equipmentIds = new Set(normaliseMonsterEquipment(equipment).map((item) => item.itemId));
   return monsterWeaponActions(entry).map((action) => {
     const item = equipmentIds.has(action.equipmentId) ? catalogue.get(`item:${action.equipmentId}`) ?? null : null;
     const magicWeapon = magicWeaponForItem(item);

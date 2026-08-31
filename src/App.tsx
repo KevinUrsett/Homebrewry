@@ -70,6 +70,7 @@ import {
 import { loadCatalogue, toCatalogueMap } from './catalogue/catalogueData';
 import { createCustomCatalogueCategory, createCustomCatalogueEntry, normaliseCustomCatalogueEntry } from './catalogue/customEntries';
 import { findCatalogueEntryByName, formatCatalogueReference } from './catalogue/references';
+import type { MonsterEquipment } from './catalogue/magicItems';
 import { formatWorldbuildingReference } from './lib/worldbuildingReferences';
 import type { GeneratedName } from './lib/nameGenerator';
 import { catalogueCategoryLabel, catalogueCategoryLabels, type CatalogueCategory, type CatalogueEntry, type CustomCatalogueCategory, type CustomCatalogueEntry } from './catalogue/types';
@@ -187,9 +188,15 @@ export default function App() {
   }));
   const [privateMonsterSync, setPrivateMonsterSync] = useState<PrivateMonsterSyncMetadata | null>(null);
   const [referenceEntry, setReferenceEntry] = useState<CatalogueEntry | null>(null);
+  const [referenceEquipment, setReferenceEquipment] = useState<{ monsterId: string; equipment: MonsterEquipment[] } | null>(null);
   const [worldbuildingReferenceEntry, setWorldbuildingReferenceEntry] = useState<WorldbuildingEntry | null>(null);
   const editorRef = useRef<MarkdownEditorHandle>(null);
   const selectionRef = useRef({ start: 0, end: 0 });
+
+  const openReferenceEntry = (entry: CatalogueEntry) => {
+    setReferenceEquipment(null);
+    setReferenceEntry(entry);
+  };
   const historyRef = useRef<string[]>([]);
   const redoRef = useRef<string[]>([]);
   const campaignRecordsRef = useRef({
@@ -1939,6 +1946,7 @@ export default function App() {
           hasDriveBackup={Boolean(campaignDataSync?.drive)}
           loading={catalogueLoading}
           monsters={catalogueEntries.filter((entry) => entry.category === 'monster')}
+          items={catalogueEntries.filter((entry) => entry.category === 'item')}
           npcEntities={livingWorld.entities.filter((entity) => entity.kind === 'npc')}
           currentStateByEntityId={currentStateByEntityId}
           syncState={campaignDataSync?.syncState ?? 'local'}
@@ -1950,7 +1958,10 @@ export default function App() {
           onResurrectNpc={resurrectNpc}
           onSetPartyLocation={setPartyLocation}
           onInsertReference={beginEncounterInsertion}
-          onMonsterOpen={setReferenceEntry}
+          onMonsterOpen={(monster, equipment) => {
+            setReferenceEntry(monster);
+            setReferenceEquipment(equipment ? { monsterId: monster.id, equipment } : null);
+          }}
           onSelectEncounter={setEncounterSelectedId}
           onUpdateEncounter={persistEncounter}
           onUpdatePartyMember={persistPartyMember}
@@ -2097,7 +2108,7 @@ export default function App() {
                   encounters={encounterMap}
                   maps={campaignMapRecords}
                   onEncounterOpen={openEncounters}
-                  onReferenceOpen={setReferenceEntry}
+                  onReferenceOpen={openReferenceEntry}
                   onAddWorldbuildingNote={addWorldbuildingQuickNote}
                   onDeleteWorldbuildingReference={deleteWorldbuilding}
                   onWorldbuildingOpen={setWorldbuildingReferenceEntry}
@@ -2251,12 +2262,16 @@ export default function App() {
         <ReferenceDialog
           categoryLabel={catalogueCategoryLabel(referenceEntry.category, customCatalogueCategories)}
           entry={referenceEntry}
-          onClose={() => setReferenceEntry(null)}
+          equipment={referenceEquipment?.monsterId === referenceEntry.id ? referenceEquipment.equipment : undefined}
+          onClose={() => {
+            setReferenceEntry(null);
+            setReferenceEquipment(null);
+          }}
           onOpenInCatalogue={openReferenceInCatalogue}
           references={{
             catalogue: catalogueMap,
             catalogueCategories: customCatalogueCategories,
-            onReferenceOpen: setReferenceEntry,
+            onReferenceOpen: openReferenceEntry,
             onWorldbuildingOpen: setWorldbuildingReferenceEntry,
             worldbuilding: worldbuildingMap,
             worldbuildingTypes

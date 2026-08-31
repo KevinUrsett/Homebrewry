@@ -277,6 +277,48 @@ describe('EncounterPanel monster browser', () => {
     expect(container.querySelector('.encounter-picker')).not.toBeNull();
   });
 
+  it('stores magic equipment on one encounter combatant instead of the source monster', async () => {
+    const guard: CatalogueEntry = {
+      id: 'guard', category: 'monster', name: 'Guard', description: '', source: 'Monster Manual', ruleset: '5e',
+      data: { actions: [{ name: 'Shortsword', text: '_Melee Attack Roll:_ +3, reach 5 ft. _Hit:_ 5 (1d6 + 2) piercing damage.' }] }
+    };
+    const stormfang: CatalogueEntry = {
+      id: 'stormfang', category: 'item', name: 'Stormfang', description: '', source: 'Custom', ruleset: 'Homebrewry',
+      data: { magicWeapon: { attackBonus: 1, damageBonus: 1, extraDamageDice: '', extraDamageType: '' } }
+    };
+    const encounterWithGuard: Encounter = {
+      ...encounter,
+      participants: [{
+        id: 'guard-1', kind: 'monster', name: 'Guard', source: { category: 'monster', id: 'guard' },
+        armorClass: 16, maxHitPoints: 11, currentHitPoints: 11, initiative: 12
+      }]
+    };
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push({ container, root });
+    const onUpdateEncounter = vi.fn();
+
+    await act(async () => {
+      root.render(<EncounterPanel encounters={[encounterWithGuard]} items={[stormfang]} loading={false} monsters={[guard]} onCreateEncounter={vi.fn()} onCreatePartyMember={vi.fn()} onDeleteEncounter={vi.fn()} onDeletePartyMember={vi.fn()} onInsertReference={vi.fn()} onSelectEncounter={vi.fn()} onUpdateEncounter={onUpdateEncounter} onUpdatePartyMember={vi.fn()} partyMembers={[]} selectedId={encounterWithGuard.id} syncState="synced" />);
+    });
+    await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Edit Test encounter"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Edit encounter equipment for Guard"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    const weapon = container.querySelector<HTMLSelectElement>('select[aria-label="Add magic weapon to encounter combatant"]');
+    expect(weapon).toBeTruthy();
+    await act(async () => {
+      weapon!.value = 'stormfang';
+      weapon!.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await act(async () => Array.from(container.querySelectorAll('.encounter-equipment-add button')).find((button) => button.textContent === 'Add equipment')?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    expect(onUpdateEncounter).toHaveBeenCalledWith(expect.objectContaining({
+      participants: [expect.objectContaining({ id: 'guard-1', encounterEquipment: [{ itemId: 'stormfang', actionIndexes: [0] }] })]
+    }));
+    expect(guard.data.actions).toEqual([{ name: 'Shortsword', text: '_Melee Attack Roll:_ +3, reach 5 ft. _Hit:_ 5 (1d6 + 2) piercing damage.' }]);
+  });
+
   it('adds a confirmed Worldbuilding NPC with its current status and stable entity link', async () => {
     const container = document.createElement('div');
     document.body.append(container);

@@ -1,17 +1,19 @@
 import { useEffect } from 'react';
 import type { CatalogueEntry } from '../catalogue/types';
+import type { MonsterEquipment } from '../catalogue/magicItems';
 import type { ReferenceContentProps } from './ReferenceContent';
 import { CatalogueEntryDetails } from './CatalogueEntryDetails';
 
 type ReferenceDialogProps = {
   entry: CatalogueEntry;
   categoryLabel?: string;
+  equipment?: MonsterEquipment[];
   references?: Omit<ReferenceContentProps, 'content' | 'className'>;
   onClose: () => void;
   onOpenInCatalogue: () => void;
 };
 
-export function ReferenceDialog({ entry, categoryLabel, references, onClose, onOpenInCatalogue }: ReferenceDialogProps) {
+export function ReferenceDialog({ entry, categoryLabel, equipment, references, onClose, onOpenInCatalogue }: ReferenceDialogProps) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose();
@@ -33,7 +35,7 @@ export function ReferenceDialog({ entry, categoryLabel, references, onClose, onO
           <span>Reference</span>
           <button aria-label="Close reference" onClick={onClose} type="button">×</button>
         </div>
-        <div id="reference-title"><CatalogueEntryDetails categoryLabel={categoryLabel} entry={entry} references={references} /></div>
+        <div id="reference-title"><CatalogueEntryDetails categoryLabel={categoryLabel} entry={entry} equipment={equipment} references={references} /></div>
         <div className="reference-dialog-actions">
           <button onClick={onClose} type="button">Close</button>
           <button className="primary-button" onClick={onOpenInCatalogue} type="button">Open in catalogue</button>

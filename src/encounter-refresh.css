@@ -891,6 +891,34 @@ reviewed or reverted without disturbing the shared application theme. */
   .encounter-monster-filter-dialog-actions .primary-button {
     flex: 1;
   }
+
+  .encounter-equipment-backdrop {
+    align-items: end;
+    padding: 10px;
+  }
+
+  .encounter-equipment-dialog {
+    max-height: min(760px, calc(100dvh - 20px));
+  }
+
+  .encounter-equipment-dialog > header {
+    padding: 16px 16px 13px;
+  }
+
+  .encounter-equipment-add,
+  .encounter-equipment-list,
+  .encounter-equipment-empty,
+  .encounter-equipment-hint {
+    margin-inline: 16px;
+  }
+
+  .encounter-equipment-add {
+    grid-template-columns: 1fr;
+  }
+
+  .encounter-equipment-dialog > footer {
+    padding: 11px 16px calc(12px + env(safe-area-inset-bottom));
+  }
 }
 
 @media (max-width: 430px) {
@@ -1069,6 +1097,95 @@ reviewed or reverted without disturbing the shared application theme. */
   min-width: 22px;
   padding: 1px 4px;
 }
+
+.encounter-combatant-equipment-button,
+.combatant-equipment-button {
+  background: #e8f0df;
+  border: 1px solid #91a87d;
+  border-radius: 999px;
+  color: #365b31;
+  font-size: .61rem;
+  font-weight: 800;
+  padding: 3px 6px;
+  white-space: nowrap;
+}
+
+.encounter-equipment-backdrop {
+  align-items: center;
+  background: rgb(30 20 15 / 58%);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 20px;
+  position: fixed;
+  z-index: 55;
+}
+
+.encounter-equipment-dialog {
+  background: #fffdf7;
+  border: 1px solid #b99464;
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgb(20 12 8 / 40%);
+  display: grid;
+  gap: 14px;
+  max-height: calc(100dvh - 40px);
+  max-width: 620px;
+  overflow: auto;
+  width: 100%;
+}
+
+.encounter-equipment-dialog > header {
+  align-items: flex-start;
+  background: #f7f0df;
+  border-bottom: 1px solid #d8c9ae;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 18px 20px 14px;
+}
+
+.encounter-equipment-dialog header > div { display: grid; gap: 4px; }
+.encounter-equipment-dialog h3 { color: #5d2f26; font-family: Georgia, serif; font-size: 1.35rem; line-height: 1; margin: 0; }
+.encounter-equipment-dialog header p:not(.eyebrow), .encounter-equipment-hint, .encounter-equipment-empty { color: #715e4e; font-size: .8rem; line-height: 1.4; margin: 0; }
+.encounter-equipment-dialog header > button { background: transparent; border: 0; color: #5d2f26; font-size: 1.65rem; line-height: 1; padding: 0 3px; }
+
+.encounter-equipment-add,
+.encounter-equipment-list,
+.encounter-equipment-empty,
+.encounter-equipment-hint { margin-inline: 20px; }
+
+.encounter-equipment-add {
+  align-items: end;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.encounter-equipment-add label {
+  color: #71553e;
+  display: grid;
+  font-size: .7rem;
+  font-weight: 800;
+  gap: 5px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.encounter-equipment-add select { background: #fffaf0; border: 1px solid #cbb99d; border-radius: 5px; color: #39291f; font: inherit; min-height: 37px; padding: 7px 8px; width: 100%; }
+.encounter-equipment-add button, .encounter-equipment-item-heading button, .encounter-equipment-dialog footer .primary-button { background: #f7f0df; border: 1px solid #ad9576; border-radius: 5px; color: #422f25; font-size: .76rem; font-weight: 800; min-height: 37px; padding: 8px 10px; }
+.encounter-equipment-add button:disabled { cursor: not-allowed; opacity: .55; }
+
+.encounter-equipment-list { display: grid; gap: 8px; list-style: none; padding: 0; }
+.encounter-equipment-list li { border: 1px solid #dfcfb4; display: grid; gap: 9px; padding: 9px 10px; }
+.encounter-equipment-item-heading { align-items: center; display: flex; gap: 10px; justify-content: space-between; }
+.encounter-equipment-item-heading span { display: grid; gap: 2px; }
+.encounter-equipment-item-heading small { color: #806c5a; font-size: .7rem; }
+.encounter-equipment-targets { border: 0; border-top: 1px solid #e4d5bb; display: grid; gap: 6px; margin: 0; padding: 8px 0 0; }
+.encounter-equipment-targets legend { color: #71553e; font-size: .66rem; font-weight: 800; letter-spacing: .05em; padding: 0; text-transform: uppercase; }
+.encounter-equipment-targets label { align-items: center; color: #513b2e; display: flex; font-size: .82rem; gap: 7px; }
+.encounter-equipment-targets input { accent-color: #6a2f26; height: 16px; margin: 0; width: 16px; }
+.encounter-equipment-dialog > footer { border-top: 1px solid #d8c9ae; display: flex; justify-content: flex-end; padding: 12px 20px 15px; }
+.encounter-equipment-dialog footer .primary-button { background: #5d2f26; border-color: #5d2f26; color: #fffaf0; }
 
 .encounter-tracker-summary.is-empty h2 {
   color: #806c5a;

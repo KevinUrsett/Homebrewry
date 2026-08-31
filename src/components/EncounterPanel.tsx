@@ -13,7 +13,8 @@ import {
   type MonsterFilterFields,
   type MonsterSort
 } from '../catalogue/monsterMetadata';
-import { entrySummary } from '../catalogue/presentation';
+import { dataRecords, entrySummary } from '../catalogue/presentation';
+import { magicWeaponItems, resolvedMonsterEquipment, type MonsterEquipment } from '../catalogue/magicItems';
 import type { CatalogueEntry } from '../catalogue/types';
 import {
   addMonstersToEncounter,
@@ -45,13 +46,14 @@ type EncounterPanelProps = {
   npcEntities?: CampaignEntity[];
   currentStateByEntityId?: ReadonlyMap<string, EntityCurrentState>;
   monsters: CatalogueEntry[];
+  items?: CatalogueEntry[];
   loading: boolean;
   syncState: SyncState;
   hasDriveBackup?: boolean;
   onCreateEncounter: () => void;
   onDeleteEncounter: (encounter: Encounter) => void;
   onInsertReference: (encounter: Encounter) => void;
-  onMonsterOpen?: (monster: CatalogueEntry) => void;
+  onMonsterOpen?: (monster: CatalogueEntry, equipment?: MonsterEquipment[]) => void;
   onSelectEncounter: (id: string) => void;
   onUpdateEncounter: (encounter: Encounter) => void;
   onCreatePartyMember: (name: string, armorClass: number | null, maxHitPoints: number | null) => void;
@@ -65,6 +67,7 @@ type EncounterPanelProps = {
 type CombatantPicker = 'party' | 'npc' | 'monster' | null;
 type StatField = 'initiative' | 'armorClass' | 'maxHitPoints';
 type StatEditor = { participantId: string; field: StatField; value: string } | null;
+type EquipmentEditor = { participantId: string } | null;
 type EncounterMonsterFilters = MonsterFilterFields & {
   ruleset: string;
   sort: MonsterSort;
@@ -191,10 +194,14 @@ const asNumber = (value: string): number | null => {
 function participantPatch(
   encounter: Encounter,
   participant: EncounterParticipant,
-  changes: Partial<Pick<EncounterParticipant, 'name' | 'armorClass' | 'maxHitPoints' | 'currentHitPoints' | 'initiative' | 'availabilityOverride'>>,
+  changes: Partial<Pick<EncounterParticipant, 'name' | 'armorClass' | 'maxHitPoints' | 'currentHitPoints' | 'initiative' | 'availabilityOverride' | 'encounterEquipment'>>,
   onUpdateEncounter: (encounter: Encounter) => void
 ) {
   onUpdateEncounter(patchEncounterParticipant(encounter, participant.id, changes));
+}
+
+function likelyWeaponActionIndexes(actions: Record<string, unknown>[]): number[] {
+  return actions.flatMap((action, index) => /(?:Melee|Ranged)(?:\s+Weapon)?\s+Attack(?:\s+Roll)?/i.test(typeof action.text === 'string' ? action.text : '') ? [index] : []);
 }
 
 export function EncounterPanel({
@@ -208,6 +215,7 @@ export function EncounterPanel({
   npcEntities = [],
   currentStateByEntityId = new Map(),
   monsters,
+  items = [],
   loading,
   syncState,
   hasDriveBackup = false,
@@ -237,6 +245,8 @@ export function EncounterPanel({
   const [hitPointChanges, setHitPointChanges] = useState<Record<string, string>>({});
   const [hitPointEditorId, setHitPointEditorId] = useState<string | null>(null);
   const [statEditor, setStatEditor] = useState<StatEditor>(null);
+  const [equipmentEditor, setEquipmentEditor] = useState<EquipmentEditor>(null);
+  const [equipmentToAdd, setEquipmentToAdd] = useState('');
   const [visibleMonsterCount, setVisibleMonsterCount] = useState(MONSTER_RESULTS_PAGE_SIZE);
   const [combatantPicker, setCombatantPicker] = useState<CombatantPicker>(null);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -339,6 +349,18 @@ export function EncounterPanel({
     [monsterMatches, visibleMonsterCount]
   );
   const monstersById = useMemo(() => new Map(monsters.map((monster) => [monster.id, monster])), [monsters]);
+  const magicWeapons = useMemo(() => magicWeaponItems(items), [items]);
+  const equipmentEditorParticipant = equipmentEditor && selected
+    ? selected.participants.find((participant) => participant.id === equipmentEditor.participantId) ?? null
+    : null;
+  const equipmentEditorMonster = equipmentEditorParticipant?.kind === 'monster' && equipmentEditorParticipant.source?.category === 'monster'
+    ? monstersById.get(equipmentEditorParticipant.source.id) ?? null
+    : null;
+  const equipmentEditorActions = equipmentEditorMonster ? dataRecords(equipmentEditorMonster, 'actions') : [];
+  const equipmentEditorItems = equipmentEditorParticipant?.encounterEquipment ?? [];
+  const equippedItemIds = new Set(equipmentEditorMonster
+    ? resolvedMonsterEquipment(equipmentEditorMonster, equipmentEditorItems).map((item) => item.itemId)
+    : []);
   const addedMonsterCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const participant of selected?.participants ?? []) {
@@ -366,6 +388,8 @@ export function EncounterPanel({
   const clearCombatantEditors = () => {
     setHitPointEditorId(null);
     setStatEditor(null);
+    setEquipmentEditor(null);
+    setEquipmentToAdd('');
   };
 
   const updateMonsterFilter = <Key extends keyof EncounterMonsterFilters>(key: Key, value: EncounterMonsterFilters[Key]) => {
@@ -408,6 +432,52 @@ export function EncounterPanel({
   const closeCombatantPicker = () => {
     setMonsterFiltersOpen(false);
     setCombatantPicker(null);
+  };
+
+  const closeEquipmentEditor = () => {
+    setEquipmentEditor(null);
+    setEquipmentToAdd('');
+  };
+
+  const openEquipmentEditor = (participant: EncounterParticipant) => {
+    if (participant.kind !== 'monster' || !participant.source) return;
+    setHitPointEditorId(null);
+    setStatEditor(null);
+    setEquipmentToAdd('');
+    setEquipmentEditor({ participantId: participant.id });
+  };
+
+  const setEncounterEquipment = (participant: EncounterParticipant, equipment: MonsterEquipment[]) => {
+    if (!selected) return;
+    participantPatch(selected, participant, { encounterEquipment: equipment }, onUpdateEncounter);
+  };
+
+  const addEncounterEquipment = () => {
+    if (!equipmentEditorParticipant || !equipmentEditorMonster || !equipmentToAdd) return;
+    if (equippedItemIds.has(equipmentToAdd)) return;
+    const targetIndexes = likelyWeaponActionIndexes(equipmentEditorActions);
+    setEncounterEquipment(equipmentEditorParticipant, [
+      ...equipmentEditorItems,
+      { itemId: equipmentToAdd, actionIndexes: targetIndexes.length === 1 ? targetIndexes : [] }
+    ]);
+    setEquipmentToAdd('');
+  };
+
+  const removeEncounterEquipment = (itemId: string) => {
+    if (!equipmentEditorParticipant) return;
+    setEncounterEquipment(equipmentEditorParticipant, equipmentEditorItems.filter((item) => item.itemId !== itemId));
+  };
+
+  const toggleEncounterEquipmentAction = (itemId: string, actionIndex: number, checked: boolean) => {
+    if (!equipmentEditorParticipant) return;
+    const next = equipmentEditorItems.map((item) => {
+      const actionIndexes = item.actionIndexes ?? [];
+      if (item.itemId === itemId) {
+        return { ...item, actionIndexes: checked ? [...new Set([...actionIndexes, actionIndex])] : actionIndexes.filter((index) => index !== actionIndex) };
+      }
+      return checked ? { ...item, actionIndexes: actionIndexes.filter((index) => index !== actionIndex) } : item;
+    });
+    setEncounterEquipment(equipmentEditorParticipant, next);
   };
 
   const openCombatantPicker = (picker: Exclude<CombatantPicker, null>) => {
@@ -734,6 +804,11 @@ export function EncounterPanel({
                       <div className="encounter-combatant-summary" key={participant.id}>
                         <span className={`combatant-kind kind-${participant.kind}`}>{participant.kind}</span>
                         <strong>{participant.name || 'Unnamed combatant'}</strong>
+                        {participant.kind === 'monster' && participant.source?.category === 'monster' && (
+                          <button aria-label={`Edit encounter equipment for ${participant.name || 'monster'}`} className="encounter-combatant-equipment-button" onClick={() => openEquipmentEditor(participant)} type="button">
+                            Equipment{participant.encounterEquipment?.length ? ` (${participant.encounterEquipment.length})` : ''}
+                          </button>
+                        )}
                         <button aria-label={`Remove ${participant.name || 'combatant'} from encounter`} className="quiet-danger" onClick={() => onUpdateEncounter(removeEncounterParticipant(selected, participant.id))} type="button">×</button>
                       </div>
                     ))}
@@ -921,6 +996,61 @@ export function EncounterPanel({
         </div>
       )}
 
+      {equipmentEditorParticipant && equipmentEditorMonster && (
+        <div className="encounter-equipment-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) closeEquipmentEditor(); }} role="presentation">
+          <section aria-label={`Equipment for ${equipmentEditorParticipant.name || equipmentEditorMonster.name}`} aria-modal="true" className="encounter-equipment-dialog" role="dialog">
+            <header>
+              <div>
+                <p className="eyebrow">Encounter-only equipment</p>
+                <h3>{equipmentEditorParticipant.name || equipmentEditorMonster.name}</h3>
+                <p>These changes apply only to this combatant in “{selected?.name}”. The Compendium monster stays unchanged.</p>
+              </div>
+              <button aria-label="Close encounter equipment" onClick={closeEquipmentEditor} type="button">×</button>
+            </header>
+
+            <div className="encounter-equipment-add">
+              <label>Magic weapon
+                <select aria-label="Add magic weapon to encounter combatant" onChange={(event) => setEquipmentToAdd(event.target.value)} value={equipmentToAdd}>
+                  <option value="">Choose a campaign magic weapon</option>
+                  {magicWeapons.filter((item) => !equippedItemIds.has(item.id)).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                </select>
+              </label>
+              <button disabled={!equipmentToAdd} onClick={addEncounterEquipment} type="button">Add equipment</button>
+            </div>
+
+            {!magicWeapons.length && <p className="encounter-equipment-hint">Create a campaign-owned Item with Item kind: Magic weapon to use it here.</p>}
+            {!equipmentEditorItems.length ? (
+              <p className="encounter-equipment-empty">No encounter-only equipment is assigned.</p>
+            ) : (
+              <ul className="encounter-equipment-list">
+                {equipmentEditorItems.map((item) => {
+                  const weapon = magicWeapons.find((candidate) => candidate.id === item.itemId);
+                  return (
+                    <li key={item.itemId}>
+                      <div className="encounter-equipment-item-heading">
+                        <span><strong>{weapon?.name ?? 'Missing magic weapon'}</strong><small>{weapon ? 'Encounter-only' : 'This campaign item is no longer available.'}</small></span>
+                        <button aria-label={`Remove ${weapon?.name ?? 'magic weapon'} from ${equipmentEditorParticipant.name || equipmentEditorMonster.name}`} onClick={() => removeEncounterEquipment(item.itemId)} type="button">Remove</button>
+                      </div>
+                      {equipmentEditorActions.length > 0 ? (
+                        <fieldset className="encounter-equipment-targets">
+                          <legend>Applies to Actions</legend>
+                          {equipmentEditorActions.map((action, index) => {
+                            const actionName = typeof action.name === 'string' && action.name.trim() ? action.name : `Action ${index + 1}`;
+                            return <label key={`${actionName}-${index}`}><input checked={item.actionIndexes.includes(index)} onChange={(event) => toggleEncounterEquipmentAction(item.itemId, index, event.target.checked)} type="checkbox" />{actionName}</label>;
+                          })}
+                        </fieldset>
+                      ) : <p className="encounter-equipment-hint">This monster has no editable Actions to apply the weapon to.</p>}
+                      {!item.actionIndexes.length && equipmentEditorActions.length > 0 && <p className="encounter-equipment-hint">Choose an Action before its attack and damage change.</p>}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <footer><button className="primary-button" onClick={closeEquipmentEditor} type="button">Done</button></footer>
+          </section>
+        </div>
+      )}
+
       <section className="initiative-panel" aria-label="Initiative tracker">
           <div className="encounter-section-heading">
             <div><p className="eyebrow">Run combat</p><h2>Initiative</h2></div>
@@ -1021,7 +1151,8 @@ export function EncounterPanel({
                         {participant.id === selected.activeCombatantId ? '●' : '○'}
                       </button>
                       <input aria-label={`${participant.name} combatant name`} onChange={(event) => participantPatch(selected, participant, { name: event.target.value }, onUpdateEncounter)} value={participant.name} />
-                      {sourceMonster && <button aria-label={`Open ${sourceMonster.name} stat block`} className="combatant-statblock-button" onClick={() => onMonsterOpen(sourceMonster)} type="button">Stat</button>}
+                      {sourceMonster && <button aria-label={`Open ${sourceMonster.name} stat block`} className="combatant-statblock-button" onClick={() => onMonsterOpen(sourceMonster, resolvedMonsterEquipment(sourceMonster, participant.encounterEquipment))} type="button">Stat</button>}
+                      {sourceMonster && <button aria-label={`Edit encounter equipment for ${participant.name}`} className="combatant-equipment-button" onClick={() => openEquipmentEditor(participant)} type="button">Gear{participant.encounterEquipment?.length ? ` (${participant.encounterEquipment.length})` : ''}</button>}
                       <span className={`combatant-kind kind-${participant.kind}`}>{participant.kind}</span>
                       {participant.entityId && (
                         <span className="combatant-world-status">

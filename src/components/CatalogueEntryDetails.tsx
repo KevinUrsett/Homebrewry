@@ -7,7 +7,7 @@ import {
   entrySummary,
   speedText
 } from '../catalogue/presentation';
-import { magicWeaponForItem, monsterEquipment, resolvedMonsterActions, resolvedMonsterWeaponActions, weaponActionText } from '../catalogue/magicItems';
+import { magicWeaponForItem, monsterEquipment, resolvedMonsterActions, resolvedMonsterWeaponActions, weaponActionText, type MonsterEquipment } from '../catalogue/magicItems';
 import { catalogueCategoryLabel, type CatalogueEntry } from '../catalogue/types';
 import { ReferenceContent, type ReferenceContentProps } from './ReferenceContent';
 
@@ -17,6 +17,8 @@ type CatalogueEntryDetailsProps = {
   actions?: ReactNode;
   categoryLabel?: string;
   references?: Omit<ReferenceContentProps, 'content' | 'className'>;
+  /** A temporary encounter-only equipment overlay for a monster stat block. */
+  equipment?: MonsterEquipment[];
 };
 
 function TextBlock({ children, references }: { children: string; references?: Omit<ReferenceContentProps, 'content' | 'className'> }) {
@@ -61,8 +63,8 @@ function MagicWeaponDetails({ entry, references }: { entry: CatalogueEntry; refe
   );
 }
 
-function MonsterEquipmentDetails({ entry, references }: { entry: CatalogueEntry; references?: Omit<ReferenceContentProps, 'content' | 'className'> }) {
-  const equipped = monsterEquipment(entry);
+function MonsterEquipmentDetails({ entry, equipment, references }: { entry: CatalogueEntry; equipment?: MonsterEquipment[]; references?: Omit<ReferenceContentProps, 'content' | 'className'> }) {
+  const equipped = equipment ?? monsterEquipment(entry);
   if (!equipped.length) return null;
   const catalogue = references?.catalogue ?? new Map<string, CatalogueEntry>();
   return (
@@ -84,17 +86,18 @@ function MonsterEquipmentDetails({ entry, references }: { entry: CatalogueEntry;
   );
 }
 
-function MonsterDetails({ entry, references }: { entry: CatalogueEntry; references?: Omit<ReferenceContentProps, 'content' | 'className'> }) {
+function MonsterDetails({ entry, equipment, references }: { entry: CatalogueEntry; equipment?: MonsterEquipment[]; references?: Omit<ReferenceContentProps, 'content' | 'className'> }) {
   const abilities = dataRecord(entry, 'abilities');
   const identity = [dataString(entry, 'size'), dataString(entry, 'type'), dataString(entry, 'alignment')].filter(Boolean).join(' ');
   const speed = speedText(entry);
   const traits = dataRecords(entry, 'traits');
   const catalogue = references?.catalogue ?? new Map<string, CatalogueEntry>();
-  const actions = resolvedMonsterActions(entry, catalogue);
+  const resolvedEquipment = equipment ?? monsterEquipment(entry);
+  const actions = resolvedMonsterActions(entry, catalogue, resolvedEquipment);
   const bonusActions = dataRecords(entry, 'bonusActions');
   const reactions = dataRecords(entry, 'reactions');
   const legendaryActions = dataRecords(entry, 'legendaryActions');
-  const weaponActions = resolvedMonsterWeaponActions(entry, catalogue)
+  const weaponActions = resolvedMonsterWeaponActions(entry, catalogue, resolvedEquipment)
     .map((action) => ({ name: action.name, text: weaponActionText(action) }));
 
   return (
@@ -117,7 +120,7 @@ function MonsterDetails({ entry, references }: { entry: CatalogueEntry; referenc
           ))}
         </dl>
       )}
-      <MonsterEquipmentDetails entry={entry} references={references} />
+      <MonsterEquipmentDetails entry={entry} equipment={resolvedEquipment} references={references} />
       <FeatureList entries={traits} references={references} title="Traits" />
       <FeatureList entries={[...actions, ...weaponActions]} references={references} title="Actions" />
       <FeatureList entries={bonusActions} references={references} title="Bonus actions" />
@@ -155,7 +158,7 @@ function GenericDetails({ entry, references }: { entry: CatalogueEntry; referenc
   );
 }
 
-export function CatalogueEntryDetails({ entry, compact = false, actions, categoryLabel, references }: CatalogueEntryDetailsProps) {
+export function CatalogueEntryDetails({ entry, compact = false, actions, categoryLabel, references, equipment }: CatalogueEntryDetailsProps) {
   const summary = entrySummary(entry);
   const label = categoryLabel ?? catalogueCategoryLabel(entry.category);
   if (compact) {
@@ -177,7 +180,7 @@ export function CatalogueEntryDetails({ entry, compact = false, actions, categor
         {entry.category !== 'monster' && summary.map((line) => <p className="catalogue-summary" key={line}>{line}</p>)}
       </header>
       {actions && <div className="catalogue-entry-actions">{actions}</div>}
-      {entry.category === 'monster' ? <MonsterDetails entry={entry} references={references} /> : <GenericDetails entry={entry} references={references} />}
+      {entry.category === 'monster' ? <MonsterDetails entry={entry} equipment={equipment} references={references} /> : <GenericDetails entry={entry} references={references} />}
     </article>
   );
 }

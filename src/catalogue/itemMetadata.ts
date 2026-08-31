@@ -5,6 +5,7 @@ export type ItemAttunement = 'required' | 'not-required' | 'unknown';
 
 export type ItemMetadata = {
   sources: string[];
+  edition: string;
   type: string;
   rarity: string;
   attunement: ItemAttunement;
@@ -12,6 +13,7 @@ export type ItemMetadata = {
 
 export type ItemFilterFields = {
   source: string;
+  edition: string;
   type: string;
   rarity: string;
   attunement: '' | Exclude<ItemAttunement, 'unknown'>;
@@ -19,6 +21,7 @@ export type ItemFilterFields = {
 
 export const emptyItemMetadata: ItemMetadata = {
   sources: [],
+  edition: '',
   type: '',
   rarity: '',
   attunement: 'unknown'
@@ -59,8 +62,13 @@ export function itemMetadataForCatalogueEntry(entry: CatalogueEntry): ItemMetada
   if (entry.category !== 'item') return emptyItemMetadata;
 
   const declaredAttunement = attunementValue(entry.data.attunement);
+  const sources = new Set(sourceValues(entry.data.sources));
+  // Custom entries can be copied from a published item. Keep that published
+  // source, but also make the entry discoverable as Homebrewry content.
+  if (entry.source === 'Custom') sources.add('Homebrewry');
   return {
-    sources: sourceValues(entry.data.sources),
+    sources: Array.from(sources),
+    edition: (entry.ruleset ?? '').trim(),
     type: normaliseValue(dataString(entry, 'type') ?? entry.type ?? ''),
     rarity: normaliseValue(dataString(entry, 'rarity') ?? ''),
     // The bundled rules data only declares this field when it is required.
@@ -70,6 +78,7 @@ export function itemMetadataForCatalogueEntry(entry: CatalogueEntry): ItemMetada
 
 export function itemMatchesFilters(metadata: ItemMetadata, filters: ItemFilterFields): boolean {
   if (filters.source && !metadata.sources.includes(filters.source)) return false;
+  if (filters.edition && metadata.edition !== filters.edition) return false;
   if (filters.type && metadata.type !== filters.type) return false;
   if (filters.rarity && metadata.rarity !== filters.rarity) return false;
   if (filters.attunement && metadata.attunement !== filters.attunement) return false;

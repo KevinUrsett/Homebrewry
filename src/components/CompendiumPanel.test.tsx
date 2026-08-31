@@ -78,6 +78,26 @@ const sunshardBlade: CatalogueEntry = {
   ruleset: 'Homebrewry'
 };
 
+const silentImage: CatalogueEntry = {
+  id: 'silent-image',
+  category: 'spell',
+  name: 'Silent Image',
+  description: 'A convincing visual illusion.',
+  data: { sources: ["Player's Handbook"], school: 'illusion' },
+  source: 'SRD-521',
+  ruleset: '5.5e'
+};
+
+const emberLadder: CatalogueEntry = {
+  id: 'ember-ladder',
+  category: 'spell',
+  name: 'Ember Ladder',
+  description: 'A custom spell created in Homebrewry.',
+  data: { school: 'evocation' },
+  source: 'Custom',
+  ruleset: 'Homebrewry'
+};
+
 const campaignMonster: WorldbuildingEntry = {
   id: 'ashling',
   name: 'Ashling',
@@ -106,7 +126,7 @@ async function renderCompendium(onCreateWorldbuilding = vi.fn(), catalogueSelect
   await act(async () => {
     root.render(
       <CompendiumPanel
-        catalogueEntries={[monster, wolf, staffOfSparks, cloakOfFeathers, sunshardBlade]}
+        catalogueEntries={[monster, wolf, staffOfSparks, cloakOfFeathers, sunshardBlade, silentImage, emberLadder]}
         catalogueError={null}
         catalogueLoading={false}
         catalogueSelection={catalogueSelection}
@@ -162,7 +182,7 @@ describe('CompendiumPanel', () => {
     await act(async () => monsterCategory?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
     const type = container.querySelector('select[aria-label="Filter monsters by type"]') as HTMLSelectElement;
-    const source = container.querySelector('select[aria-label="Filter monsters by book source"]') as HTMLSelectElement;
+    const source = container.querySelector('select[aria-label="Filter monsters by source"]') as HTMLSelectElement;
     const challenge = container.querySelector('select[aria-label="Filter monsters by challenge rating"]') as HTMLSelectElement;
     const size = container.querySelector('select[aria-label="Filter monsters by size"]') as HTMLSelectElement;
     const environment = container.querySelector('select[aria-label="Filter monsters by environment"]') as HTMLSelectElement;
@@ -227,29 +247,28 @@ describe('CompendiumPanel', () => {
     expect(drawer).toBeTruthy();
     expect(filterTrigger.getAttribute('aria-expanded')).toBe('true');
 
-    const source = drawer.querySelector('select[aria-label="Filter monsters by book source"]') as HTMLSelectElement;
+    const source = drawer.querySelector('select[aria-label="Filter monsters by source"]') as HTMLSelectElement;
     await act(async () => {
       source.value = 'Monster Manual';
       source.dispatchEvent(new Event('change', { bubbles: true }));
     });
-    expect(container.querySelector('button[aria-label="Clear Book filter"]')?.textContent).toContain('Monster Manual');
+    expect(container.querySelector('button[aria-label="Clear Source filter"]')?.textContent).toContain('Monster Manual');
 
     await act(async () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
     expect(container.querySelector('#monster-filter-dialog')).toBeNull();
   });
 
-  it('filters items by book source, type, rarity, and attunement', async () => {
+  it('filters items by source, type, rarity, and attunement', async () => {
     const container = await renderCompendium();
     const categoryButton = Array.from(container.querySelectorAll('button')).find((button) => button.textContent?.includes('Category'));
     await act(async () => categoryButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     const itemCategory = Array.from(container.querySelectorAll('.compendium-category-list button')).find((button) => button.textContent?.includes('Items'));
     await act(async () => itemCategory?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
-    const source = container.querySelector('select[aria-label="Filter items by book source"]') as HTMLSelectElement;
+    const source = container.querySelector('select[aria-label="Filter items by source"]') as HTMLSelectElement;
     const type = container.querySelector('select[aria-label="Filter items by type"]') as HTMLSelectElement;
     const rarity = container.querySelector('select[aria-label="Filter items by rarity"]') as HTMLSelectElement;
     const attunement = container.querySelector('select[aria-label="Filter items by attunement"]') as HTMLSelectElement;
-    const origin = container.querySelector('select[aria-label="Filter items by origin"]') as HTMLSelectElement;
     expect(Array.from(source.options).map((option) => option.textContent)).toContain("Dungeon Master's Guide");
     expect(Array.from(source.options).map((option) => option.textContent)).not.toContain('Private import');
 
@@ -282,8 +301,8 @@ describe('CompendiumPanel', () => {
     await act(async () => {
       attunement.value = '';
       attunement.dispatchEvent(new Event('change', { bubbles: true }));
-      origin.value = 'homebrewry';
-      origin.dispatchEvent(new Event('change', { bubbles: true }));
+      source.value = 'Homebrewry';
+      source.dispatchEvent(new Event('change', { bubbles: true }));
     });
     expect(container.querySelector('.compendium-results')?.textContent).toContain('Sunshard Blade');
     expect(container.querySelector('.compendium-results')?.textContent).not.toContain('Cloak of Feathers');
@@ -296,6 +315,32 @@ describe('CompendiumPanel', () => {
 
     await act(async () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
     expect(container.querySelector('#item-filter-dialog')).toBeNull();
+  });
+
+  it('uses the same source, type, and edition filters for other compendium categories', async () => {
+    const container = await renderCompendium();
+    const categoryButton = Array.from(container.querySelectorAll('button')).find((button) => button.textContent?.includes('Category'));
+    await act(async () => categoryButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    const spellCategory = Array.from(container.querySelectorAll('.compendium-category-list button')).find((button) => button.textContent?.includes('Spells'));
+    await act(async () => spellCategory?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    const source = container.querySelector('select[aria-label="Filter compendium by source"]') as HTMLSelectElement;
+    const school = container.querySelector('select[aria-label="Filter compendium by school"]') as HTMLSelectElement;
+    const edition = container.querySelector('select[aria-label="Filter compendium by edition"]') as HTMLSelectElement;
+    expect(Array.from(source.options).map((option) => option.textContent)).toContain('Homebrewry');
+    expect(Array.from(source.options).map((option) => option.textContent)).toContain("Player's Handbook");
+
+    await act(async () => {
+      source.value = 'Homebrewry';
+      source.dispatchEvent(new Event('change', { bubbles: true }));
+      school.value = 'evocation';
+      school.dispatchEvent(new Event('change', { bubbles: true }));
+      edition.value = 'Homebrewry';
+      edition.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    const results = container.querySelector('.compendium-results')?.textContent ?? '';
+    expect(results).toContain('Ember Ladder');
+    expect(results).not.toContain('Silent Image');
   });
 
   it('sorts monsters by challenge rating', async () => {

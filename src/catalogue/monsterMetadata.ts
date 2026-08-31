@@ -5,6 +5,7 @@ export type MonsterSort = 'name-asc' | 'name-desc' | 'cr-asc' | 'cr-desc' | 'siz
 
 export type MonsterMetadata = {
   sources: string[];
+  edition: string;
   importSource: string;
   type: string;
   cr: string;
@@ -15,6 +16,7 @@ export type MonsterMetadata = {
 
 export type MonsterFilterFields = {
   source: string;
+  edition?: string;
   importSource: string;
   type: string;
   cr: string;
@@ -24,6 +26,7 @@ export type MonsterFilterFields = {
 
 export const emptyMonsterMetadata: MonsterMetadata = {
   sources: [],
+  edition: '',
   importSource: '',
   type: '',
   cr: '',
@@ -119,11 +122,15 @@ export function monsterMetadataForCatalogueEntry(entry: CatalogueEntry): Monster
   if (entry.category !== 'monster') return emptyMonsterMetadata;
   const typeParts = monsterTypeParts(dataString(entry, 'type') ?? '');
   const bookSources = sourceValues(typeParts.source);
+  if (entry.source === 'Custom') bookSources.push('Homebrewry');
   const cr = (dataString(entry, 'cr') ?? '').trim();
   const size = normaliseMonsterSize(dataString(entry, 'size') ?? '');
   return {
-    sources: bookSources,
-    importSource: entry.source.trim(),
+    sources: Array.from(new Set(bookSources)),
+    edition: (entry.ruleset ?? '').trim(),
+    // Content created here is selected through Source: Homebrewry, not the
+    // imported-data provenance control.
+    importSource: entry.source === 'Custom' ? '' : (entry.source ?? '').trim(),
     type: typeParts.type,
     cr,
     crValue: challengeRatingValue(cr),
@@ -134,6 +141,7 @@ export function monsterMetadataForCatalogueEntry(entry: CatalogueEntry): Monster
 
 export function monsterMatchesFilters(metadata: MonsterMetadata, filters: MonsterFilterFields): boolean {
   if (filters.source && !metadata.sources.includes(filters.source)) return false;
+  if (filters.edition && metadata.edition !== filters.edition) return false;
   if (filters.importSource && metadata.importSource !== filters.importSource) return false;
   if (filters.type && metadata.type !== filters.type) return false;
   if (filters.cr && metadata.cr !== filters.cr) return false;

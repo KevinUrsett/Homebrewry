@@ -7,6 +7,7 @@ import {
   entrySummary,
   speedText
 } from '../catalogue/presentation';
+import { magicWeaponForItem, monsterEquipment, resolvedMonsterWeaponActions, weaponActionText } from '../catalogue/magicItems';
 import { catalogueCategoryLabel, type CatalogueEntry } from '../catalogue/types';
 import { ReferenceContent, type ReferenceContentProps } from './ReferenceContent';
 
@@ -43,6 +44,46 @@ function FeatureList({ entries, title, references }: { entries: Record<string, u
   );
 }
 
+function MagicWeaponDetails({ entry, references }: { entry: CatalogueEntry; references?: Omit<ReferenceContentProps, 'content' | 'className'> }) {
+  const weapon = magicWeaponForItem(entry);
+  if (!weapon) return null;
+  return (
+    <section className="catalogue-detail-section catalogue-magic-item-details">
+      <h3>Magic weapon</h3>
+      {weapon.shortDescription && <TextBlock references={references}>{weapon.shortDescription}</TextBlock>}
+      {weapon.effectText && <div className="catalogue-magic-item-effect"><strong>What it does.</strong><TextBlock references={references}>{weapon.effectText}</TextBlock></div>}
+      <dl className="catalogue-magic-item-modifiers">
+        <dt>Attack bonus</dt><dd>{weapon.attackBonus >= 0 ? `+${weapon.attackBonus}` : weapon.attackBonus}</dd>
+        <dt>Damage bonus</dt><dd>{weapon.damageBonus >= 0 ? `+${weapon.damageBonus}` : weapon.damageBonus}</dd>
+        {weapon.extraDamageDice && <><dt>Extra damage</dt><dd>{weapon.extraDamageDice}{weapon.extraDamageType ? ` ${weapon.extraDamageType}` : ''}</dd></>}
+      </dl>
+    </section>
+  );
+}
+
+function MonsterEquipmentDetails({ entry, references }: { entry: CatalogueEntry; references?: Omit<ReferenceContentProps, 'content' | 'className'> }) {
+  const equipped = monsterEquipment(entry);
+  if (!equipped.length) return null;
+  const catalogue = references?.catalogue ?? new Map<string, CatalogueEntry>();
+  return (
+    <section className="catalogue-detail-section catalogue-monster-equipment">
+      <h3>Equipment</h3>
+      {equipped.map(({ itemId }) => {
+        const item = catalogue.get(`item:${itemId}`);
+        const weapon = magicWeaponForItem(item);
+        return (
+          <div className="catalogue-feature" key={itemId}>
+            <strong>{item?.name ?? 'Missing magic weapon'}</strong>
+            {weapon?.shortDescription && <TextBlock references={references}>{weapon.shortDescription}</TextBlock>}
+            {weapon?.effectText && <div className="catalogue-magic-item-effect"><strong>What it does.</strong><TextBlock references={references}>{weapon.effectText}</TextBlock></div>}
+            {!item && <p className="catalogue-description">The linked campaign item is unavailable.</p>}
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
 function MonsterDetails({ entry, references }: { entry: CatalogueEntry; references?: Omit<ReferenceContentProps, 'content' | 'className'> }) {
   const abilities = dataRecord(entry, 'abilities');
   const identity = [dataString(entry, 'size'), dataString(entry, 'type'), dataString(entry, 'alignment')].filter(Boolean).join(' ');
@@ -52,6 +93,9 @@ function MonsterDetails({ entry, references }: { entry: CatalogueEntry; referenc
   const bonusActions = dataRecords(entry, 'bonusActions');
   const reactions = dataRecords(entry, 'reactions');
   const legendaryActions = dataRecords(entry, 'legendaryActions');
+  const catalogue = references?.catalogue ?? new Map<string, CatalogueEntry>();
+  const weaponActions = resolvedMonsterWeaponActions(entry, catalogue)
+    .map((action) => ({ name: action.name, text: weaponActionText(action) }));
 
   return (
     <>
@@ -73,8 +117,9 @@ function MonsterDetails({ entry, references }: { entry: CatalogueEntry; referenc
           ))}
         </dl>
       )}
+      <MonsterEquipmentDetails entry={entry} references={references} />
       <FeatureList entries={traits} references={references} title="Traits" />
-      <FeatureList entries={actions} references={references} title="Actions" />
+      <FeatureList entries={[...actions, ...weaponActions]} references={references} title="Actions" />
       <FeatureList entries={bonusActions} references={references} title="Bonus actions" />
       <FeatureList entries={reactions} references={references} title="Reactions" />
       <FeatureList entries={legendaryActions} references={references} title="Legendary actions" />
@@ -102,6 +147,7 @@ function GenericDetails({ entry, references }: { entry: CatalogueEntry; referenc
   return (
     <>
       {entry.description && <TextBlock references={references}>{entry.description}</TextBlock>}
+      <MagicWeaponDetails entry={entry} references={references} />
       <FeatureList entries={traits} references={references} title="Traits" />
       <FeatureList entries={features} references={references} title="Features" />
       <TableDetails entry={entry} />

@@ -45,6 +45,7 @@ import type {
 } from '../types';
 import { CatalogueEntryDetails } from './CatalogueEntryDetails';
 import { CustomCatalogueEntryEditor } from './CustomCatalogueEntryEditor';
+import { CustomItemEditor } from './CustomItemEditor';
 import { CustomMonsterEditor } from './CustomMonsterEditor';
 import {
   ReferenceInbox,
@@ -811,6 +812,7 @@ export function CompendiumPanel({
   const detailContent = monsterEditor ? (
     <CustomMonsterEditor
       customCategories={customCatalogueCategories}
+      equipmentItems={catalogueEntries}
       entry={monsterEditor.entry}
       key={`${monsterEditor.entry.id}-${monsterEditor.entry.version}`}
       mode={monsterEditor.mode}
@@ -818,6 +820,18 @@ export function CompendiumPanel({
       onCreateCatalogueReference={onCreateCatalogueReference}
       onCreateWorldbuildingReference={onCreateWorldbuildingReference}
       onSave={async (entry) => { await onSaveCustomMonster(entry); onSelectCatalogue(entry); }}
+      worldbuildingTypes={types}
+    />
+  ) : entryEditor?.entry.category === 'item' ? (
+    <CustomItemEditor
+      customCategories={customCatalogueCategories}
+      entry={entryEditor.entry}
+      key={`${entryEditor.entry.id}-${entryEditor.entry.version}`}
+      mode={entryEditor.mode}
+      onCancel={closeDetail}
+      onCreateCatalogueReference={onCreateCatalogueReference}
+      onCreateWorldbuildingReference={onCreateWorldbuildingReference}
+      onSave={async (entry) => { await onSaveCustomEntry(entry); onSelectCatalogue(entry); }}
       worldbuildingTypes={types}
     />
   ) : entryEditor ? (

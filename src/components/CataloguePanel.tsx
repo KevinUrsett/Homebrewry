@@ -13,6 +13,7 @@ import {
 } from '../catalogue/types';
 import type { WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from '../types';
 import { CustomCatalogueEntryEditor } from './CustomCatalogueEntryEditor';
+import { CustomItemEditor } from './CustomItemEditor';
 import { CustomMonsterEditor } from './CustomMonsterEditor';
 import { CatalogueEntryDetails } from './CatalogueEntryDetails';
 
@@ -242,6 +243,7 @@ export function CataloguePanel({
           {monsterEditor ? (
             <CustomMonsterEditor
               customCategories={customCategories}
+              equipmentItems={entries}
               entry={monsterEditor.entry}
               key={`${monsterEditor.entry.id}-${monsterEditor.entry.version}`}
               mode={monsterEditor.mode}
@@ -249,6 +251,18 @@ export function CataloguePanel({
               onCreateCatalogueReference={onCreateCatalogueReference}
               onCreateWorldbuildingReference={onCreateWorldbuildingReference}
               onSave={onSaveCustomMonster}
+              worldbuildingTypes={worldbuildingTypes}
+            />
+          ) : entryEditor?.entry.category === 'item' ? (
+            <CustomItemEditor
+              customCategories={customCategories}
+              entry={entryEditor.entry}
+              key={`${entryEditor.entry.id}-${entryEditor.entry.version}`}
+              mode={entryEditor.mode}
+              onCancel={() => setEntryEditor(null)}
+              onCreateCatalogueReference={onCreateCatalogueReference}
+              onCreateWorldbuildingReference={onCreateWorldbuildingReference}
+              onSave={onSaveCustomEntry}
               worldbuildingTypes={worldbuildingTypes}
             />
           ) : entryEditor ? (

@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { magicWeaponItems, monsterEquipment, monsterWeaponActions, type MonsterWeaponAction } from '../catalogue/magicItems';
 import { dataRecord, dataRecords, dataString, speedText } from '../catalogue/presentation';
-import type { CatalogueCategory, CustomCatalogueCategory, CustomCatalogueEntry } from '../catalogue/types';
+import type { CatalogueCategory, CatalogueEntry, CustomCatalogueCategory, CustomCatalogueEntry } from '../catalogue/types';
 import { MarkdownEditor } from './MarkdownEditor';
 import type { WorldbuildingKind, WorldbuildingType } from '../types';
 
@@ -11,6 +12,7 @@ type CustomMonsterEditorProps = {
   mode: 'create' | 'edit';
   onCancel: () => void;
   onSave: (entry: CustomCatalogueEntry) => Promise<void>;
+  equipmentItems: readonly CatalogueEntry[];
   customCategories: readonly CustomCatalogueCategory[];
   worldbuildingTypes: readonly WorldbuildingType[];
   onCreateWorldbuildingReference: (name: string, kind: WorldbuildingKind) => Promise<string | null> | string | null;
@@ -72,7 +74,7 @@ function setDataText(data: Record<string, unknown>, key: string, value: string) 
   else delete data[key];
 }
 
-export function CustomMonsterEditor({ entry, mode, onCancel, onSave, customCategories, worldbuildingTypes, onCreateWorldbuildingReference, onCreateCatalogueReference }: CustomMonsterEditorProps) {
+export function CustomMonsterEditor({ entry, mode, onCancel, onSave, equipmentItems, customCategories, worldbuildingTypes, onCreateWorldbuildingReference, onCreateCatalogueReference }: CustomMonsterEditorProps) {
   const [name, setName] = useState(entry.name);
   const [description, setDescription] = useState(entry.description);
   const [size, setSize] = useState(dataString(entry, 'size') ?? '');
@@ -90,6 +92,10 @@ export function CustomMonsterEditor({ entry, mode, onCancel, onSave, customCateg
     reactions: featureText(entry, 'reactions'),
     legendaryActions: featureText(entry, 'legendaryActions')
   }));
+  const magicWeapons = magicWeaponItems(equipmentItems);
+  const [equipment, setEquipment] = useState(() => monsterEquipment(entry));
+  const [equipmentToAdd, setEquipmentToAdd] = useState('');
+  const [weaponActions, setWeaponActions] = useState(() => monsterWeaponActions(entry));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -117,6 +123,11 @@ export function CustomMonsterEditor({ entry, mode, onCancel, onSave, customCateg
       else delete data[key];
     }
 
+    if (equipment.length) data.equipment = equipment;
+    else delete data.equipment;
+    if (weaponActions.length) data.weaponActions = weaponActions;
+    else delete data.weaponActions;
+
     try {
       setSaving(true);
       setError(null);
@@ -127,6 +138,37 @@ export function CustomMonsterEditor({ entry, mode, onCancel, onSave, customCateg
     } finally {
       setSaving(false);
     }
+  };
+
+  const addEquipment = () => {
+    const item = magicWeapons.find((candidate) => candidate.id === equipmentToAdd);
+    if (!item || equipment.some((current) => current.itemId === item.id)) return;
+    setEquipment((current) => [...current, { itemId: item.id }]);
+    setEquipmentToAdd('');
+  };
+
+  const removeEquipment = (itemId: string) => {
+    setEquipment((current) => current.filter((item) => item.itemId !== itemId));
+    setWeaponActions((current) => current.map((action) => action.equipmentId === itemId ? { ...action, equipmentId: '' } : action));
+  };
+
+  const addWeaponAction = () => {
+    setWeaponActions((current) => [...current, {
+      id: crypto.randomUUID(),
+      name: 'Weapon attack',
+      attackBonus: 0,
+      damageDice: '1d6',
+      damageModifier: 0,
+      damageType: 'slashing',
+      reach: '5 ft.',
+      range: '',
+      text: '',
+      equipmentId: equipment[0]?.itemId ?? ''
+    }]);
+  };
+
+  const updateWeaponAction = <Key extends keyof MonsterWeaponAction>(id: string, key: Key, value: MonsterWeaponAction[Key]) => {
+    setWeaponActions((current) => current.map((action) => action.id === id ? { ...action, [key]: value } : action));
   };
 
   return (
@@ -174,6 +216,55 @@ export function CustomMonsterEditor({ entry, mode, onCancel, onSave, customCateg
         {featureGroups.map(({ key, label, hint }) => (
           <label key={key}>{label}<small>{hint}; one per line.</small><textarea onChange={(event) => setFeatures((current) => ({ ...current, [key]: event.target.value }))} value={features[key]} /></label>
         ))}
+      </section>
+
+      <section className="custom-monster-equipment" aria-label="Monster magic equipment">
+        <header><h3>Magic equipment</h3><p>Equip reusable campaign magic weapons. Their bonuses are applied only to linked weapon actions.</p></header>
+        <div className="custom-monster-equipment-add">
+          <label>Magic weapon
+            <select aria-label="Add magic weapon to monster" onChange={(event) => setEquipmentToAdd(event.target.value)} value={equipmentToAdd}>
+              <option value="">Choose a campaign magic weapon</option>
+              {magicWeapons.filter((item) => !equipment.some((current) => current.itemId === item.id)).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+          </label>
+          <button disabled={!equipmentToAdd} onClick={addEquipment} type="button">Add equipment</button>
+        </div>
+        {!magicWeapons.length && <p className="custom-monster-hint">Create a campaign-owned Item with Item kind: Magic weapon to equip it here.</p>}
+        {equipment.length > 0 && (
+          <ul className="custom-monster-equipment-list">
+            {equipment.map((item) => {
+              const magicWeapon = magicWeapons.find((candidate) => candidate.id === item.itemId);
+              return <li key={item.itemId}><span><strong>{magicWeapon?.name ?? 'Missing magic weapon'}</strong><small>{magicWeapon?.type || 'This item is no longer available.'}</small></span><button aria-label={`Remove ${magicWeapon?.name ?? 'magic weapon'}`} onClick={() => removeEquipment(item.itemId)} type="button">Remove</button></li>;
+            })}
+          </ul>
+        )}
+      </section>
+
+      <section className="custom-monster-weapon-actions" aria-label="Monster weapon actions">
+        <header><h3>Weapon actions</h3><p>Use structured weapon actions for automatic item bonuses. Existing prose actions remain unchanged.</p></header>
+        {weaponActions.map((action, index) => (
+          <fieldset key={action.id}>
+            <legend>Weapon action {index + 1}</legend>
+            <div className="custom-monster-weapon-grid">
+              <label>Name<input onChange={(event) => updateWeaponAction(action.id, 'name', event.target.value)} value={action.name} /></label>
+              <label>Equipped weapon
+                <select aria-label={`Weapon action ${index + 1} equipment`} onChange={(event) => updateWeaponAction(action.id, 'equipmentId', event.target.value)} value={action.equipmentId}>
+                  <option value="">No magic weapon</option>
+                  {equipment.map((item) => <option key={item.itemId} value={item.itemId}>{magicWeapons.find((candidate) => candidate.id === item.itemId)?.name ?? 'Missing magic weapon'}</option>)}
+                </select>
+              </label>
+              <label>Base to hit<input inputMode="numeric" onChange={(event) => updateWeaponAction(action.id, 'attackBonus', Number(event.target.value) || 0)} type="number" value={action.attackBonus} /></label>
+              <label>Damage dice<input onChange={(event) => updateWeaponAction(action.id, 'damageDice', event.target.value)} placeholder="1d8" value={action.damageDice} /></label>
+              <label>Base damage modifier<input inputMode="numeric" onChange={(event) => updateWeaponAction(action.id, 'damageModifier', Number(event.target.value) || 0)} type="number" value={action.damageModifier} /></label>
+              <label>Damage type<input onChange={(event) => updateWeaponAction(action.id, 'damageType', event.target.value)} placeholder="slashing" value={action.damageType} /></label>
+              <label>Reach<input onChange={(event) => updateWeaponAction(action.id, 'reach', event.target.value)} placeholder="5 ft." value={action.reach} /></label>
+              <label>Range<input onChange={(event) => updateWeaponAction(action.id, 'range', event.target.value)} placeholder="20/60 ft." value={action.range} /></label>
+            </div>
+            <label className="custom-monster-weapon-text">Additional effect<textarea onChange={(event) => updateWeaponAction(action.id, 'text', event.target.value)} placeholder="On a hit, the target must succeed on…" value={action.text} /></label>
+            <button className="quiet-danger" onClick={() => setWeaponActions((current) => current.filter((candidate) => candidate.id !== action.id))} type="button">Remove weapon action</button>
+          </fieldset>
+        ))}
+        <button onClick={addWeaponAction} type="button">Add weapon action</button>
       </section>
 
       {error && <p className="custom-monster-error" role="alert">{error}</p>}

@@ -298,6 +298,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .catalogue-abilities dd { font-family: "Scaly Sans", Inter, sans-serif; font-weight: 700; margin: 4px 0 0; }
 .catalogue-detail-section { border-top: 1px solid #d4c09d; margin-top: 20px; padding-top: 14px; }
 .catalogue-detail-section h3 { color: #6a2f26; font-family: "Scaly Sans", Inter, sans-serif; font-size: .88rem; letter-spacing: .08em; margin: 0 0 9px; text-transform: uppercase; }
+.catalogue-magic-item-effect { margin-top: 9px; }
+.catalogue-magic-item-effect > strong { color: #6a2f26; display: block; font-family: "Scaly Sans", Inter, sans-serif; font-size: .73rem; letter-spacing: .06em; text-transform: uppercase; }
+.catalogue-magic-item-effect .catalogue-description { margin-top: 3px; }
+.catalogue-magic-item-modifiers { display: grid; gap: 3px 12px; grid-template-columns: auto 1fr; margin: 11px 0 0; }
+.catalogue-magic-item-modifiers dt { color: #71553e; font-family: "Scaly Sans", Inter, sans-serif; font-size: .76rem; font-weight: 800; }
+.catalogue-magic-item-modifiers dd { margin: 0; }
 .catalogue-feature { margin: 13px 0; }
 .catalogue-feature > strong { color: #4f3024; }
 .catalogue-feature .catalogue-description { margin: 4px 0 0; }
@@ -343,6 +349,26 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .custom-catalogue-editor > label { color: #71553e; display: grid; font-size: .72rem; font-weight: 800; gap: 5px; letter-spacing: .05em; text-transform: uppercase; }
 .custom-catalogue-editor input, .custom-catalogue-editor textarea { background: #fffaf0; border: 1px solid #cbb99d; border-radius: 5px; color: #39291f; font-size: .92rem; font-weight: 400; letter-spacing: normal; padding: 8px; text-transform: none; width: 100%; }
 .custom-catalogue-editor textarea { font-family: "Bookinsanity", Georgia, serif; line-height: 1.5; min-height: 210px; resize: vertical; }
+.custom-item-kind-control select, .custom-monster-equipment select, .custom-monster-weapon-actions select { background: #fffaf0; border: 1px solid #cbb99d; border-radius: 5px; color: #39291f; font: inherit; letter-spacing: normal; padding: 8px; text-transform: none; width: 100%; }
+.custom-item-magic-weapon, .custom-monster-equipment, .custom-monster-weapon-actions { border: 1px solid #d4c09d; display: grid; gap: 12px; padding: 13px; }
+.custom-item-magic-weapon > header, .custom-monster-equipment > header, .custom-monster-weapon-actions > header { display: grid; gap: 3px; }
+.custom-item-magic-weapon h3, .custom-monster-equipment h3, .custom-monster-weapon-actions h3 { color: #6a2f26; font-family: "Scaly Sans", Inter, sans-serif; font-size: .84rem; letter-spacing: .07em; margin: 0; text-transform: uppercase; }
+.custom-item-magic-weapon header p, .custom-monster-equipment header p, .custom-monster-weapon-actions header p, .custom-monster-hint { color: #806c5a; font-size: .76rem; line-height: 1.4; margin: 0; }
+.custom-item-magic-weapon > label, .custom-item-weapon-modifiers label, .custom-monster-equipment-add label, .custom-monster-weapon-grid label, .custom-monster-weapon-text { color: #71553e; display: grid; font-size: .72rem; font-weight: 800; gap: 5px; letter-spacing: .05em; text-transform: uppercase; }
+.custom-item-magic-weapon textarea, .custom-monster-weapon-text textarea { background: #fffaf0; border: 1px solid #cbb99d; border-radius: 5px; color: #39291f; font-family: "Bookinsanity", Georgia, serif; font-size: .92rem; font-weight: 400; letter-spacing: normal; line-height: 1.5; min-height: 84px; padding: 8px; resize: vertical; text-transform: none; width: 100%; }
+.custom-item-weapon-modifiers, .custom-monster-weapon-actions fieldset { border: 1px solid #d8c9ae; display: grid; gap: 10px; margin: 0; padding: 11px; }
+.custom-item-weapon-modifiers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.custom-item-weapon-modifiers legend, .custom-monster-weapon-actions legend { color: #6a2f26; font-family: "Scaly Sans", Inter, sans-serif; font-size: .71rem; font-weight: 800; letter-spacing: .07em; padding: 0 5px; text-transform: uppercase; }
+.custom-item-weapon-modifiers input, .custom-monster-weapon-grid input { background: #fffaf0; border: 1px solid #cbb99d; border-radius: 5px; color: #39291f; font-size: .9rem; font-weight: 400; letter-spacing: normal; padding: 8px; text-transform: none; width: 100%; }
+.custom-monster-equipment-add { align-items: end; display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) auto; }
+.custom-monster-equipment-add button, .custom-monster-equipment-list button, .custom-monster-weapon-actions > button, .custom-monster-weapon-actions fieldset > button { background: #f7f0df; border: 1px solid #ad9576; border-radius: 5px; color: #422f25; padding: 8px 10px; }
+.custom-monster-equipment-list { display: grid; gap: 7px; list-style: none; margin: 0; padding: 0; }
+.custom-monster-equipment-list li { align-items: center; border: 1px solid #dfcfb4; display: flex; gap: 10px; justify-content: space-between; padding: 8px 9px; }
+.custom-monster-equipment-list span { display: grid; gap: 2px; }
+.custom-monster-equipment-list small { color: #806c5a; font-size: .72rem; }
+.custom-monster-weapon-grid { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.custom-monster-weapon-grid > label:first-child, .custom-monster-weapon-grid > label:nth-child(2) { grid-column: span 1; }
+.custom-monster-weapon-text { margin-top: 2px; }
 .reference-source-editor { background: #fffaf0; border: 1px solid #cbb99d; border-radius: 5px; min-height: 170px; overflow: hidden; }
 .reference-source-editor .cm-editor { min-height: 168px; }
 .reference-source-editor .cm-scroller { font-family: "Bookinsanity", Georgia, serif; font-size: .92rem; line-height: 1.5; max-height: 360px; min-height: 168px; }
@@ -753,6 +779,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .catalogue-details { min-height: 55vh; padding: 22px 17px; }
   .custom-monster-core-grid { grid-template-columns: 1fr; }
   .custom-monster-abilities { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .custom-item-weapon-modifiers, .custom-monster-weapon-grid { grid-template-columns: 1fr; }
+  .custom-monster-equipment-add { grid-template-columns: 1fr; }
   .catalogue-reference-tooltip, .worldbuilding-reference-tooltip { display: none; }
   .reference-dialog { max-height: calc(100vh - 24px); padding: 18px; }
   .private-import-file-row { align-items: flex-start; flex-direction: column; }

@@ -156,7 +156,9 @@ const defaultMonsterFilters: MonsterFilters = {
   sort: 'name-asc'
 };
 
-type ItemFilters = ItemFilterFields;
+type ItemFilters = ItemFilterFields & {
+  origin: '' | 'homebrewry';
+};
 
 type ItemFilterOptions = {
   sources: string[];
@@ -168,7 +170,8 @@ const defaultItemFilters: ItemFilters = {
   source: '',
   type: '',
   rarity: '',
-  attunement: ''
+  attunement: '',
+  origin: ''
 };
 
 type MonsterFilterControlsProps = {
@@ -211,6 +214,7 @@ function ItemFilterControls({ filters, onFilterChange, options, variant }: ItemF
       <label>Item type<select aria-label="Filter items by type" onChange={(event) => onFilterChange('type', event.target.value)} value={filters.type}><option value="">All item types</option>{options.types.map((type) => <option key={type} value={type}>{titleCaseItemValue(type)}</option>)}</select></label>
       <label>Rarity<select aria-label="Filter items by rarity" onChange={(event) => onFilterChange('rarity', event.target.value)} value={filters.rarity}><option value="">All rarities</option>{options.rarities.map((rarity) => <option key={rarity} value={rarity}>{titleCaseItemValue(rarity)}</option>)}</select></label>
       <label>Attunement<select aria-label="Filter items by attunement" onChange={(event) => onFilterChange('attunement', event.target.value as ItemFilters['attunement'])} value={filters.attunement}><option value="">All items</option><option value="required">Requires attunement</option><option value="not-required">No attunement</option></select></label>
+      <label>Origin<select aria-label="Filter items by origin" onChange={(event) => onFilterChange('origin', event.target.value as ItemFilters['origin'])} value={filters.origin}><option value="">All items</option><option value="homebrewry">Created in Homebrewry</option></select></label>
     </div>
   );
 }
@@ -379,6 +383,10 @@ function isWorldbuildingItem(item: CompendiumItem | null): item is CompendiumIte
 
 function isCatalogueItem(item: CompendiumItem | null): item is CompendiumItem & { entry: CatalogueEntry } {
   return Boolean(item && item.source === 'rules');
+}
+
+function itemWasCreatedInHomebrewry(item: CompendiumItem): boolean {
+  return item.source === 'campaign' || (isCatalogueItem(item) && item.entry.source === 'Custom');
 }
 
 export function CompendiumPanel({
@@ -587,7 +595,10 @@ export function CompendiumPanel({
     .filter((item) => {
       if (!itemMatches(item, activeCategory, filterTerms)) return false;
       if (activeCategory === 'monsters') return monsterMatchesFilters(monsterMetadataByKey.get(item.key) ?? emptyMonsterMetadata, monsterFilters);
-      if (activeCategory === 'items') return itemMatchesFilters(itemMetadataByKey.get(item.key) ?? emptyItemMetadata, itemFilters);
+      if (activeCategory === 'items') {
+        if (itemFilters.origin === 'homebrewry' && !itemWasCreatedInHomebrewry(item)) return false;
+        return itemMatchesFilters(itemMetadataByKey.get(item.key) ?? emptyItemMetadata, itemFilters);
+      }
       return true;
     })
     .sort((left, right) => {
@@ -846,7 +857,8 @@ export function CompendiumPanel({
     { key: 'source' as const, label: 'Book', value: itemFilters.source },
     { key: 'type' as const, label: 'Type', value: itemFilters.type ? titleCaseItemValue(itemFilters.type) : '' },
     { key: 'rarity' as const, label: 'Rarity', value: itemFilters.rarity ? titleCaseItemValue(itemFilters.rarity) : '' },
-    { key: 'attunement' as const, label: 'Attunement', value: itemFilters.attunement === 'required' ? 'Required' : itemFilters.attunement === 'not-required' ? 'None' : '' }
+    { key: 'attunement' as const, label: 'Attunement', value: itemFilters.attunement === 'required' ? 'Required' : itemFilters.attunement === 'not-required' ? 'None' : '' },
+    { key: 'origin' as const, label: 'Origin', value: itemFilters.origin === 'homebrewry' ? 'Created in Homebrewry' : '' }
   ].filter((chip) => Boolean(chip.value));
   const activeItemFilterCount = activeItemFilterChips.length;
   const hasItemRefinements = activeItemFilterCount > 0;

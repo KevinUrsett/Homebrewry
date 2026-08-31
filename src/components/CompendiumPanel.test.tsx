@@ -68,6 +68,16 @@ const cloakOfFeathers: CatalogueEntry = {
   ruleset: '5.5e'
 };
 
+const sunshardBlade: CatalogueEntry = {
+  id: 'sunshard-blade',
+  category: 'item',
+  name: 'Sunshard Blade',
+  description: 'A weapon created in Homebrewry.',
+  data: { type: 'meleeWeapon' },
+  source: 'Custom',
+  ruleset: 'Homebrewry'
+};
+
 const campaignMonster: WorldbuildingEntry = {
   id: 'ashling',
   name: 'Ashling',
@@ -96,7 +106,7 @@ async function renderCompendium(onCreateWorldbuilding = vi.fn(), catalogueSelect
   await act(async () => {
     root.render(
       <CompendiumPanel
-        catalogueEntries={[monster, wolf, staffOfSparks, cloakOfFeathers]}
+        catalogueEntries={[monster, wolf, staffOfSparks, cloakOfFeathers, sunshardBlade]}
         catalogueError={null}
         catalogueLoading={false}
         catalogueSelection={catalogueSelection}
@@ -239,6 +249,7 @@ describe('CompendiumPanel', () => {
     const type = container.querySelector('select[aria-label="Filter items by type"]') as HTMLSelectElement;
     const rarity = container.querySelector('select[aria-label="Filter items by rarity"]') as HTMLSelectElement;
     const attunement = container.querySelector('select[aria-label="Filter items by attunement"]') as HTMLSelectElement;
+    const origin = container.querySelector('select[aria-label="Filter items by origin"]') as HTMLSelectElement;
     expect(Array.from(source.options).map((option) => option.textContent)).toContain("Dungeon Master's Guide");
     expect(Array.from(source.options).map((option) => option.textContent)).not.toContain('Private import');
 
@@ -266,6 +277,16 @@ describe('CompendiumPanel', () => {
       attunement.dispatchEvent(new Event('change', { bubbles: true }));
     });
     expect(container.querySelector('.compendium-results')?.textContent).toContain('Cloak of Feathers');
+    expect(container.querySelector('.compendium-results')?.textContent).not.toContain('Staff of Sparks');
+
+    await act(async () => {
+      attunement.value = '';
+      attunement.dispatchEvent(new Event('change', { bubbles: true }));
+      origin.value = 'homebrewry';
+      origin.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(container.querySelector('.compendium-results')?.textContent).toContain('Sunshard Blade');
+    expect(container.querySelector('.compendium-results')?.textContent).not.toContain('Cloak of Feathers');
     expect(container.querySelector('.compendium-results')?.textContent).not.toContain('Staff of Sparks');
 
     const filterTrigger = container.querySelector('button[aria-controls="item-filter-dialog"]') as HTMLButtonElement;

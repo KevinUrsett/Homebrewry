@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolvedMonsterWeaponActions, weaponActionText } from './magicItems';
+import { resolvedMonsterActions, resolvedMonsterWeaponActions, weaponActionText } from './magicItems';
 import type { CatalogueEntry } from './types';
 
 const stormfang: CatalogueEntry = {
@@ -59,5 +59,23 @@ describe('magic equipment', () => {
     const [action] = resolvedMonsterWeaponActions(guard, new Map());
 
     expect(action).toMatchObject({ resolvedAttackBonus: 4, resolvedDamageModifier: 2, item: null, magicWeapon: null });
+  });
+
+  it('updates the original statblock action selected for the equipped weapon', () => {
+    const existingActions: CatalogueEntry = {
+      ...guard,
+      data: {
+        equipment: [{ itemId: 'stormfang', actionIndexes: [0] }],
+        actions: [
+          { name: 'Shortsword', text: '_Melee Attack Roll:_ +5, reach 5 ft. _Hit:_ 6 (1d6 + 3) Piercing damage.' },
+          { name: 'Shortbow', text: '_Ranged Attack Roll:_ +5, range 80/320 ft. _Hit:_ 6 (1d6 + 3) Piercing damage.' }
+        ]
+      }
+    };
+
+    const actions = resolvedMonsterActions(existingActions, new Map([['item:stormfang', stormfang]]));
+
+    expect(actions[0]?.text).toBe('_Melee Attack Roll:_ +6, reach 5 ft. _Hit:_ 7 (1d6 +4) Piercing damage plus 1d6 lightning damage.');
+    expect(actions[1]?.text).toBe('_Ranged Attack Roll:_ +5, range 80/320 ft. _Hit:_ 6 (1d6 + 3) Piercing damage.');
   });
 });

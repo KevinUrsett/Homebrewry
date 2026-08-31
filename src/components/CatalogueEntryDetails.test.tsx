@@ -26,8 +26,8 @@ describe('CatalogueEntryDetails magic equipment', () => {
     const guard: CatalogueEntry = {
       id: 'guard', category: 'monster', name: 'Storm Guard', description: '', source: 'Custom', ruleset: 'Homebrewry',
       data: {
-        equipment: [{ itemId: 'stormfang' }],
-        weaponActions: [{ id: 'sword', name: 'Stormfang', attackBonus: 4, damageDice: '1d8', damageModifier: 2, damageType: 'slashing', reach: '5 ft.', range: '', text: '', equipmentId: 'stormfang' }]
+        equipment: [{ itemId: 'stormfang', actionIndexes: [0] }],
+        actions: [{ name: 'Shortsword', text: '_Melee Attack Roll:_ +4, reach 5 ft. _Hit:_ 5 (1d6 + 2) Piercing damage.' }]
       }
     };
     const container = document.createElement('div');
@@ -42,7 +42,7 @@ describe('CatalogueEntryDetails magic equipment', () => {
     expect(container.textContent).toContain('Equipment');
     expect(container.textContent).toContain('A black-lacquered blade.');
     expect(container.textContent).toContain('What it does.');
-    expect(container.textContent).toContain('+5 to hit');
-    expect(container.textContent).toContain('1d8 +3 slashing damage plus 1d6 lightning damage');
+    expect(container.textContent).toContain('+5, reach 5 ft.');
+    expect(container.textContent).toContain('6 (1d6 +3) Piercing damage plus 1d6 lightning damage');
   });
 });

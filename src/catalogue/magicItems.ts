@@ -1,5 +1,5 @@
 import type { CatalogueEntry } from './types';
-import { dataRecord, isRecord } from './presentation';
+import { dataRecord, dataRecords, isRecord } from './presentation';
 
 export type MagicWeapon = {
   shortDescription: string;
@@ -12,6 +12,7 @@ export type MagicWeapon = {
 
 export type MonsterEquipment = {
   itemId: string;
+  actionIndexes: number[];
 };
 
 export type MonsterWeaponAction = {
@@ -68,7 +69,53 @@ export function monsterEquipment(entry: CatalogueEntry): MonsterEquipment[] {
     const itemId = text(candidate.itemId, 180);
     if (!itemId || seen.has(itemId) || seen.size >= 50) return [];
     seen.add(itemId);
-    return [{ itemId }];
+    const actionIndexes = Array.isArray(candidate.actionIndexes)
+      ? [...new Set(candidate.actionIndexes.filter((index): index is number => typeof index === 'number' && Number.isInteger(index) && index >= 0 && index < 100))]
+      : [];
+    return [{ itemId, actionIndexes }];
+  });
+}
+
+function replaceAttackModifier(value: string, bonus: number): string {
+  if (!bonus) return value;
+  return value.replace(
+    /((?:Melee|Ranged)(?:\s+Weapon)?\s+Attack(?:\s+Roll)?\s*:?_?\s*)([+-]\s*\d+)/i,
+    (_match, prefix: string, modifier: string) => `${prefix}${signedModifier(Number(modifier.replace(/\s/g, '')) + bonus)}`
+  );
+}
+
+function replaceDamageModifier(value: string, bonus: number): string {
+  if (!bonus) return value;
+  let next = value.replace(
+    /(_Hit:_\s*)(\d+)(\s*\(\s*\d+d\d+\s*[+-]\s*\d+\s*\))/i,
+    (_match, prefix: string, average: string, suffix: string) => `${prefix}${Number(average) + bonus}${suffix}`
+  );
+  next = next.replace(
+    /(\d+d\d+\s*)([+-])\s*(\d+)(?=\)?\s+(?:[A-Za-z]+\s+)?damage)/i,
+    (_match, dice: string, operator: string, modifier: string) => `${dice}${signedModifier((operator === '-' ? -1 : 1) * Number(modifier) + bonus)}`
+  );
+  return next;
+}
+
+export function applyMagicWeaponToActionText(value: string, weapon: MagicWeapon): string {
+  let next = replaceAttackModifier(value, weapon.attackBonus);
+  next = replaceDamageModifier(next, weapon.damageBonus);
+  if (weapon.extraDamageDice && !next.includes(`${weapon.extraDamageDice}${weapon.extraDamageType ? ` ${weapon.extraDamageType}` : ''} damage`)) {
+    next = next.replace(
+      /(\b(?:[A-Za-z]+\s+)?damage)([.!])/i,
+      `$1 plus ${weapon.extraDamageDice}${weapon.extraDamageType ? ` ${weapon.extraDamageType}` : ''} damage$2`
+    );
+  }
+  return next;
+}
+
+export function resolvedMonsterActions(entry: CatalogueEntry, catalogue: ReadonlyMap<string, CatalogueEntry>): Record<string, unknown>[] {
+  const equipped = monsterEquipment(entry);
+  return dataRecords(entry, 'actions').map((action, actionIndex) => {
+    const itemId = equipped.find((item) => item.actionIndexes.includes(actionIndex))?.itemId;
+    const weapon = magicWeaponForItem(itemId ? catalogue.get(`item:${itemId}`) : null);
+    const text = typeof action.text === 'string' ? action.text : '';
+    return weapon && text ? { ...action, text: applyMagicWeaponToActionText(text, weapon) } : action;
   });
 }
 

@@ -363,9 +363,14 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .custom-monster-equipment-add { align-items: end; display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) auto; }
 .custom-monster-equipment-add button, .custom-monster-equipment-list button, .custom-monster-weapon-actions > button, .custom-monster-weapon-actions fieldset > button { background: #f7f0df; border: 1px solid #ad9576; border-radius: 5px; color: #422f25; padding: 8px 10px; }
 .custom-monster-equipment-list { display: grid; gap: 7px; list-style: none; margin: 0; padding: 0; }
-.custom-monster-equipment-list li { align-items: center; border: 1px solid #dfcfb4; display: flex; gap: 10px; justify-content: space-between; padding: 8px 9px; }
+.custom-monster-equipment-list li { border: 1px solid #dfcfb4; display: grid; gap: 9px; padding: 8px 9px; }
+.custom-monster-equipment-item-heading { align-items: center; display: flex; gap: 10px; justify-content: space-between; }
 .custom-monster-equipment-list span { display: grid; gap: 2px; }
 .custom-monster-equipment-list small { color: #806c5a; font-size: .72rem; }
+.custom-monster-equipment-targets { border: 0; border-top: 1px solid #e4d5bb; display: grid; gap: 6px; margin: 0; padding: 8px 0 0; }
+.custom-monster-equipment-targets legend { color: #71553e; font-size: .67rem; font-weight: 800; letter-spacing: .05em; padding: 0; text-transform: uppercase; }
+.custom-monster-equipment-targets label { align-items: center; color: #513b2e; display: flex; font-size: .83rem; gap: 7px; }
+.custom-monster-equipment-targets input { accent-color: #6a2f26; height: 16px; margin: 0; width: 16px; }
 .custom-monster-weapon-grid { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .custom-monster-weapon-grid > label:first-child, .custom-monster-weapon-grid > label:nth-child(2) { grid-column: span 1; }
 .custom-monster-weapon-text { margin-top: 2px; }

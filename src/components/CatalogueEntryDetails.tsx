@@ -7,7 +7,7 @@ import {
   entrySummary,
   speedText
 } from '../catalogue/presentation';
-import { magicWeaponForItem, monsterEquipment, resolvedMonsterWeaponActions, weaponActionText } from '../catalogue/magicItems';
+import { magicWeaponForItem, monsterEquipment, resolvedMonsterActions, resolvedMonsterWeaponActions, weaponActionText } from '../catalogue/magicItems';
 import { catalogueCategoryLabel, type CatalogueEntry } from '../catalogue/types';
 import { ReferenceContent, type ReferenceContentProps } from './ReferenceContent';
 
@@ -89,11 +89,11 @@ function MonsterDetails({ entry, references }: { entry: CatalogueEntry; referenc
   const identity = [dataString(entry, 'size'), dataString(entry, 'type'), dataString(entry, 'alignment')].filter(Boolean).join(' ');
   const speed = speedText(entry);
   const traits = dataRecords(entry, 'traits');
-  const actions = dataRecords(entry, 'actions');
+  const catalogue = references?.catalogue ?? new Map<string, CatalogueEntry>();
+  const actions = resolvedMonsterActions(entry, catalogue);
   const bonusActions = dataRecords(entry, 'bonusActions');
   const reactions = dataRecords(entry, 'reactions');
   const legendaryActions = dataRecords(entry, 'legendaryActions');
-  const catalogue = references?.catalogue ?? new Map<string, CatalogueEntry>();
   const weaponActions = resolvedMonsterWeaponActions(entry, catalogue)
     .map((action) => ({ name: action.name, text: weaponActionText(action) }));
 

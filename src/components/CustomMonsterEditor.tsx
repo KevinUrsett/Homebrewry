@@ -92,6 +92,7 @@ export function CustomMonsterEditor({ entry, mode, onCancel, onSave, equipmentIt
     reactions: featureText(entry, 'reactions'),
     legendaryActions: featureText(entry, 'legendaryActions')
   }));
+  const actionRecords = parseFeatures(features.actions);
   const magicWeapons = magicWeaponItems(equipmentItems);
   const [equipment, setEquipment] = useState(() => monsterEquipment(entry));
   const [equipmentToAdd, setEquipmentToAdd] = useState('');
@@ -143,13 +144,24 @@ export function CustomMonsterEditor({ entry, mode, onCancel, onSave, equipmentIt
   const addEquipment = () => {
     const item = magicWeapons.find((candidate) => candidate.id === equipmentToAdd);
     if (!item || equipment.some((current) => current.itemId === item.id)) return;
-    setEquipment((current) => [...current, { itemId: item.id }]);
+    const likelyWeaponActions = actionRecords.flatMap((action, index) => /(?:Melee|Ranged)(?:\s+Weapon)?\s+Attack(?:\s+Roll)?/i.test(action.text) ? [index] : []);
+    setEquipment((current) => [...current, { itemId: item.id, actionIndexes: likelyWeaponActions.length === 1 ? likelyWeaponActions : [] }]);
     setEquipmentToAdd('');
   };
 
   const removeEquipment = (itemId: string) => {
     setEquipment((current) => current.filter((item) => item.itemId !== itemId));
     setWeaponActions((current) => current.map((action) => action.equipmentId === itemId ? { ...action, equipmentId: '' } : action));
+  };
+
+  const toggleEquipmentAction = (itemId: string, actionIndex: number, selected: boolean) => {
+    setEquipment((current) => current.map((item) => {
+      const actionIndexes = item.actionIndexes ?? [];
+      if (item.itemId === itemId) {
+        return { ...item, actionIndexes: selected ? [...new Set([...actionIndexes, actionIndex])] : actionIndexes.filter((index) => index !== actionIndex) };
+      }
+      return selected ? { ...item, actionIndexes: actionIndexes.filter((index) => index !== actionIndex) } : item;
+    }));
   };
 
   const addWeaponAction = () => {
@@ -219,7 +231,7 @@ export function CustomMonsterEditor({ entry, mode, onCancel, onSave, equipmentIt
       </section>
 
       <section className="custom-monster-equipment" aria-label="Monster magic equipment">
-        <header><h3>Magic equipment</h3><p>Equip reusable campaign magic weapons. Their bonuses are applied only to linked weapon actions.</p></header>
+        <header><h3>Magic equipment</h3><p>Choose the existing statblock action that uses each weapon. Its displayed attack and damage modifiers update automatically.</p></header>
         <div className="custom-monster-equipment-add">
           <label>Magic weapon
             <select aria-label="Add magic weapon to monster" onChange={(event) => setEquipmentToAdd(event.target.value)} value={equipmentToAdd}>
@@ -234,7 +246,18 @@ export function CustomMonsterEditor({ entry, mode, onCancel, onSave, equipmentIt
           <ul className="custom-monster-equipment-list">
             {equipment.map((item) => {
               const magicWeapon = magicWeapons.find((candidate) => candidate.id === item.itemId);
-              return <li key={item.itemId}><span><strong>{magicWeapon?.name ?? 'Missing magic weapon'}</strong><small>{magicWeapon?.type || 'This item is no longer available.'}</small></span><button aria-label={`Remove ${magicWeapon?.name ?? 'magic weapon'}`} onClick={() => removeEquipment(item.itemId)} type="button">Remove</button></li>;
+              return (
+                <li key={item.itemId}>
+                  <div className="custom-monster-equipment-item-heading"><span><strong>{magicWeapon?.name ?? 'Missing magic weapon'}</strong><small>{magicWeapon?.type || 'This item is no longer available.'}</small></span><button aria-label={`Remove ${magicWeapon?.name ?? 'magic weapon'}`} onClick={() => removeEquipment(item.itemId)} type="button">Remove</button></div>
+                  {actionRecords.length > 0 ? (
+                    <fieldset className="custom-monster-equipment-targets">
+                      <legend>Applies to existing Actions</legend>
+                      {actionRecords.map((action, index) => <label key={`${action.name}-${index}`}><input checked={item.actionIndexes.includes(index)} onChange={(event) => toggleEquipmentAction(item.itemId, index, event.target.checked)} type="checkbox" />{action.name || `Action ${index + 1}`}</label>)}
+                    </fieldset>
+                  ) : <p className="custom-monster-hint">Add an Action before assigning this weapon.</p>}
+                  {!item.actionIndexes.length && actionRecords.length > 0 && <p className="custom-monster-hint">Not applied to an action yet.</p>}
+                </li>
+              );
             })}
           </ul>
         )}

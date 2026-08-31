@@ -327,7 +327,7 @@ describe('CompendiumPanel', () => {
     const source = container.querySelector('select[aria-label="Filter compendium by source"]') as HTMLSelectElement;
     const school = container.querySelector('select[aria-label="Filter compendium by school"]') as HTMLSelectElement;
     const edition = container.querySelector('select[aria-label="Filter compendium by edition"]') as HTMLSelectElement;
-    expect(Array.from(source.options).map((option) => option.textContent)).toContain('Homebrewry');
+    expect(Array.from(source.options).map((option) => option.textContent)).toContain('Made in Homebrewry');
     expect(Array.from(source.options).map((option) => option.textContent)).toContain("Player's Handbook");
 
     await act(async () => {

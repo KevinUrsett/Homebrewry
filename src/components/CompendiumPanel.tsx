@@ -265,12 +265,25 @@ function standardTypeLabel(category: CompendiumCategory): string {
   }
 }
 
+function allStandardTypeLabel(category: CompendiumCategory): string {
+  switch (category) {
+    case 'backgrounds': return 'All abilities';
+    case 'classes': return 'All key abilities';
+    case 'feats': return 'All feat types';
+    case 'species': return 'All creature types';
+    case 'spells': return 'All schools';
+    case 'subclasses': return 'All classes';
+    case 'rules': return 'All rule types';
+    default: return 'All types';
+  }
+}
+
 function StandardFilterControls({ category, filters, onFilterChange, options, variant }: StandardFilterControlsProps) {
   const typeLabel = standardTypeLabel(category);
   return (
     <div className={`monster-filter-grid monster-filter-grid--${variant}`}>
       <label className="monster-source-control">Source<select aria-label="Filter compendium by source" onChange={(event) => onFilterChange('source', event.target.value)} value={filters.source}><option value="">All sources</option>{options.sources.map((source) => <option key={source} value={source}>{source}</option>)}</select></label>
-      {options.types.length > 0 && <label>{typeLabel}<select aria-label={`Filter compendium by ${typeLabel.toLocaleLowerCase()}`} onChange={(event) => onFilterChange('type', event.target.value)} value={filters.type}><option value="">All {typeLabel.toLocaleLowerCase()}s</option>{options.types.map((type) => <option key={type} value={type}>{titleCaseCompendiumValue(type)}</option>)}</select></label>}
+      {options.types.length > 0 && <label>{typeLabel}<select aria-label={`Filter compendium by ${typeLabel.toLocaleLowerCase()}`} onChange={(event) => onFilterChange('type', event.target.value)} value={filters.type}><option value="">{allStandardTypeLabel(category)}</option>{options.types.map((type) => <option key={type} value={type}>{titleCaseCompendiumValue(type)}</option>)}</select></label>}
       {options.editions.length > 0 && <label>Edition<select aria-label="Filter compendium by edition" onChange={(event) => onFilterChange('edition', event.target.value)} value={filters.edition}><option value="">All editions</option>{options.editions.map((edition) => <option key={edition} value={edition}>{edition}</option>)}</select></label>}
     </div>
   );

@@ -18,6 +18,7 @@ type EditorPaneProps = {
   customCatalogueCategories: readonly CustomCatalogueCategory[];
   onOpenCatalogue: () => void;
   onOpenEncounters: () => void;
+  onOpenEncounter: (encounterId: string) => void;
   onCreatePlotBeat: () => void;
   onSave: () => void;
   onCreateWorldbuildingReference: (name: string, kind: WorldbuildingKind) => Promise<string | null> | string | null;
@@ -57,6 +58,7 @@ export function EditorPane({
   customCatalogueCategories,
   onOpenCatalogue,
   onOpenEncounters,
+  onOpenEncounter,
   onCreatePlotBeat,
   onSave,
   onCreateWorldbuildingReference,
@@ -140,6 +142,7 @@ export function EditorPane({
         assets={assets}
         maps={maps}
         onOpenCampaignMap={onOpenCampaignMap}
+        onOpenEncounter={onOpenEncounter}
         onRotateImage={onRotateImage}
         onDeleteImage={onDeleteImage}
         onChange={onContentChange}

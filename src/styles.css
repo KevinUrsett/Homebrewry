@@ -99,7 +99,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .markdown-editor .cm-focused { outline: none; }
 /* Ordinary references stay part of the prose in Edit; encounter links retain their card-like marker. */
 .markdown-editor .cm-inline-reference { color: inherit; font: inherit; }
-.markdown-editor .cm-encounter-reference-chip { background: #f1dfb3; border: 1px solid #c8a563; border-radius: 999px; color: #5d3528; cursor: text; font-family: Inter, sans-serif; font-size: .82em; font-weight: 800; letter-spacing: .01em; padding: 1px 6px; }
+.markdown-editor .cm-encounter-reference-chip { background: #f1dfb3; border: 1px solid #c8a563; border-radius: 999px; color: #5d3528; cursor: pointer; font-family: Inter, sans-serif; font-size: .82em; font-weight: 800; letter-spacing: .01em; padding: 1px 6px; }
+.markdown-editor button.cm-encounter-reference-chip:hover { background: #ead39a; border-color: #a87b37; }
 .markdown-editor .cm-markdown-image-label { color: #755326; display: block; font-family: Inter, sans-serif; font-size: .72em; font-style: italic; font-weight: 700; letter-spacing: .03em; margin: 12px 0 4px; text-transform: uppercase; }
 .markdown-editor .cm-markdown-image-preview { background: transparent; box-sizing: border-box; display: inline-block; margin: 0 0 18px; max-width: 100%; padding: 0; vertical-align: top; width: auto; }
 .markdown-editor .cm-markdown-image-preview img { border: 1px solid #bca789; box-shadow: 0 2px 6px rgb(62 39 20 / 14%); display: block; height: auto; max-height: 360px; max-width: 100%; object-fit: contain; }

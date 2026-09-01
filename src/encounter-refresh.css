@@ -22,8 +22,9 @@ reviewed or reverted without disturbing the shared application theme. */
 .encounter-list-item { align-items: stretch; display: flex; gap: 6px; }
 .encounter-list-main { background: transparent; border: 0; color: inherit; display: grid; flex: 1; gap: 3px; min-width: 0; padding: 0; text-align: left; }
 .encounter-list-name { color: #39291f; display: block; font-size: .94rem; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.encounter-list-actions { align-items: center; display: flex; gap: 3px; }
+.encounter-list-actions { align-items: center; display: flex; gap: 3px; margin-left: auto; }
 .encounter-list-actions button { background: #fffaf0; border: 1px solid #cbb99d; border-radius: 5px; color: #5d2f26; font-size: .72rem; min-height: 30px; padding: 4px 7px; }
+.encounter-list-actions .encounter-list-edit-button { align-self: stretch; font-size: 1.3rem; line-height: 1; min-height: 38px; min-width: 42px; padding: 4px; }
 .party-roster > summary { align-items: center; background: #f7f0df; border: 1px solid #cbb99d; border-radius: 6px; color: #5d2f26; cursor: pointer; display: flex; font-weight: 800; justify-content: space-between; list-style: none; padding: 9px 10px; }
 .party-roster > summary::-webkit-details-marker { display: none; }
 .party-roster > summary::after { content: '⌄'; margin-left: 8px; }

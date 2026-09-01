@@ -2075,6 +2075,10 @@ export default function App() {
               }}
               onOpenCatalogue={openCatalogue}
               onOpenEncounters={openEncounters}
+              onOpenEncounter={(encounterId) => {
+                const encounter = encounters.find((item) => item.id === encounterId);
+                if (encounter) openEncounters(encounter);
+              }}
               onSave={() => { void saveActiveBrewNow(); }}
               onCreateCatalogueReference={createCatalogueReference}
               onCreateWorldbuildingReference={createWorldbuildingReference}

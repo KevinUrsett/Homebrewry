@@ -673,9 +673,9 @@ export function EncounterPanel({
                   {encounter.date && <small>{formatBelentorDate(encounter.date)}</small>}
                 </button>
                 <div className="encounter-list-actions">
-                  <button aria-label={`Edit ${encounter.name || 'encounter'}`} onClick={() => openEncounterEditor(encounter.id)} title="Edit" type="button">✎</button>
                   <button aria-label={`Run ${encounter.name || 'encounter'}`} onClick={() => { selectEncounter(encounter.id); setEncounterView('run'); }} title="Run combat" type="button">Run</button>
                   <button aria-label={`Delete ${encounter.name || 'encounter'}`} className="quiet-danger" onClick={() => onDeleteEncounter(encounter)} title="Delete" type="button">×</button>
+                  <button aria-label={`Edit ${encounter.name || 'encounter'}`} className="encounter-list-edit-button" onClick={() => openEncounterEditor(encounter.id)} title="Edit encounter" type="button">✎</button>
                 </div>
               </article>
             ))}

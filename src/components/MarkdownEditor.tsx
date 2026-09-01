@@ -40,6 +40,7 @@ type MarkdownEditorProps = {
   onOpenDungeonMap?: (title: string) => void;
   maps?: ReadonlyMap<string, CampaignMapRecord>;
   onOpenCampaignMap?: (mapId: string) => void;
+  onOpenEncounter?: (encounterId: string) => void;
 };
 
 type ReferenceMenu = {
@@ -56,19 +57,23 @@ const emptyAssets = new Map<string, BrewAsset>();
 const emptyMaps = new Map<string, CampaignMapRecord>();
 
 class ReferenceChip extends WidgetType {
-  constructor(private readonly label: string, private readonly kind: string) {
+  constructor(private readonly label: string, private readonly kind: string, private readonly id: string) {
     super();
   }
 
   eq(other: ReferenceChip) {
-    return other.label === this.label && other.kind === this.kind;
+    return other.label === this.label && other.kind === this.kind && other.id === this.id;
   }
 
   toDOM() {
-    const element = document.createElement('span');
+    const element = document.createElement(this.kind === 'encounter' ? 'button' : 'span');
     element.className = this.kind === 'encounter' ? 'cm-reference-chip cm-encounter-reference-chip' : 'cm-reference-chip cm-inline-reference';
     element.setAttribute('aria-label', `${this.kind} reference: ${this.label}`);
-    element.title = `${this.kind} reference`;
+    element.title = this.kind === 'encounter' ? 'Open encounter editor' : `${this.kind} reference`;
+    if (this.kind === 'encounter') {
+      element.setAttribute('data-encounter-id', this.id);
+      element.setAttribute('type', 'button');
+    }
     element.textContent = this.label;
     return element;
   }
@@ -81,10 +86,17 @@ class ReferenceChip extends WidgetType {
 const referenceDecorator = new MatchDecorator({
   regexp: /\[\[([a-z][a-z0-9-]*):([0-9a-f-]+)(?:\|([^\]\r\n]+))?\]\]/gi,
   decoration: (match) => Decoration.replace({
-    widget: new ReferenceChip(match[3]?.trim() || 'Reference', match[1]),
+    widget: new ReferenceChip(match[3]?.trim() || 'Reference', match[1], match[2]),
     inclusive: false
   })
 });
+
+type EncounterOpenHandler = (encounterId: string) => void;
+
+const encounterOpenHandler = Facet.define<EncounterOpenHandler, EncounterOpenHandler | undefined>({
+  combine: (handlers) => handlers[handlers.length - 1]
+});
+const encounterOpenHandlerCompartment = new Compartment();
 
 const referenceDecorations = ViewPlugin.fromClass(class {
   decorations: DecorationSet;
@@ -97,7 +109,20 @@ const referenceDecorations = ViewPlugin.fromClass(class {
     this.decorations = referenceDecorator.updateDeco(update, this.decorations);
   }
 }, {
-  decorations: (value) => value.decorations
+  decorations: (value) => value.decorations,
+  eventHandlers: {
+    click: (event, view) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return false;
+      const chip = target.closest<HTMLElement>('.cm-encounter-reference-chip[data-encounter-id]');
+      const encounterId = chip?.dataset.encounterId;
+      const openEncounter = view.state.facet(encounterOpenHandler);
+      if (!encounterId || !openEncounter) return false;
+      event.preventDefault();
+      openEncounter(encounterId);
+      return true;
+    }
+  }
 });
 
 type AssetLookup = (source: string) => BrewAsset | undefined;
@@ -369,6 +394,7 @@ export function MarkdownEditor({
   onOpenDungeonMap,
   maps = emptyMaps,
   onOpenCampaignMap,
+  onOpenEncounter,
   ref
 }: MarkdownEditorProps & { ref?: Ref<MarkdownEditorHandle> }) {
   const parentRef = useRef<HTMLDivElement>(null);
@@ -395,6 +421,12 @@ export function MarkdownEditor({
     imageDeletionRef.current = onDeleteImage;
   }, [onDeleteImage]);
   useEffect(() => { dungeonOpenRef.current = onOpenDungeonMap; }, [onOpenDungeonMap]);
+
+  useEffect(() => {
+    viewRef.current?.dispatch({
+      effects: encounterOpenHandlerCompartment.reconfigure(onOpenEncounter ? encounterOpenHandler.of(onOpenEncounter) : [])
+    });
+  }, [onOpenEncounter]);
 
   useEffect(() => {
     assetsRef.current = assets;
@@ -432,6 +464,7 @@ export function MarkdownEditor({
           EditorView.lineWrapping,
           EditorView.contentAttributes.of({ 'aria-label': ariaLabel, spellcheck: spellcheckEnabled ? 'true' : 'false' }),
           referenceDecorations,
+          encounterOpenHandlerCompartment.of(onOpenEncounter ? encounterOpenHandler.of(onOpenEncounter) : []),
           imageAssetLookupCompartment.of(imageAssetLookup.of((source) => assetsRef.current.get(source.slice('asset://'.length)))),
           imagePreviews((asset) => imageRotationRef.current?.(asset), (asset) => imageDeletionRef.current?.(asset), (title) => dungeonOpenRef.current?.(title)),
           campaignMapPreviews(maps, onOpenCampaignMap),

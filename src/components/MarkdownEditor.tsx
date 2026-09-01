@@ -67,12 +67,20 @@ class ReferenceChip extends WidgetType {
 
   toDOM() {
     const element = document.createElement(this.kind === 'encounter' ? 'button' : 'span');
-    element.className = this.kind === 'encounter' ? 'cm-reference-chip cm-encounter-reference-chip' : 'cm-reference-chip cm-inline-reference';
+    element.className = this.kind === 'encounter' ? 'cm-reference-chip cm-encounter-reference-chip cm-encounter-reference-card' : 'cm-reference-chip cm-inline-reference';
     element.setAttribute('aria-label', `${this.kind} reference: ${this.label}`);
     element.title = this.kind === 'encounter' ? 'Open encounter editor' : `${this.kind} reference`;
     if (this.kind === 'encounter') {
       element.setAttribute('data-encounter-id', this.id);
       element.setAttribute('type', 'button');
+      const eyebrow = document.createElement('span');
+      eyebrow.textContent = 'Combat encounter';
+      const name = document.createElement('strong');
+      name.textContent = this.label;
+      const hint = document.createElement('small');
+      hint.textContent = 'Open encounter editor';
+      element.append(eyebrow, name, hint);
+      return element;
     }
     element.textContent = this.label;
     return element;

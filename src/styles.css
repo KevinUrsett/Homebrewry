@@ -99,8 +99,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .markdown-editor .cm-focused { outline: none; }
 /* Ordinary references stay part of the prose in Edit; encounter links retain their card-like marker. */
 .markdown-editor .cm-inline-reference { color: inherit; font: inherit; }
-.markdown-editor .cm-encounter-reference-chip { background: #f1dfb3; border: 1px solid #c8a563; border-radius: 999px; color: #5d3528; cursor: pointer; font-family: Inter, sans-serif; font-size: .82em; font-weight: 800; letter-spacing: .01em; padding: 1px 6px; }
-.markdown-editor button.cm-encounter-reference-chip:hover { background: #ead39a; border-color: #a87b37; }
+.markdown-editor .cm-encounter-reference-card { background: #e9d7ae; border: 1px solid color-mix(in srgb, var(--brew-accent), #fff 35%); border-left: 5px solid var(--brew-accent); color: #39291f; cursor: pointer; display: grid; font-family: "Scaly Sans", Inter, sans-serif; gap: 2px; margin: .85em 0; padding: 9px 12px; text-align: left; width: 100%; }
+.markdown-editor button.cm-encounter-reference-card:hover, .markdown-editor button.cm-encounter-reference-card:focus-visible { background: #f0e1bd; }
+.markdown-editor .cm-encounter-reference-card span { color: var(--brew-accent); font-size: .64rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.markdown-editor .cm-encounter-reference-card strong { font-family: "Bookinsanity", Georgia, serif; font-size: 1.15rem; }
+.markdown-editor .cm-encounter-reference-card small { color: #725d48; font-size: .68rem; }
 .markdown-editor .cm-markdown-image-label { color: #755326; display: block; font-family: Inter, sans-serif; font-size: .72em; font-style: italic; font-weight: 700; letter-spacing: .03em; margin: 12px 0 4px; text-transform: uppercase; }
 .markdown-editor .cm-markdown-image-preview { background: transparent; box-sizing: border-box; display: inline-block; margin: 0 0 18px; max-width: 100%; padding: 0; vertical-align: top; width: auto; }
 .markdown-editor .cm-markdown-image-preview img { border: 1px solid #bca789; box-shadow: 0 2px 6px rgb(62 39 20 / 14%); display: block; height: auto; max-height: 360px; max-width: 100%; object-fit: contain; }

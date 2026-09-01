@@ -131,10 +131,6 @@ const compendiumCategories: readonly CompendiumCategoryDefinition[] = [
 
 const compendiumCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
-function compendiumSourceLabel(source: string): string {
-  return source === 'Homebrewry' ? 'Made in Homebrewry' : source;
-}
-
 type CompendiumItem = {
   key: string;
   category: CompendiumCategory;
@@ -214,7 +210,7 @@ function MonsterFilterControls({ filters, onFilterChange, options, variant }: Mo
 
   return (
     <div className={`monster-filter-grid monster-filter-grid--${variant}`}>
-      <label className="monster-source-control">Source<select aria-label="Filter monsters by source" onChange={(event) => onFilterChange('source', event.target.value)} value={filters.source}><option value="">All sources</option>{options.sources.map((source) => <option key={source} value={source}>{compendiumSourceLabel(source)}</option>)}</select></label>
+      <label className="monster-source-control">Source<select aria-label="Filter monsters by source" onChange={(event) => onFilterChange('source', event.target.value)} value={filters.source}><option value="">All sources</option>{options.sources.map((source) => <option key={source} value={source}>{source}</option>)}</select></label>
       <label>Edition<select aria-label="Filter monsters by edition" onChange={(event) => onFilterChange('edition', event.target.value)} value={filters.edition}><option value="">All editions</option>{options.editions.map((edition) => <option key={edition} value={edition}>{edition}</option>)}</select></label>
       <label>Type<select aria-label="Filter monsters by type" onChange={(event) => onFilterChange('type', event.target.value)} value={filters.type}><option value="">All types</option>{options.types.map((type) => <option key={type} value={type}>{titleCaseMonsterValue(type)}</option>)}</select></label>
       <label>CR<select aria-label="Filter monsters by challenge rating" onChange={(event) => onFilterChange('cr', event.target.value)} value={filters.cr}><option value="">All CRs</option>{options.crs.map((cr) => <option key={cr} value={cr}>CR {cr}</option>)}</select></label>
@@ -239,7 +235,7 @@ type ItemFilterControlsProps = {
 function ItemFilterControls({ filters, onFilterChange, options, variant }: ItemFilterControlsProps) {
   return (
     <div className={`monster-filter-grid monster-filter-grid--${variant}`}>
-      <label className="monster-source-control">Source<select aria-label="Filter items by source" onChange={(event) => onFilterChange('source', event.target.value)} value={filters.source}><option value="">All sources</option>{options.sources.map((source) => <option key={source} value={source}>{compendiumSourceLabel(source)}</option>)}</select></label>
+      <label className="monster-source-control">Source<select aria-label="Filter items by source" onChange={(event) => onFilterChange('source', event.target.value)} value={filters.source}><option value="">All sources</option>{options.sources.map((source) => <option key={source} value={source}>{source}</option>)}</select></label>
       <label>Edition<select aria-label="Filter items by edition" onChange={(event) => onFilterChange('edition', event.target.value)} value={filters.edition}><option value="">All editions</option>{options.editions.map((edition) => <option key={edition} value={edition}>{edition}</option>)}</select></label>
       <label>Item type<select aria-label="Filter items by type" onChange={(event) => onFilterChange('type', event.target.value)} value={filters.type}><option value="">All item types</option>{options.types.map((type) => <option key={type} value={type}>{titleCaseItemValue(type)}</option>)}</select></label>
       <label>Rarity<select aria-label="Filter items by rarity" onChange={(event) => onFilterChange('rarity', event.target.value)} value={filters.rarity}><option value="">All rarities</option>{options.rarities.map((rarity) => <option key={rarity} value={rarity}>{titleCaseItemValue(rarity)}</option>)}</select></label>
@@ -286,7 +282,7 @@ function StandardFilterControls({ category, filters, onFilterChange, options, va
   const typeLabel = standardTypeLabel(category);
   return (
     <div className={`monster-filter-grid monster-filter-grid--${variant}`}>
-      <label className="monster-source-control">Source<select aria-label="Filter compendium by source" onChange={(event) => onFilterChange('source', event.target.value)} value={filters.source}><option value="">All sources</option>{options.sources.map((source) => <option key={source} value={source}>{compendiumSourceLabel(source)}</option>)}</select></label>
+      <label className="monster-source-control">Source<select aria-label="Filter compendium by source" onChange={(event) => onFilterChange('source', event.target.value)} value={filters.source}><option value="">All sources</option>{options.sources.map((source) => <option key={source} value={source}>{source}</option>)}</select></label>
       {options.types.length > 0 && <label>{typeLabel}<select aria-label={`Filter compendium by ${typeLabel.toLocaleLowerCase()}`} onChange={(event) => onFilterChange('type', event.target.value)} value={filters.type}><option value="">{allStandardTypeLabel(category)}</option>{options.types.map((type) => <option key={type} value={type}>{titleCaseCompendiumValue(type)}</option>)}</select></label>}
       {options.editions.length > 0 && <label>Edition<select aria-label="Filter compendium by edition" onChange={(event) => onFilterChange('edition', event.target.value)} value={filters.edition}><option value="">All editions</option>{options.editions.map((edition) => <option key={edition} value={edition}>{edition}</option>)}</select></label>}
     </div>
@@ -407,6 +403,17 @@ function worldbuildingKey(entry: WorldbuildingEntry): string {
 function itemMatches(item: CompendiumItem, category: CompendiumCategory, terms: string): boolean {
   if (category !== 'all' && item.category !== category) return false;
   return !terms || item.searchText.includes(terms);
+}
+
+function isClutteredBuiltInItem(entry: CatalogueEntry): boolean {
+  if (entry.category !== 'item' || entry.source === 'Custom') return false;
+
+  // The full rules dataset includes every plain weapon and every numeric
+  // variation of an item. Keep named magic items, but leave the generic gear
+  // out of the browsing compendium so it stays useful as a reference library.
+  if (/^\+\d+\b/.test(entry.name.trim())) return true;
+  const metadata = itemMetadataForCatalogueEntry(entry);
+  return ['weapon', 'meleeweapon', 'rangedweapon'].includes(metadata.type) && !metadata.rarity;
 }
 
 function monsterMetadataForItem(item: CompendiumItem): MonsterMetadata {
@@ -568,7 +575,7 @@ export function CompendiumPanel({
         sourceLabel: `Campaign · ${kindLabel}`
       };
     });
-    const rulesItems = catalogueEntries.map((entry) => {
+    const rulesItems = catalogueEntries.filter((entry) => !isClutteredBuiltInItem(entry)).map((entry) => {
       const itemCategory = categoryForCatalogueEntry(entry);
       const kindLabel = catalogueCategoryLabel(entry.category, customCatalogueCategories);
       const metadata = monsterMetadataForCatalogueEntry(entry);
@@ -951,7 +958,7 @@ export function CompendiumPanel({
       ?? 'Other entries';
   const activeCategoryCount = activeCategory === 'all' ? allItems.length : categoryCounts.get(activeCategory) ?? 0;
   const activeMonsterFilterChips: Array<{ key: keyof MonsterFilters; label: string; value: string }> = [
-    { key: 'source' as const, label: 'Source', value: compendiumSourceLabel(monsterFilters.source) },
+    { key: 'source' as const, label: 'Source', value: monsterFilters.source },
     { key: 'edition' as const, label: 'Edition', value: monsterFilters.edition },
     { key: 'importSource' as const, label: 'Import', value: monsterFilters.importSource },
     { key: 'type' as const, label: 'Type', value: monsterFilters.type ? titleCaseMonsterValue(monsterFilters.type) : '' },
@@ -981,7 +988,7 @@ export function CompendiumPanel({
   };
   const resetMonsterFilters = () => setMonsterFilters({ ...defaultMonsterFilters });
   const activeItemFilterChips: Array<{ key: keyof ItemFilters; label: string; value: string }> = [
-    { key: 'source' as const, label: 'Source', value: compendiumSourceLabel(itemFilters.source) },
+    { key: 'source' as const, label: 'Source', value: itemFilters.source },
     { key: 'edition' as const, label: 'Edition', value: itemFilters.edition },
     { key: 'type' as const, label: 'Type', value: itemFilters.type ? titleCaseItemValue(itemFilters.type) : '' },
     { key: 'rarity' as const, label: 'Rarity', value: itemFilters.rarity ? titleCaseItemValue(itemFilters.rarity) : '' },
@@ -995,7 +1002,7 @@ export function CompendiumPanel({
   const clearItemFilter = (key: keyof ItemFilters) => updateItemFilter(key, defaultItemFilters[key]);
   const resetItemFilters = () => setItemFilters({ ...defaultItemFilters });
   const activeStandardFilterChips: Array<{ key: keyof StandardFilters; label: string; value: string }> = [
-    { key: 'source' as const, label: 'Source', value: compendiumSourceLabel(standardFilters.source) },
+    { key: 'source' as const, label: 'Source', value: standardFilters.source },
     { key: 'type' as const, label: standardTypeLabel(activeCategory), value: standardFilters.type ? titleCaseCompendiumValue(standardFilters.type) : '' },
     { key: 'edition' as const, label: 'Edition', value: standardFilters.edition }
   ].filter((chip) => Boolean(chip.value));

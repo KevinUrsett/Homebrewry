@@ -78,6 +78,26 @@ const sunshardBlade: CatalogueEntry = {
   ruleset: 'Homebrewry'
 };
 
+const genericDagger: CatalogueEntry = {
+  id: 'dagger',
+  category: 'item',
+  name: 'Dagger',
+  description: 'A standard dagger.',
+  data: { type: 'meleeWeapon' },
+  source: 'SRD-521',
+  ruleset: '5.5e'
+};
+
+const plusOneDagger: CatalogueEntry = {
+  id: 'plus-one-dagger',
+  category: 'item',
+  name: '+1 Dagger',
+  description: 'A standard dagger with a +1 bonus.',
+  data: { type: 'meleeWeapon', rarity: 'uncommon' },
+  source: 'SRD-521',
+  ruleset: '5.5e'
+};
+
 const silentImage: CatalogueEntry = {
   id: 'silent-image',
   category: 'spell',
@@ -126,7 +146,7 @@ async function renderCompendium(onCreateWorldbuilding = vi.fn(), catalogueSelect
   await act(async () => {
     root.render(
       <CompendiumPanel
-        catalogueEntries={[monster, wolf, staffOfSparks, cloakOfFeathers, sunshardBlade, silentImage, emberLadder]}
+        catalogueEntries={[monster, wolf, staffOfSparks, cloakOfFeathers, sunshardBlade, genericDagger, plusOneDagger, silentImage, emberLadder]}
         catalogueError={null}
         catalogueLoading={false}
         catalogueSelection={catalogueSelection}
@@ -317,6 +337,20 @@ describe('CompendiumPanel', () => {
     expect(container.querySelector('#item-filter-dialog')).toBeNull();
   });
 
+  it('keeps generic weapons and bare numeric enchantments out of the item browser', async () => {
+    const container = await renderCompendium();
+    const categoryButton = Array.from(container.querySelectorAll('button')).find((button) => button.textContent?.includes('Category'));
+    await act(async () => categoryButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    const itemCategory = Array.from(container.querySelectorAll('.compendium-category-list button')).find((button) => button.textContent?.includes('Items'));
+    await act(async () => itemCategory?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    const results = container.querySelector('.compendium-results')?.textContent ?? '';
+    expect(results).toContain('Staff of Sparks');
+    expect(results).toContain('Sunshard Blade');
+    expect(results).not.toContain('Dagger');
+    expect(results).not.toContain('+1 Dagger');
+  });
+
   it('uses the same source, type, and edition filters for other compendium categories', async () => {
     const container = await renderCompendium();
     const categoryButton = Array.from(container.querySelectorAll('button')).find((button) => button.textContent?.includes('Category'));
@@ -327,7 +361,7 @@ describe('CompendiumPanel', () => {
     const source = container.querySelector('select[aria-label="Filter compendium by source"]') as HTMLSelectElement;
     const school = container.querySelector('select[aria-label="Filter compendium by school"]') as HTMLSelectElement;
     const edition = container.querySelector('select[aria-label="Filter compendium by edition"]') as HTMLSelectElement;
-    expect(Array.from(source.options).map((option) => option.textContent)).toContain('Made in Homebrewry');
+    expect(Array.from(source.options).map((option) => option.textContent)).toContain('Homebrewry');
     expect(Array.from(source.options).map((option) => option.textContent)).toContain("Player's Handbook");
 
     await act(async () => {

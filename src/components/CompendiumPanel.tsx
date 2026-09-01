@@ -408,12 +408,13 @@ function itemMatches(item: CompendiumItem, category: CompendiumCategory, terms: 
 function isClutteredBuiltInItem(entry: CatalogueEntry): boolean {
   if (entry.category !== 'item' || entry.source === 'Custom') return false;
 
-  // The full rules dataset includes every plain weapon and every numeric
-  // variation of an item. Keep named magic items, but leave the generic gear
-  // out of the browsing compendium so it stays useful as a reference library.
+  // The full rules dataset includes every mundane supply, tool, weapon and
+  // vehicle. This browser is for monster loot, so only published magic items
+  // (which declare a rarity) belong here. Homebrewry entries remain available
+  // even when their rarity has not been filled in yet.
   if (/^\+\d+\b/.test(entry.name.trim())) return true;
   const metadata = itemMetadataForCatalogueEntry(entry);
-  return ['weapon', 'meleeweapon', 'rangedweapon'].includes(metadata.type) && !metadata.rarity;
+  return !metadata.rarity;
 }
 
 function monsterMetadataForItem(item: CompendiumItem): MonsterMetadata {

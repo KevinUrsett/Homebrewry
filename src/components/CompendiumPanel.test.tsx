@@ -98,6 +98,16 @@ const plusOneDagger: CatalogueEntry = {
   ruleset: '5.5e'
 };
 
+const explorerPack: CatalogueEntry = {
+  id: 'explorers-pack',
+  category: 'item',
+  name: "Explorer's Pack",
+  description: 'A collection of ordinary adventuring supplies.',
+  data: { type: 'adventuringGear' },
+  source: 'SRD-521',
+  ruleset: '5.5e'
+};
+
 const silentImage: CatalogueEntry = {
   id: 'silent-image',
   category: 'spell',
@@ -146,7 +156,7 @@ async function renderCompendium(onCreateWorldbuilding = vi.fn(), catalogueSelect
   await act(async () => {
     root.render(
       <CompendiumPanel
-        catalogueEntries={[monster, wolf, staffOfSparks, cloakOfFeathers, sunshardBlade, genericDagger, plusOneDagger, silentImage, emberLadder]}
+        catalogueEntries={[monster, wolf, staffOfSparks, cloakOfFeathers, sunshardBlade, genericDagger, plusOneDagger, explorerPack, silentImage, emberLadder]}
         catalogueError={null}
         catalogueLoading={false}
         catalogueSelection={catalogueSelection}
@@ -337,7 +347,7 @@ describe('CompendiumPanel', () => {
     expect(container.querySelector('#item-filter-dialog')).toBeNull();
   });
 
-  it('keeps generic weapons and bare numeric enchantments out of the item browser', async () => {
+  it('keeps mundane gear and bare numeric enchantments out of the magic-loot browser', async () => {
     const container = await renderCompendium();
     const categoryButton = Array.from(container.querySelectorAll('button')).find((button) => button.textContent?.includes('Category'));
     await act(async () => categoryButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
@@ -349,6 +359,7 @@ describe('CompendiumPanel', () => {
     expect(results).toContain('Sunshard Blade');
     expect(results).not.toContain('Dagger');
     expect(results).not.toContain('+1 Dagger');
+    expect(results).not.toContain("Explorer's Pack");
   });
 
   it('uses the same source, type, and edition filters for other compendium categories', async () => {

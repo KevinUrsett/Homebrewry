@@ -77,3 +77,39 @@ describe('MarkdownEditor encounter references', () => {
     expect(onOpenEncounter).toHaveBeenCalledWith(encounterId);
   });
 });
+
+
+describe('MarkdownEditor spellchecking', () => {
+  let root: Root | null = null;
+  let host: HTMLDivElement | null = null;
+
+  afterEach(() => {
+    act(() => root?.unmount());
+    host?.remove();
+    root = null;
+    host = null;
+  });
+
+  it('enables and disables the browser writing assistance attributes', async () => {
+    host = document.createElement('div');
+    document.body.append(host);
+    root = createRoot(host);
+
+    await act(async () => {
+      root?.render(<MarkdownEditor content="" onChange={() => undefined} spellcheckEnabled />);
+    });
+
+    const content = host.querySelector<HTMLElement>('.cm-content');
+    expect(content?.getAttribute('spellcheck')).toBe('true');
+    expect(content?.getAttribute('autocorrect')).toBe('on');
+    expect(content?.getAttribute('writingsuggestions')).toBe('true');
+
+    await act(async () => {
+      root?.render(<MarkdownEditor content="" onChange={() => undefined} spellcheckEnabled={false} />);
+    });
+
+    expect(content?.getAttribute('spellcheck')).toBe('false');
+    expect(content?.getAttribute('autocorrect')).toBe('off');
+    expect(content?.getAttribute('writingsuggestions')).toBe('false');
+  });
+});

@@ -731,6 +731,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .mobile-writing-tool-group button { background: #fffaf0; border: 1px solid #d1c0a5; border-radius: 7px; color: #4d392d; font-size: .74rem; min-height: 40px; padding: 7px 6px; }
   .mobile-writing-insert-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .mobile-writing-insert-grid button { font-weight: 700; }
+  .mobile-writing-quick-create { border-top: 1px solid #d4c09e; padding-top: 10px; }
+  .mobile-writing-quick-create > span { color: #846548; font-size: .61rem; font-weight: 800; letter-spacing: .08em; padding-inline: 2px; text-transform: uppercase; }
+  .mobile-writing-quick-create > div { display: grid; gap: 6px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .mobile-writing-quick-create button { border-color: #9c653d; font-weight: 800; }
   .mobile-writing-editor-settings { border-top: 1px solid #d4c09e; grid-template-columns: minmax(0, 1fr); padding-top: 10px; }
   .mobile-writing-editor-settings button { align-items: center; display: flex; font-weight: 700; justify-content: space-between; padding-inline: 11px; }
   .mobile-writing-editor-settings button strong { color: #7a2f27; font-size: .7rem; letter-spacing: .05em; text-transform: uppercase; }

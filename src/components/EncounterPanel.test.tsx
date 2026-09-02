@@ -280,7 +280,11 @@ describe('EncounterPanel monster browser', () => {
   it('stores magic equipment on one encounter combatant instead of the source monster', async () => {
     const guard: CatalogueEntry = {
       id: 'guard', category: 'monster', name: 'Guard', description: '', source: 'Monster Manual', ruleset: '5e',
-      data: { actions: [{ name: 'Shortsword', text: '_Melee Attack Roll:_ +3, reach 5 ft. _Hit:_ 5 (1d6 + 2) piercing damage.' }] }
+      data: {
+        ac: [{ ac: 16, from: ['chain mail'] }],
+        hp: { average: 11, formula: '2d8 + 2' },
+        actions: [{ name: 'Shortsword', text: '_Melee Attack Roll:_ +3, reach 5 ft. _Hit:_ 5 (1d6 + 2) piercing damage.' }]
+      }
     };
     const stormfang: CatalogueEntry = {
       id: 'stormfang', category: 'item', name: 'Stormfang', description: '', source: 'Custom', ruleset: 'Homebrewry',

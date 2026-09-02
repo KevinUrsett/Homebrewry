@@ -205,8 +205,29 @@ function likelyWeaponActionIndexes(actions: Record<string, unknown>[]): number[]
 }
 
 function statNumber(entry: CatalogueEntry, key: string): number | null {
-  const match = dataString(entry, key)?.match(/-?\d+(?:\.\d+)?/);
-  return match ? Number(match[0]) : null;
+  const numberFromValue = (value: unknown): number | null => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string') {
+      const match = value.match(/-?\d+(?:\.\d+)?/);
+      return match ? Number(match[0]) : null;
+    }
+    if (Array.isArray(value)) {
+      for (const candidate of value) {
+        const number = numberFromValue(candidate);
+        if (number !== null) return number;
+      }
+      return null;
+    }
+    if (value && typeof value === 'object') {
+      const record = value as Record<string, unknown>;
+      for (const candidate of [record.ac, record.average, record.hp, record.value]) {
+        const number = numberFromValue(candidate);
+        if (number !== null) return number;
+      }
+    }
+    return null;
+  };
+  return numberFromValue(entry.data[key]);
 }
 
 export function EncounterPanel({

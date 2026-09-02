@@ -96,6 +96,19 @@ function numberFromValue(value: unknown): number | null {
     const match = value.match(/-?\d+(?:\.\d+)?/);
     return match ? Number(match[0]) : null;
   }
+  if (Array.isArray(value)) {
+    for (const candidate of value) {
+      const number = numberFromValue(candidate);
+      if (number !== null) return number;
+    }
+    return null;
+  }
+  if (isRecord(value)) {
+    for (const key of ['ac', 'average', 'hp', 'value']) {
+      const number = numberFromValue(value[key]);
+      if (number !== null) return number;
+    }
+  }
   return null;
 }
 

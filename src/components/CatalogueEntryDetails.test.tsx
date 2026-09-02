@@ -45,4 +45,44 @@ describe('CatalogueEntryDetails magic equipment', () => {
     expect(container.textContent).toContain('+5, reach 5 ft.');
     expect(container.textContent).toContain('6 (1d6 +3) Piercing damage plus 1d6 lightning damage');
   });
+
+  it('renders an encounter-only item overlay without changing the source stat block', async () => {
+    const wingedPlate: CatalogueEntry = {
+      id: 'winged-plate', category: 'item', name: 'Winged Plate', description: '', source: 'Custom', ruleset: 'Homebrewry',
+      data: { monsterStatBlock: { changes: [
+        { field: 'armorClass', operation: 'add', value: 2 },
+        { field: 'hitPoints', operation: 'add', value: 10 },
+        { field: 'flySpeed', operation: 'set', value: 60 },
+        { field: 'dexterity', operation: 'set', value: 18 }
+      ], traits: [{ name: 'Winged', text: 'The guard gains a Fly Speed.' }] } }
+    };
+    const guard: CatalogueEntry = {
+      id: 'guard-overlay', category: 'monster', name: 'Guard', description: '', source: 'SRD-521', ruleset: '5.5e',
+      data: {
+        ac: '16 (chain mail)', hp: '11 (2d8 + 2)', speed: { walk: 30 },
+        abilities: { str: 13, dex: 12, con: 12, int: 10, wis: 11, cha: 10 }
+      }
+    };
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push({ container, root });
+
+    await act(async () => {
+      root.render(
+        <CatalogueEntryDetails
+          entry={guard}
+          equipment={[{ itemId: 'winged-plate', actionIndexes: [] }]}
+          references={{ catalogue: new Map([['item:winged-plate', wingedPlate]]) }}
+        />
+      );
+    });
+
+    expect(container.textContent).toContain('18 (chain mail)');
+    expect(container.textContent).toContain('21 (2d8 + 2)');
+    expect(container.textContent).toContain('walk 30 ft., fly 60 ft.');
+    expect(container.textContent).toContain('DEX18');
+    expect(container.textContent).toContain('Winged');
+    expect(guard.data).toMatchObject({ ac: '16 (chain mail)', hp: '11 (2d8 + 2)', abilities: { dex: 12 } });
+  });
 });

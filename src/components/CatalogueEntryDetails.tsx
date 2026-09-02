@@ -7,7 +7,18 @@ import {
   entrySummary,
   speedText
 } from '../catalogue/presentation';
-import { magicWeaponForItem, monsterEquipment, resolvedMonsterActions, resolvedMonsterWeaponActions, weaponActionText, type MonsterEquipment } from '../catalogue/magicItems';
+import {
+  magicWeaponForItem,
+  monsterEquipment,
+  monsterStatBlockModifiersForItem,
+  monsterStatChangeDefinitions,
+  resolvedEncounterMonsterStatBlock,
+  resolvedMonsterActions,
+  resolvedMonsterEquipment,
+  resolvedMonsterWeaponActions,
+  weaponActionText,
+  type MonsterEquipment
+} from '../catalogue/magicItems';
 import { catalogueCategoryLabel, type CatalogueEntry } from '../catalogue/types';
 import { ReferenceContent, type ReferenceContentProps } from './ReferenceContent';
 
@@ -63,6 +74,26 @@ function MagicWeaponDetails({ entry, references }: { entry: CatalogueEntry; refe
   );
 }
 
+function EncounterStatBlockModifiers({ entry }: { entry: CatalogueEntry }) {
+  const modifiers = monsterStatBlockModifiersForItem(entry);
+  if (!modifiers) return null;
+  return (
+    <div className="catalogue-magic-item-effect">
+      <strong>Encounter stat block changes.</strong>
+      {modifiers.changes.length > 0 && (
+        <ul>
+          {modifiers.changes.map((change, index) => {
+            const definition = monsterStatChangeDefinitions.find((item) => item.field === change.field);
+            const value = typeof change.value === 'number' && change.operation === 'add' && change.value >= 0 ? `+${change.value}` : change.value;
+            return <li key={`${change.field}-${index}`}>{definition?.label ?? change.field}: {change.operation === 'add' ? value : `set to ${value}`}</li>;
+          })}
+        </ul>
+      )}
+      {modifiers.traits.length > 0 && <p>{modifiers.traits.length} additional stat block trait{modifiers.traits.length === 1 ? '' : 's'}.</p>}
+    </div>
+  );
+}
+
 function MonsterEquipmentDetails({ entry, equipment, references }: { entry: CatalogueEntry; equipment?: MonsterEquipment[]; references?: Omit<ReferenceContentProps, 'content' | 'className'> }) {
   const equipped = equipment ?? monsterEquipment(entry);
   if (!equipped.length) return null;
@@ -75,9 +106,10 @@ function MonsterEquipmentDetails({ entry, equipment, references }: { entry: Cata
         const weapon = magicWeaponForItem(item);
         return (
           <div className="catalogue-feature" key={itemId}>
-            <strong>{item?.name ?? 'Missing magic weapon'}</strong>
+            <strong>{item?.name ?? 'Missing magic item'}</strong>
             {weapon?.shortDescription && <TextBlock references={references}>{weapon.shortDescription}</TextBlock>}
             {weapon?.effectText && <div className="catalogue-magic-item-effect"><strong>What it does.</strong><TextBlock references={references}>{weapon.effectText}</TextBlock></div>}
+            {item && <EncounterStatBlockModifiers entry={item} />}
             {!item && <p className="catalogue-description">The linked campaign item is unavailable.</p>}
           </div>
         );
@@ -87,12 +119,13 @@ function MonsterEquipmentDetails({ entry, equipment, references }: { entry: Cata
 }
 
 function MonsterDetails({ entry, equipment, references }: { entry: CatalogueEntry; equipment?: MonsterEquipment[]; references?: Omit<ReferenceContentProps, 'content' | 'className'> }) {
-  const abilities = dataRecord(entry, 'abilities');
-  const identity = [dataString(entry, 'size'), dataString(entry, 'type'), dataString(entry, 'alignment')].filter(Boolean).join(' ');
-  const speed = speedText(entry);
-  const traits = dataRecords(entry, 'traits');
   const catalogue = references?.catalogue ?? new Map<string, CatalogueEntry>();
-  const resolvedEquipment = equipment ?? monsterEquipment(entry);
+  const resolvedEquipment = equipment === undefined ? monsterEquipment(entry) : resolvedMonsterEquipment(entry, equipment);
+  const statBlock = equipment === undefined ? entry : resolvedEncounterMonsterStatBlock(entry, catalogue, equipment);
+  const abilities = dataRecord(statBlock, 'abilities');
+  const identity = [dataString(statBlock, 'size'), dataString(statBlock, 'type'), dataString(statBlock, 'alignment')].filter(Boolean).join(' ');
+  const speed = speedText(statBlock);
+  const traits = dataRecords(statBlock, 'traits');
   const actions = resolvedMonsterActions(entry, catalogue, resolvedEquipment);
   const bonusActions = dataRecords(entry, 'bonusActions');
   const reactions = dataRecords(entry, 'reactions');
@@ -105,10 +138,11 @@ function MonsterDetails({ entry, equipment, references }: { entry: CatalogueEntr
       {entry.description && <TextBlock references={references}>{entry.description}</TextBlock>}
       {identity && <p className="catalogue-monster-identity">{identity}</p>}
       <dl className="catalogue-stats">
-        {dataString(entry, 'ac') && <><dt>Armor Class</dt><dd>{dataString(entry, 'ac')}</dd></>}
-        {dataString(entry, 'hp') && <><dt>Hit Points</dt><dd>{dataString(entry, 'hp')}</dd></>}
+        {dataString(statBlock, 'ac') && <><dt>Armor Class</dt><dd>{dataString(statBlock, 'ac')}</dd></>}
+        {dataString(statBlock, 'hp') && <><dt>Hit Points</dt><dd>{dataString(statBlock, 'hp')}</dd></>}
         {speed && <><dt>Speed</dt><dd>{speed}</dd></>}
-        {dataString(entry, 'cr') && <><dt>Challenge</dt><dd>{dataString(entry, 'cr')}</dd></>}
+        {dataString(statBlock, 'initiativeBonus') && <><dt>Initiative bonus</dt><dd>{dataString(statBlock, 'initiativeBonus')}</dd></>}
+        {dataString(statBlock, 'cr') && <><dt>Challenge</dt><dd>{dataString(statBlock, 'cr')}</dd></>}
       </dl>
       {Object.keys(abilities).length > 0 && (
         <dl className="catalogue-abilities">
@@ -151,6 +185,7 @@ function GenericDetails({ entry, references }: { entry: CatalogueEntry; referenc
     <>
       {entry.description && <TextBlock references={references}>{entry.description}</TextBlock>}
       <MagicWeaponDetails entry={entry} references={references} />
+      <EncounterStatBlockModifiers entry={entry} />
       <FeatureList entries={traits} references={references} title="Traits" />
       <FeatureList entries={features} references={references} title="Features" />
       <TableDetails entry={entry} />

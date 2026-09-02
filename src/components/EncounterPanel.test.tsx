@@ -284,7 +284,13 @@ describe('EncounterPanel monster browser', () => {
     };
     const stormfang: CatalogueEntry = {
       id: 'stormfang', category: 'item', name: 'Stormfang', description: '', source: 'Custom', ruleset: 'Homebrewry',
-      data: { magicWeapon: { attackBonus: 1, damageBonus: 1, extraDamageDice: '', extraDamageType: '' } }
+      data: {
+        magicWeapon: { attackBonus: 1, damageBonus: 1, extraDamageDice: '', extraDamageType: '' },
+        monsterStatBlock: { changes: [
+          { field: 'armorClass', operation: 'add', value: 2 },
+          { field: 'hitPoints', operation: 'add', value: 5 }
+        ] }
+      }
     };
     const encounterWithGuard: Encounter = {
       ...encounter,
@@ -305,7 +311,7 @@ describe('EncounterPanel monster browser', () => {
     await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Edit Test encounter"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Edit encounter equipment for Guard"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
-    const weapon = container.querySelector<HTMLSelectElement>('select[aria-label="Add magic weapon to encounter combatant"]');
+    const weapon = container.querySelector<HTMLSelectElement>('select[aria-label="Add magic item to encounter combatant"]');
     expect(weapon).toBeTruthy();
     await act(async () => {
       weapon!.value = 'stormfang';
@@ -314,7 +320,10 @@ describe('EncounterPanel monster browser', () => {
     await act(async () => Array.from(container.querySelectorAll('.encounter-equipment-add button')).find((button) => button.textContent === 'Add equipment')?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
     expect(onUpdateEncounter).toHaveBeenCalledWith(expect.objectContaining({
-      participants: [expect.objectContaining({ id: 'guard-1', encounterEquipment: [{ itemId: 'stormfang', actionIndexes: [0] }] })]
+      participants: [expect.objectContaining({
+        id: 'guard-1', armorClass: 18, maxHitPoints: 16, currentHitPoints: 16,
+        encounterEquipment: [{ itemId: 'stormfang', actionIndexes: [0] }]
+      })]
     }));
     expect(guard.data.actions).toEqual([{ name: 'Shortsword', text: '_Melee Attack Roll:_ +3, reach 5 ft. _Hit:_ 5 (1d6 + 2) piercing damage.' }]);
   });

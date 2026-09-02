@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolvedMonsterActions, resolvedMonsterEquipment, resolvedMonsterWeaponActions, weaponActionText } from './magicItems';
+import { resolvedEncounterMonsterStatBlock, resolvedMonsterActions, resolvedMonsterEquipment, resolvedMonsterWeaponActions, weaponActionText } from './magicItems';
 import type { CatalogueEntry } from './types';
 
 const stormfang: CatalogueEntry = {
@@ -93,5 +93,50 @@ describe('magic equipment', () => {
     expect(encounterActions[0]?.text).toBe('_Melee Attack Roll:_ +6, reach 5 ft. _Hit:_ 7 (1d6 +4) Piercing damage plus 1d6 lightning damage.');
     expect(sourceActions[0]?.text).toBe('_Melee Attack Roll:_ +5, reach 5 ft. _Hit:_ 6 (1d6 + 3) Piercing damage.');
     expect(baseMonster.data.actions).toEqual([{ name: 'Shortsword', text: '_Melee Attack Roll:_ +5, reach 5 ft. _Hit:_ 6 (1d6 + 3) Piercing damage.' }]);
+  });
+
+  it('applies encounter item stat changes without mutating the source monster', () => {
+    const wingedPlate: CatalogueEntry = {
+      id: 'winged-plate', category: 'item', name: 'Winged Plate', description: '', source: 'Custom', ruleset: 'Homebrewry',
+      data: {
+        monsterStatBlock: {
+          changes: [
+            { field: 'armorClass', operation: 'add', value: 2 },
+            { field: 'hitPoints', operation: 'add', value: 18 },
+            { field: 'flySpeed', operation: 'set', value: 60 },
+            { field: 'strength', operation: 'set', value: 21 },
+            { field: 'alignment', operation: 'set', value: 'lawful neutral' }
+          ],
+          traits: [{ name: 'Winged', text: 'The guard can fly while wearing the plate.' }]
+        }
+      }
+    };
+    const source: CatalogueEntry = {
+      id: 'guard-stat-block', category: 'monster', name: 'Guard', description: '', source: 'SRD-521', ruleset: '5.5e',
+      data: {
+        ac: '16 (chain mail)', hp: '11 (2d8 + 2)', speed: { walk: 30 }, alignment: 'lawful good',
+        abilities: { str: 13, dex: 12, con: 12, int: 10, wis: 11, cha: 10 },
+        traits: [{ name: 'Watchful', text: 'The guard remains alert.' }]
+      }
+    };
+
+    const resolved = resolvedEncounterMonsterStatBlock(source, new Map([['item:winged-plate', wingedPlate]]), [{ itemId: 'winged-plate', actionIndexes: [] }]);
+
+    expect(resolved.data).toMatchObject({
+      ac: '18 (chain mail)',
+      hp: '29 (2d8 + 2)',
+      speed: { walk: 30, fly: 60 },
+      alignment: 'lawful neutral',
+      abilities: { str: 21 }
+    });
+    expect((resolved.data.traits as Array<{ name: string }>).map((trait) => trait.name)).toEqual(['Watchful', 'Winged']);
+    expect(source.data).toMatchObject({
+      ac: '16 (chain mail)',
+      hp: '11 (2d8 + 2)',
+      speed: { walk: 30 },
+      alignment: 'lawful good',
+      abilities: { str: 13 }
+    });
+    expect((source.data.traits as Array<{ name: string }>).map((trait) => trait.name)).toEqual(['Watchful']);
   });
 });

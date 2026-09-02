@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect, useRef } from 'react';
 import { clickMobileNav, getActiveBrewId, getMobileSection } from '../lib/mobileEditorState';
 
 type MobileLocation = {
@@ -18,6 +17,39 @@ const sectionLabels: Record<string, string> = {
   encounters: 'Encounters',
   worldbuilding: 'Worldbuilding'
 };
+
+const MOBILE_BREAKPOINT = '(max-width: 820px)';
+const EDGE_SWIPE_WIDTH = 36;
+const SWIPE_DISTANCE = 64;
+
+type SwipeStart = {
+  pointerId: number;
+  x: number;
+  y: number;
+};
+
+function isGestureBlocked(target: EventTarget | null) {
+  if (!(target instanceof Element)) return false;
+  return Boolean(target.closest([
+    'input',
+    'textarea',
+    'select',
+    'button',
+    'a',
+    '[contenteditable="true"]',
+    '.cm-editor',
+    '.cm-scroller',
+    '[role="dialog"]',
+    '[aria-modal="true"]',
+    '.mobile-tools-sheet',
+    '.cloud-menu-panel',
+    '.reference-menu',
+    '.plot-board-scroll',
+    '.campaign-mindmap-viewport',
+    '.maps-canvas',
+    '.dungeon-map-canvas'
+  ].join(',')));
+}
 
 function selectedItemKey(section: string) {
   if (section === 'encounters') {
@@ -76,36 +108,32 @@ function clickItem(location: MobileLocation) {
 }
 
 export function MobileNavigationHistory() {
-  const [target, setTarget] = useState<HTMLElement | null>(null);
-  const [version, setVersion] = useState(0);
   const entriesRef = useRef<MobileLocation[]>([]);
   const indexRef = useRef(-1);
   const replayingRef = useRef(false);
+  const swipeStartRef = useRef<SwipeStart | null>(null);
 
   useEffect(() => {
-    const findTarget = () => setTarget(document.querySelector<HTMLElement>('.mobile-nav'));
-    findTarget();
-    const observer = new MutationObserver(findTarget);
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    const initial = readLocation();
-    if (initial) {
+    const rememberInitial = () => {
+      if (indexRef.current >= 0) return;
+      const initial = readLocation();
+      if (!initial) return;
       entriesRef.current = [initial];
       indexRef.current = 0;
-      setVersion((value) => value + 1);
-    }
+    };
+
+    rememberInitial();
+    const observer = new MutationObserver(rememberInitial);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'], childList: true, subtree: true });
 
     const record = () => {
       if (replayingRef.current) return;
+      rememberInitial();
       const location = readLocation();
       const current = entriesRef.current[indexRef.current] ?? null;
       if (!location || sameLocation(location, current)) return;
       entriesRef.current = [...entriesRef.current.slice(0, indexRef.current + 1), location].slice(-60);
       indexRef.current = entriesRef.current.length - 1;
-      setVersion((value) => value + 1);
     };
 
     const handleClick = (event: MouseEvent) => {
@@ -115,7 +143,10 @@ export function MobileNavigationHistory() {
     };
 
     document.addEventListener('click', handleClick, true);
-    return () => document.removeEventListener('click', handleClick, true);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener('click', handleClick, true);
+    };
   }, []);
 
   const replay = (location: MobileLocation) => {
@@ -147,7 +178,6 @@ export function MobileNavigationHistory() {
     if (indexRef.current <= 0) return;
     indexRef.current -= 1;
     const location = entriesRef.current[indexRef.current];
-    setVersion((value) => value + 1);
     replay(location);
   };
 
@@ -155,18 +185,46 @@ export function MobileNavigationHistory() {
     if (indexRef.current >= entriesRef.current.length - 1) return;
     indexRef.current += 1;
     const location = entriesRef.current[indexRef.current];
-    setVersion((value) => value + 1);
     replay(location);
   };
 
-  if (!target) return null;
-  void version;
+  useEffect(() => {
+    const onPointerDown = (event: PointerEvent) => {
+      if (!window.matchMedia(MOBILE_BREAKPOINT).matches || event.pointerType !== 'touch' || !event.isPrimary || isGestureBlocked(event.target)) {
+        swipeStartRef.current = null;
+        return;
+      }
 
-  return createPortal(
-    <span className="mobile-history-controls" aria-label="Navigation history">
-      <button aria-label="Back" disabled={indexRef.current <= 0} onClick={goBack} type="button">‹</button>
-      <button aria-label="Forward" disabled={indexRef.current >= entriesRef.current.length - 1} onClick={goForward} type="button">›</button>
-    </span>,
-    target
-  );
+      const fromLeft = event.clientX <= EDGE_SWIPE_WIDTH;
+      const fromRight = event.clientX >= window.innerWidth - EDGE_SWIPE_WIDTH;
+      swipeStartRef.current = fromLeft || fromRight
+        ? { pointerId: event.pointerId, x: event.clientX, y: event.clientY }
+        : null;
+    };
+
+    const onPointerUp = (event: PointerEvent) => {
+      const start = swipeStartRef.current;
+      swipeStartRef.current = null;
+      if (!start || start.pointerId !== event.pointerId || event.pointerType !== 'touch') return;
+
+      const horizontal = event.clientX - start.x;
+      const vertical = event.clientY - start.y;
+      if (Math.abs(horizontal) < SWIPE_DISTANCE || Math.abs(horizontal) <= Math.abs(vertical)) return;
+
+      if (start.x <= EDGE_SWIPE_WIDTH && horizontal > 0) goBack();
+      if (start.x >= window.innerWidth - EDGE_SWIPE_WIDTH && horizontal < 0) goForward();
+    };
+
+    const clearSwipe = () => { swipeStartRef.current = null; };
+    document.addEventListener('pointerdown', onPointerDown, true);
+    document.addEventListener('pointerup', onPointerUp, true);
+    document.addEventListener('pointercancel', clearSwipe, true);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('pointerup', onPointerUp, true);
+      document.removeEventListener('pointercancel', clearSwipe, true);
+    };
+  });
+
+  return null;
 }

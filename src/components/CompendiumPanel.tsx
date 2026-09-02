@@ -303,6 +303,8 @@ type CatalogueEntryEditorState = {
   mode: 'create' | 'edit';
 };
 
+type QuickCreateTarget = 'item' | 'monster' | 'npc';
+
 export type CompendiumPanelProps = {
   catalogueEntries: CatalogueEntry[];
   catalogueError: string | null;
@@ -326,6 +328,7 @@ export type CompendiumPanelProps = {
   onInsertReference: (entry: CatalogueEntry) => void;
   onOpenNameGenerator?: () => void;
   onOpenPrivateMonsterImport: () => void;
+  onQuickCreateHandled?: () => void;
   onSaveCustomEntry: (entry: CustomCatalogueEntry) => Promise<void>;
   onSaveCustomMonster: (entry: CustomCatalogueEntry) => Promise<void>;
   onSelectCatalogue: (entry: CatalogueEntry | null) => void;
@@ -333,6 +336,7 @@ export type CompendiumPanelProps = {
   onSetNpcStatus?: (entry: WorldbuildingEntry, status: string) => void;
   onUpdateWorldbuilding: (entry: WorldbuildingEntry) => void;
   privateMonsterCount: number;
+  quickCreateTarget?: QuickCreateTarget | null;
   selectedWorldbuildingId: string | null;
   syncState: SyncState;
   types: WorldbuildingType[];
@@ -498,6 +502,7 @@ export function CompendiumPanel({
   onInsertReference,
   onOpenNameGenerator = () => undefined,
   onOpenPrivateMonsterImport,
+  onQuickCreateHandled = () => undefined,
   onSaveCustomEntry,
   onSaveCustomMonster,
   onSelectCatalogue,
@@ -505,6 +510,7 @@ export function CompendiumPanel({
   onSetNpcStatus = () => undefined,
   onUpdateWorldbuilding,
   privateMonsterCount,
+  quickCreateTarget = null,
   selectedWorldbuildingId,
   syncState,
   types,
@@ -861,6 +867,46 @@ export function CompendiumPanel({
     setEditingWorldbuildingId(null);
   };
 
+  const beginNewItem = () => {
+    setActionError(null);
+    setCategory('items');
+    setBrowserMode('library');
+    setActionMenuOpen(false);
+    setDetailOpen(true);
+    setLocalSelectedKey(null);
+    onSelectCatalogue(null);
+    onSelectWorldbuilding(null);
+    setEntryEditor({ entry: createCustomCatalogueEntry('Untitled item', 'item'), mode: 'create' });
+    setMonsterEditor(null);
+    setEditingWorldbuildingId(null);
+  };
+
+  const beginNewNpc = () => {
+    setActionError(null);
+    setCategory('npcs');
+    setBrowserMode('library');
+    setActionMenuOpen(false);
+    setDetailOpen(true);
+    setLocalSelectedKey(null);
+    onSelectCatalogue(null);
+    onSelectWorldbuilding(null);
+    const id = onCreateWorldbuilding('npc');
+    if (!id) return;
+    setEditingWorldbuildingId(id);
+    setMonsterEditor(null);
+    setEntryEditor(null);
+  };
+
+  useEffect(() => {
+    if (!quickCreateTarget) return;
+    if (quickCreateTarget === 'item') beginNewItem();
+    if (quickCreateTarget === 'monster') beginNewMonster();
+    if (quickCreateTarget === 'npc') beginNewNpc();
+    onQuickCreateHandled();
+  // The action is consumed immediately; the target prevents later replays.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quickCreateTarget, onQuickCreateHandled]);
+
   const beginNewRulesEntry = () => {
     const rulesCategory = catalogueCategoryForCategory(activeCategory, customCatalogueCategories);
     if (!rulesCategory) {
@@ -1149,7 +1195,7 @@ export function CompendiumPanel({
         <section className="compendium-detail-shell" aria-live="polite">
           <header className="compendium-detail-header">
             <button onClick={closeDetail} type="button">← Compendium</button>
-            <div><p className="eyebrow">{monsterEditor ? 'New custom monster' : entryEditor ? 'New rules entry' : selected?.kindLabel ?? activeCategoryLabel}</p><strong>{monsterEditor ? monsterEditor.entry.name : entryEditor ? entryEditor.entry.name : selected?.entry.name ?? 'New entry'}</strong></div>
+            <div><p className="eyebrow">{monsterEditor ? 'New custom monster' : entryEditor ? entryEditor.entry.category === 'item' ? 'New custom item' : 'New rules entry' : selected?.kindLabel ?? activeCategoryLabel}</p><strong>{monsterEditor ? monsterEditor.entry.name : entryEditor ? entryEditor.entry.name : selected?.entry.name ?? 'New entry'}</strong></div>
             <span className={`sync-badge sync-${storage.tone}`} title={storage.title}>{storage.label}</span>
           </header>
           <div className="compendium-detail-content">{detailContent}</div>

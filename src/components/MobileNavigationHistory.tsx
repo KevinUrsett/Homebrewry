@@ -19,8 +19,13 @@ const sectionLabels: Record<string, string> = {
 };
 
 const MOBILE_BREAKPOINT = '(max-width: 820px)';
-const EDGE_SWIPE_WIDTH = 36;
 const SWIPE_DISTANCE = 64;
+
+const mobileToolLabels: Partial<Record<MobileLocation['section'], string>> = {
+  worldbuilding: 'Compendium',
+  campaign: 'Campaign',
+  maps: 'Maps'
+};
 
 type SwipeStart = {
   pointerId: number;
@@ -107,6 +112,22 @@ function clickItem(location: MobileLocation) {
   }
 }
 
+function openSection(section: MobileLocation['section']) {
+  const toolLabel = mobileToolLabels[section];
+  if (!toolLabel) {
+    clickMobileNav(sectionLabels[section] ?? 'Edit');
+    return 0;
+  }
+
+  clickMobileNav('Tools');
+  window.setTimeout(() => {
+    [...document.querySelectorAll<HTMLButtonElement>('.mobile-tools-grid button')]
+      .find((button) => button.textContent?.trim() === toolLabel)
+      ?.click();
+  }, 30);
+  return 100;
+}
+
 export function MobileNavigationHistory() {
   const entriesRef = useRef<MobileLocation[]>([]);
   const indexRef = useRef(-1);
@@ -153,13 +174,13 @@ export function MobileNavigationHistory() {
     replayingRef.current = true;
 
     const openTargetSection = () => {
-      clickMobileNav(sectionLabels[location.section] ?? 'Edit');
+      const sectionDelay = openSection(location.section);
       window.setTimeout(() => {
         clickItem(location);
         window.setTimeout(() => {
           replayingRef.current = false;
         }, 90);
-      }, 70);
+      }, 70 + sectionDelay);
     };
 
     if (location.brewId) {
@@ -195,11 +216,7 @@ export function MobileNavigationHistory() {
         return;
       }
 
-      const fromLeft = event.clientX <= EDGE_SWIPE_WIDTH;
-      const fromRight = event.clientX >= window.innerWidth - EDGE_SWIPE_WIDTH;
-      swipeStartRef.current = fromLeft || fromRight
-        ? { pointerId: event.pointerId, x: event.clientX, y: event.clientY }
-        : null;
+      swipeStartRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
     };
 
     const onPointerUp = (event: PointerEvent) => {
@@ -211,8 +228,8 @@ export function MobileNavigationHistory() {
       const vertical = event.clientY - start.y;
       if (Math.abs(horizontal) < SWIPE_DISTANCE || Math.abs(horizontal) <= Math.abs(vertical)) return;
 
-      if (start.x <= EDGE_SWIPE_WIDTH && horizontal > 0) goBack();
-      if (start.x >= window.innerWidth - EDGE_SWIPE_WIDTH && horizontal < 0) goForward();
+      if (horizontal > 0) goBack();
+      if (horizontal < 0) goForward();
     };
 
     const clearSwipe = () => { swipeStartRef.current = null; };

@@ -73,14 +73,14 @@ describe('MobileNavigationHistory', () => {
     expect(app.classList.contains('mobile-preview')).toBe(true);
 
     await act(async () => {
-      dispatchTouchPointer('pointerdown', document, 12);
-      dispatchTouchPointer('pointerup', document, 98);
+      dispatchTouchPointer('pointerdown', document, 150);
+      dispatchTouchPointer('pointerup', document, 236);
     });
     expect(app.classList.contains('mobile-editor')).toBe(true);
 
     await act(async () => {
-      dispatchTouchPointer('pointerdown', document, 378);
-      dispatchTouchPointer('pointerup', document, 292);
+      dispatchTouchPointer('pointerdown', document, 240);
+      dispatchTouchPointer('pointerup', document, 154);
     });
     expect(app.classList.contains('mobile-preview')).toBe(true);
   });
@@ -95,8 +95,8 @@ describe('MobileNavigationHistory', () => {
     app.append(input);
 
     await act(async () => {
-      dispatchTouchPointer('pointerdown', input, 12);
-      dispatchTouchPointer('pointerup', input, 98);
+      dispatchTouchPointer('pointerdown', input, 150);
+      dispatchTouchPointer('pointerup', input, 236);
     });
     expect(app.classList.contains('mobile-preview')).toBe(true);
   });

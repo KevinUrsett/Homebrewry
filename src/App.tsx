@@ -14,7 +14,7 @@ import { PrivateMonsterImportDialog } from './components/PrivateMonsterImportDia
 import { ReferenceDialog } from './components/ReferenceDialog';
 import { WorldbuildingReferenceDialog } from './components/WorldbuildingReferenceDialog';
 import { checkForPwaUpdate } from './components/PwaUpdateNotice';
-import type { MarkdownEditorHandle } from './components/MarkdownEditor';
+import { SpellcheckContext, type MarkdownEditorHandle } from './components/MarkdownEditor';
 import {
   creationDeviceLabel,
   currentDeviceId,
@@ -133,6 +133,20 @@ function readDeletedAssetIds(): string[] {
   }
 }
 
+function isSpellcheckableField(target: EventTarget | null): target is HTMLElement {
+  if (target instanceof HTMLTextAreaElement) return true;
+  if (target instanceof HTMLInputElement) return ['text', 'search', 'email', 'url', 'tel'].includes(target.type);
+  return target instanceof HTMLElement && target.isContentEditable;
+}
+
+function applySpellcheckSetting(target: EventTarget | null, enabled: boolean) {
+  if (!isSpellcheckableField(target)) return;
+  target.spellcheck = enabled;
+  target.setAttribute('spellcheck', enabled ? 'true' : 'false');
+  target.setAttribute('autocorrect', enabled ? 'on' : 'off');
+  target.setAttribute('writingsuggestions', enabled ? 'true' : 'false');
+}
+
 export default function App() {
   const [brews, setBrews] = useState<Brew[]>([]);
   const [assets, setAssets] = useState<BrewAsset[]>([]);
@@ -195,6 +209,11 @@ export default function App() {
   const [worldbuildingReferenceEntry, setWorldbuildingReferenceEntry] = useState<WorldbuildingEntry | null>(null);
   const editorRef = useRef<MarkdownEditorHandle>(null);
   const selectionRef = useRef({ start: 0, end: 0 });
+
+  useEffect(() => {
+    document.querySelectorAll('.app-shell input, .app-shell textarea, .app-shell [contenteditable="true"]')
+      .forEach((field) => applySpellcheckSetting(field, spellcheckEnabled));
+  }, [spellcheckEnabled]);
 
   const openReferenceEntry = (entry: CatalogueEntry) => {
     setReferenceEquipment(null);
@@ -1821,7 +1840,8 @@ export default function App() {
   };
 
   return (
-    <div className={`app-shell mobile-${mobileSection}`}>
+    <SpellcheckContext.Provider value={spellcheckEnabled}>
+    <div className={`app-shell mobile-${mobileSection}`} onFocusCapture={(event) => applySpellcheckSetting(event.target, spellcheckEnabled)}>
       <header className="app-header">
         <div className="app-header-main">
           <div className="brand-lockup">
@@ -2310,5 +2330,6 @@ export default function App() {
         />
       )}
     </div>
+    </SpellcheckContext.Provider>
   );
 }

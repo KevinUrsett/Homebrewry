@@ -102,6 +102,8 @@ type DriveSaveNotice = {
   message: string;
 };
 
+type QuickCreateTarget = 'item' | 'monster' | 'npc';
+
 const deletedAssetStorageKey = 'homebrewry-deleted-assets';
 const activeBrewStorageKey = 'homebrewry-active-brew-id';
 
@@ -172,6 +174,7 @@ export default function App() {
   const [worldbuildingOpen, setWorldbuildingOpen] = useState(false);
   const [ideasOpen, setIdeasOpen] = useState(false);
   const [captureMenuOpen, setCaptureMenuOpen] = useState(false);
+  const [quickCreateTarget, setQuickCreateTarget] = useState<QuickCreateTarget | null>(null);
   const [mapsOpen, setMapsOpen] = useState(false);
   const [selectedMapId, setSelectedMapId] = useState<string | null>(null);
   const [nameGeneratorTarget, setNameGeneratorTarget] = useState<'editor' | 'worldbuilding' | null>(null);
@@ -529,6 +532,12 @@ export default function App() {
     setIdeasOpen(false);
     setPendingInsertion(null);
     setMobileSection('worldbuilding');
+  };
+
+  const openQuickCreate = (target: QuickCreateTarget) => {
+    setCaptureMenuOpen(false);
+    setQuickCreateTarget(target);
+    openCatalogue();
   };
 
   const importMonsterArchive = async (file: File): Promise<PrivateMonsterImportReport> => {
@@ -2008,6 +2017,7 @@ export default function App() {
           onOpenPrivateMonsterImport={() => setPrivateMonsterImportOpen(true)}
           onSaveCustomEntry={saveGenericCustomEntry}
           onSaveCustomMonster={saveCustomMonster}
+          onQuickCreateHandled={() => setQuickCreateTarget(null)}
           onSelectCatalogue={(entry) => {
             setCatalogueSelection(entry);
             if (entry) setWorldbuildingSelectedId(null);
@@ -2019,6 +2029,7 @@ export default function App() {
           onSetNpcStatus={setNpcStatus}
           onUpdateWorldbuilding={persistWorldbuildingEntry}
           privateMonsterCount={privateMonsterEntries.length}
+          quickCreateTarget={quickCreateTarget}
           selectedWorldbuildingId={worldbuildingSelectedId}
           syncState={campaignDataSync?.syncState ?? 'local'}
           onCreatePlotBeat={createPlotBeatFromWorldbuilding}
@@ -2171,6 +2182,14 @@ export default function App() {
                 <button onClick={() => { setCaptureMenuOpen(false); openCatalogue(); }} type="button">Reference</button>
                 <button onClick={() => { setCaptureMenuOpen(false); openEncounters(); }} type="button">Encounter</button>
                 <button onClick={() => { setCaptureMenuOpen(false); setNameGeneratorTarget('editor'); }} type="button">Name</button>
+              </div>
+              <div className="mobile-writing-tool-group mobile-writing-quick-create" aria-label="Quick create">
+                <span>Quick create</span>
+                <div>
+                  <button onClick={() => openQuickCreate('item')} type="button">Item</button>
+                  <button onClick={() => openQuickCreate('monster')} type="button">Monster</button>
+                  <button onClick={() => openQuickCreate('npc')} type="button">NPC</button>
+                </div>
               </div>
               <div className="mobile-writing-tool-group mobile-writing-editor-settings" aria-label="Editor settings">
                 <button aria-pressed={spellcheckEnabled} onClick={() => setSpellcheckEnabled((current) => { const next = !current; localStorage.setItem('homebrewry-spellcheck', next ? 'on' : 'off'); return next; })} type="button">

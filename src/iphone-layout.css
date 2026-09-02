@@ -12,11 +12,11 @@
     }
 
     /* CodeMirror edits through a contenteditable element rather than an input.
-       iOS applies the same focus zoom when its computed text size is below 16px. */
-    .app-shell.mobile-editor .markdown-editor .cm-editor,
-    .app-shell.mobile-editor .markdown-editor .cm-scroller,
-    .app-shell.mobile-editor .markdown-editor .cm-content,
-    .app-shell.mobile-editor .markdown-editor .cm-line {
+       These editors also appear in Compendium and Worldbuilding, outside
+       `.mobile-editor`, so keep every editable CodeMirror host at 16px. */
+    .markdown-editor .cm-editor,
+    .markdown-editor .cm-scroller,
+    .markdown-editor .cm-content {
       font-size: 16px !important;
       -webkit-text-size-adjust: 100%;
     }

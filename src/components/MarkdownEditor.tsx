@@ -1,4 +1,4 @@
-import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
+import { createContext, useContext, useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { Compartment, EditorState, Facet } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
@@ -21,6 +21,8 @@ export type MarkdownEditorHandle = {
   focus: (position?: number) => void;
   scrollTo: (position: number) => void;
 };
+
+export const SpellcheckContext = createContext(true);
 
 type MarkdownEditorProps = {
   content: string;
@@ -395,7 +397,7 @@ export function MarkdownEditor({
   customCatalogueCategories = [],
   ariaLabel = 'Markdown source',
   compact = false,
-  spellcheckEnabled = true,
+  spellcheckEnabled,
   assets = emptyAssets,
   onRotateImage,
   onDeleteImage,
@@ -405,6 +407,8 @@ export function MarkdownEditor({
   onOpenEncounter,
   ref
 }: MarkdownEditorProps & { ref?: Ref<MarkdownEditorHandle> }) {
+  const inheritedSpellcheckEnabled = useContext(SpellcheckContext);
+  const resolvedSpellcheckEnabled = spellcheckEnabled ?? inheritedSpellcheckEnabled;
   const parentRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const initialContentRef = useRef(content);
@@ -470,7 +474,12 @@ export function MarkdownEditor({
           markdown(),
           syntaxHighlighting(markdownHighlightStyle),
           EditorView.lineWrapping,
-          EditorView.contentAttributes.of({ 'aria-label': ariaLabel, spellcheck: spellcheckEnabled ? 'true' : 'false' }),
+          EditorView.contentAttributes.of({
+            'aria-label': ariaLabel,
+            spellcheck: resolvedSpellcheckEnabled ? 'true' : 'false',
+            autocorrect: resolvedSpellcheckEnabled ? 'on' : 'off',
+            writingsuggestions: resolvedSpellcheckEnabled ? 'true' : 'false'
+          }),
           referenceDecorations,
           encounterOpenHandlerCompartment.of(onOpenEncounter ? encounterOpenHandler.of(onOpenEncounter) : []),
           imageAssetLookupCompartment.of(imageAssetLookup.of((source) => assetsRef.current.get(source.slice('asset://'.length)))),
@@ -535,8 +544,13 @@ export function MarkdownEditor({
   }, [ariaLabel]);
 
   useEffect(() => {
-    viewRef.current?.contentDOM.setAttribute('spellcheck', spellcheckEnabled ? 'true' : 'false');
-  }, [spellcheckEnabled]);
+    const content = viewRef.current?.contentDOM;
+    if (!content) return;
+    content.spellcheck = resolvedSpellcheckEnabled;
+    content.setAttribute('spellcheck', resolvedSpellcheckEnabled ? 'true' : 'false');
+    content.setAttribute('autocorrect', resolvedSpellcheckEnabled ? 'on' : 'off');
+    content.setAttribute('writingsuggestions', resolvedSpellcheckEnabled ? 'true' : 'false');
+  }, [resolvedSpellcheckEnabled]);
 
   useEffect(() => {
     if (!mobileReferenceSelection) return undefined;

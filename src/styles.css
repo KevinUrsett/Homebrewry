@@ -11,6 +11,7 @@ body { margin: 0; min-width: 320px; min-height: 100vh; }
 button, input, textarea, select { font: inherit; }
 button { cursor: pointer; }
 button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 3px solid #c5963e; outline-offset: 2px; }
+input, textarea, select, .markdown-editor { text-transform: none; }
 
 .app-shell { background: #e5ded0; display: flex; flex-direction: column; height: 100vh; height: var(--app-height, 100dvh); min-height: 0; }
 

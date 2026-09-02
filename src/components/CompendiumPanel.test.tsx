@@ -78,6 +78,26 @@ const sunshardBlade: CatalogueEntry = {
   ruleset: 'Homebrewry'
 };
 
+const longsword: CatalogueEntry = {
+  id: 'longsword',
+  category: 'item',
+  name: 'Longsword',
+  description: 'A martial melee weapon.',
+  data: { type: 'meleeWeapon' },
+  source: 'SRD-521',
+  ruleset: '5.5e'
+};
+
+const plusOneLongsword: CatalogueEntry = {
+  id: 'plus-one-longsword',
+  category: 'item',
+  name: '+1 Longsword',
+  description: 'You have a +1 bonus to attack and damage rolls made with this magic weapon.',
+  data: { type: 'meleeWeapon', rarity: 'uncommon' },
+  source: 'SRD-521',
+  ruleset: '5.5e'
+};
+
 const silentImage: CatalogueEntry = {
   id: 'silent-image',
   category: 'spell',
@@ -126,7 +146,7 @@ async function renderCompendium(onCreateWorldbuilding = vi.fn(), catalogueSelect
   await act(async () => {
     root.render(
       <CompendiumPanel
-        catalogueEntries={[monster, wolf, staffOfSparks, cloakOfFeathers, sunshardBlade, silentImage, emberLadder]}
+        catalogueEntries={[monster, wolf, staffOfSparks, cloakOfFeathers, sunshardBlade, longsword, plusOneLongsword, silentImage, emberLadder]}
         catalogueError={null}
         catalogueLoading={false}
         catalogueSelection={catalogueSelection}
@@ -258,7 +278,7 @@ describe('CompendiumPanel', () => {
     expect(container.querySelector('#monster-filter-dialog')).toBeNull();
   });
 
-  it('filters items by source, type, rarity, and attunement', async () => {
+  it('keeps magical loot but hides mundane and plain +1 items', async () => {
     const container = await renderCompendium();
     const categoryButton = Array.from(container.querySelectorAll('button')).find((button) => button.textContent?.includes('Category'));
     await act(async () => categoryButton?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
@@ -269,21 +289,25 @@ describe('CompendiumPanel', () => {
     const type = container.querySelector('select[aria-label="Filter items by type"]') as HTMLSelectElement;
     const rarity = container.querySelector('select[aria-label="Filter items by rarity"]') as HTMLSelectElement;
     const attunement = container.querySelector('select[aria-label="Filter items by attunement"]') as HTMLSelectElement;
+    expect(Array.from(source.options).map((option) => option.textContent)).toContain('Made in Homebrewry');
     expect(Array.from(source.options).map((option) => option.textContent)).toContain("Dungeon Master's Guide");
-    expect(Array.from(source.options).map((option) => option.textContent)).not.toContain('Private import');
+    expect(container.querySelector('.compendium-results')?.textContent).toContain('Sunshard Blade');
+    expect(container.querySelector('.compendium-results')?.textContent).toContain('Cloak of Feathers');
+    expect(container.querySelector('.compendium-results')?.textContent).toContain('Staff of Sparks');
+    expect(container.querySelector('.compendium-results')?.textContent).not.toContain('Longsword');
+    expect(container.querySelector('.compendium-results')?.textContent).not.toContain('+1 Longsword');
 
     await act(async () => {
-      source.value = "Dungeon Master's Guide";
+      source.value = 'Homebrewry';
       source.dispatchEvent(new Event('change', { bubbles: true }));
-      type.value = 'staff';
+      type.value = 'meleeWeapon';
       type.dispatchEvent(new Event('change', { bubbles: true }));
-      rarity.value = 'rare';
+      rarity.value = '';
       rarity.dispatchEvent(new Event('change', { bubbles: true }));
-      attunement.value = 'required';
+      attunement.value = 'not-required';
       attunement.dispatchEvent(new Event('change', { bubbles: true }));
     });
-    expect(container.querySelector('.compendium-results')?.textContent).toContain('Staff of Sparks');
-    expect(container.querySelector('.compendium-results')?.textContent).not.toContain('Cloak of Feathers');
+    expect(container.querySelector('.compendium-results')?.textContent).toContain('Sunshard Blade');
 
     await act(async () => {
       source.value = '';
@@ -292,21 +316,14 @@ describe('CompendiumPanel', () => {
       type.dispatchEvent(new Event('change', { bubbles: true }));
       rarity.value = '';
       rarity.dispatchEvent(new Event('change', { bubbles: true }));
-      attunement.value = 'not-required';
-      attunement.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-    expect(container.querySelector('.compendium-results')?.textContent).toContain('Cloak of Feathers');
-    expect(container.querySelector('.compendium-results')?.textContent).not.toContain('Staff of Sparks');
-
-    await act(async () => {
       attunement.value = '';
       attunement.dispatchEvent(new Event('change', { bubbles: true }));
-      source.value = 'Homebrewry';
-      source.dispatchEvent(new Event('change', { bubbles: true }));
     });
     expect(container.querySelector('.compendium-results')?.textContent).toContain('Sunshard Blade');
-    expect(container.querySelector('.compendium-results')?.textContent).not.toContain('Cloak of Feathers');
-    expect(container.querySelector('.compendium-results')?.textContent).not.toContain('Staff of Sparks');
+    expect(container.querySelector('.compendium-results')?.textContent).toContain('Cloak of Feathers');
+    expect(container.querySelector('.compendium-results')?.textContent).toContain('Staff of Sparks');
+    expect(container.querySelector('.compendium-results')?.textContent).not.toContain('Longsword');
+    expect(container.querySelector('.compendium-results')?.textContent).not.toContain('+1 Longsword');
 
     const filterTrigger = container.querySelector('button[aria-controls="item-filter-dialog"]') as HTMLButtonElement;
     await act(async () => filterTrigger.dispatchEvent(new MouseEvent('click', { bubbles: true })));

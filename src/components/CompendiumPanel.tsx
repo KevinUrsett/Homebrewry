@@ -465,6 +465,27 @@ function isCatalogueItem(item: CompendiumItem | null): item is CompendiumItem & 
   return Boolean(item && item.source === 'rules');
 }
 
+function hasMagicRarity(entry: CatalogueEntry): boolean {
+  return typeof entry.data.rarity === 'string' && entry.data.rarity.trim().length > 0;
+}
+
+function isPlainPlusOneItem(entry: CatalogueEntry): boolean {
+  if (!/^\+1(?:\s|$)/.test(entry.name.trim())) return false;
+
+  const effect = entry.description.replace(/\s+/g, ' ').trim();
+  return [
+    /^You have a \+1 bonus to AC while wearing this armor\.$/i,
+    /^While holding this Shield, you have a \+1 bonus to Armor Class, in addition to the Shield's normal bonus to AC\.$/i,
+    /^You have a \+1 bonus to attack and damage rolls made with this magic weapon\.$/i,
+    /^You have a \+1 bonus to attack and damage rolls made with this piece of magic ammunition\. Once it hits a target, the ammunition is no longer magical\.$/i
+  ].some((pattern) => pattern.test(effect));
+}
+
+function showCompendiumItem(entry: CatalogueEntry): boolean {
+  if (entry.source === 'Custom') return true;
+  return hasMagicRarity(entry) && !isPlainPlusOneItem(entry);
+}
+
 function itemMetadataForItem(item: CompendiumItem) {
   if (isCatalogueItem(item)) return itemMetadataForCatalogueEntry(item.entry);
   return item.category === 'items' ? { ...emptyItemMetadata, sources: ['Campaign'] } : emptyItemMetadata;
@@ -574,7 +595,12 @@ export function CompendiumPanel({
         sourceLabel: `Campaign · ${kindLabel}`
       };
     });
-    const rulesItems = catalogueEntries.map((entry) => {
+    // Campaign loot should be magical, apart from entries created by the DM.
+    // Hide imported mundane equipment and generic +1-only variants, while
+    // retaining distinctive magic items from the bundled catalogue.
+    const rulesItems = catalogueEntries
+      .filter((entry) => entry.category !== 'item' || showCompendiumItem(entry))
+      .map((entry) => {
       const itemCategory = categoryForCatalogueEntry(entry);
       const kindLabel = catalogueCategoryLabel(entry.category, customCatalogueCategories);
       const metadata = monsterMetadataForCatalogueEntry(entry);
@@ -598,7 +624,7 @@ export function CompendiumPanel({
         source: 'rules' as const,
         sourceLabel: `${entry.ruleset} · ${entry.source}`
       };
-    });
+      });
     return [...campaignItems, ...rulesItems];
   }, [catalogueEntries, customCatalogueCategories, types, worldbuildingEntries]);
 

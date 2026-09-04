@@ -174,6 +174,8 @@ describe('BrewPreview', () => {
 
     const treasure = container.querySelector('.brew-encounter-treasure');
     expect(treasure?.textContent).toContain('Treasure');
+    expect(treasure?.querySelector('summary')?.textContent).toContain('2 items');
+    expect((treasure as HTMLDetailsElement | null)?.open).toBe(false);
     expect(treasure?.textContent).toContain('Moonblade');
     expect(treasure?.textContent).toContain('×2');
     expect(treasure?.textContent).toContain('Cultist, Cultist 2');

@@ -492,14 +492,22 @@ input, textarea, select, .markdown-editor { text-transform: none; }
 .combatant-hp-change button { background: #f7f0df; border: 1px solid #ad9576; border-radius: 5px; color: #422f25; font-size: .72rem; padding: 6px 8px; }
 .combatant-hp-change button:disabled { cursor: not-allowed; opacity: .55; }
 .brew-encounter-reference-wrap { margin: .85em 0; }
+.brew-encounter-reference-wrap.has-treasure { background: #fffaf0; border: 1px solid color-mix(in srgb, var(--brew-accent), #fff 35%); }
 .brew-encounter-reference { background: #e9d7ae; border: 1px solid color-mix(in srgb, var(--brew-accent), #fff 35%); border-left: 5px solid var(--brew-accent); color: #39291f; display: grid; font-family: "Scaly Sans", Inter, sans-serif; gap: 2px; margin: 0; padding: 9px 12px; text-align: left; width: 100%; }
+.brew-encounter-reference-wrap.has-treasure .brew-encounter-reference { border: 0; border-left: 5px solid var(--brew-accent); }
 .brew-encounter-reference:hover, .brew-encounter-reference:focus-visible { background: #f0e1bd; }
 .brew-encounter-reference span { color: var(--brew-accent); font-size: .64rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .brew-encounter-reference strong { font-family: "Bookinsanity", Georgia, serif; font-size: 1.15rem; }
 .brew-encounter-reference small { color: #725d48; font-size: .68rem; }
-.brew-encounter-treasure { background: #fffaf0; border: 1px solid color-mix(in srgb, var(--brew-accent), #fff 50%); border-top: 0; display: grid; gap: 7px; padding: 9px 12px 11px 17px; }
-.brew-encounter-treasure > span { color: var(--brew-accent); font-family: "Scaly Sans", Inter, sans-serif; font-size: .61rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-.brew-encounter-treasure ul { display: grid; gap: 5px; list-style: none; margin: 0; padding: 0; }
+.brew-encounter-treasure { border-top: 1px solid color-mix(in srgb, var(--brew-accent), #fff 55%); }
+.brew-encounter-treasure > summary { align-items: center; cursor: pointer; display: grid; gap: 8px; grid-template-columns: 1fr auto auto; list-style: none; padding: 8px 12px; }
+.brew-encounter-treasure > summary::-webkit-details-marker { display: none; }
+.brew-encounter-treasure > summary::after { color: var(--brew-accent); content: '⌄'; font: 700 1rem/1 Georgia, serif; transform: translateY(-1px); }
+.brew-encounter-treasure[open] > summary { background: #f6ecd6; border-bottom: 1px solid color-mix(in srgb, var(--brew-accent), #fff 62%); }
+.brew-encounter-treasure[open] > summary::after { content: '⌃'; }
+.brew-encounter-treasure > summary > span { color: var(--brew-accent); font-family: "Scaly Sans", Inter, sans-serif; font-size: .61rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.brew-encounter-treasure > summary > strong { color: #725d48; font: 700 .72rem/1 "Scaly Sans", Inter, sans-serif; }
+.brew-encounter-treasure ul { display: grid; gap: 7px; list-style: none; margin: 0; padding: 10px 12px 12px; }
 .brew-encounter-treasure li { align-items: baseline; display: grid; gap: 6px; grid-template-columns: minmax(0, 1fr) auto; }
 .brew-encounter-treasure li > button { background: transparent; border: 0; color: #503326; cursor: pointer; font: 700 .82rem/1.25 "Scaly Sans", Inter, sans-serif; min-width: 0; overflow-wrap: anywhere; padding: 0; text-align: left; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--brew-accent), transparent 55%); text-underline-offset: 2px; }
 .brew-encounter-treasure li > strong { color: #6c594c; font: 700 .82rem/1.25 "Scaly Sans", Inter, sans-serif; }

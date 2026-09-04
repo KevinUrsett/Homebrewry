@@ -198,17 +198,21 @@ function EncounterReferenceLink({
       .map(([itemId, item]) => ({ itemId, ...item }))
       .sort((left, right) => (left.entry?.name ?? 'Missing item').localeCompare(right.entry?.name ?? 'Missing item'));
   }, [catalogue, encounter]);
+  const treasureCount = treasure.reduce((count, item) => count + item.quantity, 0);
 
   return (
-    <section className="brew-encounter-reference-wrap">
+    <section className={`brew-encounter-reference-wrap${treasure.length ? ' has-treasure' : ''}`}>
       <button className="brew-encounter-reference" onClick={() => onOpen?.(encounter)} type="button">
         <span>Combat encounter</span>
         <strong>{encounter.name || children}</strong>
         <small>{encounter.participants.length} combatant{encounter.participants.length === 1 ? '' : 's'} · {encounter.status}</small>
       </button>
       {treasure.length > 0 && (
-        <section aria-label={`${encounter.name || 'Combat encounter'} treasure`} className="brew-encounter-treasure">
-          <span>Treasure</span>
+        <details aria-label={`${encounter.name || 'Combat encounter'} treasure`} className="brew-encounter-treasure">
+          <summary>
+            <span>Treasure</span>
+            <strong>{treasureCount} item{treasureCount === 1 ? '' : 's'}</strong>
+          </summary>
           <ul>
             {treasure.map(({ itemId, entry, quantity, carriers }) => (
               <li key={itemId}>
@@ -220,7 +224,7 @@ function EncounterReferenceLink({
               </li>
             ))}
           </ul>
-        </section>
+        </details>
       )}
     </section>
   );

@@ -24,7 +24,7 @@ describe('catalogue data', () => {
       category: 'monster',
       source: 'SRD-521',
       ruleset: '5.5e',
-      data: { ac: '17' }
+      data: expect.objectContaining({ ac: '17', sources: ['SRD-521'] })
     })]);
     expect(toCatalogueMap(entries).get('monster:aboleth-id')?.name).toBe('Aboleth');
   });

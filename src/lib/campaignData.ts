@@ -19,6 +19,7 @@ import type {
 import { worldbuildingKinds } from '../types';
 import { isCatalogueCategory, type CustomCatalogueCategory, type CustomCatalogueEntry } from '../catalogue/types';
 import { normaliseCustomCatalogueEntry } from '../catalogue/customEntries';
+import { normaliseMonsterEquipment } from '../catalogue/magicItems';
 import { isBelentorDate } from './belentorCalendar';
 import { synchroniseEntityReferences, synchroniseWorldbuildingEntities } from './livingWorld';
 
@@ -66,6 +67,7 @@ function parseParticipant(value: unknown): EncounterParticipant {
     }
     source = { category: 'monster', id: requiredString(value.source.id, 'combatant source ID') };
   }
+  const encounterEquipment = normaliseMonsterEquipment(value.encounterEquipment);
 
   return {
     id: requiredString(value.id, 'combatant ID'),
@@ -75,6 +77,7 @@ function parseParticipant(value: unknown): EncounterParticipant {
     ...(value.entityId === undefined ? {} : { entityId: requiredString(value.entityId, 'combatant entity ID') }),
     ...(value.availabilityOverride === 'flashback' || value.availabilityOverride === 'temporary' ? { availabilityOverride: value.availabilityOverride } : {}),
     ...(source ? { source } : {}),
+    ...(encounterEquipment.length ? { encounterEquipment } : {}),
     armorClass: nullableNumber(value.armorClass, 'combatant armor class'),
     maxHitPoints: nullableNumber(value.maxHitPoints, 'combatant maximum hit points'),
     currentHitPoints: nullableNumber(value.currentHitPoints, 'combatant current hit points'),

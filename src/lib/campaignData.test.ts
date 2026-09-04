@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createCampaignDataSnapshot, keepBothCampaignData, parseCampaignDataSnapshot } from './campaignData';
 import { createCustomCatalogueCategory, createCustomCatalogueEntry, createCustomMonster } from '../catalogue/customEntries';
 import type { CatalogueEntry } from '../catalogue/types';
+import type { Encounter } from '../types';
 import { createEncounter, createPartyMember } from './encounters';
 import { createWorldbuildingEntry, createWorldbuildingType } from './worldbuilding';
 import { createBlankPlotBoard } from './plotBoard';
@@ -138,6 +139,31 @@ describe('campaign data snapshots', () => {
       entityId: 'worldbuilding:talon',
       name: 'Talon Bloodwing'
     });
+  });
+
+  it('preserves encounter-only monster equipment and its configured effects through Drive data', () => {
+    const equipped: Encounter = {
+      ...createEncounter('Vault guard'),
+      participants: [{
+        id: 'participant-1',
+        kind: 'monster' as const,
+        name: 'Clay Golem',
+        source: { category: 'monster' as const, id: 'clay-golem' },
+        armorClass: 14,
+        maxHitPoints: 133,
+        currentHitPoints: 133,
+        initiative: 3,
+        encounterEquipment: [{
+          itemId: 'battleaxe',
+          actionIndexes: [0],
+          encounterModifiers: { changes: [{ field: 'armorClass', operation: 'add' as const, value: 2 }], traits: [{ name: 'Stoneward', text: 'The golem ignores difficult terrain.' }] },
+          encounterWeapon: { shortDescription: '+2 Battleaxe', effectText: '', attackBonus: 2, damageBonus: 2, extraDamageDice: '', extraDamageType: '' }
+        }]
+      }]
+    };
+    const snapshot = createCampaignDataSnapshot([equipped], [], [], '2026-09-04T16:00:00.000Z');
+
+    expect(parseCampaignDataSnapshot(JSON.parse(JSON.stringify(snapshot))).encounters[0]?.participants[0]?.encounterEquipment).toEqual(equipped.participants[0].encounterEquipment);
   });
 
   it('keeps conflicting records as separately named local copies', () => {

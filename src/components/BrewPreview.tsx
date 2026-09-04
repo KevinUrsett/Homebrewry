@@ -179,6 +179,7 @@ function EncounterReferenceLink({
   onOpen?: (encounter: Encounter) => void;
   onReferenceOpen?: (entry: CatalogueEntry) => void;
 }) {
+  const [treasureOpen, setTreasureOpen] = useState(false);
   const treasure = useMemo(() => {
     const byItemId = new Map<string, { entry: CatalogueEntry | null; quantity: number; carriers: string[] }>();
     for (const participant of encounter.participants) {
@@ -201,32 +202,38 @@ function EncounterReferenceLink({
   const treasureCount = treasure.reduce((count, item) => count + item.quantity, 0);
 
   return (
-    <section className={`brew-encounter-reference-wrap${treasure.length ? ' has-treasure' : ''}`}>
+    <span className={`brew-encounter-reference-wrap${treasure.length ? ' has-treasure' : ''}`}>
       <button className="brew-encounter-reference" onClick={() => onOpen?.(encounter)} type="button">
         <span>Combat encounter</span>
         <strong>{encounter.name || children}</strong>
         <small>{encounter.participants.length} combatant{encounter.participants.length === 1 ? '' : 's'} · {encounter.status}</small>
       </button>
       {treasure.length > 0 && (
-        <details aria-label={`${encounter.name || 'Combat encounter'} treasure`} className="brew-encounter-treasure">
-          <summary>
+        <span className={`brew-encounter-treasure${treasureOpen ? ' is-open' : ''}`}>
+          <button
+            aria-controls={`encounter-treasure-${encounter.id}`}
+            aria-expanded={treasureOpen}
+            className="brew-encounter-treasure-toggle"
+            onClick={() => setTreasureOpen((open) => !open)}
+            type="button"
+          >
             <span>Treasure</span>
             <strong>{treasureCount} item{treasureCount === 1 ? '' : 's'}</strong>
-          </summary>
-          <ul>
+          </button>
+          {treasureOpen && <span className="brew-encounter-treasure-list" id={`encounter-treasure-${encounter.id}`}>
             {treasure.map(({ itemId, entry, quantity, carriers }) => (
-              <li key={itemId}>
+              <span className="brew-encounter-treasure-entry" key={itemId}>
                 {entry
                   ? <button onClick={() => onReferenceOpen?.(entry)} type="button">{entry.name}</button>
                   : <strong>Missing Compendium item</strong>}
                 <b>×{quantity}</b>
                 <small>{carriers.join(', ')}</small>
-              </li>
+              </span>
             ))}
-          </ul>
-        </details>
+          </span>}
+        </span>
       )}
-    </section>
+    </span>
   );
 }
 

@@ -174,12 +174,16 @@ describe('BrewPreview', () => {
 
     const treasure = container.querySelector('.brew-encounter-treasure');
     expect(treasure?.textContent).toContain('Treasure');
-    expect(treasure?.querySelector('summary')?.textContent).toContain('2 items');
-    expect((treasure as HTMLDetailsElement | null)?.open).toBe(false);
+    expect(container.querySelector('p > section, p > details')).toBeNull();
+    const treasureToggle = treasure?.querySelector<HTMLButtonElement>('.brew-encounter-treasure-toggle');
+    expect(treasureToggle?.textContent).toContain('2 items');
+    expect(treasure?.querySelector('.brew-encounter-treasure-list')).toBeNull();
+    await act(async () => treasureToggle?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(treasureToggle?.getAttribute('aria-expanded')).toBe('true');
     expect(treasure?.textContent).toContain('Moonblade');
     expect(treasure?.textContent).toContain('×2');
     expect(treasure?.textContent).toContain('Cultist, Cultist 2');
-    const item = treasure?.querySelector<HTMLButtonElement>('button');
+    const item = treasure?.querySelector<HTMLButtonElement>('.brew-encounter-treasure-entry button');
     await act(async () => item?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(onReferenceOpen).toHaveBeenCalledWith(moonblade);
   });

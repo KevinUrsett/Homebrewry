@@ -328,6 +328,45 @@ describe('EncounterPanel monster browser', () => {
     expect(guard.data.actions).toEqual([{ name: 'Shortsword', text: '_Melee Attack Roll:_ +3, reach 5 ft. _Hit:_ 5 (1d6 + 2) piercing damage.' }]);
   });
 
+  it('collects monster equipment in the automatic Treasure list', async () => {
+    const stormfang: CatalogueEntry = {
+      id: 'stormfang', category: 'item', name: 'Stormfang', description: '', source: 'Custom', ruleset: 'Homebrewry', data: {}
+    };
+    const encounterWithTreasure: Encounter = {
+      ...encounter,
+      participants: [
+        {
+          id: 'guard-1', kind: 'monster', name: 'Guard', source: { category: 'monster', id: 'guard' },
+          armorClass: 16, maxHitPoints: 11, currentHitPoints: 11, initiative: 12,
+          encounterEquipment: [{ itemId: 'stormfang', actionIndexes: [] }]
+        },
+        {
+          id: 'captain-1', kind: 'monster', name: 'Orc captain', source: { category: 'monster', id: 'orc-captain' },
+          armorClass: 15, maxHitPoints: 30, currentHitPoints: 30, initiative: 10,
+          encounterEquipment: [{ itemId: 'stormfang', actionIndexes: [] }]
+        }
+      ]
+    };
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push({ container, root });
+
+    await act(async () => {
+      root.render(<EncounterPanel encounters={[encounterWithTreasure]} items={[stormfang]} loading={false} monsters={[]} onCreateEncounter={vi.fn()} onCreatePartyMember={vi.fn()} onDeleteEncounter={vi.fn()} onDeletePartyMember={vi.fn()} onInsertReference={vi.fn()} onSelectEncounter={vi.fn()} onUpdateEncounter={vi.fn()} onUpdatePartyMember={vi.fn()} partyMembers={[]} selectedId={encounterWithTreasure.id} syncState="synced" />);
+    });
+
+    const treasureTab = Array.from(container.querySelectorAll<HTMLButtonElement>('button')).find((button) => button.textContent === 'Treasure (1)');
+    await act(async () => treasureTab?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    expect(treasureTab?.getAttribute('aria-selected')).toBe('true');
+    expect(container.querySelector('.treasure-list')?.textContent).toContain('Stormfang');
+    expect(container.querySelector('.treasure-list')?.textContent).toContain('×2');
+    expect(container.querySelector('.treasure-list')?.textContent).toContain('Guard');
+    expect(container.querySelector('.treasure-list')?.textContent).toContain('Orc captain');
+    expect(container.querySelector('.treasure-list')?.textContent).toContain('Test encounter');
+  });
+
   it('adds a confirmed Worldbuilding NPC with its current status and stable entity link', async () => {
     const container = document.createElement('div');
     document.body.append(container);

@@ -99,7 +99,7 @@ type EncounterMonsterFilterControlsProps = {
   onFilterChange: <Key extends keyof EncounterMonsterFilters>(key: Key, value: EncounterMonsterFilters[Key]) => void;
   variant: 'inline' | 'drawer';
 };
-type EncounterView = 'create' | 'run';
+type EncounterView = 'create' | 'run' | 'treasure';
 type EncounterItemFilters = ItemFilterFields;
 
 const MONSTER_RESULTS_PAGE_SIZE = Number.MAX_SAFE_INTEGER;
@@ -402,6 +402,7 @@ export function EncounterPanel({
 }: EncounterPanelProps) {
   const [monsterQuery, setMonsterQuery] = useState('');
   const [encounterView, setEncounterView] = useState<EncounterView>('create');
+  const [treasureQuery, setTreasureQuery] = useState('');
   const [savedListAdjusting, setSavedListAdjusting] = useState(false);
   const [savedListHeight, setSavedListHeight] = useState(readSavedEncounterListHeight);
   const [editingEncounter, setEditingEncounter] = useState(false);
@@ -546,6 +547,26 @@ export function EncounterPanel({
   }, [encounterItemMetadataById]);
   const equipmentItemFilterCount = Object.values(equipmentItemFilters).filter(Boolean).length;
   const encounterItemCatalogue = useMemo(() => new Map(items.map((item) => [`item:${item.id}`, item] as const)), [items]);
+  const treasureItems = useMemo(() => {
+    const byItemId = new Map<string, { item: CatalogueEntry | null; quantity: number; carriers: Array<{ encounter: string; monster: string }> }>();
+    for (const encounter of encounters) {
+      for (const participant of encounter.participants) {
+        if (participant.kind !== 'monster') continue;
+        for (const equipment of participant.encounterEquipment ?? []) {
+          const current = byItemId.get(equipment.itemId) ?? { item: items.find((item) => item.id === equipment.itemId) ?? null, quantity: 0, carriers: [] };
+          current.quantity += 1;
+          current.carriers.push({ encounter: encounter.name || 'Untitled encounter', monster: participant.name || 'Unnamed monster' });
+          byItemId.set(equipment.itemId, current);
+        }
+      }
+    }
+    return Array.from(byItemId.entries()).map(([itemId, entry]) => ({ itemId, ...entry })).sort((left, right) => (left.item?.name ?? 'Missing item').localeCompare(right.item?.name ?? 'Missing item'));
+  }, [encounters, items]);
+  const filteredTreasureItems = useMemo(() => {
+    const terms = treasureQuery.trim().toLocaleLowerCase();
+    if (!terms) return treasureItems;
+    return treasureItems.filter(({ item, carriers }) => [item?.name, item?.source, item?.type, ...carriers.flatMap((carrier) => [carrier.encounter, carrier.monster])].filter(Boolean).join(' ').toLocaleLowerCase().includes(terms));
+  }, [treasureItems, treasureQuery]);
   const equipmentEditorParticipant = equipmentEditor && selected
     ? selected.participants.find((participant) => participant.id === equipmentEditor.participantId) ?? null
     : null;
@@ -888,6 +909,7 @@ export function EncounterPanel({
           <div className="encounter-view-tabs" role="tablist" aria-label="Encounter view">
             <button aria-selected={encounterView === 'create'} className={encounterView === 'create' ? 'is-selected' : ''} onClick={() => setEncounterView('create')} role="tab" type="button">Create</button>
             <button aria-selected={encounterView === 'run'} className={encounterView === 'run' ? 'is-selected' : ''} onClick={() => setEncounterView('run')} role="tab" type="button">Run combat</button>
+            <button aria-selected={encounterView === 'treasure'} className={encounterView === 'treasure' ? 'is-selected' : ''} onClick={() => setEncounterView('treasure')} role="tab" type="button">Treasure{treasureItems.length ? ` (${treasureItems.length})` : ''}</button>
           </div>
           <span className={`sync-badge sync-${storage.tone}`} title={storage.title}>{storage.label}</span>
           <button className="primary-button" onClick={createEncounter} type="button">New encounter</button>
@@ -1554,6 +1576,20 @@ export function EncounterPanel({
               {!orderedParticipants.length && <p className="empty-panel">Use Add combatant to add party members, Worldbuilding NPCs, or monsters.</p>}
             </div>
           )}
+        </section>
+
+        <section className="treasure-panel" aria-label="Treasure">
+          <header className="treasure-panel-header">
+            <div><p className="eyebrow">Monster equipment</p><h2>Treasure</h2><p>Items carried by monsters across all encounters. This list updates automatically.</p></div>
+            <span>{treasureItems.reduce((total, item) => total + item.quantity, 0)} item{treasureItems.reduce((total, item) => total + item.quantity, 0) === 1 ? '' : 's'}</span>
+          </header>
+          <div className="treasure-search"><input aria-label="Search treasure" onChange={(event) => setTreasureQuery(event.target.value)} placeholder="Search treasure, monster, or encounter" type="search" value={treasureQuery} /></div>
+          {!filteredTreasureItems.length ? <p className="empty-panel">{treasureItems.length ? 'No treasure matches that search.' : 'Equip an item to a monster and it will appear here.'}</p> : <ul className="treasure-list">
+            {filteredTreasureItems.map(({ itemId, item, quantity, carriers }) => <li key={itemId}>
+              <div className="treasure-item-heading"><span><strong>{item?.name ?? 'Missing Compendium item'}</strong><small>{item ? [item.type && titleCaseItemValue(item.type), item.source].filter(Boolean).join(' · ') : 'The source item is no longer available.'}</small></span><b>×{quantity}</b></div>
+              <div className="treasure-carriers">{carriers.map((carrier, index) => <span key={`${carrier.encounter}-${carrier.monster}-${index}`}><strong>{carrier.monster}</strong><small>{carrier.encounter}</small></span>)}</div>
+            </li>)}
+          </ul>}
         </section>
       </section>
     </main>

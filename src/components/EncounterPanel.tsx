@@ -14,7 +14,18 @@ import {
   type MonsterSort
 } from '../catalogue/monsterMetadata';
 import { dataRecords, dataString, entrySummary } from '../catalogue/presentation';
-import { encounterEquipmentItems, magicWeaponForItem, resolvedEncounterMonsterStatBlock, resolvedMonsterEquipment, type MonsterEquipment } from '../catalogue/magicItems';
+import {
+  encounterEquipmentItems,
+  hasMagicWeaponEffect,
+  magicWeaponForItem,
+  monsterStatChangeDefinitions,
+  resolvedEncounterMonsterStatBlock,
+  resolvedMonsterEquipment,
+  type MagicWeapon,
+  type MonsterEquipment,
+  type MonsterStatChange,
+  type MonsterStatField
+} from '../catalogue/magicItems';
 import { emptyItemMetadata, itemMatchesFilters, itemMetadataForCatalogueEntry, titleCaseItemValue, type ItemFilterFields } from '../catalogue/itemMetadata';
 import type { CatalogueEntry } from '../catalogue/types';
 import {
@@ -239,6 +250,128 @@ function statNumber(entry: CatalogueEntry, key: string): number | null {
   return numberFromValue(entry.data[key]);
 }
 
+type EditableEncounterStatChange = {
+  field: MonsterStatField;
+  operation: 'add' | 'set';
+  value: string;
+};
+
+type EncounterEffectEditorProps = {
+  item: CatalogueEntry;
+  equipment: MonsterEquipment;
+  onCancel: () => void;
+  onSave: (equipment: MonsterEquipment) => void;
+};
+
+function numberField(value: string): number {
+  const number = Number(value);
+  return Number.isInteger(number) && Number.isFinite(number) ? number : 0;
+}
+
+/** This editor deliberately stores its values on one equipment assignment,
+ * rather than on the compendium item. It makes imported and custom items work
+ * the same way without turning source material into campaign-owned content. */
+function EncounterEffectEditor({ item, equipment, onCancel, onSave }: EncounterEffectEditorProps) {
+  const [statChanges, setStatChanges] = useState<EditableEncounterStatChange[]>(() => (equipment.encounterModifiers?.changes ?? []).map((change) => ({ ...change, value: String(change.value) })));
+  const [traits, setTraits] = useState(() => equipment.encounterModifiers?.traits ?? []);
+  const [attackBonus, setAttackBonus] = useState(String(equipment.encounterWeapon?.attackBonus ?? 0));
+  const [damageBonus, setDamageBonus] = useState(String(equipment.encounterWeapon?.damageBonus ?? 0));
+  const [extraDamageDice, setExtraDamageDice] = useState(equipment.encounterWeapon?.extraDamageDice ?? '');
+  const [extraDamageType, setExtraDamageType] = useState(equipment.encounterWeapon?.extraDamageType ?? '');
+
+  const updateStatChange = (index: number, change: Partial<EditableEncounterStatChange>) => {
+    setStatChanges((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, ...change } : item));
+  };
+  const updateStatField = (index: number, field: MonsterStatField) => {
+    const definition = monsterStatChangeDefinitions.find((item) => item.field === field);
+    updateStatChange(index, { field, operation: definition?.canAdd ? 'add' : 'set', value: '' });
+  };
+  const updateTrait = (index: number, change: Partial<{ name: string; text: string }>) => {
+    setTraits((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, ...change } : item));
+  };
+  const save = () => {
+    const changes: MonsterStatChange[] = [];
+    for (const change of statChanges) {
+      const definition = monsterStatChangeDefinitions.find((item) => item.field === change.field);
+      if (!definition) continue;
+      if (definition.valueType === 'number') {
+        const value = Number(change.value);
+        if (Number.isFinite(value)) changes.push({ field: definition.field, operation: change.operation, value });
+      } else {
+        const value = change.value.trim();
+        if (value) changes.push({ field: definition.field, operation: 'set', value });
+      }
+    }
+    const resolvedTraits = traits.flatMap((trait) => {
+      const name = trait.name.trim();
+      const text = trait.text.trim();
+      return name && text ? [{ name, text }] : [];
+    });
+    const encounterModifiers = changes.length || resolvedTraits.length ? { changes, traits: resolvedTraits } : undefined;
+    const encounterWeapon: MagicWeapon = {
+      shortDescription: '',
+      effectText: '',
+      attackBonus: numberField(attackBonus),
+      damageBonus: numberField(damageBonus),
+      extraDamageDice: extraDamageDice.trim(),
+      extraDamageType: extraDamageType.trim()
+    };
+    const next: MonsterEquipment = { itemId: equipment.itemId, actionIndexes: equipment.actionIndexes };
+    if (encounterModifiers) next.encounterModifiers = encounterModifiers;
+    if (hasMagicWeaponEffect(encounterWeapon)) next.encounterWeapon = encounterWeapon;
+    onSave(next);
+  };
+
+  return (
+    <div className="encounter-effect-editor-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onCancel(); }} role="presentation">
+      <section aria-label={`Encounter effects for ${item.name}`} aria-modal="true" className="encounter-effect-editor" role="dialog">
+        <header>
+          <div><p className="eyebrow">Encounter-only effects</p><h3>{item.name}</h3><p>These settings affect this combatant only. The Compendium item is unchanged.</p></div>
+          <button aria-label="Close encounter effects" onClick={onCancel} type="button">×</button>
+        </header>
+        <div className="encounter-effect-editor-content">
+          <section>
+            <header><h4>Weapon action changes</h4><p>Use this for an imported weapon’s attack, damage, or extra damage. Choose the target Actions after saving.</p></header>
+            <div className="encounter-effect-weapon-fields">
+              <label>Attack bonus<input aria-label="Encounter weapon attack bonus" inputMode="numeric" onChange={(event) => setAttackBonus(event.target.value)} type="number" value={attackBonus} /></label>
+              <label>Damage bonus<input aria-label="Encounter weapon damage bonus" inputMode="numeric" onChange={(event) => setDamageBonus(event.target.value)} type="number" value={damageBonus} /></label>
+              <label>Extra damage dice<input aria-label="Encounter weapon extra damage dice" onChange={(event) => setExtraDamageDice(event.target.value)} placeholder="1d6" value={extraDamageDice} /></label>
+              <label>Extra damage type<input aria-label="Encounter weapon extra damage type" onChange={(event) => setExtraDamageType(event.target.value)} placeholder="lightning" value={extraDamageType} /></label>
+            </div>
+          </section>
+          <section>
+            <header><h4>Stat block changes</h4><p>Apply AC, HP, speeds, abilities, or other listed stats to this monster only.</p></header>
+            <div className="encounter-effect-stat-change-list">
+              {statChanges.map((change, index) => {
+                const definition = monsterStatChangeDefinitions.find((item) => item.field === change.field) ?? monsterStatChangeDefinitions[0];
+                return <div className="encounter-effect-stat-change" key={`${change.field}-${index}`}>
+                  <label>Stat<select aria-label={`Encounter stat change ${index + 1} target`} onChange={(event) => updateStatField(index, event.target.value as MonsterStatField)} value={change.field}>{monsterStatChangeDefinitions.map((item) => <option key={item.field} value={item.field}>{item.label}</option>)}</select></label>
+                  <label>Change<select aria-label={`Encounter stat change ${index + 1} operation`} disabled={!definition.canAdd} onChange={(event) => updateStatChange(index, { operation: event.target.value as EditableEncounterStatChange['operation'] })} value={definition.canAdd ? change.operation : 'set'}>{definition.canAdd && <option value="add">Add</option>}<option value="set">Set to</option></select></label>
+                  <label>{definition.valueType === 'number' ? 'Value' : 'Text'}<input aria-label={`Encounter stat change ${index + 1} value`} inputMode={definition.valueType === 'number' ? 'numeric' : undefined} onChange={(event) => updateStatChange(index, { value: event.target.value })} type={definition.valueType === 'number' ? 'number' : 'text'} value={change.value} /></label>
+                  <button aria-label={`Remove encounter stat change ${index + 1}`} onClick={() => setStatChanges((current) => current.filter((_item, itemIndex) => itemIndex !== index))} type="button">Remove</button>
+                </div>;
+              })}
+            </div>
+            <button className="encounter-effect-add" onClick={() => setStatChanges((current) => [...current, { field: 'armorClass', operation: 'add', value: '0' }])} type="button">Add stat change</button>
+          </section>
+          <section>
+            <header><h4>Added stat block traits</h4><p>Add special properties that should appear on this encounter’s monster stat block.</p></header>
+            <div className="encounter-effect-trait-list">
+              {traits.map((trait, index) => <div className="encounter-effect-trait" key={index}>
+                <label>Name<input aria-label={`Encounter trait ${index + 1} name`} onChange={(event) => updateTrait(index, { name: event.target.value })} value={trait.name} /></label>
+                <label>Trait text<textarea aria-label={`Encounter trait ${index + 1} text`} onChange={(event) => updateTrait(index, { text: event.target.value })} value={trait.text} /></label>
+                <button aria-label={`Remove encounter trait ${index + 1}`} onClick={() => setTraits((current) => current.filter((_item, itemIndex) => itemIndex !== index))} type="button">Remove</button>
+              </div>)}
+            </div>
+            <button className="encounter-effect-add" onClick={() => setTraits((current) => [...current, { name: '', text: '' }])} type="button">Add stat block trait</button>
+          </section>
+        </div>
+        <footer><button onClick={onCancel} type="button">Cancel</button><button className="primary-button" onClick={save} type="button">Save encounter effects</button></footer>
+      </section>
+    </div>
+  );
+}
+
 export function EncounterPanel({
   encounters,
   campaignPosition,
@@ -281,6 +414,7 @@ export function EncounterPanel({
   const [hitPointEditorId, setHitPointEditorId] = useState<string | null>(null);
   const [statEditor, setStatEditor] = useState<StatEditor>(null);
   const [equipmentEditor, setEquipmentEditor] = useState<EquipmentEditor>(null);
+  const [equipmentEffectEditorItemId, setEquipmentEffectEditorItemId] = useState<string | null>(null);
   const [equipmentPickerOpen, setEquipmentPickerOpen] = useState(false);
   const [equipmentItemQuery, setEquipmentItemQuery] = useState('');
   const [equipmentItemFilters, setEquipmentItemFilters] = useState<EncounterItemFilters>({ ...defaultEncounterItemFilters });
@@ -420,6 +554,12 @@ export function EncounterPanel({
     : null;
   const equipmentEditorActions = equipmentEditorMonster ? dataRecords(equipmentEditorMonster, 'actions') : [];
   const equipmentEditorItems = equipmentEditorParticipant?.encounterEquipment ?? [];
+  const equipmentEffectEditorItem = equipmentEffectEditorItemId
+    ? equipmentEditorItems.find((item) => item.itemId === equipmentEffectEditorItemId) ?? null
+    : null;
+  const equipmentEffectEditorCatalogueItem = equipmentEffectEditorItem
+    ? encounterItems.find((item) => item.id === equipmentEffectEditorItem.itemId) ?? null
+    : null;
   const equippedItemIds = new Set(equipmentEditorMonster
     ? resolvedMonsterEquipment(equipmentEditorMonster, equipmentEditorItems).map((item) => item.itemId)
     : []);
@@ -460,6 +600,7 @@ export function EncounterPanel({
     setStatEditor(null);
     setEquipmentEditor(null);
     setEquipmentPickerOpen(false);
+    setEquipmentEffectEditorItemId(null);
   };
 
   const updateMonsterFilter = <Key extends keyof EncounterMonsterFilters>(key: Key, value: EncounterMonsterFilters[Key]) => {
@@ -507,6 +648,7 @@ export function EncounterPanel({
   const closeEquipmentEditor = () => {
     setEquipmentEditor(null);
     setEquipmentPickerOpen(false);
+    setEquipmentEffectEditorItemId(null);
     setEquipmentItemQuery('');
   };
 
@@ -515,6 +657,7 @@ export function EncounterPanel({
     setHitPointEditorId(null);
     setStatEditor(null);
     setEquipmentPickerOpen(false);
+    setEquipmentEffectEditorItemId(null);
     setEquipmentItemQuery('');
     setEquipmentItemFilters({ ...defaultEncounterItemFilters });
     setEquipmentItemFiltersOpen(false);
@@ -1117,13 +1260,15 @@ export function EncounterPanel({
                 {equipmentEditorItems.map((item) => {
                   const equippedItem = encounterItems.find((candidate) => candidate.id === item.itemId);
                   const weapon = magicWeaponForItem(equippedItem);
+                  const hasWeaponEffect = hasMagicWeaponEffect(weapon) || hasMagicWeaponEffect(item.encounterWeapon);
+                  const hasConfiguredEffects = Boolean(item.encounterModifiers || item.encounterWeapon);
                   return (
                     <li key={item.itemId}>
                       <div className="encounter-equipment-item-heading">
-                        <span><strong>{equippedItem?.name ?? 'Missing magic item'}</strong><small>{equippedItem ? 'Encounter-only' : 'This campaign item is no longer available.'}</small></span>
-                        <button aria-label={`Remove ${equippedItem?.name ?? 'magic item'} from ${equipmentEditorParticipant.name || equipmentEditorMonster.name}`} onClick={() => removeEncounterEquipment(item.itemId)} type="button">Remove</button>
+                        <span><strong>{equippedItem?.name ?? 'Missing magic item'}</strong><small>{equippedItem ? hasConfiguredEffects ? 'Encounter-only · effects configured' : 'Encounter-only' : 'This campaign item is no longer available.'}</small></span>
+                        <div className="encounter-equipment-item-actions"><button disabled={!equippedItem} onClick={() => setEquipmentEffectEditorItemId(item.itemId)} type="button">Configure effects</button><button aria-label={`Remove ${equippedItem?.name ?? 'magic item'} from ${equipmentEditorParticipant.name || equipmentEditorMonster.name}`} onClick={() => removeEncounterEquipment(item.itemId)} type="button">Remove</button></div>
                       </div>
-                      {weapon && equipmentEditorActions.length > 0 ? (
+                      {hasWeaponEffect && equipmentEditorActions.length > 0 ? (
                         <fieldset className="encounter-equipment-targets">
                           <legend>Applies to Actions</legend>
                           {equipmentEditorActions.map((action, index) => {
@@ -1131,8 +1276,8 @@ export function EncounterPanel({
                             return <label key={`${actionName}-${index}`}><input checked={item.actionIndexes.includes(index)} onChange={(event) => toggleEncounterEquipmentAction(item.itemId, index, event.target.checked)} type="checkbox" />{actionName}</label>;
                           })}
                         </fieldset>
-                      ) : weapon ? <p className="encounter-equipment-hint">This monster has no editable Actions to apply the weapon to.</p> : <p className="encounter-equipment-hint">This item’s stat changes apply to the full Encounter stat block.</p>}
-                      {weapon && !item.actionIndexes.length && equipmentEditorActions.length > 0 && <p className="encounter-equipment-hint">Choose an Action before its attack and damage change.</p>}
+                      ) : hasWeaponEffect ? <p className="encounter-equipment-hint">This monster has no editable Actions to apply the weapon to.</p> : <p className="encounter-equipment-hint">Configure encounter effects to add stat block changes or a weapon effect.</p>}
+                      {hasWeaponEffect && !item.actionIndexes.length && equipmentEditorActions.length > 0 && <p className="encounter-equipment-hint">Choose an Action before its attack and damage change.</p>}
                     </li>
                   );
                 })}
@@ -1141,6 +1286,18 @@ export function EncounterPanel({
             <footer><button className="primary-button" onClick={closeEquipmentEditor} type="button">Done</button></footer>
           </section>
         </div>
+      )}
+
+      {equipmentEffectEditorItem && equipmentEffectEditorCatalogueItem && equipmentEditorParticipant && (
+        <EncounterEffectEditor
+          equipment={equipmentEffectEditorItem}
+          item={equipmentEffectEditorCatalogueItem}
+          onCancel={() => setEquipmentEffectEditorItemId(null)}
+          onSave={(nextEquipment) => {
+            setEncounterEquipment(equipmentEditorParticipant, equipmentEditorItems.map((item) => item.itemId === nextEquipment.itemId ? nextEquipment : item));
+            setEquipmentEffectEditorItemId(null);
+          }}
+        />
       )}
 
       {equipmentPickerOpen && equipmentEditorParticipant && (

@@ -153,4 +153,34 @@ describe('magic equipment', () => {
     });
     expect((source.data.traits as Array<{ name: string }>).map((trait) => trait.name)).toEqual(['Watchful']);
   });
+
+  it('applies encounter-only effects configured on an imported item', () => {
+    const importedMace: CatalogueEntry = {
+      id: 'plus-one-mace', category: 'item', name: '+1 Mace', description: '', source: 'SRD-521', ruleset: '5.5e',
+      data: { rarity: 'uncommon', type: 'meleeWeapon' }
+    };
+    const source: CatalogueEntry = {
+      id: 'orc-stat-block', category: 'monster', name: 'Orc', description: '', source: 'SRD-521', ruleset: '5.5e',
+      data: {
+        ac: 13,
+        actions: [{ name: 'Greataxe', text: '_Melee Attack Roll:_ +5, reach 5 ft. _Hit:_ 9 (1d12 + 3) Slashing damage.' }]
+      }
+    };
+    const equipment = [{
+      itemId: importedMace.id,
+      actionIndexes: [0],
+      encounterModifiers: { changes: [{ field: 'armorClass' as const, operation: 'add' as const, value: 2 }], traits: [{ name: 'Shielded', text: 'The orc is protected by enchanted wards.' }] },
+      encounterWeapon: { shortDescription: '', effectText: '', attackBonus: 1, damageBonus: 1, extraDamageDice: '', extraDamageType: '' }
+    }];
+    const catalogue = new Map([['item:plus-one-mace', importedMace]]);
+
+    const statBlock = resolvedEncounterMonsterStatBlock(source, catalogue, equipment);
+    const [action] = resolvedMonsterActions(source, catalogue, equipment);
+
+    expect(statBlock.data.ac).toBe(15);
+    expect(statBlock.data.traits).toEqual([{ name: 'Shielded', text: 'The orc is protected by enchanted wards.' }]);
+    expect(action?.text).toContain('+6');
+    expect(action?.text).toContain('1d12 +4');
+    expect(source.data.ac).toBe(13);
+  });
 });

@@ -13,6 +13,10 @@ export type MagicWeapon = {
 export type MonsterEquipment = {
   itemId: string;
   actionIndexes: number[];
+  /** Per-combatant changes that never alter the underlying Compendium item. */
+  encounterModifiers?: MonsterStatBlockModifiers;
+  /** An optional encounter-only weapon effect, useful for imported items. */
+  encounterWeapon?: MagicWeapon;
 };
 
 export const monsterStatChangeDefinitions = [
@@ -173,6 +177,51 @@ export function magicWeaponForItem(entry: CatalogueEntry | null | undefined): Ma
   };
 }
 
+function normaliseMonsterStatBlockModifiers(value: unknown): MonsterStatBlockModifiers | null {
+  if (!isRecord(value)) return null;
+  const changes: MonsterStatChange[] = [];
+  for (const candidate of Array.isArray(value.changes) ? value.changes : []) {
+    if (!isRecord(candidate)) continue;
+    const definition = statDefinition(candidate.field);
+    if (!definition) continue;
+    const operation = candidate.operation === 'set' || (candidate.operation === 'add' && definition.canAdd)
+      ? candidate.operation
+      : null;
+    if (!operation) continue;
+    if (definition.valueType === 'number') {
+      const number = finiteNumber(candidate.value);
+      if (number !== null) changes.push({ field: definition.field, operation, value: number });
+      continue;
+    }
+    const string = text(candidate.value, 240);
+    if (string) changes.push({ field: definition.field, operation: 'set', value: string });
+  }
+  const traits = (Array.isArray(value.traits) ? value.traits : []).flatMap((candidate) => {
+    if (!isRecord(candidate)) return [];
+    const name = text(candidate.name, 240);
+    const traitText = text(candidate.text);
+    return name && traitText ? [{ name, text: traitText }] : [];
+  });
+  return changes.length || traits.length ? { changes, traits } : null;
+}
+
+function normaliseMagicWeapon(value: unknown): MagicWeapon | null {
+  if (!isRecord(value)) return null;
+  const weapon: MagicWeapon = {
+    shortDescription: text(value.shortDescription),
+    effectText: text(value.effectText),
+    attackBonus: wholeNumber(value.attackBonus),
+    damageBonus: wholeNumber(value.damageBonus),
+    extraDamageDice: text(value.extraDamageDice, 80),
+    extraDamageType: text(value.extraDamageType, 80)
+  };
+  return weapon.attackBonus || weapon.damageBonus || weapon.extraDamageDice || weapon.extraDamageType || weapon.effectText || weapon.shortDescription ? weapon : null;
+}
+
+export function hasMagicWeaponEffect(weapon: MagicWeapon | null | undefined): boolean {
+  return Boolean(weapon && (weapon.attackBonus || weapon.damageBonus || weapon.extraDamageDice || weapon.extraDamageType));
+}
+
 /** Safely reads equipment stored either on a catalogue monster or on an
  * encounter participant. Encounter data is user-authored and may predate the
  * current schema, so it is intentionally treated as untrusted input. */
@@ -187,7 +236,9 @@ export function normaliseMonsterEquipment(value: unknown): MonsterEquipment[] {
     const actionIndexes = Array.isArray(candidate.actionIndexes)
       ? [...new Set(candidate.actionIndexes.filter((index): index is number => typeof index === 'number' && Number.isInteger(index) && index >= 0 && index < 100))]
       : [];
-    return [{ itemId, actionIndexes }];
+    const encounterModifiers = normaliseMonsterStatBlockModifiers(candidate.encounterModifiers);
+    const encounterWeapon = normaliseMagicWeapon(candidate.encounterWeapon);
+    return [{ itemId, actionIndexes, ...(encounterModifiers ? { encounterModifiers } : {}), ...(encounterWeapon ? { encounterWeapon } : {}) }];
   });
 }
 
@@ -308,11 +359,15 @@ export function resolvedEncounterMonsterStatBlock(
   if (!temporary.length) return entry;
 
   const data = { ...entry.data };
-  for (const { itemId } of temporary) {
-    const modifiers = monsterStatBlockModifiersForItem(catalogue.get(`item:${itemId}`));
-    if (!modifiers) continue;
-    modifiers.changes.forEach((change) => applyStatChange(data, change));
-    if (modifiers.traits.length) data.traits = [...dataRecords({ ...entry, data }, 'traits'), ...modifiers.traits];
+  for (const equipment of temporary) {
+    const modifiers = [
+      monsterStatBlockModifiersForItem(catalogue.get(`item:${equipment.itemId}`)),
+      equipment.encounterModifiers
+    ].filter((candidate): candidate is MonsterStatBlockModifiers => Boolean(candidate));
+    for (const modifier of modifiers) {
+      modifier.changes.forEach((change) => applyStatChange(data, change));
+      if (modifier.traits.length) data.traits = [...dataRecords({ ...entry, data }, 'traits'), ...modifier.traits];
+    }
   }
   return { ...entry, data };
 }
@@ -353,10 +408,14 @@ export function applyMagicWeaponToActionText(value: string, weapon: MagicWeapon)
 export function resolvedMonsterActions(entry: CatalogueEntry, catalogue: ReadonlyMap<string, CatalogueEntry>, equipment = monsterEquipment(entry)): Record<string, unknown>[] {
   const equipped = normaliseMonsterEquipment(equipment);
   return dataRecords(entry, 'actions').map((action, actionIndex) => {
-    const itemId = equipped.find((item) => item.actionIndexes.includes(actionIndex))?.itemId;
-    const weapon = magicWeaponForItem(itemId ? catalogue.get(`item:${itemId}`) : null);
+    const equipmentItem = equipped.find((item) => item.actionIndexes.includes(actionIndex));
+    const weapon = magicWeaponForItem(equipmentItem ? catalogue.get(`item:${equipmentItem.itemId}`) : null);
     const text = typeof action.text === 'string' ? action.text : '';
-    return weapon && text ? { ...action, text: applyMagicWeaponToActionText(text, weapon) } : action;
+    const withItemEffect = weapon && text ? applyMagicWeaponToActionText(text, weapon) : text;
+    const withEncounterEffect = equipmentItem?.encounterWeapon && withItemEffect
+      ? applyMagicWeaponToActionText(withItemEffect, equipmentItem.encounterWeapon)
+      : withItemEffect;
+    return withEncounterEffect && withEncounterEffect !== text ? { ...action, text: withEncounterEffect } : action;
   });
 }
 

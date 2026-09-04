@@ -15,6 +15,7 @@ import {
 } from '../catalogue/monsterMetadata';
 import { dataRecords, dataString, entrySummary } from '../catalogue/presentation';
 import { encounterEquipmentItems, magicWeaponForItem, resolvedEncounterMonsterStatBlock, resolvedMonsterEquipment, type MonsterEquipment } from '../catalogue/magicItems';
+import { emptyItemMetadata, itemMatchesFilters, itemMetadataForCatalogueEntry, titleCaseItemValue, type ItemFilterFields } from '../catalogue/itemMetadata';
 import type { CatalogueEntry } from '../catalogue/types';
 import {
   addMonstersToEncounter,
@@ -88,6 +89,7 @@ type EncounterMonsterFilterControlsProps = {
   variant: 'inline' | 'drawer';
 };
 type EncounterView = 'create' | 'run';
+type EncounterItemFilters = ItemFilterFields;
 
 const MONSTER_RESULTS_PAGE_SIZE = Number.MAX_SAFE_INTEGER;
 const defaultEncounterDate: BelentorDate = { era: 'AA', year: 641, month: 'Quen', day: 1 };
@@ -103,6 +105,13 @@ const defaultEncounterMonsterFilters: EncounterMonsterFilters = {
   environment: '',
   ruleset: '',
   sort: 'name-asc'
+};
+const defaultEncounterItemFilters: EncounterItemFilters = {
+  source: '',
+  edition: '',
+  type: '',
+  rarity: '',
+  attunement: ''
 };
 
 function encounterRulesetLabel(ruleset: string) {
@@ -272,8 +281,10 @@ export function EncounterPanel({
   const [hitPointEditorId, setHitPointEditorId] = useState<string | null>(null);
   const [statEditor, setStatEditor] = useState<StatEditor>(null);
   const [equipmentEditor, setEquipmentEditor] = useState<EquipmentEditor>(null);
-  const [equipmentToAdd, setEquipmentToAdd] = useState('');
-  const [equipmentSourceFilter, setEquipmentSourceFilter] = useState('');
+  const [equipmentPickerOpen, setEquipmentPickerOpen] = useState(false);
+  const [equipmentItemQuery, setEquipmentItemQuery] = useState('');
+  const [equipmentItemFilters, setEquipmentItemFilters] = useState<EncounterItemFilters>({ ...defaultEncounterItemFilters });
+  const [equipmentItemFiltersOpen, setEquipmentItemFiltersOpen] = useState(false);
   const [visibleMonsterCount, setVisibleMonsterCount] = useState(MONSTER_RESULTS_PAGE_SIZE);
   const [combatantPicker, setCombatantPicker] = useState<CombatantPicker>(null);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -377,14 +388,29 @@ export function EncounterPanel({
   );
   const monstersById = useMemo(() => new Map(monsters.map((monster) => [monster.id, monster])), [monsters]);
   const encounterItems = useMemo(() => encounterEquipmentItems(items), [items]);
-  const encounterItemSources = useMemo(
-    () => Array.from(new Set(encounterItems.map((item) => item.source).filter(Boolean))).sort((left, right) => monsterCollator.compare(left, right)),
+  const encounterItemMetadataById = useMemo(
+    () => new Map(encounterItems.map((item) => [item.id, itemMetadataForCatalogueEntry(item)] as const)),
     [encounterItems]
   );
-  const visibleEncounterItems = useMemo(
-    () => encounterItems.filter((item) => !equipmentSourceFilter || item.source === equipmentSourceFilter),
-    [encounterItems, equipmentSourceFilter]
-  );
+  const encounterItemFilterOptions = useMemo(() => {
+    const sources = new Set<string>();
+    const editions = new Set<string>();
+    const types = new Set<string>();
+    const rarities = new Set<string>();
+    encounterItemMetadataById.forEach((metadata) => {
+      metadata.sources.forEach((source) => sources.add(source));
+      if (metadata.edition) editions.add(metadata.edition);
+      if (metadata.type) types.add(metadata.type);
+      if (metadata.rarity) rarities.add(metadata.rarity);
+    });
+    return {
+      sources: Array.from(sources).sort((left, right) => monsterCollator.compare(left, right)),
+      editions: Array.from(editions).sort((left, right) => monsterCollator.compare(left, right)),
+      types: Array.from(types).sort((left, right) => monsterCollator.compare(left, right)),
+      rarities: Array.from(rarities).sort((left, right) => monsterCollator.compare(left, right))
+    };
+  }, [encounterItemMetadataById]);
+  const equipmentItemFilterCount = Object.values(equipmentItemFilters).filter(Boolean).length;
   const encounterItemCatalogue = useMemo(() => new Map(items.map((item) => [`item:${item.id}`, item] as const)), [items]);
   const equipmentEditorParticipant = equipmentEditor && selected
     ? selected.participants.find((participant) => participant.id === equipmentEditor.participantId) ?? null
@@ -397,6 +423,14 @@ export function EncounterPanel({
   const equippedItemIds = new Set(equipmentEditorMonster
     ? resolvedMonsterEquipment(equipmentEditorMonster, equipmentEditorItems).map((item) => item.itemId)
     : []);
+  const filteredEncounterItems = useMemo(() => {
+    const terms = equipmentItemQuery.trim().toLocaleLowerCase();
+    return encounterItems.filter((item) => {
+      if (equippedItemIds.has(item.id)) return false;
+      if (!itemMatchesFilters(encounterItemMetadataById.get(item.id) ?? emptyItemMetadata, equipmentItemFilters)) return false;
+      return !terms || [item.name, item.description, item.type, item.source, item.ruleset, ...entrySummary(item)].filter(Boolean).join(' ').toLocaleLowerCase().includes(terms);
+    });
+  }, [encounterItemMetadataById, encounterItems, equippedItemIds, equipmentItemFilters, equipmentItemQuery]);
   const addedMonsterCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const participant of selected?.participants ?? []) {
@@ -425,7 +459,7 @@ export function EncounterPanel({
     setHitPointEditorId(null);
     setStatEditor(null);
     setEquipmentEditor(null);
-    setEquipmentToAdd('');
+    setEquipmentPickerOpen(false);
   };
 
   const updateMonsterFilter = <Key extends keyof EncounterMonsterFilters>(key: Key, value: EncounterMonsterFilters[Key]) => {
@@ -472,15 +506,18 @@ export function EncounterPanel({
 
   const closeEquipmentEditor = () => {
     setEquipmentEditor(null);
-    setEquipmentToAdd('');
+    setEquipmentPickerOpen(false);
+    setEquipmentItemQuery('');
   };
 
   const openEquipmentEditor = (participant: EncounterParticipant) => {
     if (participant.kind !== 'monster' || !participant.source) return;
     setHitPointEditorId(null);
     setStatEditor(null);
-    setEquipmentToAdd('');
-    setEquipmentSourceFilter('');
+    setEquipmentPickerOpen(false);
+    setEquipmentItemQuery('');
+    setEquipmentItemFilters({ ...defaultEncounterItemFilters });
+    setEquipmentItemFiltersOpen(false);
     setEquipmentEditor({ participantId: participant.id });
   };
 
@@ -505,16 +542,21 @@ export function EncounterPanel({
     participantPatch(selected, participant, { encounterEquipment: equipment, armorClass, maxHitPoints, currentHitPoints }, onUpdateEncounter);
   };
 
-  const addEncounterEquipment = () => {
-    if (!equipmentEditorParticipant || !equipmentEditorMonster || !equipmentToAdd) return;
-    if (equippedItemIds.has(equipmentToAdd)) return;
-    const equippedItem = encounterItems.find((item) => item.id === equipmentToAdd);
+  const addEncounterEquipment = (itemId: string) => {
+    if (!equipmentEditorParticipant || !equipmentEditorMonster || !itemId) return;
+    if (equippedItemIds.has(itemId)) return;
+    const equippedItem = encounterItems.find((item) => item.id === itemId);
     const targetIndexes = magicWeaponForItem(equippedItem) ? likelyWeaponActionIndexes(equipmentEditorActions) : [];
     setEncounterEquipment(equipmentEditorParticipant, [
       ...equipmentEditorItems,
-      { itemId: equipmentToAdd, actionIndexes: targetIndexes.length === 1 ? targetIndexes : [] }
+      { itemId, actionIndexes: targetIndexes.length === 1 ? targetIndexes : [] }
     ]);
-    setEquipmentToAdd('');
+    setEquipmentPickerOpen(false);
+    setEquipmentItemQuery('');
+  };
+
+  const updateEncounterItemFilter = <Key extends keyof EncounterItemFilters>(key: Key, value: EncounterItemFilters[Key]) => {
+    setEquipmentItemFilters((current) => ({ ...current, [key]: value }));
   };
 
   const removeEncounterEquipment = (itemId: string) => {
@@ -1063,19 +1105,8 @@ export function EncounterPanel({
             </header>
 
             <div className="encounter-equipment-add">
-              {encounterItemSources.length > 1 && <label>Source
-                <select aria-label="Filter encounter equipment by source" onChange={(event) => { setEquipmentSourceFilter(event.target.value); setEquipmentToAdd(''); }} value={equipmentSourceFilter}>
-                  <option value="">All sources</option>
-                  {encounterItemSources.map((source) => <option key={source} value={source}>{source}</option>)}
-                </select>
-              </label>}
-              <label>Magic item
-                <select aria-label="Add magic item to encounter combatant" onChange={(event) => setEquipmentToAdd(event.target.value)} value={equipmentToAdd}>
-                  <option value="">Choose a magic item</option>
-                  {visibleEncounterItems.filter((item) => !equippedItemIds.has(item.id)).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-                </select>
-              </label>
-              <button disabled={!equipmentToAdd} onClick={addEncounterEquipment} type="button">Add equipment</button>
+              <div><strong>Add magic item</strong><span>Search the Compendium, then filter by source, type, rarity, or attunement.</span></div>
+              <button onClick={() => setEquipmentPickerOpen(true)} type="button">Browse magic items</button>
             </div>
 
             {!encounterItems.length && <p className="encounter-equipment-hint">No magic items are available in the Compendium yet.</p>}
@@ -1108,6 +1139,39 @@ export function EncounterPanel({
               </ul>
             )}
             <footer><button className="primary-button" onClick={closeEquipmentEditor} type="button">Done</button></footer>
+          </section>
+        </div>
+      )}
+
+      {equipmentPickerOpen && equipmentEditorParticipant && (
+        <div className="encounter-item-picker-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setEquipmentPickerOpen(false); }} role="presentation">
+          <section aria-label="Find magic item" aria-modal="true" className="encounter-item-picker" role="dialog">
+            <header>
+              <button aria-label="Back to equipment" onClick={() => setEquipmentPickerOpen(false)} type="button">←</button>
+              <div><p className="eyebrow">Compendium</p><h3>Add magic item</h3><p aria-live="polite">{filteredEncounterItems.length.toLocaleString()} available</p></div>
+              <button aria-label="Close magic item picker" onClick={() => setEquipmentPickerOpen(false)} type="button">×</button>
+            </header>
+            <div className="encounter-item-picker-search">
+              <input aria-label="Search magic items" autoFocus onChange={(event) => setEquipmentItemQuery(event.target.value)} placeholder="Search magic items" type="search" value={equipmentItemQuery} />
+              <button aria-expanded={equipmentItemFiltersOpen} aria-label={equipmentItemFilterCount ? `Open item filters, ${equipmentItemFilterCount} active` : 'Open item filters'} className="encounter-item-filter-trigger" onClick={() => setEquipmentItemFiltersOpen((current) => !current)} type="button">Filters{equipmentItemFilterCount > 0 && <span>{equipmentItemFilterCount}</span>}</button>
+            </div>
+            {equipmentItemFiltersOpen && <div className="encounter-item-filter-grid">
+              <label>Source<select aria-label="Filter encounter magic items by source" onChange={(event) => updateEncounterItemFilter('source', event.target.value)} value={equipmentItemFilters.source}><option value="">All sources</option>{encounterItemFilterOptions.sources.map((source) => <option key={source} value={source}>{source === 'Homebrewry' ? 'Made in Homebrewry' : source}</option>)}</select></label>
+              <label>Type<select aria-label="Filter encounter magic items by type" onChange={(event) => updateEncounterItemFilter('type', event.target.value)} value={equipmentItemFilters.type}><option value="">All types</option>{encounterItemFilterOptions.types.map((type) => <option key={type} value={type}>{titleCaseItemValue(type)}</option>)}</select></label>
+              <label>Rarity<select aria-label="Filter encounter magic items by rarity" onChange={(event) => updateEncounterItemFilter('rarity', event.target.value)} value={equipmentItemFilters.rarity}><option value="">All rarities</option>{encounterItemFilterOptions.rarities.map((rarity) => <option key={rarity} value={rarity}>{titleCaseItemValue(rarity)}</option>)}</select></label>
+              <label>Attunement<select aria-label="Filter encounter magic items by attunement" onChange={(event) => updateEncounterItemFilter('attunement', event.target.value as EncounterItemFilters['attunement'])} value={equipmentItemFilters.attunement}><option value="">Any</option><option value="required">Required</option><option value="not-required">Not required</option></select></label>
+              {equipmentItemFilterCount > 0 && <button className="encounter-item-filter-clear" onClick={() => setEquipmentItemFilters({ ...defaultEncounterItemFilters })} type="button">Clear filters</button>}
+            </div>}
+            <div className="encounter-item-picker-results">
+              {!filteredEncounterItems.length ? <p>No magic items match those filters.</p> : filteredEncounterItems.map((item) => {
+                const metadata = encounterItemMetadataById.get(item.id) ?? emptyItemMetadata;
+                return <button className="encounter-item-picker-result" key={item.id} onClick={() => addEncounterEquipment(item.id)} type="button">
+                  <span><strong>{item.name}</strong><small>{[metadata.type && titleCaseItemValue(metadata.type), metadata.rarity && titleCaseItemValue(metadata.rarity), metadata.attunement === 'required' && 'Attunement'].filter(Boolean).join(' · ') || 'Magic item'}</small></span>
+                  <em>{metadata.sources[0] === 'Homebrewry' ? 'Made here' : metadata.sources[0] || item.source}</em>
+                  <b aria-hidden="true">+</b>
+                </button>;
+              })}
+            </div>
           </section>
         </div>
       )}

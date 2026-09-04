@@ -315,13 +315,9 @@ describe('EncounterPanel monster browser', () => {
     await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Edit Test encounter"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Edit encounter equipment for Guard"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
-    const weapon = container.querySelector<HTMLSelectElement>('select[aria-label="Add magic item to encounter combatant"]');
-    expect(weapon).toBeTruthy();
-    await act(async () => {
-      weapon!.value = 'stormfang';
-      weapon!.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-    await act(async () => Array.from(container.querySelectorAll('.encounter-equipment-add button')).find((button) => button.textContent === 'Add equipment')?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    await act(async () => Array.from(container.querySelectorAll('.encounter-equipment-add button')).find((button) => button.textContent === 'Browse magic items')?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(container.querySelector('input[aria-label="Search magic items"]')).toBeTruthy();
+    await act(async () => Array.from(container.querySelectorAll<HTMLButtonElement>('.encounter-item-picker-result')).find((button) => button.textContent?.includes('Stormfang'))?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
     expect(onUpdateEncounter).toHaveBeenCalledWith(expect.objectContaining({
       participants: [expect.objectContaining({

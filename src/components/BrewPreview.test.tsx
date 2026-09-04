@@ -143,6 +143,45 @@ describe('BrewPreview', () => {
     expect(onEncounterOpen).toHaveBeenCalledWith(encounter);
   });
 
+  it('shows equipped monster items below an encounter placed in a brew', async () => {
+    const onReferenceOpen = vi.fn();
+    const moonblade: CatalogueEntry = {
+      id: 'moonblade', category: 'item', name: 'Moonblade', description: '', data: {}, source: 'Custom', ruleset: 'Homebrewry'
+    };
+    const equippedEncounter: Encounter = {
+      ...encounter,
+      participants: [
+        {
+          id: 'cultist-1', kind: 'monster', name: 'Cultist', source: { category: 'monster', id: 'cultist' },
+          armorClass: 12, maxHitPoints: 9, currentHitPoints: 9, initiative: 7,
+          encounterEquipment: [{ itemId: moonblade.id, actionIndexes: [] }]
+        },
+        {
+          id: 'cultist-2', kind: 'monster', name: 'Cultist 2', source: { category: 'monster', id: 'cultist' },
+          armorClass: 12, maxHitPoints: 9, currentHitPoints: 9, initiative: 6,
+          encounterEquipment: [{ itemId: moonblade.id, actionIndexes: [] }]
+        }
+      ]
+    };
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push({ container, root });
+
+    await act(async () => {
+      root.render(<BrewPreview brew={{ ...brew, content: `[[encounter:${equippedEncounter.id}|The flooded vault]]` }} catalogue={new Map([[catalogueEntryKey(moonblade), moonblade]])} encounters={new Map([[equippedEncounter.id, equippedEncounter]])} onReferenceOpen={onReferenceOpen} />);
+    });
+
+    const treasure = container.querySelector('.brew-encounter-treasure');
+    expect(treasure?.textContent).toContain('Treasure');
+    expect(treasure?.textContent).toContain('Moonblade');
+    expect(treasure?.textContent).toContain('×2');
+    expect(treasure?.textContent).toContain('Cultist, Cultist 2');
+    const item = treasure?.querySelector<HTMLButtonElement>('button');
+    await act(async () => item?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(onReferenceOpen).toHaveBeenCalledWith(moonblade);
+  });
+
   it('opens a matching Worldbuilding entry without changing the preview tab', async () => {
     const onWorldbuildingOpen = vi.fn();
     const container = document.createElement('div');

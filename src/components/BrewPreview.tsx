@@ -169,18 +169,60 @@ function CatalogueReferenceLink({
 function EncounterReferenceLink({
   children,
   encounter,
-  onOpen
+  catalogue,
+  onOpen,
+  onReferenceOpen
 }: {
   children: ReactNode;
   encounter: Encounter;
+  catalogue?: ReadonlyMap<string, CatalogueEntry>;
   onOpen?: (encounter: Encounter) => void;
+  onReferenceOpen?: (entry: CatalogueEntry) => void;
 }) {
+  const treasure = useMemo(() => {
+    const byItemId = new Map<string, { entry: CatalogueEntry | null; quantity: number; carriers: string[] }>();
+    for (const participant of encounter.participants) {
+      if (participant.kind !== 'monster') continue;
+      for (const equipment of participant.encounterEquipment ?? []) {
+        const current = byItemId.get(equipment.itemId) ?? {
+          entry: catalogue?.get(`item:${equipment.itemId}`) ?? null,
+          quantity: 0,
+          carriers: []
+        };
+        current.quantity += 1;
+        current.carriers.push(participant.name || 'Unnamed monster');
+        byItemId.set(equipment.itemId, current);
+      }
+    }
+    return Array.from(byItemId.entries())
+      .map(([itemId, item]) => ({ itemId, ...item }))
+      .sort((left, right) => (left.entry?.name ?? 'Missing item').localeCompare(right.entry?.name ?? 'Missing item'));
+  }, [catalogue, encounter]);
+
   return (
-    <button className="brew-encounter-reference" onClick={() => onOpen?.(encounter)} type="button">
-      <span>Combat encounter</span>
-      <strong>{encounter.name || children}</strong>
-      <small>{encounter.participants.length} combatant{encounter.participants.length === 1 ? '' : 's'} · {encounter.status}</small>
-    </button>
+    <section className="brew-encounter-reference-wrap">
+      <button className="brew-encounter-reference" onClick={() => onOpen?.(encounter)} type="button">
+        <span>Combat encounter</span>
+        <strong>{encounter.name || children}</strong>
+        <small>{encounter.participants.length} combatant{encounter.participants.length === 1 ? '' : 's'} · {encounter.status}</small>
+      </button>
+      {treasure.length > 0 && (
+        <section aria-label={`${encounter.name || 'Combat encounter'} treasure`} className="brew-encounter-treasure">
+          <span>Treasure</span>
+          <ul>
+            {treasure.map(({ itemId, entry, quantity, carriers }) => (
+              <li key={itemId}>
+                {entry
+                  ? <button onClick={() => onReferenceOpen?.(entry)} type="button">{entry.name}</button>
+                  : <strong>Missing Compendium item</strong>}
+                <b>×{quantity}</b>
+                <small>{carriers.join(', ')}</small>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </section>
   );
 }
 
@@ -271,7 +313,7 @@ function MarkdownRenderer({ content, getId, assets, catalogue, catalogueCategori
           if (encounterReference) {
             const encounter = encounters?.get(encounterReference.id);
             return encounter
-              ? <EncounterReferenceLink encounter={encounter} onOpen={onEncounterOpen}>{children}</EncounterReferenceLink>
+              ? <EncounterReferenceLink catalogue={catalogue} encounter={encounter} onOpen={onEncounterOpen} onReferenceOpen={onReferenceOpen}>{children}</EncounterReferenceLink>
               : <span className="missing-reference">{children}</span>;
           }
           const worldbuildingReference = worldbuildingReferenceFromUrl(href);

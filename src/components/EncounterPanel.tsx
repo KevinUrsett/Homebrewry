@@ -273,6 +273,7 @@ export function EncounterPanel({
   const [statEditor, setStatEditor] = useState<StatEditor>(null);
   const [equipmentEditor, setEquipmentEditor] = useState<EquipmentEditor>(null);
   const [equipmentToAdd, setEquipmentToAdd] = useState('');
+  const [equipmentSourceFilter, setEquipmentSourceFilter] = useState('');
   const [visibleMonsterCount, setVisibleMonsterCount] = useState(MONSTER_RESULTS_PAGE_SIZE);
   const [combatantPicker, setCombatantPicker] = useState<CombatantPicker>(null);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -376,6 +377,14 @@ export function EncounterPanel({
   );
   const monstersById = useMemo(() => new Map(monsters.map((monster) => [monster.id, monster])), [monsters]);
   const encounterItems = useMemo(() => encounterEquipmentItems(items), [items]);
+  const encounterItemSources = useMemo(
+    () => Array.from(new Set(encounterItems.map((item) => item.source).filter(Boolean))).sort((left, right) => monsterCollator.compare(left, right)),
+    [encounterItems]
+  );
+  const visibleEncounterItems = useMemo(
+    () => encounterItems.filter((item) => !equipmentSourceFilter || item.source === equipmentSourceFilter),
+    [encounterItems, equipmentSourceFilter]
+  );
   const encounterItemCatalogue = useMemo(() => new Map(items.map((item) => [`item:${item.id}`, item] as const)), [items]);
   const equipmentEditorParticipant = equipmentEditor && selected
     ? selected.participants.find((participant) => participant.id === equipmentEditor.participantId) ?? null
@@ -471,6 +480,7 @@ export function EncounterPanel({
     setHitPointEditorId(null);
     setStatEditor(null);
     setEquipmentToAdd('');
+    setEquipmentSourceFilter('');
     setEquipmentEditor({ participantId: participant.id });
   };
 
@@ -1053,16 +1063,22 @@ export function EncounterPanel({
             </header>
 
             <div className="encounter-equipment-add">
+              {encounterItemSources.length > 1 && <label>Source
+                <select aria-label="Filter encounter equipment by source" onChange={(event) => { setEquipmentSourceFilter(event.target.value); setEquipmentToAdd(''); }} value={equipmentSourceFilter}>
+                  <option value="">All sources</option>
+                  {encounterItemSources.map((source) => <option key={source} value={source}>{source}</option>)}
+                </select>
+              </label>}
               <label>Magic item
                 <select aria-label="Add magic item to encounter combatant" onChange={(event) => setEquipmentToAdd(event.target.value)} value={equipmentToAdd}>
-                  <option value="">Choose a campaign magic item</option>
-                  {encounterItems.filter((item) => !equippedItemIds.has(item.id)).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                  <option value="">Choose a magic item</option>
+                  {visibleEncounterItems.filter((item) => !equippedItemIds.has(item.id)).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
                 </select>
               </label>
               <button disabled={!equipmentToAdd} onClick={addEncounterEquipment} type="button">Add equipment</button>
             </div>
 
-            {!encounterItems.length && <p className="encounter-equipment-hint">Create a campaign-owned Magic item or Magic weapon with an encounter stat change to use it here.</p>}
+            {!encounterItems.length && <p className="encounter-equipment-hint">No magic items are available in the Compendium yet.</p>}
             {!equipmentEditorItems.length ? (
               <p className="encounter-equipment-empty">No encounter-only equipment is assigned.</p>
             ) : (

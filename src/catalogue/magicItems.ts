@@ -1,5 +1,5 @@
 import type { CatalogueEntry } from './types';
-import { dataRecord, dataRecords, isRecord } from './presentation';
+import { dataRecord, dataRecords, dataString, isRecord } from './presentation';
 
 export type MagicWeapon = {
   shortDescription: string;
@@ -147,7 +147,15 @@ export function monsterStatBlockModifiersForItem(entry: CatalogueEntry | null | 
 /** Returns campaign-owned items that can affect a monster in an encounter. */
 export function encounterEquipmentItems(entries: readonly CatalogueEntry[]): CatalogueEntry[] {
   return entries
-    .filter((entry) => entry.source === 'Custom' && entry.category === 'item' && (Boolean(magicWeaponForItem(entry)) || Boolean(monsterStatBlockModifiersForItem(entry))))
+    // Published magic items do not carry Homebrewry's optional encounter-stat
+    // schema, but they are still valid equipment/loot for an encounter. A
+    // rarity is how the imported catalogue distinguishes magic items from
+    // mundane gear; custom magic items may instead use the authored schema.
+    .filter((entry) => entry.category === 'item' && (
+      Boolean(dataString(entry, 'rarity'))
+      || Boolean(magicWeaponForItem(entry))
+      || Boolean(monsterStatBlockModifiersForItem(entry))
+    ))
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 

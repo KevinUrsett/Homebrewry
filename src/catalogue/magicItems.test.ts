@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolvedEncounterMonsterStatBlock, resolvedMonsterActions, resolvedMonsterEquipment, resolvedMonsterWeaponActions, weaponActionText } from './magicItems';
+import { encounterEquipmentItems, resolvedEncounterMonsterStatBlock, resolvedMonsterActions, resolvedMonsterEquipment, resolvedMonsterWeaponActions, weaponActionText } from './magicItems';
 import type { CatalogueEntry } from './types';
 
 const stormfang: CatalogueEntry = {
@@ -46,6 +46,20 @@ const guard: CatalogueEntry = {
 };
 
 describe('magic equipment', () => {
+  it('includes published magic items as encounter equipment, but not mundane gear', () => {
+    const publishedMagicItem: CatalogueEntry = {
+      id: 'wand-of-wonders', category: 'item', name: 'Wand of Wonders', description: '', source: 'SRD-521', ruleset: '5.5e',
+      data: { rarity: 'rare', type: 'wand' }
+    };
+    const mundaneGear: CatalogueEntry = {
+      id: 'rope', category: 'item', name: 'Rope', description: '', source: 'SRD-521', ruleset: '5.5e',
+      data: { type: 'adventuring gear' }
+    };
+
+    expect(encounterEquipmentItems([mundaneGear, publishedMagicItem, stormfang]).map((item) => item.id))
+      .toEqual(['stormfang', 'wand-of-wonders']);
+  });
+
   it('applies a linked magic weapon only to the selected weapon action', () => {
     const [action] = resolvedMonsterWeaponActions(guard, new Map([['item:stormfang', stormfang]]));
 

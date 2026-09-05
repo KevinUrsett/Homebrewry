@@ -2,7 +2,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import App from './App';
 import { checkForPwaUpdate } from './components/PwaUpdateNotice';
-import { createBrew, getLivingWorldData, replaceBrews, saveBrew, saveLivingWorldData } from './lib/brewStore';
+import {
+  beginLocalDatabaseRecovery,
+  createBrew,
+  getLivingWorldData,
+  isRecoverableLocalDatabaseError,
+  replaceBrews,
+  rollbackLocalDatabaseRecovery,
+  saveBrew,
+  saveLivingWorldData
+} from './lib/brewStore';
 import { loadBrewsFromDrive } from './lib/driveBrewStorage';
 import { isGoogleConfigured, requestDriveAccess } from './lib/googleIdentity';
 import { refreshCampaignDataFromDrive } from './lib/workspaceDriveSync';
@@ -73,13 +82,28 @@ export default function RootApp() {
 
   const loadLandingData = async (token: string) => {
     const driveBrews = await loadBrewsFromDrive(token);
-    await replaceBrews(driveBrews);
-    const campaignResult = await refreshCampaignDataFromDrive(token, driveBrews);
+    let recoveredLocalCache = false;
+    let campaignResult: Awaited<ReturnType<typeof refreshCampaignDataFromDrive>>;
+    try {
+      await replaceBrews(driveBrews);
+      campaignResult = await refreshCampaignDataFromDrive(token, driveBrews);
+    } catch (error) {
+      if (!isRecoverableLocalDatabaseError(error)) throw error;
+      const recovery = beginLocalDatabaseRecovery();
+      try {
+        await replaceBrews(driveBrews);
+        campaignResult = await refreshCampaignDataFromDrive(token, driveBrews);
+        recoveredLocalCache = true;
+      } catch (recoveryError) {
+        rollbackLocalDatabaseRecovery(recovery);
+        throw recoveryError;
+      }
+    }
     const encounters = campaignResult.data.encounters;
     const worldbuilding = campaignResult.data.worldbuildingEntries;
     setBrews(driveBrews);
     setStats({ encounters: encounters.length, worldbuilding: worldbuilding.length });
-    return driveBrews.length;
+    return { brewCount: driveBrews.length, recoveredLocalCache };
   };
 
   const connectDrive = async () => {
@@ -92,8 +116,8 @@ export default function RootApp() {
       setAccessToken(token);
       setConnectionPhase('loading');
       setDriveStatus('Connected. Loading your Drive library…');
-      const brewCount = await loadLandingData(token);
-      setDriveStatus(`${brewCount} brew${brewCount === 1 ? '' : 's'} ready. Google Drive is connected for this session.`);
+      const { brewCount, recoveredLocalCache } = await loadLandingData(token);
+      setDriveStatus(`${brewCount} brew${brewCount === 1 ? '' : 's'} ready. ${recoveredLocalCache ? 'The PC cache was repaired from Drive.' : 'Google Drive is connected for this session.'}`);
       setConnectionPhase('ready');
       if (brewCount > 0) {
         setPendingDestination('library');

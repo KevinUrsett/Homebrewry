@@ -14,7 +14,7 @@ const { loadBrewsFromDrive, refreshCampaignDataFromDrive, replaceBrews, requestD
 }));
 
 vi.mock('./App', () => {
-  function TestApp({ driveAccessToken }: { driveAccessToken?: string | null }) {
+  function TestApp({ driveAccessToken }: { driveAccessToken?: string | null; onDriveAccessTokenChange?: (token: string) => void }) {
     renderedAppToken(driveAccessToken);
     const [destination, setDestination] = useState('editor');
     return (

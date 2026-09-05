@@ -296,7 +296,7 @@ export default function RootApp() {
 
     return (
       <>
-        <App driveAccessToken={accessToken} />
+        <App driveAccessToken={accessToken} onDriveAccessTokenChange={setAccessToken} />
         {desktopNavigation && createPortal(homeButton, desktopNavigation)}
         {mobileNavigation && createPortal(homeButton, mobileNavigation)}
       </>

@@ -106,6 +106,7 @@ type QuickCreateTarget = 'item' | 'monster' | 'npc';
 
 type AppProps = {
   driveAccessToken?: string | null;
+  onDriveAccessTokenChange?: (token: string) => void;
 };
 
 const deletedAssetStorageKey = 'homebrewry-deleted-assets';
@@ -151,7 +152,7 @@ function applySpellcheckSetting(target: EventTarget | null, enabled: boolean) {
   target.setAttribute('writingsuggestions', enabled ? 'true' : 'false');
 }
 
-export default function App({ driveAccessToken = null }: AppProps) {
+export default function App({ driveAccessToken = null, onDriveAccessTokenChange }: AppProps) {
   const [brews, setBrews] = useState<Brew[]>([]);
   const [assets, setAssets] = useState<BrewAsset[]>([]);
   const [pendingAssetDeletionIds, setPendingAssetDeletionIds] = useState<string[]>(readDeletedAssetIds);
@@ -213,6 +214,11 @@ export default function App({ driveAccessToken = null }: AppProps) {
   const [worldbuildingReferenceEntry, setWorldbuildingReferenceEntry] = useState<WorldbuildingEntry | null>(null);
   const editorRef = useRef<MarkdownEditorHandle>(null);
   const selectionRef = useRef({ start: 0, end: 0 });
+
+  const rememberDriveAccessToken = (token: string) => {
+    setAccessToken(token);
+    onDriveAccessTokenChange?.(token);
+  };
 
   useEffect(() => {
     document.querySelectorAll('.app-shell input, .app-shell textarea, .app-shell [contenteditable="true"]')
@@ -444,7 +450,7 @@ export default function App({ driveAccessToken = null }: AppProps) {
       setSaveState('Saving to Google Drive…');
       setDriveSaveNotice({ tone: 'saving', message: 'Saving to Google Drive…' });
       const token = accessToken ?? await requestDriveAccess();
-      setAccessToken(token);
+      rememberDriveAccessToken(token);
       await saveBrew(activeBrew);
       setBrews((currentBrews) => currentBrews.map((brew) => brew.id === activeBrew.id ? { ...activeBrew } : brew));
       setSaveState('Saved to Google Drive');
@@ -1551,7 +1557,7 @@ export default function App({ driveAccessToken = null }: AppProps) {
       setSaveState('Connecting to Google Drive…');
       setDriveSaveNotice({ tone: 'saving', message: 'Opening Google Drive login…' });
       const token = await requestDriveAccess({ force: true });
-      setAccessToken(token);
+      rememberDriveAccessToken(token);
       const campaignResult = await syncCampaignDataOnly(token, true);
       const privateMonsterResult = await syncPrivateMonsterCatalogueOnly(token, true);
       const details = [campaignResult?.detail, privateMonsterResult?.detail].filter(Boolean).join('; ');
@@ -1574,7 +1580,7 @@ export default function App({ driveAccessToken = null }: AppProps) {
       if (!token) {
         setSaveState('Opening Google Drive login…');
         token = await requestDriveAccess({ force: true });
-        setAccessToken(token);
+        rememberDriveAccessToken(token);
         setSaveState('Syncing with Google Drive…');
       }
 
@@ -1605,7 +1611,7 @@ export default function App({ driveAccessToken = null }: AppProps) {
 
         setSaveState('Drive session expired — opening Google login…');
         token = await requestDriveAccess({ force: true });
-        setAccessToken(token);
+        rememberDriveAccessToken(token);
         setSaveState('Syncing with Google Drive…');
         result = await syncEverything(token);
       }

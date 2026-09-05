@@ -4,7 +4,7 @@ reviewed or reverted without disturbing the shared application theme. */
 .encounter-view-tabs { display: flex; gap: 4px; }
 .encounter-view-tabs button { background: #f7f0df; border: 1px solid #ad9576; border-radius: 6px; color: #422f25; font-size: .78rem; padding: 8px 10px; }
 .encounter-view-tabs button.is-selected { background: #5d2f26; border-color: #5d2f26; color: #fffaf0; font-weight: 800; }
-.initiative-run-actions { align-items: center; display: flex; gap: 7px; }
+.initiative-run-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 7px; justify-content: flex-end; }
 .encounter-sidebar-heading > div { align-items: center; display: flex; gap: 8px; }
 .encounter-list-size-button { background: #fffaf0; border: 1px solid #b89e7a; border-radius: 999px; color: #5d2f26; font-size: .64rem; font-weight: 800; letter-spacing: .04em; padding: 3px 7px; text-transform: uppercase; }
 .encounter-list-size-button[aria-expanded="true"] { background: #ead1a3; border-color: #a87438; }
@@ -635,6 +635,13 @@ reviewed or reverted without disturbing the shared application theme. */
   grid-template-columns: auto minmax(0, 1fr) auto;
 }
 
+.combatant-title-actions {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+}
+
 .combatant-title > input {
   background: transparent;
   border-bottom-color: transparent;
@@ -766,7 +773,10 @@ reviewed or reverted without disturbing the shared application theme. */
   display: grid;
   gap: 6px;
   flex-basis: 100%;
+  grid-column: 1 / -1;
+  min-width: 0;
   padding: 8px;
+  width: 100%;
 }
 
 .combatant-stat-editor {
@@ -818,6 +828,50 @@ reviewed or reverted without disturbing the shared application theme. */
 
 .initiative-panel .encounter-section-heading {
   align-items: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 1050px) {
+  .encounter-view-run .initiative-panel {
+    padding: 18px;
+  }
+
+  .encounter-view-run .encounter-section-heading {
+    align-items: stretch;
+  }
+
+  .encounter-view-run .initiative-run-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .encounter-view-run .initiative-run-actions > button {
+    flex: 1 1 120px;
+    min-height: 38px;
+    white-space: nowrap;
+  }
+
+  .encounter-view-run .initiative-current {
+    flex: 0 0 auto;
+  }
+
+  .combatant-title {
+    align-items: start;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .combatant-title-actions {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+
+  .combatant-title-actions > button {
+    min-height: 32px;
+  }
+
+  .combatant-summary-row {
+    grid-template-columns: minmax(120px, 1.4fr) repeat(2, minmax(64px, .7fr)) auto;
+  }
 }
 
 @media (max-width: 760px) {

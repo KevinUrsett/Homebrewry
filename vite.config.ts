@@ -8,6 +8,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'prompt',
       includeAssets: ['icon.svg'],
+      workbox: {
+        cleanupOutdatedCaches: true
+      },
       manifest: {
         id: '/',
         name: 'Homebrewry',

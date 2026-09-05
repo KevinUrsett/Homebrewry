@@ -1455,8 +1455,12 @@ export function EncounterPanel({
                         {participant.id === selected.activeCombatantId ? '●' : '○'}
                       </button>
                       <input aria-label={`${participant.name} combatant name`} onChange={(event) => participantPatch(selected, participant, { name: event.target.value }, onUpdateEncounter)} value={participant.name} />
-                      {sourceMonster && <button aria-label={`Open ${sourceMonster.name} stat block`} className="combatant-statblock-button" onClick={() => onMonsterOpen(sourceMonster, participant.encounterEquipment ?? [])} type="button">Stat</button>}
-                      {sourceMonster && <button aria-label={`Edit encounter equipment for ${participant.name}`} className="combatant-equipment-button" onClick={() => openEquipmentEditor(participant)} type="button">Gear{participant.encounterEquipment?.length ? ` (${participant.encounterEquipment.length})` : ''}</button>}
+                      {sourceMonster && (
+                        <div className="combatant-title-actions">
+                          <button aria-label={`Open ${sourceMonster.name} stat block`} className="combatant-statblock-button" onClick={() => onMonsterOpen(sourceMonster, participant.encounterEquipment ?? [])} type="button">Stat</button>
+                          <button aria-label={`Edit encounter equipment for ${participant.name}`} className="combatant-equipment-button" onClick={() => openEquipmentEditor(participant)} type="button">Gear{participant.encounterEquipment?.length ? ` (${participant.encounterEquipment.length})` : ''}</button>
+                        </div>
+                      )}
                       <span className={`combatant-kind kind-${participant.kind}`}>{participant.kind}</span>
                       {participant.entityId && (
                         <span className="combatant-world-status">

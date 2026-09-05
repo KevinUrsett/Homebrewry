@@ -2,37 +2,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Brew, CampaignDataSnapshot, CampaignDataSyncMetadata, LivingWorldData } from '../types';
 
 const store = vi.hoisted(() => ({
-  getCampaignDataSyncMetadata: vi.fn(),
-  getLivingWorldData: vi.fn(),
+  readCampaignDataCache: vi.fn(),
   replaceCampaignData: vi.fn(),
   saveCampaignDataSyncMetadata: vi.fn(),
-  listCustomCatalogueCategories: vi.fn(),
-  listCustomCatalogueEntries: vi.fn(),
-  listEncounters: vi.fn(),
-  listPartyMembers: vi.fn(),
-  listWorldbuildingEntries: vi.fn(),
-  listWorldbuildingTypes: vi.fn(),
   listRemoteCampaignData: vi.fn(),
   uploadCampaignData: vi.fn()
 }));
 
 vi.mock('./brewStore', () => ({
-  getCampaignDataSyncMetadata: store.getCampaignDataSyncMetadata,
-  getLivingWorldData: store.getLivingWorldData,
+  readCampaignDataCache: store.readCampaignDataCache,
   replaceCampaignData: store.replaceCampaignData,
   saveCampaignDataSyncMetadata: store.saveCampaignDataSyncMetadata
-}));
-vi.mock('./customCatalogueStore', () => ({
-  listCustomCatalogueCategories: store.listCustomCatalogueCategories,
-  listCustomCatalogueEntries: store.listCustomCatalogueEntries
-}));
-vi.mock('./encounterStore', () => ({
-  listEncounters: store.listEncounters,
-  listPartyMembers: store.listPartyMembers
-}));
-vi.mock('./worldbuildingStore', () => ({
-  listWorldbuildingEntries: store.listWorldbuildingEntries,
-  listWorldbuildingTypes: store.listWorldbuildingTypes
 }));
 vi.mock('./googleDrive', () => ({
   listRemoteCampaignData: store.listRemoteCampaignData,
@@ -110,14 +90,16 @@ const remoteData: CampaignDataSnapshot = {
 describe('workspace Drive bootstrap', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    store.getCampaignDataSyncMetadata.mockResolvedValue(metadata);
-    store.getLivingWorldData.mockResolvedValue(livingWorld);
-    store.listCustomCatalogueCategories.mockResolvedValue([]);
-    store.listCustomCatalogueEntries.mockResolvedValue([]);
-    store.listEncounters.mockResolvedValue([]);
-    store.listPartyMembers.mockResolvedValue([]);
-    store.listWorldbuildingEntries.mockResolvedValue([]);
-    store.listWorldbuildingTypes.mockResolvedValue([]);
+    store.readCampaignDataCache.mockResolvedValue({
+      encounters: [],
+      partyMembers: [],
+      worldbuildingEntries: [],
+      customCatalogueEntries: [],
+      customCatalogueCategories: [],
+      worldbuildingTypes: [],
+      livingWorld,
+      metadata
+    });
     store.listRemoteCampaignData.mockResolvedValue([{
       file: {
         id: 'campaign-file',

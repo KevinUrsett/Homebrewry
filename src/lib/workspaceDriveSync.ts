@@ -1,10 +1,7 @@
 import type { Brew } from '../types';
-import { listCustomCatalogueCategories, listCustomCatalogueEntries } from './customCatalogueStore';
-import { getCampaignDataSyncMetadata, getLivingWorldData, replaceCampaignData, saveCampaignDataSyncMetadata } from './brewStore';
+import { readCampaignDataCache, replaceCampaignData, saveCampaignDataSyncMetadata } from './brewStore';
 import { createCampaignDataSnapshot } from './campaignData';
 import { syncCampaignData, type CampaignDataSyncResult } from './campaignSync';
-import { listEncounters, listPartyMembers } from './encounterStore';
-import { listWorldbuildingEntries, listWorldbuildingTypes } from './worldbuildingStore';
 
 /**
  * Refreshes the shared campaign companion file before the workspace opens.
@@ -15,7 +12,7 @@ export async function refreshCampaignDataFromDrive(
   accessToken: string,
   brews: Brew[]
 ): Promise<CampaignDataSyncResult> {
-  const [
+  const {
     encounters,
     partyMembers,
     worldbuildingEntries,
@@ -24,16 +21,7 @@ export async function refreshCampaignDataFromDrive(
     worldbuildingTypes,
     livingWorld,
     metadata
-  ] = await Promise.all([
-    listEncounters(),
-    listPartyMembers(),
-    listWorldbuildingEntries(),
-    listCustomCatalogueEntries(),
-    listCustomCatalogueCategories(),
-    listWorldbuildingTypes(),
-    getLivingWorldData(),
-    getCampaignDataSyncMetadata()
-  ]);
+  } = await readCampaignDataCache();
 
   const localData = createCampaignDataSnapshot(
     encounters,

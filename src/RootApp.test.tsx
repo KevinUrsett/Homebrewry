@@ -5,11 +5,23 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Brew } from './types';
 
-const { loadBrewsFromDrive, refreshCampaignDataFromDrive, replaceBrews, requestDriveAccess, renderedAppToken } = vi.hoisted(() => ({
+const {
+  beginLocalDatabaseRecovery,
+  isRecoverableLocalDatabaseError,
+  loadBrewsFromDrive,
+  refreshCampaignDataFromDrive,
+  replaceBrews,
+  requestDriveAccess,
+  rollbackLocalDatabaseRecovery,
+  renderedAppToken
+} = vi.hoisted(() => ({
+  beginLocalDatabaseRecovery: vi.fn(() => ({ previousName: 'homebrewry', recoveryName: 'homebrewry-recovered-test' })),
+  isRecoverableLocalDatabaseError: vi.fn((error: unknown) => typeof error === 'object' && error !== null && 'name' in error && error.name === 'UnknownError'),
   loadBrewsFromDrive: vi.fn(),
   refreshCampaignDataFromDrive: vi.fn(),
   replaceBrews: vi.fn(),
   requestDriveAccess: vi.fn(),
+  rollbackLocalDatabaseRecovery: vi.fn(),
   renderedAppToken: vi.fn()
 }));
 
@@ -34,9 +46,12 @@ vi.mock('./App', () => {
 
 vi.mock('./components/PwaUpdateNotice', () => ({ checkForPwaUpdate: vi.fn() }));
 vi.mock('./lib/brewStore', () => ({
+  beginLocalDatabaseRecovery,
   createBrew: vi.fn(),
   getLivingWorldData: vi.fn(),
+  isRecoverableLocalDatabaseError,
   replaceBrews,
+  rollbackLocalDatabaseRecovery,
   saveBrew: vi.fn(),
   saveLivingWorldData: vi.fn()
 }));
@@ -142,5 +157,47 @@ describe('RootApp Drive landing', () => {
 
     expect(container.querySelector('.app-shell')).toBeNull();
     expect(container.textContent).toContain('Your Drive library is empty.');
+  });
+
+  it('rebuilds an unreadable PC cache from Drive without deleting it', async () => {
+    const brew: Brew = {
+      id: 'brew-1',
+      title: 'Belentor',
+      content: '',
+      createdAt: '2026-08-21T12:00:00.000Z',
+      updatedAt: '2026-08-21T12:00:00.000Z',
+      version: 1,
+      rendererSettings: { accentColor: '#7a2f27', parchmentTone: 'warm' }
+    };
+    requestDriveAccess.mockResolvedValue('drive-token');
+    loadBrewsFromDrive.mockResolvedValue([brew]);
+    replaceBrews.mockRejectedValueOnce(Object.assign(new Error('Local database failed.'), { name: 'UnknownError' })).mockResolvedValueOnce(undefined);
+    refreshCampaignDataFromDrive.mockResolvedValue({
+      data: { encounters: [{ id: 'phone-encounter' }], worldbuildingEntries: [] },
+      detail: 'Campaign data loaded from Drive',
+      metadata: { id: 'campaign-data', lastLocalChangeAt: '2026-08-21T12:00:00.000Z', syncState: 'synced' },
+      state: 'synced'
+    });
+
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    mounted.push({ container, root });
+
+    await act(async () => {
+      root.render(<RootApp />);
+    });
+    const connect = Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Connect Google Drive');
+    await act(async () => {
+      connect?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(beginLocalDatabaseRecovery).toHaveBeenCalledOnce();
+    expect(replaceBrews).toHaveBeenCalledTimes(2);
+    expect(refreshCampaignDataFromDrive).toHaveBeenCalledWith('drive-token', [brew]);
+    expect(rollbackLocalDatabaseRecovery).not.toHaveBeenCalled();
+    expect(container.querySelector('.app-shell')).toBeTruthy();
   });
 });

@@ -1,10 +1,11 @@
 import { openDB } from 'idb';
-import type { CatalogueEntry, CustomCatalogueCategory } from '../catalogue/types';
+import type { CatalogueEntry, CustomCatalogueCategory, CustomCatalogueEntry } from '../catalogue/types';
 import type { Brew, CampaignDataSnapshot, CampaignDataSyncMetadata, Encounter, LivingWorldData, PartyMember, PrivateMonsterSyncMetadata, WorldbuildingEntry, WorldbuildingType } from '../types';
 import { deleteBrewFromDrive, saveBrewToDrive } from './driveBrewStorage';
 import { getDriveAccessToken } from './googleIdentity';
 
 const DATABASE_NAME = 'homebrewry';
+const ACTIVE_DATABASE_KEY = 'homebrewry-active-local-database';
 const STORE_NAME = 'brews';
 export const ASSET_STORE_NAME = 'assets';
 export const ENCOUNTER_STORE_NAME = 'encounters';
@@ -20,9 +21,58 @@ export const LIVING_WORLD_STORE_NAME = 'living-world';
 
 const brewDriveById = new Map<string, NonNullable<Brew['drive']>>();
 const brewSaveQueues = new Map<string, Promise<void>>();
+let sessionDatabaseName: string | null = null;
+
+function activeDatabaseName(): string {
+  if (sessionDatabaseName) return sessionDatabaseName;
+  try {
+    sessionDatabaseName = localStorage.getItem(ACTIVE_DATABASE_KEY) || DATABASE_NAME;
+  } catch {
+    sessionDatabaseName = DATABASE_NAME;
+  }
+  return sessionDatabaseName;
+}
+
+export type LocalDatabaseRecovery = {
+  previousName: string;
+  recoveryName: string;
+};
+
+export function isRecoverableLocalDatabaseError(error: unknown): boolean {
+  return typeof error === 'object'
+    && error !== null
+    && 'name' in error
+    && (error as { name?: unknown }).name === 'UnknownError';
+}
+
+/**
+ * Selects a clean cache without deleting the unreadable database. Drive stays
+ * the source of truth, while the original browser data remains recoverable.
+ */
+export function beginLocalDatabaseRecovery(): LocalDatabaseRecovery {
+  const previousName = activeDatabaseName();
+  const recoveryName = `${DATABASE_NAME}-recovered-${Date.now()}`;
+  sessionDatabaseName = recoveryName;
+  try {
+    localStorage.setItem(ACTIVE_DATABASE_KEY, recoveryName);
+  } catch {
+    // The clean cache still works for this session when localStorage is blocked.
+  }
+  return { previousName, recoveryName };
+}
+
+export function rollbackLocalDatabaseRecovery(recovery: LocalDatabaseRecovery): void {
+  sessionDatabaseName = recovery.previousName;
+  try {
+    if (recovery.previousName === DATABASE_NAME) localStorage.removeItem(ACTIVE_DATABASE_KEY);
+    else localStorage.setItem(ACTIVE_DATABASE_KEY, recovery.previousName);
+  } catch {
+    // Keep the prior database selected for the remainder of this session.
+  }
+}
 
 export const getDatabase = () =>
-  openDB(DATABASE_NAME, 11, {
+  openDB(activeDatabaseName(), 11, {
     upgrade(database, oldVersion) {
       if (oldVersion < 1) {
         const store = database.createObjectStore(STORE_NAME, { keyPath: 'id' });
@@ -81,6 +131,68 @@ export async function getLivingWorldData(): Promise<LivingWorldData> {
   const database = await getDatabase();
   const stored = await database.get(LIVING_WORLD_STORE_NAME, 'living-world') as LivingWorldData | undefined;
   return stored ? { ...stored, timelineEntries: stored.timelineEntries ?? [], ideaDrafts: stored.ideaDrafts ?? [], maps: stored.maps ?? [] } : createLivingWorldData();
+}
+
+export type CampaignDataCache = {
+  encounters: Encounter[];
+  partyMembers: PartyMember[];
+  worldbuildingEntries: WorldbuildingEntry[];
+  customCatalogueEntries: CustomCatalogueEntry[];
+  customCatalogueCategories: CustomCatalogueCategory[];
+  worldbuildingTypes: WorldbuildingType[];
+  livingWorld: LivingWorldData;
+  metadata: CampaignDataSyncMetadata;
+};
+
+/** Reads one internally consistent campaign cache through one DB connection. */
+export async function readCampaignDataCache(): Promise<CampaignDataCache> {
+  const database = await getDatabase();
+  const transaction = database.transaction(
+    [
+      ENCOUNTER_STORE_NAME,
+      PARTY_STORE_NAME,
+      WORLDBUILDING_STORE_NAME,
+      CUSTOM_CATALOGUE_STORE_NAME,
+      CUSTOM_CATALOGUE_CATEGORY_STORE_NAME,
+      WORLDBUILDING_TYPE_STORE_NAME,
+      LIVING_WORLD_STORE_NAME,
+      CAMPAIGN_DATA_SYNC_STORE_NAME
+    ],
+    'readonly'
+  );
+  const [
+    encounters,
+    partyMembers,
+    worldbuildingEntries,
+    customCatalogueEntries,
+    customCatalogueCategories,
+    worldbuildingTypes,
+    storedLivingWorld,
+    storedMetadata
+  ] = await Promise.all([
+    transaction.objectStore(ENCOUNTER_STORE_NAME).getAll() as Promise<Encounter[]>,
+    transaction.objectStore(PARTY_STORE_NAME).getAll() as Promise<PartyMember[]>,
+    transaction.objectStore(WORLDBUILDING_STORE_NAME).getAll() as Promise<WorldbuildingEntry[]>,
+    transaction.objectStore(CUSTOM_CATALOGUE_STORE_NAME).getAll() as Promise<CustomCatalogueEntry[]>,
+    transaction.objectStore(CUSTOM_CATALOGUE_CATEGORY_STORE_NAME).getAll() as Promise<CustomCatalogueCategory[]>,
+    transaction.objectStore(WORLDBUILDING_TYPE_STORE_NAME).getAll() as Promise<WorldbuildingType[]>,
+    transaction.objectStore(LIVING_WORLD_STORE_NAME).get('living-world') as Promise<LivingWorldData | undefined>,
+    transaction.objectStore(CAMPAIGN_DATA_SYNC_STORE_NAME).get('campaign-data') as Promise<CampaignDataSyncMetadata | undefined>
+  ]);
+  await transaction.done;
+  const livingWorld = storedLivingWorld
+    ? { ...storedLivingWorld, timelineEntries: storedLivingWorld.timelineEntries ?? [], ideaDrafts: storedLivingWorld.ideaDrafts ?? [], maps: storedLivingWorld.maps ?? [] }
+    : createLivingWorldData();
+  return {
+    encounters,
+    partyMembers,
+    worldbuildingEntries,
+    customCatalogueEntries,
+    customCatalogueCategories,
+    worldbuildingTypes,
+    livingWorld,
+    metadata: storedMetadata ?? createCampaignDataSyncMetadata()
+  };
 }
 
 export async function saveLivingWorldData(data: LivingWorldData): Promise<CampaignDataSyncMetadata> {

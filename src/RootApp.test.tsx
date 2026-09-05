@@ -5,14 +5,17 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Brew } from './types';
 
-const { loadBrewsFromDrive, replaceBrews, requestDriveAccess } = vi.hoisted(() => ({
+const { loadBrewsFromDrive, refreshCampaignDataFromDrive, replaceBrews, requestDriveAccess, renderedAppToken } = vi.hoisted(() => ({
   loadBrewsFromDrive: vi.fn(),
+  refreshCampaignDataFromDrive: vi.fn(),
   replaceBrews: vi.fn(),
-  requestDriveAccess: vi.fn()
+  requestDriveAccess: vi.fn(),
+  renderedAppToken: vi.fn()
 }));
 
 vi.mock('./App', () => {
-  function TestApp() {
+  function TestApp({ driveAccessToken }: { driveAccessToken?: string | null; onDriveAccessTokenChange?: (token: string) => void }) {
+    renderedAppToken(driveAccessToken);
     const [destination, setDestination] = useState('editor');
     return (
       <div className="app-shell">
@@ -38,9 +41,8 @@ vi.mock('./lib/brewStore', () => ({
   saveLivingWorldData: vi.fn()
 }));
 vi.mock('./lib/driveBrewStorage', () => ({ loadBrewsFromDrive }));
-vi.mock('./lib/encounterStore', () => ({ listEncounters: vi.fn().mockResolvedValue([]) }));
 vi.mock('./lib/googleIdentity', () => ({ isGoogleConfigured: vi.fn(() => true), requestDriveAccess }));
-vi.mock('./lib/worldbuildingStore', () => ({ listWorldbuildingEntries: vi.fn().mockResolvedValue([]) }));
+vi.mock('./lib/workspaceDriveSync', () => ({ refreshCampaignDataFromDrive }));
 
 import RootApp from './RootApp';
 
@@ -71,6 +73,12 @@ describe('RootApp Drive landing', () => {
     requestDriveAccess.mockResolvedValue('drive-token');
     loadBrewsFromDrive.mockResolvedValue([brew]);
     replaceBrews.mockResolvedValue(undefined);
+    refreshCampaignDataFromDrive.mockResolvedValue({
+      data: { encounters: [], worldbuildingEntries: [] },
+      detail: 'Campaign data updated from Drive',
+      metadata: { id: 'campaign-data', lastLocalChangeAt: '2026-08-21T12:00:00.000Z', syncState: 'synced' },
+      state: 'synced'
+    });
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
       callback(0);
       return 0;
@@ -94,6 +102,8 @@ describe('RootApp Drive landing', () => {
 
     expect(loadBrewsFromDrive).toHaveBeenCalledWith('drive-token');
     expect(replaceBrews).toHaveBeenCalledWith([brew]);
+    expect(refreshCampaignDataFromDrive).toHaveBeenCalledWith('drive-token', [brew]);
+    expect(renderedAppToken).toHaveBeenCalledWith('drive-token');
     expect(container.querySelector('.app-shell')).toBeTruthy();
     expect(container.querySelector('output')?.textContent).toBe('library');
     expect(container.textContent).not.toContain('Browse all brews');
@@ -103,6 +113,12 @@ describe('RootApp Drive landing', () => {
     requestDriveAccess.mockResolvedValue('drive-token');
     loadBrewsFromDrive.mockResolvedValue([]);
     replaceBrews.mockResolvedValue(undefined);
+    refreshCampaignDataFromDrive.mockResolvedValue({
+      data: { encounters: [], worldbuildingEntries: [] },
+      detail: 'No campaign data to sync yet',
+      metadata: { id: 'campaign-data', lastLocalChangeAt: '2026-08-21T12:00:00.000Z', syncState: 'local' },
+      state: 'local'
+    });
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
       callback(0);
       return 0;

@@ -4,9 +4,8 @@ import App from './App';
 import { checkForPwaUpdate } from './components/PwaUpdateNotice';
 import { createBrew, getLivingWorldData, replaceBrews, saveBrew, saveLivingWorldData } from './lib/brewStore';
 import { loadBrewsFromDrive } from './lib/driveBrewStorage';
-import { listEncounters } from './lib/encounterStore';
 import { isGoogleConfigured, requestDriveAccess } from './lib/googleIdentity';
-import { listWorldbuildingEntries } from './lib/worldbuildingStore';
+import { refreshCampaignDataFromDrive } from './lib/workspaceDriveSync';
 import type { Brew, IdeaDraft } from './types';
 import './landing-page.css';
 import './workspace-home-nav.css';
@@ -73,12 +72,11 @@ export default function RootApp() {
   const [mobileNavigation, setMobileNavigation] = useState<HTMLElement | null>(null);
 
   const loadLandingData = async (token: string) => {
-    const [driveBrews, encounters, worldbuilding] = await Promise.all([
-      loadBrewsFromDrive(token),
-      listEncounters(),
-      listWorldbuildingEntries()
-    ]);
+    const driveBrews = await loadBrewsFromDrive(token);
     await replaceBrews(driveBrews);
+    const campaignResult = await refreshCampaignDataFromDrive(token, driveBrews);
+    const encounters = campaignResult.data.encounters;
+    const worldbuilding = campaignResult.data.worldbuildingEntries;
     setBrews(driveBrews);
     setStats({ encounters: encounters.length, worldbuilding: worldbuilding.length });
     return driveBrews.length;
@@ -180,31 +178,6 @@ export default function RootApp() {
       disconnect?.();
     };
   }, [workspaceOpen]);
-
-  useEffect(() => {
-    if (!workspaceOpen || !accessToken) return;
-    let cancelled = false;
-    let frame = 0;
-    let attempts = 0;
-
-    const connectWorkspaceDrive = () => {
-      if (cancelled || attempts > 180) return;
-      attempts += 1;
-      const button = document.querySelector<HTMLButtonElement>('.cloud-controls button');
-      if (!button) {
-        frame = window.requestAnimationFrame(connectWorkspaceDrive);
-        return;
-      }
-      const label = button.textContent?.trim() ?? '';
-      if (label === 'Connect Drive' || label === 'Reconnect Drive') button.click();
-    };
-
-    frame = window.requestAnimationFrame(connectWorkspaceDrive);
-    return () => {
-      cancelled = true;
-      window.cancelAnimationFrame(frame);
-    };
-  }, [accessToken, workspaceOpen]);
 
   useEffect(() => {
     if (!workspaceOpen || !pendingDestination) return;
@@ -323,7 +296,7 @@ export default function RootApp() {
 
     return (
       <>
-        <App />
+        <App driveAccessToken={accessToken} />
         {desktopNavigation && createPortal(homeButton, desktopNavigation)}
         {mobileNavigation && createPortal(homeButton, mobileNavigation)}
       </>

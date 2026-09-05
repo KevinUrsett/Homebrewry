@@ -104,6 +104,10 @@ type DriveSaveNotice = {
 
 type QuickCreateTarget = 'item' | 'monster' | 'npc';
 
+type AppProps = {
+  driveAccessToken?: string | null;
+};
+
 const deletedAssetStorageKey = 'homebrewry-deleted-assets';
 const activeBrewStorageKey = 'homebrewry-active-brew-id';
 
@@ -147,7 +151,7 @@ function applySpellcheckSetting(target: EventTarget | null, enabled: boolean) {
   target.setAttribute('writingsuggestions', enabled ? 'true' : 'false');
 }
 
-export default function App() {
+export default function App({ driveAccessToken = null }: AppProps) {
   const [brews, setBrews] = useState<Brew[]>([]);
   const [assets, setAssets] = useState<BrewAsset[]>([]);
   const [pendingAssetDeletionIds, setPendingAssetDeletionIds] = useState<string[]>(readDeletedAssetIds);
@@ -159,7 +163,7 @@ export default function App() {
   const [cloudMenuOpen, setCloudMenuOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [saveState, setSaveState] = useState('Loading local drafts…');
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(() => driveAccessToken);
   const [syncing, setSyncing] = useState(false);
   const [savingToDrive, setSavingToDrive] = useState(false);
   const [driveSaveNotice, setDriveSaveNotice] = useState<DriveSaveNotice | null>(null);

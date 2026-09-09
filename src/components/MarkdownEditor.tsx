@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
-import { Compartment, EditorState, Facet } from '@codemirror/state';
+import { Compartment, EditorState, Facet, StateEffect } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
@@ -57,6 +57,27 @@ type MobileReferenceSelection = Pick<ReferenceMenu, 'name' | 'from' | 'to'>;
 
 const emptyAssets = new Map<string, BrewAsset>();
 const emptyMaps = new Map<string, CampaignMapRecord>();
+const refreshEmbeddedPreviews = StateEffect.define<null>();
+const embeddedPreviewRefreshDelay = 140;
+
+const deferredEmbeddedPreviewRefresh = ViewPlugin.fromClass(class {
+  private refreshTimer: number | undefined;
+  private destroyed = false;
+
+  update(update: ViewUpdate) {
+    if (!update.docChanged) return;
+    if (this.refreshTimer !== undefined) window.clearTimeout(this.refreshTimer);
+    this.refreshTimer = window.setTimeout(() => {
+      this.refreshTimer = undefined;
+      if (!this.destroyed) update.view.dispatch({ effects: refreshEmbeddedPreviews.of(null) });
+    }, embeddedPreviewRefreshDelay);
+  }
+
+  destroy() {
+    this.destroyed = true;
+    if (this.refreshTimer !== undefined) window.clearTimeout(this.refreshTimer);
+  }
+});
 
 class ReferenceChip extends WidgetType {
   constructor(private readonly label: string, private readonly kind: string, private readonly id: string) {
@@ -307,7 +328,10 @@ function campaignMapPreviews(maps: ReadonlyMap<string, CampaignMapRecord>, onOpe
     decorations: DecorationSet;
     constructor(view: EditorView) { this.decorations = campaignMapDecorations(view, maps, onOpen); }
     update(update: ViewUpdate) {
-      if (update.docChanged || update.transactions.some((transaction) => transaction.reconfigured)) this.decorations = campaignMapDecorations(update.view, maps, onOpen);
+      if (update.docChanged) this.decorations = this.decorations.map(update.changes);
+      if (update.transactions.some((transaction) => transaction.reconfigured || transaction.effects.some((effect) => effect.is(refreshEmbeddedPreviews)))) {
+        this.decorations = campaignMapDecorations(update.view, maps, onOpen);
+      }
     }
   }, { decorations: (value) => value.decorations });
 }
@@ -329,6 +353,7 @@ function dungeonImageAt(doc: string, position: number, source: string): DungeonI
 
 function imagePreviewDecorations(view: EditorView, onRotate?: (asset: BrewAsset) => void, onDelete?: (asset: BrewAsset) => void, onOpenDungeon?: (title: string) => void): DecorationSet {
   const lookup = view.state.facet(imageAssetLookup);
+  const docText = view.state.doc.toString();
   const decorations = [];
   let position = 0;
 
@@ -345,7 +370,7 @@ function imagePreviewDecorations(view: EditorView, onRotate?: (asset: BrewAsset)
       }).range(position + match.index, end));
       decorations.push(Decoration.widget({
         side: 1,
-        widget: new MarkdownImagePreview(source, match[1], asset, onRotate, onDelete, dungeonImageAt(view.state.doc.toString(), position + match.index, source), onOpenDungeon)
+        widget: new MarkdownImagePreview(source, match[1], asset, onRotate, onDelete, dungeonImageAt(docText, position + match.index, source), onOpenDungeon)
       }).range(end));
     }
     position += line.length + 1;
@@ -363,7 +388,8 @@ function imagePreviews(onRotate?: (asset: BrewAsset) => void, onDelete?: (asset:
   }
 
   update(update: ViewUpdate) {
-    if (update.docChanged || update.transactions.some((transaction) => transaction.reconfigured)) {
+    if (update.docChanged) this.decorations = this.decorations.map(update.changes);
+    if (update.transactions.some((transaction) => transaction.reconfigured || transaction.effects.some((effect) => effect.is(refreshEmbeddedPreviews)))) {
       this.decorations = imagePreviewDecorations(update.view, onRotate, onDelete, onOpenDungeon);
     }
   }
@@ -412,6 +438,7 @@ export function MarkdownEditor({
   const parentRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const initialContentRef = useRef(content);
+  const latestEditorContentRef = useRef(content);
   const assetsRef = useRef(assets);
   const imageRotationRef = useRef(onRotateImage);
   const imageDeletionRef = useRef(onDeleteImage);
@@ -483,10 +510,15 @@ export function MarkdownEditor({
           referenceDecorations,
           encounterOpenHandlerCompartment.of(onOpenEncounter ? encounterOpenHandler.of(onOpenEncounter) : []),
           imageAssetLookupCompartment.of(imageAssetLookup.of((source) => assetsRef.current.get(source.slice('asset://'.length)))),
+          deferredEmbeddedPreviewRefresh,
           imagePreviews((asset) => imageRotationRef.current?.(asset), (asset) => imageDeletionRef.current?.(asset), (title) => dungeonOpenRef.current?.(title)),
           campaignMapPreviews(maps, onOpenCampaignMap),
           EditorView.updateListener.of((update) => {
-            if (update.docChanged) latestRef.current.onChange(update.state.doc.toString());
+            if (update.docChanged) {
+              const nextContent = update.state.doc.toString();
+              latestEditorContentRef.current = nextContent;
+              latestRef.current.onChange(nextContent);
+            }
             if (update.selectionSet) {
               const selection = update.state.selection.main;
               latestRef.current.onSelectionChange?.({ start: selection.from, end: selection.to });
@@ -579,7 +611,8 @@ export function MarkdownEditor({
 
   useEffect(() => {
     const view = viewRef.current;
-    if (!view || content === view.state.doc.toString()) return;
+    if (!view || content === latestEditorContentRef.current) return;
+    latestEditorContentRef.current = content;
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: content } });
   }, [content]);
 

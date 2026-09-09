@@ -1,6 +1,7 @@
 /* @vitest-environment jsdom */
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { EditorView } from '@codemirror/view';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MarkdownEditor } from './MarkdownEditor';
 import type { BrewAsset } from '../types';
@@ -26,6 +27,7 @@ describe('MarkdownEditor images', () => {
     root = null;
     host = null;
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   it('renders a stored image beneath its Markdown in Edit mode', async () => {
@@ -45,6 +47,36 @@ describe('MarkdownEditor images', () => {
     expect(host.textContent).toContain('A brass lantern');
     expect(host.textContent).not.toContain('asset://lantern-art');
     expect(createObjectURL).toHaveBeenCalledWith(asset.blob);
+  });
+
+  it('reports typing immediately and refreshes embedded previews after typing pauses', async () => {
+    vi.useFakeTimers();
+    const onChange = vi.fn();
+    host = document.createElement('div');
+    document.body.append(host);
+    root = createRoot(host);
+
+    await act(async () => {
+      root?.render(<MarkdownEditor content="![Old map](https://example.com/old.png)" onChange={onChange} />);
+    });
+
+    const editorElement = host.querySelector<HTMLElement>('.cm-editor');
+    const view = editorElement ? EditorView.findFromDOM(editorElement) : null;
+    const nextContent = '![New map](https://example.com/new.png)';
+    expect(view).not.toBeNull();
+
+    act(() => {
+      view?.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: nextContent } });
+    });
+
+    expect(onChange).toHaveBeenCalledWith(nextContent);
+    expect(host.querySelector<HTMLImageElement>('.cm-markdown-image-preview img')?.alt).not.toBe('New map');
+
+    await act(async () => {
+      vi.advanceTimersByTime(150);
+    });
+
+    expect(host.querySelector<HTMLImageElement>('.cm-markdown-image-preview img')?.alt).toBe('New map');
   });
 });
 

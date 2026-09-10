@@ -129,14 +129,16 @@ export function EditorPane({
           <button disabled={!findValue} onClick={onReplaceAll} type="button">Replace all</button>
         </div>
       )}
-      <label className="visually-hidden" htmlFor="brew-title">Brew title</label>
-      <input
-        className="title-input"
-        id="brew-title"
-        onChange={(event) => onTitleChange(event.target.value)}
-        placeholder="Untitled Brew"
-        value={title}
-      />
+      <div className="brew-title-control">
+        <label htmlFor="brew-title">Rename brew</label>
+        <input
+          className="title-input"
+          id="brew-title"
+          onChange={(event) => onTitleChange(event.target.value)}
+          placeholder="Untitled Brew"
+          value={title}
+        />
+      </div>
       <MarkdownEditor
         content={content}
         assets={assets}

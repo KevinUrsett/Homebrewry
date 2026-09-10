@@ -2082,6 +2082,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
             onImport={() => setImportOpen(true)}
             onNew={createNewBrew}
             onQueryChange={setQuery}
+            onRename={(title) => updateActiveBrew((brew) => ({ ...brew, title }))}
             onSelect={(id) => {
               setActiveId(id);
               setPendingInsertion(null);

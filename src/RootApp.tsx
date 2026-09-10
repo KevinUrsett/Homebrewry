@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import App from './App';
 import { checkForPwaUpdate } from './components/PwaUpdateNotice';
+import { RenameBrewDialog } from './components/RenameBrewDialog';
 import {
   beginLocalDatabaseRecovery,
   createBrew,
@@ -75,6 +76,7 @@ export default function RootApp() {
   const [loading, setLoading] = useState(false);
   const [connectionPhase, setConnectionPhase] = useState<'disconnected' | 'connecting' | 'loading' | 'ready' | 'error'>('disconnected');
   const [quickIdeaBrew, setQuickIdeaBrew] = useState<Brew | null>(null);
+  const [renameBrew, setRenameBrew] = useState<Brew | null>(null);
   const [quickIdeaText, setQuickIdeaText] = useState('');
   const [savingQuickIdea, setSavingQuickIdea] = useState(false);
   const [desktopNavigation, setDesktopNavigation] = useState<HTMLElement | null>(null);
@@ -288,6 +290,21 @@ export default function RootApp() {
     openWorkspace('editor');
   };
 
+  const renameLandingBrew = async (title: string) => {
+    if (!renameBrew) return;
+    const renamed: Brew = {
+      ...renameBrew,
+      title,
+      updatedAt: new Date().toISOString(),
+      version: renameBrew.version + 1,
+      syncState: renameBrew.drive ? 'pending' : 'local'
+    };
+    await saveBrew(renamed);
+    setBrews((current) => current.map((brew) => brew.id === renamed.id ? renamed : brew));
+    setDriveStatus(`Renamed to “${title}” and saved to Google Drive.`);
+    setRenameBrew(null);
+  };
+
   const captureQuickIdea = async () => {
     const text = quickIdeaText.trim();
     if (!accessToken || !quickIdeaBrew || !text) return;
@@ -421,7 +438,6 @@ export default function RootApp() {
             {recentBrews.map((brew, index) => (
               <article className={`recent-brew-card ${index === 0 ? 'is-featured' : ''}`} key={brew.id}>
                 <button className="recent-brew-open" onClick={() => void openBrew(brew)} type="button">
-                  <span className="recent-brew-ornament" aria-hidden>◆</span>
                   <span className="recent-brew-time">Edited {relativeTime(brew.updatedAt)}</span>
                   <strong>{brew.title || 'Untitled Brew'}</strong>
                   <span className="recent-brew-excerpt">{plainExcerpt(brew.content) || 'An empty page waiting for its first idea.'}</span>
@@ -431,7 +447,10 @@ export default function RootApp() {
                   </span>
                   <span className="recent-brew-origin">Created on: {brew.createdOn ?? 'Earlier version'}</span>
                 </button>
-                <button aria-label={`Capture an idea for ${brew.title || 'Untitled Brew'}`} className="recent-brew-idea-plus" onClick={() => { setQuickIdeaBrew(brew); setQuickIdeaText(''); }} type="button">+</button>
+                <div className="recent-brew-actions">
+                  <button aria-label={`Rename ${brew.title || 'Untitled Brew'}`} onClick={() => setRenameBrew(brew)} type="button">Rename</button>
+                  <button aria-label={`Capture an idea for ${brew.title || 'Untitled Brew'}`} onClick={() => { setQuickIdeaBrew(brew); setQuickIdeaText(''); }} type="button">+ Idea</button>
+                </div>
               </article>
             ))}
             <button className="recent-brew-card new-brew-card" onClick={() => void createNew()} type="button">
@@ -481,6 +500,14 @@ export default function RootApp() {
             </div>
           </form>
         </div>
+      )}
+      {renameBrew && (
+        <RenameBrewDialog
+          key={renameBrew.id}
+          onCancel={() => setRenameBrew(null)}
+          onRename={renameLandingBrew}
+          title={renameBrew.title}
+        />
       )}
     </main>
   );

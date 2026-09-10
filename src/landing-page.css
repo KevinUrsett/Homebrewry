@@ -69,14 +69,15 @@
 .recent-brew-card.is-featured { background: linear-gradient(145deg, #fff9e9, #f2e0bd); border-color: #b88b55; }
 .recent-brew-open { background: transparent; border: 0; color: inherit; cursor: pointer; display: flex; flex: 1; flex-direction: column; min-height: 220px; padding: 20px; text-align: left; width: 100%; }
 .recent-brew-open:focus-visible { outline: 3px solid #9b6a37; outline-offset: -4px; }
-.recent-brew-ornament { color: var(--landing-red); font-size: .8rem; position: absolute; right: 18px; top: 17px; }
-.recent-brew-time { color: #8b755f; font-size: .7rem; font-weight: 700; letter-spacing: .05em; padding-right: 32px; text-transform: uppercase; }
+.recent-brew-time { color: #8b755f; font-size: .7rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
 .recent-brew-open > strong, .recent-brew-card > strong { color: #5e3028; font-family: Georgia, serif; font-size: 1.2rem; margin: 17px 0 9px; }
 .recent-brew-excerpt { color: #675747; display: -webkit-box; font-family: "Scaly Sans", Inter, sans-serif; font-size: .84rem; line-height: 1.48; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
 .recent-brew-meta { border-top: 1px solid #dfcfb6; color: #7f6954; display: flex; font-size: .7rem; justify-content: space-between; margin-top: auto; padding-top: 15px; }
 .recent-brew-origin { color: #92775d; font-size: .64rem; margin-top: 7px; }
-.recent-brew-idea-plus { align-items: center; background: #6e342b; border: 1px solid #bf8953; border-radius: 50%; box-shadow: 0 3px 9px rgb(67 36 22 / 26%); color: #fff6e6; cursor: pointer; display: flex; font-family: Georgia, serif; font-size: 1.3rem; height: 28px; justify-content: center; line-height: 1; padding: 0 0 2px; position: absolute; right: 13px; top: 12px; width: 28px; z-index: 2; }
-.recent-brew-idea-plus:hover { background: #8a4734; transform: scale(1.07); }
+.recent-brew-actions { border-top: 1px solid #dfcfb6; display: grid; grid-template-columns: 1fr 1fr; }
+.recent-brew-actions button { background: rgb(255 251 240 / 72%); border: 0; color: #6b3a30; font-size: .72rem; font-weight: 800; padding: 10px; }
+.recent-brew-actions button + button { border-left: 1px solid #dfcfb6; }
+.recent-brew-actions button:hover { background: #ead8b8; }
 .new-brew-card { align-items: center; background: transparent; border-style: dashed; justify-content: center; padding: 20px; text-align: center; }
 .new-brew-card > strong { margin: 10px 0 6px; }
 .new-brew-card > span:last-child { color: #766451; font-size: .8rem; max-width: 220px; }

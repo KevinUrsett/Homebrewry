@@ -69,6 +69,15 @@ input, textarea, select, .markdown-editor { text-transform: none; }
 .library-actions { border-top: 1px solid #d8c9ae; display: flex; gap: 8px; padding: 10px; }
 .library-actions button { background: #f7f0df; border: 1px solid #bca789; border-radius: 5px; color: #533e31; font-size: .75rem; padding: 6px 8px; }
 .library-actions .danger-button { border-color: #a85a4d; color: #8a2f27; }
+.rename-brew-backdrop { align-items: center; background: rgb(30 20 15 / 58%); display: flex; inset: 0; justify-content: center; padding: 20px; position: fixed; z-index: 2600; }
+.rename-brew-dialog { background: #fffaf0; border: 1px solid #b99464; border-radius: 10px; box-shadow: 0 20px 60px rgb(20 12 8 / 40%); display: grid; gap: 10px; max-width: 440px; padding: 24px; width: 100%; }
+.rename-brew-dialog .eyebrow { color: #8b642f; font-size: .7rem; font-weight: 800; letter-spacing: .12em; margin: 0; text-transform: uppercase; }
+.rename-brew-dialog h2 { color: #5d2f26; font-family: Georgia, serif; margin: 0 0 5px; }
+.rename-brew-dialog label { color: #594132; font-size: .78rem; font-weight: 800; }
+.rename-brew-dialog input { background: #fffdf7; border: 1px solid #bca789; border-radius: 6px; color: #382b24; font-size: 1rem; padding: 10px 11px; width: 100%; }
+.rename-brew-error { color: #8a2f27; font-size: .8rem; margin: 0; }
+.rename-brew-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+.rename-brew-actions button { border: 1px solid #bca789; border-radius: 5px; padding: 8px 11px; }
 
 .main-panes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: 0; min-width: 0; }
 .editor-pane { background: #f7edd7; border-right: 1px solid #d4c7b1; display: flex; flex-direction: column; min-height: 0; }

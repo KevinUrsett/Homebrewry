@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import type { Brew } from '../types';
+import { RenameBrewDialog } from './RenameBrewDialog';
 
 type LibraryPanelProps = {
   brews: Brew[];
@@ -7,6 +9,7 @@ type LibraryPanelProps = {
   onQueryChange: (value: string) => void;
   onSelect: (id: string) => void;
   onNew: () => void;
+  onRename: (title: string) => void;
   onDuplicate: () => void;
   onDelete: () => void;
   onImport: () => void;
@@ -30,11 +33,14 @@ export function LibraryPanel({
   onQueryChange,
   onSelect,
   onNew,
+  onRename,
   onDuplicate,
-  onDelete
-  , onImport
+  onDelete,
+  onImport
 }: LibraryPanelProps) {
+  const [renaming, setRenaming] = useState(false);
   const filtered = brews.filter((brew) => brew.title.toLowerCase().includes(query.trim().toLowerCase()));
+  const activeBrew = brews.find((brew) => brew.id === activeId);
 
   return (
     <aside className="library-panel side-panel" aria-label="Brew library">
@@ -72,9 +78,18 @@ export function LibraryPanel({
         ))}
       </div>
       <div className="library-actions">
-        <button onClick={onDuplicate} type="button">Duplicate</button>
-        <button className="danger-button" onClick={onDelete} type="button">Delete</button>
+        <button disabled={!activeBrew} onClick={() => setRenaming(true)} type="button">Rename</button>
+        <button disabled={!activeBrew} onClick={onDuplicate} type="button">Duplicate</button>
+        <button className="danger-button" disabled={!activeBrew} onClick={onDelete} type="button">Delete</button>
       </div>
+      {renaming && activeBrew && (
+        <RenameBrewDialog
+          key={activeBrew.id}
+          onCancel={() => setRenaming(false)}
+          onRename={(title) => { onRename(title); setRenaming(false); }}
+          title={activeBrew.title}
+        />
+      )}
     </aside>
   );
 }

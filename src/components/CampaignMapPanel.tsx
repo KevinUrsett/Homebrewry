@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import { createBlankCampaignMap } from '../lib/campaignMap';
+import { saveWorldbuildingEntry } from '../lib/worldbuildingStore';
 import { worldbuildingReferenceMatches } from '../lib/worldbuildingReferences';
 import type { Brew, CampaignEntity, CampaignMap, CampaignMapLink, CampaignMapNode, EntityCurrentState, EntityReference, WorldbuildingEntry } from '../types';
 import '../campaign-map.css';
@@ -267,10 +268,11 @@ export function CampaignMapPanel({ brews, campaignMap, currentStateByEntityId, e
   const selectedWorldbuilding = worldbuildingEntries.find((entry) => entry.id === selectedWorldbuildingId) ?? null;
   const boardNodes: DisplayNode[] = activeNodes.map((node) => {
     const entity = node.entityId ? entities.find((item) => item.id === node.entityId) : undefined;
+    const linkedWorldbuilding = node.entityId ? worldbuildingByEntityId.get(node.entityId) : undefined;
     return {
       ...node,
       label: node.id === selectedId ? selectedLabel || node.label : node.label,
-      notes: node.id === selectedId ? selectedNotes : readNodeMeta(draft?.links ?? [], node.id, fallbackMapId).notes,
+      notes: node.id === selectedId ? selectedNotes : linkedWorldbuilding?.notes ?? readNodeMeta(draft?.links ?? [], node.id, fallbackMapId).notes,
       subtitle: entity ? String(currentStateByEntityId.get(entity.id)?.fields.status?.value ?? entity.kind) : 'Note',
       tone: entity ? 'entity' : 'note'
     };
@@ -279,6 +281,11 @@ export function CampaignMapPanel({ brews, campaignMap, currentStateByEntityId, e
   const selectedNodeWorldbuilding = selectedNode?.entityId ? worldbuildingByEntityId.get(selectedNode.entityId) ?? null : null;
   const selectedConnections = selectedId ? visibleLinks.filter((link) => link.sourceId === selectedId || link.targetId === selectedId) : [];
   const selectedParentLink = selectedId ? visibleLinks.find((link) => link.targetId === selectedId) : undefined;
+
+  useEffect(() => {
+    if (!selectedNodeWorldbuilding) return;
+    setSelectedNotes(selectedNodeWorldbuilding.notes);
+  }, [selectedNode?.id, selectedNodeWorldbuilding?.updatedAt]);
 
   const selectMap = (mapId: string) => {
     const current = draftRef.current;
@@ -334,9 +341,10 @@ export function CampaignMapPanel({ brews, campaignMap, currentStateByEntityId, e
     const current = draftRef.current;
     const node = current?.nodes.find((item) => item.id === nodeId);
     if (!current || !node) return;
+    const linkedWorldbuilding = node.entityId ? worldbuildingByEntityId.get(node.entityId) : undefined;
     setSelectedId(nodeId);
     setSelectedLabel(node.label);
-    setSelectedNotes(readNodeMeta(current.links, nodeId, fallbackMapId).notes);
+    setSelectedNotes(linkedWorldbuilding?.notes ?? readNodeMeta(current.links, nodeId, fallbackMapId).notes);
     if (focusTitle) requestAnimationFrame(() => { titleInputRef.current?.focus(); titleInputRef.current?.select(); });
   };
 
@@ -383,10 +391,21 @@ export function CampaignMapPanel({ brews, campaignMap, currentStateByEntityId, e
     const current = draftRef.current;
     if (!current || !selectedId || !selectedLabel.trim()) return;
     const timestamp = new Date().toISOString();
+    const savedNotes = selectedNodeWorldbuilding ? selectedNotes : selectedNotes.trim();
+    if (selectedNodeWorldbuilding) {
+      const updatedEntry = {
+        ...selectedNodeWorldbuilding,
+        notes: savedNotes,
+        updatedAt: timestamp,
+        version: selectedNodeWorldbuilding.version + 1
+      };
+      Object.assign(selectedNodeWorldbuilding, updatedEntry);
+      void saveWorldbuildingEntry(updatedEntry).catch(() => undefined);
+    }
     replaceDraft({
       ...current,
       nodes: current.nodes.map((node) => node.id === selectedId ? { ...node, label: selectedLabel.trim(), updatedAt: timestamp } : node),
-      links: writeNodeMeta(current.links, selectedId, { notes: selectedNotes.trim(), mapId: activeMapId }, timestamp),
+      links: writeNodeMeta(current.links, selectedId, { notes: savedNotes, mapId: activeMapId }, timestamp),
       updatedAt: timestamp
     });
   };
@@ -529,7 +548,7 @@ export function CampaignMapPanel({ brews, campaignMap, currentStateByEntityId, e
         <div className="campaign-mindmap-sidebar"><aside className="campaign-mindmap-inspector">{selectedNode ? <>
           <div><p className="eyebrow">Selected node</p><h3>{selectedLabel || selectedNode.label}</h3></div>
           <label>Title<input ref={titleInputRef} onChange={(event) => setSelectedLabel(event.target.value)} value={selectedLabel} /></label>
-          <label>Notes<textarea onChange={(event) => setSelectedNotes(event.target.value)} placeholder="Context, secrets, unresolved questions…" value={selectedNotes} /></label>
+          <label>{selectedNodeWorldbuilding ? 'Worldbuilding notes' : 'Notes'}<textarea onChange={(event) => setSelectedNotes(event.target.value)} placeholder="Context, secrets, unresolved questions…" value={selectedNotes} />{selectedNodeWorldbuilding && <small>Shared with the linked Worldbuilding entry. Saving here updates both places.</small>}</label>
           <button className="primary-button" disabled={!selectedLabel.trim()} onClick={saveSelectedNode} type="button">Save node</button>
           <section className="campaign-mindmap-connections"><div><strong>Connections</strong><small>Use the dotted handle to move. Drag the round handle onto any node to add another connection.</small></div>
             {!selectedConnections.length ? <p>No connections.</p> : selectedConnections.map((link) => {

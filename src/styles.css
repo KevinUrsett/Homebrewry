@@ -90,7 +90,10 @@ input, textarea, select, .markdown-editor { text-transform: none; }
 .find-replace { background: #f8efde; border-bottom: 1px solid #d8c9ae; display: grid; gap: 6px; grid-template-columns: 1fr 1fr auto; padding: 8px; }
 .find-replace input { background: #fffaf0; border: 1px solid #cbb99d; border-radius: 5px; min-width: 0; padding: 6px; }
 .find-replace button { background: #5d2f26; border: 0; border-radius: 5px; color: white; font-size: .76rem; padding: 6px 8px; }
-.title-input { border: 0; border-bottom: 1px solid #e1d5c0; color: #37261d; font-family: Georgia, serif; font-size: 1.45rem; font-weight: 700; padding: 18px 20px 12px; width: 100%; }
+.brew-title-control { background: #fffaf0; border-bottom: 1px solid #e1d5c0; display: grid; gap: 2px; padding: 8px 20px 10px; }
+.brew-title-control label { color: #806c5a; font-size: .65rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.title-input { background: transparent; border: 0; color: #37261d; font-family: Georgia, serif; font-size: 1.45rem; font-weight: 700; min-width: 0; padding: 2px 0; width: 100%; }
+.title-input:focus-visible { outline: 2px solid #b99464; outline-offset: 3px; }
 .markdown-editor { color: #34271f; flex: 1; min-height: 500px; min-width: 0; overflow: hidden; }
 .markdown-editor .cm-editor, .markdown-editor .cm-scroller { background: transparent; }
 .markdown-editor .cm-editor { height: 100%; }
@@ -796,7 +799,10 @@ input, textarea, select, .markdown-editor { text-transform: none; }
   .app-shell.mobile-preview .preview-canvas { margin: 0 auto; max-width: 210mm; width: 100%; }
   .app-shell.mobile-preview .brew-book { display: grid; }
   .app-shell.mobile-editor .editor-pane { overflow: hidden; }
-  .app-shell.mobile-editor .editor-toolbar, .app-shell.mobile-editor .title-input { display: none; }
+  .app-shell.mobile-editor .editor-toolbar { display: none; }
+  .app-shell.mobile-editor .brew-title-control { gap: 0; padding: 5px 12px 6px; }
+  .app-shell.mobile-editor .brew-title-control label { font-size: .58rem; }
+  .app-shell.mobile-editor .title-input { font-size: 1rem; padding: 1px 0; }
   .toolbar-spacer { display: none; }
   .find-replace { grid-template-columns: 1fr 1fr; }
   .find-replace button { grid-column: 1 / -1; }

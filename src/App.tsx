@@ -35,6 +35,7 @@ import {
 import { createAsset, deleteAsset, listAssets, replaceAssets, rotateAsset, saveAsset } from './lib/assetStore';
 import { syncAssets } from './lib/assetSync';
 import { createCampaignDataSnapshot } from './lib/campaignData';
+import type { SocialNpcDetails } from './lib/socialNpcSearch';
 import { deriveCampaignPosition, derivePartyLocation } from './lib/campaignProgress';
 import { partyEntityId, recordCombatCompletion, recordManualStateChange, recordPartyLocation, synchroniseLivingWorld } from './lib/livingWorld';
 import { projectCurrentState } from './lib/worldState';
@@ -824,8 +825,8 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
       .catch(() => setSaveState('Social encounter deletion failed'));
   };
 
-  const createSocialNpc = (name: string): WorldbuildingEntry => {
-    const entry = createWorldbuildingEntry(name, 'npc');
+  const createSocialNpc = (name: string, details?: SocialNpcDetails): WorldbuildingEntry => {
+    const entry = { ...createWorldbuildingEntry(name, details?.kind ?? 'npc'), ...details };
     persistWorldbuildingEntry(entry);
     return entry;
   };

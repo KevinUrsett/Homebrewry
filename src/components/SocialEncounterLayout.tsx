@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { SocialEncounter, WorldbuildingEntry } from '../types';
+import { searchSocialNpcs, socialNpcCandidates, type SocialNpcDetails, type SocialNpcSearchResult } from '../lib/socialNpcSearch';
 
 type Props = {
   encounters: SocialEncounter[];
   worldbuildingEntries: WorldbuildingEntry[];
-  onCreateNpc: (name: string) => WorldbuildingEntry;
+  onCreateNpc: (name: string, details?: SocialNpcDetails) => WorldbuildingEntry;
   onDeleteEncounter: (encounter: SocialEncounter) => void;
   onOpenWorldbuildingEntry: (entry: WorldbuildingEntry) => void;
   onUpdateEncounter: (encounter: SocialEncounter) => void;
@@ -43,14 +44,9 @@ export function SocialEncounterLayout({ encounters, worldbuildingEntries, onCrea
     .map((id) => worldbuildingEntries.find((entry) => entry.id === id))
     .filter((entry): entry is WorldbuildingEntry => Boolean(entry)) ?? [], [selectedEncounter, worldbuildingEntries]);
   const selectedCharacter = characters.find((character) => character.id === selectedCharacterId) ?? null;
-  const availableCharacters = useMemo(() => {
-    const query = searchQuery.trim().toLocaleLowerCase();
-    const addedIds = new Set(selectedEncounter?.npcEntryIds ?? []);
-    return worldbuildingEntries.filter((entry) => {
-      if (addedIds.has(entry.id) || (entry.kind !== 'npc' && entry.kind !== 'character')) return false;
-      return !query || [entry.name, ...entry.aliases, entry.notes].some((value) => value.toLocaleLowerCase().includes(query));
-    });
-  }, [searchQuery, selectedEncounter, worldbuildingEntries]);
+  const candidates = useMemo(() => socialNpcCandidates(worldbuildingEntries), [worldbuildingEntries]);
+  const matchingCharacters = useMemo(() => searchSocialNpcs(candidates, searchQuery), [candidates, searchQuery]);
+  const canCreateNpc = Boolean(searchQuery.trim()) && matchingCharacters.length === 0;
 
   const closePicker = () => {
     setPickerOpen(false);
@@ -69,7 +65,10 @@ export function SocialEncounterLayout({ encounters, worldbuildingEntries, onCrea
   };
   const createNpc = () => {
     const name = searchQuery.trim();
-    if (name) addCharacter(onCreateNpc(name));
+    if (canCreateNpc) addCharacter(onCreateNpc(name));
+  };
+  const addSearchResult = (result: SocialNpcSearchResult) => {
+    addCharacter(result.entry);
   };
   const startEncounter = () => {
     const encounter = createSocialEncounter();
@@ -114,24 +113,38 @@ export function SocialEncounterLayout({ encounters, worldbuildingEntries, onCrea
               <section aria-label="Add NPC" className="social-npc-picker">
                 <header><div><p className="eyebrow">Characters</p><h3>Add an NPC</h3></div><button aria-label="Close NPC picker" onClick={closePicker} type="button">×</button></header>
                 <div className="social-npc-picker-actions">
+                  <label htmlFor="social-npc-search">Search NPCs</label>
                   <input
+                    id="social-npc-search"
                     aria-label="Search NPCs"
+                    aria-describedby="social-npc-search-status"
                     autoFocus
                     onChange={(event) => setSearchQuery(event.target.value)}
-                    onKeyDown={(event) => { if (event.key === 'Enter' && searchQuery.trim() && availableCharacters.length === 0) createNpc(); }}
-                    placeholder="Search Worldbuilding NPCs"
+                    placeholder="Search by name or alias…"
                     type="search"
                     value={searchQuery}
                   />
                 </div>
+                <p className="social-npc-search-status" id="social-npc-search-status" role="status">
+                  {matchingCharacters.length
+                    ? `${matchingCharacters.length} NPC${matchingCharacters.length === 1 ? '' : 's'} found · Select a result to add`
+                    : searchQuery.trim() ? 'No matching NPCs. Create one with this name below.' : 'Search your Worldbuilding entries and campaign references.'}
+                </p>
                 <div className="social-npc-search-results">
-                  {availableCharacters.map((character) => <button key={character.id} onClick={() => addCharacter(character)} type="button"><span><strong>{character.name}</strong><small>{kindLabel(character.kind)}{character.aliases.length ? ` · ${character.aliases.join(', ')}` : ''}</small></span><b aria-hidden="true">+</b></button>)}
-                  {!availableCharacters.length && searchQuery.trim() && (
+                  {matchingCharacters.map((result) => {
+                    const added = result.source === 'worldbuilding' && selectedEncounter.npcEntryIds.includes(result.entry.id);
+                    return (
+                      <button aria-label={`${added ? 'Already added' : 'Add'} ${result.entry.name}`} className="social-npc-add-result" disabled={added} key={result.key} onClick={() => addSearchResult(result)} type="button">
+                        <span><strong>{result.entry.name}</strong><small>Worldbuilding · {kindLabel(result.entry.kind)}{result.entry.aliases.length ? ` · ${result.entry.aliases.join(', ')}` : ''}</small></span>
+                        <b aria-hidden="true">{added ? 'Added' : 'Add'}</b>
+                      </button>
+                    );
+                  })}
+                  {canCreateNpc && (
                     <button className="social-npc-create-result" onClick={createNpc} type="button">
                       <span><strong>Create “{searchQuery.trim()}”</strong><small>New Worldbuilding NPC</small></span><b aria-hidden="true">+</b>
                     </button>
                   )}
-                  {!availableCharacters.length && !searchQuery.trim() && <p>No other Worldbuilding NPCs are available.</p>}
                 </div>
               </section>
             )}

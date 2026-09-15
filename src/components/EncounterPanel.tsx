@@ -1,5 +1,6 @@
 import { useState, type ComponentProps } from 'react';
 import type { SocialEncounter, WorldbuildingEntry } from '../types';
+import type { SocialNpcDetails } from '../lib/socialNpcSearch';
 import { EncounterPanel as CombatEncounterPanel } from './CombatEncounterPanel';
 import { SocialEncounterLayout } from './SocialEncounterLayout';
 import '../social-encounter.css';
@@ -8,7 +9,7 @@ type CombatEncounterPanelProps = ComponentProps<typeof CombatEncounterPanel>;
 type EncounterPanelProps = CombatEncounterPanelProps & {
   socialEncounters?: SocialEncounter[];
   worldbuildingEntries?: WorldbuildingEntry[];
-  onCreateSocialNpc?: (name: string) => WorldbuildingEntry;
+  onCreateSocialNpc?: (name: string, details?: SocialNpcDetails) => WorldbuildingEntry;
   onDeleteSocialEncounter?: (encounter: SocialEncounter) => void;
   onOpenWorldbuildingEntry?: (entry: WorldbuildingEntry) => void;
   onUpdateSocialEncounter?: (encounter: SocialEncounter) => void;
@@ -18,7 +19,7 @@ type EncounterKind = 'combat' | 'social';
 export function EncounterPanel({
   socialEncounters = [],
   worldbuildingEntries = [],
-  onCreateSocialNpc = (name) => ({ id: crypto.randomUUID(), name, kind: 'npc', aliases: [], notes: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), version: 1 }),
+  onCreateSocialNpc = (name, details) => ({ id: crypto.randomUUID(), name, kind: 'npc', aliases: [], notes: '', ...details, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), version: 1 }),
   onDeleteSocialEncounter = () => undefined,
   onOpenWorldbuildingEntry = () => undefined,
   onUpdateSocialEncounter = () => undefined,

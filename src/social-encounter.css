@@ -38,13 +38,18 @@
 .social-npc-picker > header .eyebrow { margin: 0 0 2px; }
 .social-npc-picker h3 { color: #39291f; font-family: Georgia, serif; font-size: 1.25rem; margin: 0; }
 .social-npc-picker > header > button { background: transparent; border: 0; color: #7a2f27; font-size: 1.5rem; }
-.social-npc-picker-actions { display: block; }
-.social-npc-picker input { background: #fffdf7; border: 1px solid #cbb99d; border-radius: 5px; color: #39291f; font: inherit; min-height: 42px; padding: 8px 10px; width: 100%; }
-.social-npc-search-results { display: grid; gap: 6px; }
+.social-npc-picker-actions { display: grid; gap: 6px; }
+.social-npc-picker-actions label { color: #594132; font-size: .85rem; font-weight: 700; }
+.social-npc-picker input { background: #fffdf7; border: 1px solid #cbb99d; border-radius: 5px; color: #39291f; font: inherit; font-size: max(1rem, 16px); min-height: 44px; min-width: 0; padding: 8px 10px; width: 100%; }
+.social-npc-search-status { color: #725d48; font-size: .8rem; margin: 0; }
+.social-npc-search-results { display: grid; gap: 6px; max-height: min(42dvh, 380px); overflow-y: auto; overscroll-behavior: contain; }
 .social-npc-search-results > button { align-items: center; background: #fffaf0; border: 1px solid #dac7a8; color: #39291f; display: flex; justify-content: space-between; padding: 9px 11px; text-align: left; }
-.social-npc-search-results > button span { display: grid; gap: 2px; }
+.social-npc-search-results > button { gap: 12px; min-height: 48px; }
+.social-npc-search-results > button span { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
 .social-npc-search-results > button small, .social-npc-search-results > p { color: #806c5a; }
 .social-npc-search-results > button b { color: #7a2f27; font-size: 1.2rem; }
+.social-npc-search-results > button.social-npc-add-result b { flex-shrink: 0; font-size: .8rem; }
+.social-npc-search-results > button:disabled { opacity: .65; cursor: default; }
 .social-npc-search-results > button.social-npc-create-result { border-style: dashed; }
 .social-npc-search-results > p { margin: 4px 0; }
 .social-character-overview { background: #f8edda; border: 1px solid #ceb998; display: grid; gap: 16px; margin: 0 0 16px; padding: 18px 20px; }

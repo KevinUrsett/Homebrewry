@@ -30,6 +30,20 @@ describe('campaign data snapshots', () => {
     expect(parseCampaignDataSnapshot(JSON.parse(JSON.stringify(snapshot))).currentBrewId).toBe('brew-42');
   });
 
+  it('round-trips social encounters and their Worldbuilding NPC links through Drive data', () => {
+    const timestamp = '2026-09-15T20:00:00.000Z';
+    const socialEncounter = { id: 'social-1', name: 'Council meeting', npcEntryIds: ['npc-1', 'npc-2'], createdAt: timestamp, updatedAt: timestamp, version: 1 };
+    const snapshot = createCampaignDataSnapshot([], [], [], timestamp, [], [], [], [], {
+      campaignId: 'default-campaign',
+      entities: [],
+      entityReferences: [],
+      worldEvents: [],
+      socialEncounters: [socialEncounter]
+    });
+
+    expect(parseCampaignDataSnapshot(JSON.parse(JSON.stringify(snapshot))).socialEncounters).toEqual([socialEncounter]);
+  });
+
   it('keeps a manual plot board separate from legacy timeline entries', () => {
     const timestamp = '2026-07-31T08:00:00.000Z';
     const board = createBlankPlotBoard(timestamp);

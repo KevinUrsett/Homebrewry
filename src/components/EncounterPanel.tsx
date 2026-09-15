@@ -1,12 +1,29 @@
 import { useState, type ComponentProps } from 'react';
+import type { SocialEncounter, WorldbuildingEntry } from '../types';
 import { EncounterPanel as CombatEncounterPanel } from './CombatEncounterPanel';
 import { SocialEncounterLayout } from './SocialEncounterLayout';
 import '../social-encounter.css';
 
-type EncounterPanelProps = ComponentProps<typeof CombatEncounterPanel>;
+type CombatEncounterPanelProps = ComponentProps<typeof CombatEncounterPanel>;
+type EncounterPanelProps = CombatEncounterPanelProps & {
+  socialEncounters?: SocialEncounter[];
+  worldbuildingEntries?: WorldbuildingEntry[];
+  onCreateSocialNpc?: (name: string) => WorldbuildingEntry;
+  onDeleteSocialEncounter?: (encounter: SocialEncounter) => void;
+  onOpenWorldbuildingEntry?: (entry: WorldbuildingEntry) => void;
+  onUpdateSocialEncounter?: (encounter: SocialEncounter) => void;
+};
 type EncounterKind = 'combat' | 'social';
 
-export function EncounterPanel(props: EncounterPanelProps) {
+export function EncounterPanel({
+  socialEncounters = [],
+  worldbuildingEntries = [],
+  onCreateSocialNpc = (name) => ({ id: crypto.randomUUID(), name, kind: 'npc', aliases: [], notes: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), version: 1 }),
+  onDeleteSocialEncounter = () => undefined,
+  onOpenWorldbuildingEntry = () => undefined,
+  onUpdateSocialEncounter = () => undefined,
+  ...combatProps
+}: EncounterPanelProps) {
   const [kind, setKind] = useState<EncounterKind>('combat');
 
   return (
@@ -15,13 +32,12 @@ export function EncounterPanel(props: EncounterPanelProps) {
         <button aria-selected={kind === 'combat'} className={kind === 'combat' ? 'is-selected' : ''} onClick={() => setKind('combat')} role="tab" type="button">Combat</button>
         <button aria-selected={kind === 'social'} className={kind === 'social' ? 'is-selected' : ''} onClick={() => setKind('social')} role="tab" type="button">Social</button>
       </nav>
-
-      {kind === 'combat' ? <CombatEncounterPanel {...props} /> : (
+      {kind === 'combat' ? <CombatEncounterPanel {...combatProps} /> : (
         <main aria-label="Social encounters" className="encounter-page social-encounter-page">
           <header className="encounter-page-header">
             <div><p className="eyebrow">Roleplay toolkit</p><h1>Social encounters</h1><p>Keep every NPC in the scene visible and open their information when needed.</p></div>
           </header>
-          <SocialEncounterLayout />
+          <SocialEncounterLayout encounters={socialEncounters} onCreateNpc={onCreateSocialNpc} onDeleteEncounter={onDeleteSocialEncounter} onOpenWorldbuildingEntry={onOpenWorldbuildingEntry} onUpdateEncounter={onUpdateSocialEncounter} worldbuildingEntries={worldbuildingEntries} />
         </main>
       )}
     </div>

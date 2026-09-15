@@ -123,6 +123,7 @@ export function createLivingWorldData(): LivingWorldData {
     worldEvents: [],
     timelineEntries: [],
     ideaDrafts: [],
+    socialEncounters: [],
     maps: []
   };
 }
@@ -130,7 +131,7 @@ export function createLivingWorldData(): LivingWorldData {
 export async function getLivingWorldData(): Promise<LivingWorldData> {
   const database = await getDatabase();
   const stored = await database.get(LIVING_WORLD_STORE_NAME, 'living-world') as LivingWorldData | undefined;
-  return stored ? { ...stored, timelineEntries: stored.timelineEntries ?? [], ideaDrafts: stored.ideaDrafts ?? [], maps: stored.maps ?? [] } : createLivingWorldData();
+  return stored ? { ...stored, timelineEntries: stored.timelineEntries ?? [], ideaDrafts: stored.ideaDrafts ?? [], socialEncounters: stored.socialEncounters ?? [], maps: stored.maps ?? [] } : createLivingWorldData();
 }
 
 export type CampaignDataCache = {
@@ -181,7 +182,7 @@ export async function readCampaignDataCache(): Promise<CampaignDataCache> {
   ]);
   await transaction.done;
   const livingWorld = storedLivingWorld
-    ? { ...storedLivingWorld, timelineEntries: storedLivingWorld.timelineEntries ?? [], ideaDrafts: storedLivingWorld.ideaDrafts ?? [], maps: storedLivingWorld.maps ?? [] }
+    ? { ...storedLivingWorld, timelineEntries: storedLivingWorld.timelineEntries ?? [], ideaDrafts: storedLivingWorld.ideaDrafts ?? [], socialEncounters: storedLivingWorld.socialEncounters ?? [], maps: storedLivingWorld.maps ?? [] }
     : createLivingWorldData();
   return {
     encounters,
@@ -420,6 +421,7 @@ export async function replaceCampaignData(
       worldEvents: snapshot.worldEvents,
       timelineEntries: snapshot.timelineEntries ?? [],
       ideaDrafts: snapshot.ideaDrafts ?? [],
+      socialEncounters: snapshot.socialEncounters ?? [],
       ...(snapshot.campaignMap ? { campaignMap: snapshot.campaignMap } : {}),
       ...(snapshot.plotBoard ? { plotBoard: snapshot.plotBoard } : {}),
       ...(snapshot.currentBrewId ? { currentBrewId: snapshot.currentBrewId } : {})

@@ -10,10 +10,14 @@
 .social-encounter-library > button { background: transparent; border: 0; border-left: 3px solid transparent; color: #39291f; display: grid; gap: 3px; margin-top: 6px; padding: 10px 9px; text-align: left; width: 100%; }
 .social-encounter-library > button.is-selected { background: #ead1a3; border-left-color: #7a2f27; }
 .social-encounter-library > button small { color: #806c5a; }
+.social-encounter-library > button.social-encounter-new { align-items: center; border: 1px dashed #bba78a; display: flex; font-size: .76rem; font-weight: 800; gap: 6px; justify-content: center; letter-spacing: .04em; margin: 8px 4px 2px; padding: 8px; text-align: center; text-transform: uppercase; width: calc(100% - 8px); }
+.social-encounter-library > button.social-encounter-new:hover { background: #f0dfc1; border-color: #7a2f27; }
+.social-encounter-library > button.social-encounter-new span { color: #7a2f27; font-size: 1.15rem; }
 .social-encounter-stage { background: #fffdf7; min-width: 0; padding: clamp(20px, 3vw, 38px); }
 .social-encounter-heading { align-items: center; border-bottom: 1px solid #d8c9ae; display: flex; gap: 16px; justify-content: space-between; padding-bottom: 15px; }
 .social-encounter-heading .eyebrow { margin: 0 0 3px; }
-.social-encounter-heading h2 { color: #5d2f26; font-family: "Nodesto Caps Condensed", Georgia, serif; font-size: clamp(2rem, 4vw, 2.8rem); line-height: 1; margin: 0; }
+.social-encounter-heading input { background: transparent; border: 0; border-bottom: 1px solid transparent; color: #5d2f26; font-family: "Nodesto Caps Condensed", Georgia, serif; font-size: clamp(2rem, 4vw, 2.8rem); font-weight: 700; line-height: 1; margin: 0; min-width: 0; padding: 0; width: min(100%, 560px); }
+.social-encounter-heading input:hover, .social-encounter-heading input:focus { border-bottom-color: #ad9576; outline: 0; }
 .social-encounter-heading > button { background: #f7f0df; border: 1px solid #ad9576; border-radius: 5px; color: #422f25; padding: 8px 11px; }
 .social-encounter-guidance { color: #725d48; margin: 14px 0 18px; }
 .social-character-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); }
@@ -49,11 +53,19 @@
 .social-character-overview > header > span { align-items: center; background: #6d392f; border-radius: 50%; color: #fffaf0; display: flex; font-family: Georgia, serif; font-weight: 700; height: 48px; justify-content: center; width: 48px; }
 .social-character-overview > header small { color: #7a2f27; font-size: .66rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .social-character-overview > header h3 { color: #39291f; font-family: Georgia, serif; font-size: 1.25rem; margin: 2px 0 0; }
+.social-character-overview > header p { color: #806c5a; font-size: .8rem; margin: 3px 0 0; }
 .social-character-overview > header button { background: transparent; border: 0; color: #7a2f27; font-size: 1.5rem; padding: 5px; }
-.social-character-overview > div { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .social-character-overview section span { color: #7a2f27; font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-.social-character-overview section p { color: #4b392e; line-height: 1.45; margin: 5px 0 0; }
-.social-character-overview > button { background: #fffaf0; border: 1px solid #ad9576; border-radius: 5px; color: #422f25; justify-self: start; padding: 8px 10px; }
+.social-character-overview section p { color: #4b392e; line-height: 1.55; margin: 5px 0 0; white-space: pre-wrap; }
+.social-character-overview section p.is-empty { color: #806c5a; font-style: italic; }
+.social-character-overview footer { display: flex; flex-wrap: wrap; gap: 8px; }
+.social-character-overview footer button { background: #fffaf0; border: 1px solid #ad9576; border-radius: 5px; color: #422f25; padding: 8px 10px; }
+.social-character-overview footer button.is-danger { color: #7a2f27; }
+.social-encounter-welcome { align-items: center; color: #725d48; display: flex; flex-direction: column; justify-content: center; min-height: 420px; padding: 30px; text-align: center; }
+.social-encounter-welcome > span { color: #8b642f; font: 400 4rem/1 Georgia, serif; }
+.social-encounter-welcome h2 { color: #5d2f26; font-family: Georgia, serif; margin: 10px 0 2px; }
+.social-encounter-welcome p { max-width: 430px; }
+.social-encounter-welcome button { background: #5d2f26; border: 0; border-radius: 5px; color: #fffaf0; font-weight: 800; padding: 10px 14px; }
 .social-character-empty { align-items: center; border: 1px dashed #bba78a; color: #725d48; display: flex; gap: 18px; grid-column: 1 / -1; padding: 20px; }
 .social-character-empty p { margin: 4px 0 0; }
 .social-character-placeholder { align-items: center; aspect-ratio: 1; background: #f8edda; display: flex; flex: 0 0 92px; flex-direction: column; justify-content: center; }
@@ -71,5 +83,5 @@
   .social-npc-picker { padding: 15px; }
   .social-npc-picker-actions, .social-npc-create-row { grid-template-columns: 1fr; }
   .social-character-overview { padding: 15px; }
-  .social-character-overview > div { grid-template-columns: 1fr; }
+  .social-encounter-heading input { font-size: 2rem; }
 }

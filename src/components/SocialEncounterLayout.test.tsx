@@ -78,4 +78,22 @@ describe('SocialEncounterLayout', () => {
     act(() => container?.querySelector<HTMLButtonElement>('.social-encounter-welcome button')?.click());
     expect(props.onUpdateEncounter).toHaveBeenCalledWith(expect.objectContaining({ name: 'New social encounter', npcEntryIds: [] }));
   });
+
+  it('creates an unmatched NPC directly from the search text', () => {
+    const props = renderLayout();
+    act(() => container?.querySelector<HTMLButtonElement>('.social-character-add-card')?.click());
+    const search = container?.querySelector<HTMLInputElement>('[aria-label="Search NPCs"]');
+    act(() => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(search, 'Mara Quill');
+      search?.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    const create = container?.querySelector<HTMLButtonElement>('.social-npc-create-result');
+    expect(create?.textContent).toContain('Create “Mara Quill”');
+    expect(container?.querySelector('[aria-label="New NPC name"]')).toBeNull();
+    act(() => create?.click());
+    expect(props.onCreateNpc).toHaveBeenCalledWith('Mara Quill');
+    expect(props.onUpdateEncounter).toHaveBeenCalledWith(expect.objectContaining({ npcEntryIds: ['talon', 'created'] }));
+  });
 });

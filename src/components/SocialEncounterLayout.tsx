@@ -32,8 +32,6 @@ export function SocialEncounterLayout({ encounters, worldbuildingEntries, onCrea
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [creatingNpc, setCreatingNpc] = useState(false);
-  const [newNpcName, setNewNpcName] = useState('');
   const selectedEncounter = encounters.find((encounter) => encounter.id === selectedEncounterId) ?? encounters[0] ?? null;
 
   useEffect(() => {
@@ -56,9 +54,7 @@ export function SocialEncounterLayout({ encounters, worldbuildingEntries, onCrea
 
   const closePicker = () => {
     setPickerOpen(false);
-    setCreatingNpc(false);
     setSearchQuery('');
-    setNewNpcName('');
   };
   const selectEncounter = (id: string) => {
     setSelectedEncounterId(id);
@@ -72,7 +68,7 @@ export function SocialEncounterLayout({ encounters, worldbuildingEntries, onCrea
     closePicker();
   };
   const createNpc = () => {
-    const name = newNpcName.trim();
+    const name = searchQuery.trim();
     if (name) addCharacter(onCreateNpc(name));
   };
   const startEncounter = () => {
@@ -118,18 +114,24 @@ export function SocialEncounterLayout({ encounters, worldbuildingEntries, onCrea
               <section aria-label="Add NPC" className="social-npc-picker">
                 <header><div><p className="eyebrow">Characters</p><h3>Add an NPC</h3></div><button aria-label="Close NPC picker" onClick={closePicker} type="button">×</button></header>
                 <div className="social-npc-picker-actions">
-                  <input aria-label="Search NPCs" autoFocus onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search Worldbuilding NPCs" type="search" value={searchQuery} />
-                  <button onClick={() => setCreatingNpc((current) => !current)} type="button">Create new NPC</button>
+                  <input
+                    aria-label="Search NPCs"
+                    autoFocus
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    onKeyDown={(event) => { if (event.key === 'Enter' && searchQuery.trim() && availableCharacters.length === 0) createNpc(); }}
+                    placeholder="Search Worldbuilding NPCs"
+                    type="search"
+                    value={searchQuery}
+                  />
                 </div>
-                {creatingNpc && (
-                  <div className="social-npc-create-row">
-                    <input aria-label="New NPC name" onChange={(event) => setNewNpcName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') createNpc(); }} placeholder="NPC name" value={newNpcName} />
-                    <button disabled={!newNpcName.trim()} onClick={createNpc} type="button">Create and add</button>
-                  </div>
-                )}
                 <div className="social-npc-search-results">
                   {availableCharacters.map((character) => <button key={character.id} onClick={() => addCharacter(character)} type="button"><span><strong>{character.name}</strong><small>{kindLabel(character.kind)}{character.aliases.length ? ` · ${character.aliases.join(', ')}` : ''}</small></span><b aria-hidden="true">+</b></button>)}
-                  {!availableCharacters.length && <p>{searchQuery.trim() ? 'No NPCs match that search.' : 'No other Worldbuilding NPCs are available.'}</p>}
+                  {!availableCharacters.length && searchQuery.trim() && (
+                    <button className="social-npc-create-result" onClick={createNpc} type="button">
+                      <span><strong>Create “{searchQuery.trim()}”</strong><small>New Worldbuilding NPC</small></span><b aria-hidden="true">+</b>
+                    </button>
+                  )}
+                  {!availableCharacters.length && !searchQuery.trim() && <p>No other Worldbuilding NPCs are available.</p>}
                 </div>
               </section>
             )}

@@ -32,6 +32,7 @@ const previewCharacters: LayoutCharacter[] = [
 export function SocialEncounterLayout() {
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const characters = isLocalPreviewMode() ? previewCharacters : [];
+  const selectedCharacter = characters.find((character) => character.id === selectedCharacterId) ?? null;
 
   return (
     <section aria-label="Social encounter layout" className="social-encounter-layout">
@@ -50,11 +51,26 @@ export function SocialEncounterLayout() {
         </header>
         <p className="social-encounter-guidance">Select an NPC to open their information.</p>
 
+        {selectedCharacter && (
+          <article className="social-character-overview">
+            <header>
+              <span aria-hidden="true">{selectedCharacter.name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('')}</span>
+              <div><small>{selectedCharacter.role}</small><h3>{selectedCharacter.name}</h3></div>
+              <button aria-label={`Close ${selectedCharacter.name} overview`} onClick={() => setSelectedCharacterId(null)} type="button">×</button>
+            </header>
+            <div>
+              <section><span>Overview</span><p>{selectedCharacter.notes}</p></section>
+              <section><span>Worldbuilding information</span><p>Personality, goals, knowledge, status, and notes will appear here.</p></section>
+            </div>
+            <button disabled type="button">Open Worldbuilding entry</button>
+          </article>
+        )}
+
         <div className="social-character-grid">
           {characters.map((character) => {
             const expanded = selectedCharacterId === character.id;
             return (
-              <article className={`social-character-card${expanded ? ' is-expanded' : ''}`} key={character.id}>
+              <article className={`social-character-card${expanded ? ' is-selected' : ''}`} key={character.id}>
                 <button
                   aria-expanded={expanded}
                   className="social-character-card-button"
@@ -66,13 +82,6 @@ export function SocialEncounterLayout() {
                   <small>{character.role}</small>
                   <b aria-hidden="true">{expanded ? '−' : '+'}</b>
                 </button>
-                {expanded && (
-                  <div className="social-character-overview">
-                    <section><span>Overview</span><p>{character.notes}</p></section>
-                    <section><span>Worldbuilding information</span><p>Personality, goals, knowledge, status, and notes will appear here.</p></section>
-                    <button disabled type="button">Open Worldbuilding entry</button>
-                  </div>
-                )}
               </article>
             );
           })}

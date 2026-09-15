@@ -18,7 +18,7 @@ afterEach(() => {
 });
 
 describe('SocialEncounterLayout', () => {
-  it('expands one NPC overview at a time and collapses it when selected again', async () => {
+  it('opens the NPC overview above the grid without moving its cards', async () => {
     container = document.createElement('div');
     document.body.append(container);
     root = createRoot(container);
@@ -27,11 +27,16 @@ describe('SocialEncounterLayout', () => {
 
     const talon = Array.from(container.querySelectorAll<HTMLButtonElement>('.social-character-card-button'))
       .find((button) => button.textContent?.includes('Talon Bloodwing'));
+    const cardsBefore = Array.from(container.querySelectorAll('.social-character-card strong')).map((name) => name.textContent);
     expect(talon?.getAttribute('aria-expanded')).toBe('false');
 
     await act(async () => talon?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(talon?.getAttribute('aria-expanded')).toBe('true');
-    expect(container.querySelector('.social-character-overview')?.textContent).toContain('guarded military leader');
+    const overview = container.querySelector('.social-character-overview');
+    const grid = container.querySelector('.social-character-grid');
+    expect(overview?.textContent).toContain('guarded military leader');
+    expect(Array.from(container.querySelectorAll('.social-character-card strong')).map((name) => name.textContent)).toEqual(cardsBefore);
+    expect(Boolean(overview && grid && (overview.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
 
     await act(async () => talon?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(container.querySelector('.social-character-overview')).toBeNull();

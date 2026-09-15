@@ -41,4 +41,20 @@ describe('SocialEncounterLayout', () => {
     await act(async () => talon?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(container.querySelector('.social-character-overview')).toBeNull();
   });
+
+  it('keeps an add card last and opens search or create choices above the grid', async () => {
+    container = document.createElement('div');
+    document.body.append(container);
+    root = createRoot(container);
+
+    await act(async () => root?.render(<SocialEncounterLayout />));
+    const grid = container.querySelector('.social-character-grid');
+    expect(grid?.lastElementChild?.classList.contains('social-character-add-card')).toBe(true);
+
+    await act(async () => container?.querySelector<HTMLButtonElement>('.social-character-add-card')?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    const picker = container?.querySelector('.social-npc-picker');
+    expect(container?.querySelector<HTMLInputElement>('[aria-label="Search NPCs"]')).not.toBeNull();
+    expect(Array.from(container?.querySelectorAll('button') ?? []).some((button) => button.textContent === 'Create new NPC')).toBe(true);
+    expect(Boolean(picker && grid && (picker.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+  });
 });

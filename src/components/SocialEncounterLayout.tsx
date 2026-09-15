@@ -26,13 +26,47 @@ const previewCharacters: LayoutCharacter[] = [
     name: 'Adgjal Tanner',
     role: 'NPC',
     notes: 'A practical officer who prefers direct answers and actionable information.'
+  },
+  {
+    id: 'social-layout-hujin',
+    name: 'Hujin Juunat',
+    role: 'NPC',
+    notes: 'An old scholar whose work still shapes the secrets beneath Sund.'
+  },
+  {
+    id: 'social-layout-canein',
+    name: 'Canein Ilvur',
+    role: 'NPC',
+    notes: 'A wizard associated with forbidden research and unfinished plans.'
   }
 ];
 
 export function SocialEncounterLayout() {
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
-  const characters = isLocalPreviewMode() ? previewCharacters : [];
+  const [characters, setCharacters] = useState<LayoutCharacter[]>(() => isLocalPreviewMode() ? previewCharacters.slice(0, 3) : []);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [creatingNpc, setCreatingNpc] = useState(false);
+  const [newNpcName, setNewNpcName] = useState('');
   const selectedCharacter = characters.find((character) => character.id === selectedCharacterId) ?? null;
+  const availableCharacters = (isLocalPreviewMode() ? previewCharacters : []).filter((character) => (
+    !characters.some((added) => added.id === character.id)
+    && character.name.toLocaleLowerCase().includes(searchQuery.trim().toLocaleLowerCase())
+  ));
+
+  const closePicker = () => {
+    setPickerOpen(false);
+    setCreatingNpc(false);
+    setSearchQuery('');
+    setNewNpcName('');
+  };
+
+  const createNpc = () => {
+    const name = newNpcName.trim();
+    if (!name) return;
+    setCharacters((current) => [...current, { id: `social-draft-${Date.now()}`, name, role: 'NPC', notes: 'No information added yet.' }]);
+    closePicker();
+  };
 
   return (
     <section aria-label="Social encounter layout" className="social-encounter-layout">
@@ -47,11 +81,30 @@ export function SocialEncounterLayout() {
       <div className="social-encounter-stage">
         <header className="social-encounter-heading">
           <div><p className="eyebrow">Social encounter</p><h2>New social encounter</h2></div>
-          <button disabled type="button">Add NPC</button>
         </header>
         <p className="social-encounter-guidance">Select an NPC to open their information.</p>
 
-        {selectedCharacter && (
+        {pickerOpen && (
+          <section aria-label="Add NPC" className="social-npc-picker">
+            <header><div><p className="eyebrow">Characters</p><h3>Add an NPC</h3></div><button aria-label="Close NPC picker" onClick={closePicker} type="button">×</button></header>
+            <div className="social-npc-picker-actions">
+              <input aria-label="Search NPCs" autoFocus onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search Worldbuilding NPCs" type="search" value={searchQuery} />
+              <button onClick={() => setCreatingNpc((current) => !current)} type="button">Create new NPC</button>
+            </div>
+            {creatingNpc && (
+              <div className="social-npc-create-row">
+                <input aria-label="New NPC name" onChange={(event) => setNewNpcName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') createNpc(); }} placeholder="NPC name" value={newNpcName} />
+                <button disabled={!newNpcName.trim()} onClick={createNpc} type="button">Create and add</button>
+              </div>
+            )}
+            <div className="social-npc-search-results">
+              {availableCharacters.map((character) => <button key={character.id} onClick={() => { setCharacters((current) => [...current, character]); closePicker(); }} type="button"><span><strong>{character.name}</strong><small>{character.role}</small></span><b aria-hidden="true">+</b></button>)}
+              {!availableCharacters.length && <p>{searchQuery.trim() ? 'No NPCs match that search.' : 'No other Worldbuilding NPCs are available.'}</p>}
+            </div>
+          </section>
+        )}
+
+        {!pickerOpen && selectedCharacter && (
           <article className="social-character-overview">
             <header>
               <span aria-hidden="true">{selectedCharacter.name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('')}</span>
@@ -86,12 +139,16 @@ export function SocialEncounterLayout() {
             );
           })}
 
-          {!characters.length && (
-            <div className="social-character-empty">
-              <div aria-hidden="true" className="social-character-placeholder"><span>+</span><small>NPC</small></div>
-              <div><strong>No NPCs added</strong><p>NPC cards will appear here.</p></div>
-            </div>
-          )}
+          <button
+            aria-label="Add NPC"
+            className="social-character-add-card"
+            onClick={() => { setSelectedCharacterId(null); setPickerOpen(true); }}
+            type="button"
+          >
+            <span aria-hidden="true">+</span>
+            <strong>Add NPC</strong>
+          </button>
+
         </div>
       </div>
     </section>

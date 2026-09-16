@@ -2047,6 +2047,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
           onDeleteSocialEncounter={deleteSocialEncounter}
           onOpenWorldbuildingEntry={openWorldbuilding}
           onUpdateSocialEncounter={persistSocialEncounter}
+          onUpdateSocialNpc={persistWorldbuildingEntry}
           partyMembers={partyMembers}
           selectedId={encounterSelectedId}
         />

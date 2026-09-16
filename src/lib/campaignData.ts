@@ -11,6 +11,7 @@ import type {
   IdeaDraft,
   EncounterParticipant,
   PartyMember,
+  NpcRoleplayProfile,
   SocialEncounter,
   TimelineEntry,
   WorldbuildingEntry,
@@ -260,6 +261,21 @@ function parseCampaignMapRecord(value: unknown): CampaignMapRecord {
   };
 }
 
+function parseNpcRoleplay(value: unknown): NpcRoleplayProfile {
+  if (!isRecord(value)) throw new Error('Campaign data has an invalid NPC roleplay profile.');
+  const profile: NpcRoleplayProfile = {};
+  for (const category of ['mannerisms', 'fearSecret', 'attitude'] as const) {
+    const cue = value[category];
+    if (cue === undefined) continue;
+    if (!isRecord(cue)) throw new Error('Campaign data has an invalid NPC roleplay cue.');
+    profile[category] = {
+      summary: requiredString(cue.summary, 'NPC roleplay summary'),
+      details: requiredString(cue.details, 'NPC roleplay details')
+    };
+  }
+  return profile;
+}
+
 function parseWorldbuildingEntry(value: unknown): WorldbuildingEntry {
   if (!isRecord(value)) throw new Error('Campaign data has an invalid Worldbuilding entry.');
   const kind = requiredString(value.kind, 'Worldbuilding type');
@@ -273,6 +289,7 @@ function parseWorldbuildingEntry(value: unknown): WorldbuildingEntry {
     kind: kind as WorldbuildingEntry['kind'],
     aliases: requiredStringArray(value.aliases, 'Worldbuilding aliases'),
     notes: requiredString(value.notes, 'Worldbuilding notes'),
+    ...(value.roleplay === undefined ? {} : { roleplay: parseNpcRoleplay(value.roleplay) }),
     createdAt: requiredString(value.createdAt, 'Worldbuilding creation time'),
     updatedAt: requiredString(value.updatedAt, 'Worldbuilding update time'),
     version: nullableNumber(value.version, 'Worldbuilding version') ?? 1

@@ -386,12 +386,18 @@ export type WorldbuildingType = {
   version: number;
 };
 
+export type NpcRoleplayCategory = 'mannerisms' | 'fearSecret' | 'attitude';
+export type NpcRoleplayCue = { summary: string; details: string };
+export type NpcRoleplayProfile = Partial<Record<NpcRoleplayCategory, NpcRoleplayCue>>;
+
 export type WorldbuildingEntry = {
   id: string;
   name: string;
   kind: WorldbuildingKind;
   aliases: string[];
   notes: string;
+  /** Shared NPC cues; independent of general notes and individual encounters. */
+  roleplay?: NpcRoleplayProfile;
   createdAt: string;
   updatedAt: string;
   version: number;

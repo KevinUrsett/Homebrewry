@@ -13,6 +13,7 @@ type EncounterPanelProps = CombatEncounterPanelProps & {
   onDeleteSocialEncounter?: (encounter: SocialEncounter) => void;
   onOpenWorldbuildingEntry?: (entry: WorldbuildingEntry) => void;
   onUpdateSocialEncounter?: (encounter: SocialEncounter) => void;
+  onUpdateSocialNpc?: (entry: WorldbuildingEntry) => void;
 };
 type EncounterKind = 'combat' | 'social';
 
@@ -23,6 +24,7 @@ export function EncounterPanel({
   onDeleteSocialEncounter = () => undefined,
   onOpenWorldbuildingEntry = () => undefined,
   onUpdateSocialEncounter = () => undefined,
+  onUpdateSocialNpc = () => undefined,
   ...combatProps
 }: EncounterPanelProps) {
   const [kind, setKind] = useState<EncounterKind>('combat');
@@ -38,7 +40,7 @@ export function EncounterPanel({
           <header className="encounter-page-header">
             <div><p className="eyebrow">Roleplay toolkit</p><h1>Social encounters</h1><p>Keep every NPC in the scene visible and open their information when needed.</p></div>
           </header>
-          <SocialEncounterLayout encounters={socialEncounters} onCreateNpc={onCreateSocialNpc} onDeleteEncounter={onDeleteSocialEncounter} onOpenWorldbuildingEntry={onOpenWorldbuildingEntry} onUpdateEncounter={onUpdateSocialEncounter} worldbuildingEntries={worldbuildingEntries} />
+          <SocialEncounterLayout encounters={socialEncounters} onCreateNpc={onCreateSocialNpc} onDeleteEncounter={onDeleteSocialEncounter} onOpenWorldbuildingEntry={onOpenWorldbuildingEntry} onUpdateEncounter={onUpdateSocialEncounter} onUpdateNpc={onUpdateSocialNpc} worldbuildingEntries={worldbuildingEntries} />
         </main>
       )}
     </div>

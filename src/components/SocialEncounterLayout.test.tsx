@@ -33,6 +33,7 @@ function renderLayout(overrides: Partial<React.ComponentProps<typeof SocialEncou
     onDeleteEncounter: vi.fn(),
     onOpenWorldbuildingEntry: vi.fn(),
     onUpdateEncounter: vi.fn(),
+    onUpdateNpc: vi.fn(),
     ...overrides
   };
   container = document.createElement('div');
@@ -51,6 +52,8 @@ describe('SocialEncounterLayout', () => {
     const grid = container?.querySelector('.social-character-grid');
     expect(overview?.textContent).toContain('A guarded military leader.');
     expect(overview?.textContent).toContain('The Falcon');
+    expect(overview?.querySelectorAll('.social-npc-cue')).toHaveLength(3);
+    expect(overview?.querySelector('.social-npc-cue-placeholder')?.textContent).toBe('');
     expect(Boolean(overview && grid && (overview.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
   });
 

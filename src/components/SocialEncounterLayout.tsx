@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { SocialEncounter, WorldbuildingEntry } from '../types';
 import { searchSocialNpcs, socialNpcCandidates, type SocialNpcDetails, type SocialNpcSearchResult } from '../lib/socialNpcSearch';
+import { SocialNpcOverview } from './SocialNpcOverview';
 
 type Props = {
   encounters: SocialEncounter[];
@@ -9,6 +10,7 @@ type Props = {
   onDeleteEncounter: (encounter: SocialEncounter) => void;
   onOpenWorldbuildingEntry: (entry: WorldbuildingEntry) => void;
   onUpdateEncounter: (encounter: SocialEncounter) => void;
+  onUpdateNpc: (entry: WorldbuildingEntry) => void;
 };
 
 function createSocialEncounter(): SocialEncounter {
@@ -28,7 +30,7 @@ function kindLabel(kind: string): string {
   return kind.replaceAll('-', ' ').replace(/\b\w/g, (letter) => letter.toLocaleUpperCase());
 }
 
-export function SocialEncounterLayout({ encounters, worldbuildingEntries, onCreateNpc, onDeleteEncounter, onOpenWorldbuildingEntry, onUpdateEncounter }: Props) {
+export function SocialEncounterLayout({ encounters, worldbuildingEntries, onCreateNpc, onDeleteEncounter, onOpenWorldbuildingEntry, onUpdateEncounter, onUpdateNpc }: Props) {
   const [selectedEncounterId, setSelectedEncounterId] = useState<string | null>(encounters[0]?.id ?? null);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -150,18 +152,14 @@ export function SocialEncounterLayout({ encounters, worldbuildingEntries, onCrea
             )}
 
             {!pickerOpen && selectedCharacter && (
-              <article className="social-character-overview">
-                <header>
-                  <span aria-hidden="true">{initials(selectedCharacter.name)}</span>
-                  <div><small>{kindLabel(selectedCharacter.kind)}</small><h3>{selectedCharacter.name}</h3>{selectedCharacter.aliases.length > 0 && <p>Also known as {selectedCharacter.aliases.join(', ')}</p>}</div>
-                  <button aria-label={`Close ${selectedCharacter.name} overview`} onClick={() => setSelectedCharacterId(null)} type="button">×</button>
-                </header>
-                <section><span>Information</span><p className={selectedCharacter.notes.trim() ? '' : 'is-empty'}>{selectedCharacter.notes.trim() || 'No information has been added yet.'}</p></section>
-                <footer>
-                  <button onClick={() => onOpenWorldbuildingEntry(selectedCharacter)} type="button">Open Worldbuilding entry</button>
-                  <button className="is-danger" onClick={() => { onUpdateEncounter(updateEncounter(selectedEncounter, { npcEntryIds: selectedEncounter.npcEntryIds.filter((id) => id !== selectedCharacter.id) })); setSelectedCharacterId(null); }} type="button">Remove from encounter</button>
-                </footer>
-              </article>
+              <SocialNpcOverview
+                key={selectedCharacter.id}
+                entry={selectedCharacter}
+                onClose={() => setSelectedCharacterId(null)}
+                onOpenWorldbuilding={() => onOpenWorldbuildingEntry(selectedCharacter)}
+                onRemove={() => { onUpdateEncounter(updateEncounter(selectedEncounter, { npcEntryIds: selectedEncounter.npcEntryIds.filter((id) => id !== selectedCharacter.id) })); setSelectedCharacterId(null); }}
+                onUpdate={onUpdateNpc}
+              />
             )}
 
             <div className="social-character-grid">

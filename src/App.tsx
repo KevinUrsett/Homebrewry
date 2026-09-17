@@ -35,6 +35,7 @@ import {
 import { createAsset, deleteAsset, listAssets, replaceAssets, rotateAsset, saveAsset } from './lib/assetStore';
 import { syncAssets } from './lib/assetSync';
 import { createCampaignDataSnapshot } from './lib/campaignData';
+import type { SocialNpcDetails } from './lib/socialNpcSearch';
 import { deriveCampaignPosition, derivePartyLocation } from './lib/campaignProgress';
 import { partyEntityId, recordCombatCompletion, recordManualStateChange, recordPartyLocation, synchroniseLivingWorld } from './lib/livingWorld';
 import { projectCurrentState } from './lib/worldState';
@@ -74,7 +75,7 @@ import type { MonsterEquipment } from './catalogue/magicItems';
 import { formatWorldbuildingReference } from './lib/worldbuildingReferences';
 import type { GeneratedName } from './lib/nameGenerator';
 import { catalogueCategoryLabel, catalogueCategoryLabels, type CatalogueCategory, type CatalogueEntry, type CustomCatalogueCategory, type CustomCatalogueEntry } from './catalogue/types';
-import type { Brew, BrewAsset, CampaignDataSyncMetadata, CampaignMap, CampaignMapRecord, Encounter, IdeaDraft, LivingWorldData, MobileSection, PartyMember, PlotBoard, PrivateMonsterSyncMetadata, ViewMode, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from './types';
+import type { Brew, BrewAsset, CampaignDataSyncMetadata, CampaignMap, CampaignMapRecord, Encounter, IdeaDraft, LivingWorldData, MobileSection, PartyMember, PlotBoard, PrivateMonsterSyncMetadata, SocialEncounter, ViewMode, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from './types';
 
 const mobileLabels: Record<MobileSection, string> = {
   library: 'Brews',
@@ -206,7 +207,8 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
     entityReferences: [],
     worldEvents: [],
     timelineEntries: [],
-    ideaDrafts: []
+    ideaDrafts: [],
+    socialEncounters: []
   }));
   const [privateMonsterSync, setPrivateMonsterSync] = useState<PrivateMonsterSyncMetadata | null>(null);
   const [referenceEntry, setReferenceEntry] = useState<CatalogueEntry | null>(null);
@@ -796,6 +798,39 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
       .catch(() => setSaveState('Worldbuilding save failed'));
   };
 
+  const persistSocialEncounter = (encounter: SocialEncounter) => {
+    const currentLivingWorld = campaignRecordsRef.current.livingWorld ?? livingWorld;
+    const nextLivingWorld = {
+      ...currentLivingWorld,
+      socialEncounters: [encounter, ...(currentLivingWorld.socialEncounters ?? []).filter((item) => item.id !== encounter.id)]
+    };
+    campaignRecordsRef.current = { ...campaignRecordsRef.current, livingWorld: nextLivingWorld };
+    setLivingWorld(nextLivingWorld);
+    void saveLivingWorldData(nextLivingWorld)
+      .then((metadata) => noteCampaignDataSaved(metadata, 'Social encounter saved locally'))
+      .catch(() => setSaveState('Social encounter save failed'));
+  };
+
+  const deleteSocialEncounter = (encounter: SocialEncounter) => {
+    if (!window.confirm(`Delete “${encounter.name || 'Untitled social encounter'}”?`)) return;
+    const currentLivingWorld = campaignRecordsRef.current.livingWorld ?? livingWorld;
+    const nextLivingWorld = {
+      ...currentLivingWorld,
+      socialEncounters: (currentLivingWorld.socialEncounters ?? []).filter((item) => item.id !== encounter.id)
+    };
+    campaignRecordsRef.current = { ...campaignRecordsRef.current, livingWorld: nextLivingWorld };
+    setLivingWorld(nextLivingWorld);
+    void saveLivingWorldData(nextLivingWorld)
+      .then((metadata) => noteCampaignDataSaved(metadata, 'Social encounter deleted locally'))
+      .catch(() => setSaveState('Social encounter deletion failed'));
+  };
+
+  const createSocialNpc = (name: string, details?: SocialNpcDetails): WorldbuildingEntry => {
+    const entry = { ...createWorldbuildingEntry(name, details?.kind ?? 'npc'), ...details };
+    persistWorldbuildingEntry(entry);
+    return entry;
+  };
+
   const addWorldbuildingQuickNote = (entry: WorldbuildingEntry, note: string) => {
     const value = note.trim();
     if (!value) return;
@@ -1154,6 +1189,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
         worldEvents: result.data.worldEvents,
         timelineEntries: result.data.timelineEntries ?? [],
         ideaDrafts: result.data.ideaDrafts ?? [],
+        socialEncounters: result.data.socialEncounters ?? [],
         ...(result.data.campaignMap ? { campaignMap: result.data.campaignMap } : {}),
         ...(result.data.plotBoard ? { plotBoard: result.data.plotBoard } : {}),
         ...(result.data.currentBrewId ? { currentBrewId: result.data.currentBrewId } : {})
@@ -1176,6 +1212,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
         worldEvents: result.data.worldEvents,
         timelineEntries: result.data.timelineEntries ?? [],
         ideaDrafts: result.data.ideaDrafts ?? [],
+        socialEncounters: result.data.socialEncounters ?? [],
         ...(result.data.campaignMap ? { campaignMap: result.data.campaignMap } : {}),
         ...(result.data.plotBoard ? { plotBoard: result.data.plotBoard } : {}),
         ...(result.data.currentBrewId ? { currentBrewId: result.data.currentBrewId } : {})
@@ -2004,6 +2041,13 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
           onSelectEncounter={setEncounterSelectedId}
           onUpdateEncounter={persistEncounter}
           onUpdatePartyMember={persistPartyMember}
+          socialEncounters={livingWorld.socialEncounters ?? []}
+          worldbuildingEntries={worldbuildingEntries}
+          onCreateSocialNpc={createSocialNpc}
+          onDeleteSocialEncounter={deleteSocialEncounter}
+          onOpenWorldbuildingEntry={openWorldbuilding}
+          onUpdateSocialEncounter={persistSocialEncounter}
+          onUpdateSocialNpc={persistWorldbuildingEntry}
           partyMembers={partyMembers}
           selectedId={encounterSelectedId}
         />

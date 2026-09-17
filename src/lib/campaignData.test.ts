@@ -30,6 +30,44 @@ describe('campaign data snapshots', () => {
     expect(parseCampaignDataSnapshot(JSON.parse(JSON.stringify(snapshot))).currentBrewId).toBe('brew-42');
   });
 
+  it('round-trips NPC cues and details without changing legacy notes', () => {
+    const npc = {
+      ...createWorldbuildingEntry('Bart', 'npc'), notes: 'Existing general notes',
+      roleplay: {
+        mannerisms: { summary: 'Quiet voice', details: 'Pauses before saying a name.' },
+        fearSecret: { summary: 'Owes the guild', details: 'The debt is due at dawn.' },
+        attitude: { summary: 'Wary', details: '' }
+      }
+    };
+    const snapshot = createCampaignDataSnapshot([], [], [npc]);
+    const parsed = parseCampaignDataSnapshot(JSON.parse(JSON.stringify(snapshot)));
+    expect(parsed.worldbuildingEntries).toEqual([npc]);
+    const legacy = createCampaignDataSnapshot([], [], [createWorldbuildingEntry('Older NPC', 'npc')]);
+    expect(parseCampaignDataSnapshot(legacy).worldbuildingEntries[0].roleplay).toBeUndefined();
+    const merged = keepBothCampaignData(snapshot, legacy);
+    expect(merged.worldbuildingEntries.find((entry) => entry.id === npc.id)?.roleplay).toEqual(npc.roleplay);
+  });
+
+  it('rejects malformed NPC roleplay data before applying a backup', () => {
+    const snapshot = createCampaignDataSnapshot([], [], [createWorldbuildingEntry('Bart', 'npc')]);
+    const malformed = { ...snapshot, worldbuildingEntries: [{ ...snapshot.worldbuildingEntries[0], roleplay: { attitude: { summary: 42, details: '' } } }] };
+    expect(() => parseCampaignDataSnapshot(malformed)).toThrow('NPC roleplay summary');
+  });
+
+  it('round-trips social encounters and their Worldbuilding NPC links through Drive data', () => {
+    const timestamp = '2026-09-15T20:00:00.000Z';
+    const socialEncounter = { id: 'social-1', name: 'Council meeting', npcEntryIds: ['npc-1', 'npc-2'], createdAt: timestamp, updatedAt: timestamp, version: 1 };
+    const snapshot = createCampaignDataSnapshot([], [], [], timestamp, [], [], [], [], {
+      campaignId: 'default-campaign',
+      entities: [],
+      entityReferences: [],
+      worldEvents: [],
+      socialEncounters: [socialEncounter]
+    });
+
+    expect(parseCampaignDataSnapshot(JSON.parse(JSON.stringify(snapshot))).socialEncounters).toEqual([socialEncounter]);
+  });
+
   it('keeps a manual plot board separate from legacy timeline entries', () => {
     const timestamp = '2026-07-31T08:00:00.000Z';
     const board = createBlankPlotBoard(timestamp);

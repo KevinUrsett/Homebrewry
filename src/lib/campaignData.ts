@@ -11,6 +11,8 @@ import type {
   IdeaDraft,
   EncounterParticipant,
   PartyMember,
+  NpcRoleplayProfile,
+  SocialEncounter,
   TimelineEntry,
   WorldbuildingEntry,
   WorldbuildingType,
@@ -259,6 +261,21 @@ function parseCampaignMapRecord(value: unknown): CampaignMapRecord {
   };
 }
 
+function parseNpcRoleplay(value: unknown): NpcRoleplayProfile {
+  if (!isRecord(value)) throw new Error('Campaign data has an invalid NPC roleplay profile.');
+  const profile: NpcRoleplayProfile = {};
+  for (const category of ['mannerisms', 'fearSecret', 'attitude'] as const) {
+    const cue = value[category];
+    if (cue === undefined) continue;
+    if (!isRecord(cue)) throw new Error('Campaign data has an invalid NPC roleplay cue.');
+    profile[category] = {
+      summary: requiredString(cue.summary, 'NPC roleplay summary'),
+      details: requiredString(cue.details, 'NPC roleplay details')
+    };
+  }
+  return profile;
+}
+
 function parseWorldbuildingEntry(value: unknown): WorldbuildingEntry {
   if (!isRecord(value)) throw new Error('Campaign data has an invalid Worldbuilding entry.');
   const kind = requiredString(value.kind, 'Worldbuilding type');
@@ -272,6 +289,7 @@ function parseWorldbuildingEntry(value: unknown): WorldbuildingEntry {
     kind: kind as WorldbuildingEntry['kind'],
     aliases: requiredStringArray(value.aliases, 'Worldbuilding aliases'),
     notes: requiredString(value.notes, 'Worldbuilding notes'),
+    ...(value.roleplay === undefined ? {} : { roleplay: parseNpcRoleplay(value.roleplay) }),
     createdAt: requiredString(value.createdAt, 'Worldbuilding creation time'),
     updatedAt: requiredString(value.updatedAt, 'Worldbuilding update time'),
     version: nullableNumber(value.version, 'Worldbuilding version') ?? 1
@@ -328,6 +346,20 @@ function parseIdeaDraft(value: unknown): IdeaDraft {
     text: requiredString(value.text, 'idea text'),
     createdAt: requiredString(value.createdAt, 'idea creation time'),
     updatedAt: requiredString(value.updatedAt, 'idea update time')
+  };
+}
+
+function parseSocialEncounter(value: unknown): SocialEncounter {
+  if (!isRecord(value)) throw new Error('Campaign data has an invalid social encounter.');
+  const version = nullableNumber(value.version, 'social encounter version');
+  if (version === null || !Number.isInteger(version) || version < 1) throw new Error('Campaign data has an invalid social encounter version.');
+  return {
+    id: requiredString(value.id, 'social encounter ID'),
+    name: requiredString(value.name, 'social encounter name'),
+    npcEntryIds: requiredStringArray(value.npcEntryIds, 'social encounter NPCs'),
+    createdAt: requiredString(value.createdAt, 'social encounter creation time'),
+    updatedAt: requiredString(value.updatedAt, 'social encounter update time'),
+    version
   };
 }
 
@@ -429,6 +461,7 @@ export function parseCampaignDataSnapshot(value: unknown): CampaignDataSnapshot 
     worldEvents: schemaVersion >= 5 ? (value.worldEvents as unknown[]).map((event) => parseWorldEvent(event, campaignId)) : [],
     ...(Array.isArray(value.timelineEntries) ? { timelineEntries: value.timelineEntries.map((entry) => parseTimelineEntry(entry, campaignId)) } : {}),
     ...(Array.isArray(value.ideaDrafts) ? { ideaDrafts: value.ideaDrafts.map(parseIdeaDraft) } : {}),
+    ...(Array.isArray(value.socialEncounters) ? { socialEncounters: value.socialEncounters.map(parseSocialEncounter) } : {}),
     ...(value.campaignMap === undefined ? {} : { campaignMap: parseCampaignMap(value.campaignMap) }),
     ...(value.plotBoard === undefined ? {} : { plotBoard: parsePlotBoard(value.plotBoard) }),
     ...(value.currentBrewId === undefined ? {} : { currentBrewId: requiredString(value.currentBrewId, 'current brew ID') })
@@ -445,13 +478,13 @@ export function createCampaignDataSnapshot(
   customCatalogueCategories: CustomCatalogueCategory[] = [],
   worldbuildingTypes: WorldbuildingType[] = [],
   brews: Brew[] = [],
-  livingWorld: Pick<CampaignDataSnapshot, 'campaignId' | 'entities' | 'entityReferences' | 'worldEvents' | 'timelineEntries' | 'ideaDrafts' | 'campaignMap' | 'plotBoard' | 'currentBrewId' | 'maps'> = {
+  livingWorld: Pick<CampaignDataSnapshot, 'campaignId' | 'entities' | 'entityReferences' | 'worldEvents' | 'timelineEntries' | 'ideaDrafts' | 'socialEncounters' | 'campaignMap' | 'plotBoard' | 'currentBrewId' | 'maps'> = {
     // The current app has one campaign companion file per Drive account.
     // A later multi-campaign migration can replace this file-scoped identity.
     campaignId: 'default-campaign',
     entities: [],
     entityReferences: [],
-    worldEvents: [], timelineEntries: [], ideaDrafts: []
+    worldEvents: [], timelineEntries: [], ideaDrafts: [], socialEncounters: []
   }
 ): CampaignDataSnapshot {
   const entities = synchroniseWorldbuildingEntities(livingWorld.campaignId, worldbuildingEntries, livingWorld.entities);
@@ -470,6 +503,7 @@ export function createCampaignDataSnapshot(
     worldEvents: [...livingWorld.worldEvents],
     ...(livingWorld.timelineEntries?.length ? { timelineEntries: [...livingWorld.timelineEntries] } : {}),
     ...(livingWorld.ideaDrafts?.length ? { ideaDrafts: [...livingWorld.ideaDrafts] } : {}),
+    ...(livingWorld.socialEncounters?.length ? { socialEncounters: [...livingWorld.socialEncounters] } : {}),
     ...(livingWorld.campaignMap ? { campaignMap: livingWorld.campaignMap } : {}),
     ...(livingWorld.plotBoard ? { plotBoard: livingWorld.plotBoard } : {}),
     ...(livingWorld.currentBrewId ? { currentBrewId: livingWorld.currentBrewId } : {})
@@ -489,6 +523,7 @@ export function hasCampaignData(snapshot: CampaignDataSnapshot): boolean {
     || snapshot.worldEvents.length > 0
     || Boolean(snapshot.timelineEntries?.length)
     || Boolean(snapshot.ideaDrafts?.length)
+    || Boolean(snapshot.socialEncounters?.length)
     || Boolean(snapshot.campaignMap)
     || Boolean(snapshot.plotBoard)
     || Boolean(snapshot.currentBrewId)
@@ -551,6 +586,7 @@ export function keepBothCampaignData(
     worldEvents: [...remote.worldEvents, ...local.worldEvents.filter((event) => !remote.worldEvents.some((remoteEvent) => remoteEvent.id === event.id))],
     ...(remote.timelineEntries || local.timelineEntries ? { timelineEntries: [...(remote.timelineEntries ?? []), ...(local.timelineEntries ?? []).filter((entry) => !(remote.timelineEntries ?? []).some((remoteEntry) => remoteEntry.id === entry.id))] } : {}),
     ...(remote.ideaDrafts || local.ideaDrafts ? { ideaDrafts: [...(remote.ideaDrafts ?? []), ...(local.ideaDrafts ?? []).filter((idea) => !(remote.ideaDrafts ?? []).some((remoteIdea) => remoteIdea.id === idea.id))] } : {}),
+    ...(remote.socialEncounters || local.socialEncounters ? { socialEncounters: preserveBothRecords(local.socialEncounters ?? [], remote.socialEncounters ?? [], timestamp, createId) } : {}),
     ...(remote.campaignMap || local.campaignMap ? { campaignMap: remote.campaignMap ?? local.campaignMap } : {}),
     ...(remote.plotBoard || local.plotBoard ? { plotBoard: remote.plotBoard ?? local.plotBoard } : {}),
     ...(remote.currentBrewId || local.currentBrewId ? { currentBrewId: remote.currentBrewId ?? local.currentBrewId } : {}),

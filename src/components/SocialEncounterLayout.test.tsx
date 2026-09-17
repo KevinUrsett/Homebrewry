@@ -44,6 +44,16 @@ function renderLayout(overrides: Partial<React.ComponentProps<typeof SocialEncou
 }
 
 describe('SocialEncounterLayout', () => {
+  it('falls back safely when the selected encounter is removed or the library becomes empty', () => {
+    const second = { ...encounter, id: 'social-2', name: 'Second scene', npcEntryIds: ['orren'] };
+    const props = renderLayout({ encounters: [encounter, second] });
+    act(() => root?.render(<SocialEncounterLayout {...props} encounters={[second]} />));
+    expect(container?.querySelector<HTMLInputElement>('[aria-label="Social encounter name"]')?.value).toBe('Second scene');
+    expect(container?.querySelector('.social-character-grid')?.textContent).toContain('Orren Vey');
+    act(() => root?.render(<SocialEncounterLayout {...props} encounters={[]} />));
+    expect(container?.querySelector('.social-encounter-welcome')).not.toBeNull();
+  });
+
   it('opens actual Worldbuilding information above the grid without moving cards', () => {
     renderLayout();
     const talon = container?.querySelector<HTMLButtonElement>('.social-character-card-button');

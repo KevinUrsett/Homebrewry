@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { SocialEncounter, WorldbuildingEntry } from '../types';
 import { searchSocialNpcs, socialNpcCandidates, type SocialNpcDetails, type SocialNpcSearchResult } from '../lib/socialNpcSearch';
 import { SocialNpcOverview } from './SocialNpcOverview';
@@ -36,11 +36,6 @@ export function SocialEncounterLayout({ encounters, worldbuildingEntries, onCrea
   const [pickerOpen, setPickerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const selectedEncounter = encounters.find((encounter) => encounter.id === selectedEncounterId) ?? encounters[0] ?? null;
-
-  useEffect(() => {
-    if (!selectedEncounter && encounters[0]) setSelectedEncounterId(encounters[0].id);
-    if (selectedEncounterId && !encounters.some((encounter) => encounter.id === selectedEncounterId)) setSelectedEncounterId(encounters[0]?.id ?? null);
-  }, [encounters, selectedEncounter, selectedEncounterId]);
 
   const characters = useMemo(() => selectedEncounter?.npcEntryIds
     .map((id) => worldbuildingEntries.find((entry) => entry.id === id))

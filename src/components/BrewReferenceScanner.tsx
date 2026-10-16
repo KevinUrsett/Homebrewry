@@ -1,8 +1,9 @@
-import { useId, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'react';
 import type { Brew, BrewReferenceReview, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from '../types';
 import { getOutline } from '../lib/outline';
 import { pendingBrewReferences, referenceScanSection, scanNewBrewReferences } from '../lib/brewReferenceScan';
 import { worldbuildingKindLabel, worldbuildingKindLabels, worldbuildingKinds } from '../lib/worldbuilding';
+import { OutlinePanel } from './OutlinePanel';
 
 export type BrewReferenceScannerProps = {
   brews: readonly Brew[];
@@ -19,6 +20,9 @@ export function BrewReferenceScanner({ brews, activeBrewId, knownNames, reviews,
   const [brewId, setBrewId] = useState<string | null>(activeBrewId ?? null);
   const [scope, setScope] = useState<{ brewId: string; sectionId: string } | null>(null);
   const [outlineQuery, setOutlineQuery] = useState('');
+  const [outlineOpen, setOutlineOpen] = useState(false);
+  const outlineAnchor = useRef<HTMLDivElement>(null);
+  const outlineTrigger = useRef<HTMLButtonElement>(null);
   const [status, setStatus] = useState('Choose where to check, then get new references. Nothing is scanned automatically.');
   const [error, setError] = useState<string | null>(null);
   const [latestIds, setLatestIds] = useState<Set<string>>(() => new Set());
@@ -34,6 +38,22 @@ export function BrewReferenceScanner({ brews, activeBrewId, knownNames, reviews,
   const terms = query.trim().toLocaleLowerCase();
   const visible = pending.filter((review) => !terms || [review.name, review.brewTitle, review.context].join(' ').toLocaleLowerCase().includes(terms));
   const selected = visible.filter((review) => selectedIds.has(review.id));
+
+  useEffect(() => {
+    if (!outlineOpen) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !outlineAnchor.current?.contains(event.target)) setOutlineOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOutside);
+    return () => document.removeEventListener('pointerdown', closeOutside);
+  }, [outlineOpen]);
+
+  const chooseSection = (nextSectionId: string | null) => {
+    setScope(brew && nextSectionId ? { brewId: brew.id, sectionId: nextSectionId } : null);
+    setError(null);
+    setOutlineOpen(false);
+    outlineTrigger.current?.focus();
+  };
 
   const scan = (event: FormEvent) => {
     event.preventDefault();
@@ -66,22 +86,28 @@ export function BrewReferenceScanner({ brews, activeBrewId, knownNames, reviews,
       <header><h3>Get references from a brew</h3><p>Check only when you choose. Review new names before creating entries.</p></header>
       <form className="brew-reference-scan-controls" onSubmit={scan}>
         <label htmlFor={`${id}-brew`}>Brew</label>
-        <select id={`${id}-brew`} onChange={(event) => { setBrewId(event.target.value); setScope(null); setOutlineQuery(''); setError(null); }} value={brew?.id ?? ''}>
+        <select id={`${id}-brew`} onChange={(event) => { setBrewId(event.target.value); setScope(null); setOutlineQuery(''); setOutlineOpen(false); setError(null); }} value={brew?.id ?? ''}>
           {!brews.length && <option value="">No brew available</option>}
           {brews.map((item) => <option key={item.id} value={item.id}>{item.title || 'Untitled brew'}{item.id === activeBrewId ? ' · open brew' : ''}</option>)}
         </select>
-        <details className="brew-reference-scope">
-          <summary>Where to check: <strong>{sectionTitle}</strong></summary>
-          <label className="visually-hidden" htmlFor={`${id}-outline`}>Search outline</label>
-          <input id={`${id}-outline`} onChange={(event) => setOutlineQuery(event.target.value)} placeholder="Search the outline…" type="search" value={outlineQuery} />
-          <div className="brew-reference-outline" role="group" aria-label="Outline section to check">
-            <label><input checked={!sectionId} name={`${id}-scope`} onChange={() => { setScope(null); setError(null); }} type="radio" /><span>Whole brew</span></label>
-            {visibleOutline.map((item) => <label key={item.id} style={{ paddingInlineStart: `${8 + (item.level - 1) * 12}px` }}><input checked={sectionId === item.id} name={`${id}-scope`} onChange={() => { if (brew) setScope({ brewId: brew.id, sectionId: item.id }); setError(null); }} type="radio" /><span>{item.text}</span></label>)}
-            {!visibleOutline.length && <p>{outline.length ? 'No headings match.' : 'Add headings to the brew to check a specific section.'}</p>}
+        <div className="brew-reference-scan-actions">
+          <div className="brew-reference-scope" ref={outlineAnchor} onKeyDown={(event) => {
+            if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setOutlineOpen(false); outlineTrigger.current?.focus(); }
+          }}>
+            <button aria-controls={`${id}-outline-panel`} aria-expanded={outlineOpen} className="brew-reference-outline-toggle" disabled={!brew} onClick={() => { setOutlineOpen((open) => !open); setOutlineQuery(''); }} ref={outlineTrigger} type="button">
+              <span>Outline</span><strong>{sectionTitle}</strong><span aria-hidden="true">▾</span>
+            </button>
+            {outlineOpen && <div aria-label="Choose scan location from outline" className="brew-reference-outline-dropdown" id={`${id}-outline-panel`} role="region">
+              <label className="visually-hidden" htmlFor={`${id}-outline`}>Search outline</label>
+              <input autoFocus id={`${id}-outline`} onChange={(event) => setOutlineQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') event.preventDefault(); }} placeholder="Search the outline…" type="search" value={outlineQuery} />
+              <button aria-pressed={!sectionId} className="brew-reference-whole-brew" onClick={() => chooseSection(null)} type="button">Whole brew</button>
+              {outline.length > 0 && !visibleOutline.length ? <p>No headings match your search.</p> : <OutlinePanel outline={visibleOutline} onNavigate={(item) => chooseSection(item.id)} />}
+              <p>Choose a heading to check that section and its subsections.</p>
+            </div>}
           </div>
-          <p>A section includes its subsections, stopping at the next heading of the same or higher level.</p>
-        </details>
-        <button className="primary-button" disabled={!brew} type="submit">Get new references</button>
+          <button className="primary-button" disabled={!brew} type="submit">Get new references</button>
+        </div>
+        <p className="brew-reference-selected-scope">Checking: <strong>{sectionTitle}</strong>{sectionId ? ' and its subsections' : ''}</p>
       </form>
       <p className="brew-reference-scan-status" role="status">{status}</p>
       {error && <p role="alert">{error}</p>}

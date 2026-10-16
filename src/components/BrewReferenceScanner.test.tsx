@@ -39,6 +39,7 @@ describe('BrewReferenceScanner', () => {
     const spy = vi.spyOn(scanModule, 'scanNewBrewReferences');
     const props = render();
     expect(spy).not.toHaveBeenCalled();
+    button('OutlineWhole brew▾');
     input('[type="search"]', 'Library');
     act(() => root.render(<BrewReferenceScanner {...props} query="Mara" brews={[{ ...brew, content: 'We meet Hester Flinn.' }]} />));
     expect(spy).not.toHaveBeenCalled();
@@ -48,9 +49,13 @@ describe('BrewReferenceScanner', () => {
 
   it('lets the user search the outline and select a section including subsections', () => {
     const props = render();
+    button('OutlineWhole brew▾');
     input('[type="search"]', 'Arrival');
-    const scope = [...container.querySelectorAll<HTMLLabelElement>('.brew-reference-outline label')].find((label) => label.textContent === 'Arrival')?.querySelector<HTMLInputElement>('input');
-    act(() => scope?.click());
+    const heading = [...container.querySelectorAll<HTMLButtonElement>('.outline-item')].find((item) => item.textContent === 'Arrival');
+    act(() => heading?.click());
+    expect(container.querySelector('[aria-label="Choose scan location from outline"]')).toBeNull();
+    expect(container.querySelector('.brew-reference-selected-scope')?.textContent).toContain('Arrival and its subsections');
+    expect(props.onReview).not.toHaveBeenCalled();
     button('Get new references');
     const found = vi.mocked(props.onReview).mock.calls[0][0];
     expect(found.map((item) => item.name)).toEqual(['Mara Quill', 'Orren Vey']);
@@ -93,8 +98,9 @@ describe('BrewReferenceScanner', () => {
 
   it('does not silently widen the scope when a chosen heading is removed', () => {
     const props = render();
-    const scope = [...container.querySelectorAll<HTMLLabelElement>('.brew-reference-outline label')].find((label) => label.textContent === 'Library')?.querySelector<HTMLInputElement>('input');
-    act(() => scope?.click());
+    button('OutlineWhole brew▾');
+    const heading = [...container.querySelectorAll<HTMLButtonElement>('.outline-item')].find((item) => item.textContent === 'Library');
+    act(() => heading?.click());
     act(() => root.render(<BrewReferenceScanner {...props} brews={[{ ...brew, content: '# Different\nWe meet Hester Flinn.' }]} />));
     button('Get new references');
     expect(container.querySelector('[role="alert"]')?.textContent).toContain('no longer exists');
@@ -108,5 +114,18 @@ describe('BrewReferenceScanner', () => {
     expect(props.onReview).toHaveBeenCalledWith([expect.objectContaining({ name: 'Hester Flinn', sectionId: null, brewId: 'other' })]);
     act(() => root.render(<BrewReferenceScanner {...props} brews={[]} />));
     expect([...container.querySelectorAll('button')].find((item) => item.textContent === 'Get new references')?.disabled).toBe(true);
+  });
+
+  it('reuses the editor outline hierarchy and dismisses the dropdown without running a scan', () => {
+    const props = render();
+    button('OutlineWhole brew▾');
+    expect(container.querySelector('[aria-label="Document outline"]')).not.toBeNull();
+    const headings = [...container.querySelectorAll<HTMLButtonElement>('.outline-item')];
+    expect(headings.map((item) => item.textContent)).toEqual(['Arrival', 'Library', 'Departure']);
+    expect(headings[1].style.paddingInlineStart).toBe('22px');
+    act(() => container.querySelector('[type="search"]')?.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape', bubbles:true})));
+    expect(container.querySelector('[aria-label="Choose scan location from outline"]')).toBeNull();
+    expect(document.activeElement).toBe(container.querySelector('.brew-reference-outline-toggle'));
+    expect(props.onReview).not.toHaveBeenCalled();
   });
 });

@@ -40,17 +40,17 @@ describe('BrewReferenceScanner', () => {
     const props = render();
     expect(spy).not.toHaveBeenCalled();
     button('OutlineWhole brew▾');
-    input('[type="search"]', 'Library');
     act(() => root.render(<BrewReferenceScanner {...props} query="Mara" brews={[{ ...brew, content: 'We meet Hester Flinn.' }]} />));
     expect(spy).not.toHaveBeenCalled();
     button('Get new references');
     expect(props.onReview).toHaveBeenCalledWith([expect.objectContaining({ name: 'Hester Flinn' })]);
   });
 
-  it('lets the user search the outline and select a section including subsections', () => {
+  it('opens a keyboard-free outline and selects a section including subsections', () => {
     const props = render();
     button('OutlineWhole brew▾');
-    input('[type="search"]', 'Arrival');
+    expect(container.querySelector('.brew-reference-outline-dropdown input')).toBeNull();
+    expect(document.activeElement).not.toBeInstanceOf(HTMLInputElement);
     const heading = [...container.querySelectorAll<HTMLButtonElement>('.outline-item')].find((item) => item.textContent === 'Arrival');
     act(() => heading?.click());
     expect(container.querySelector('[aria-label="Choose scan location from outline"]')).toBeNull();
@@ -123,7 +123,7 @@ describe('BrewReferenceScanner', () => {
     const headings = [...container.querySelectorAll<HTMLButtonElement>('.outline-item')];
     expect(headings.map((item) => item.textContent)).toEqual(['Arrival', 'Library', 'Departure']);
     expect(headings[1].style.paddingInlineStart).toBe('22px');
-    act(() => container.querySelector('[type="search"]')?.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape', bubbles:true})));
+    act(() => container.querySelector('.brew-reference-outline-toggle')?.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape', bubbles:true})));
     expect(container.querySelector('[aria-label="Choose scan location from outline"]')).toBeNull();
     expect(document.activeElement).toBe(container.querySelector('.brew-reference-outline-toggle'));
     expect(props.onReview).not.toHaveBeenCalled();

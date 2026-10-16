@@ -126,7 +126,7 @@
 .brew-reference-outline-toggle strong { flex: 1; font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .brew-reference-outline-dropdown { background: #fffdf7; border: 1px solid #bba17a; border-radius: 7px; box-shadow: 0 8px 18px rgb(55 35 20 / 12%); margin-top: 6px; padding: 10px; }
 .brew-reference-outline-dropdown .outline-panel { border: 0; display: flex; max-height: min(40dvh, 300px); }
-.brew-reference-outline-dropdown .outline-list { overflow-y: auto; }
+.brew-reference-outline-dropdown .outline-list { min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; touch-action: pan-y; }
 .brew-reference-outline-dropdown .outline-item { background: transparent; border: 0; border-left: 3px solid transparent; border-radius: 0; font-size: .9rem; text-align: left; white-space: normal; }
 .brew-reference-outline-dropdown .outline-item:hover { background: #eddfc6; border-left-color: #7a2f27; }
 .brew-reference-outline-dropdown > p { color: #75604e; font-size: .75rem; line-height: 1.4; margin: 10px 0 0; }

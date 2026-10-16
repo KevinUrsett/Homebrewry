@@ -1,6 +1,6 @@
 /* @vitest-environment jsdom */
 
-import { act } from 'react';
+import { act, type ComponentProps } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CatalogueEntry } from '../catalogue/types';
@@ -138,7 +138,7 @@ afterEach(() => {
   });
 });
 
-async function renderCompendium(onCreateWorldbuilding = vi.fn(), catalogueSelection: CatalogueEntry | null = null) {
+async function renderCompendium(onCreateWorldbuilding = vi.fn(), catalogueSelection: CatalogueEntry | null = null, overrides: Partial<ComponentProps<typeof CompendiumPanel>> = {}) {
   const container = document.createElement('div');
   document.body.append(container);
   const root = createRoot(container);
@@ -173,6 +173,7 @@ async function renderCompendium(onCreateWorldbuilding = vi.fn(), catalogueSelect
         types={[]}
         worldbuildingEntries={[campaignMonster]}
         worldbuildingMap={new Map([[campaignMonster.id, campaignMonster]])}
+        {...overrides}
       />
     );
   });
@@ -180,6 +181,23 @@ async function renderCompendium(onCreateWorldbuilding = vi.fn(), catalogueSelect
 }
 
 describe('CompendiumPanel', () => {
+  it('opens manual discovery and scans the live brew passed by the workspace, not a stale saved copy', async () => {
+    const onReviewReferences = vi.fn();
+    const container = await renderCompendium(undefined, null, {
+      activeBrewId: 'live',
+      referenceBrews: [{ id: 'live', title: 'Live draft', content: 'We meet Mara Quill.', createdAt: '2026-01-01', updatedAt: '2026-01-01', version: 1, rendererSettings: { accentColor: '#7a2f27', parchmentTone: 'warm' } }],
+      onReviewReferences
+    });
+    expect(onReviewReferences).not.toHaveBeenCalled();
+    const inbox = [...container.querySelectorAll<HTMLButtonElement>('button')].find((item) => item.textContent?.startsWith('Inbox'));
+    await act(async () => inbox?.click());
+    expect(container.querySelector('.brew-reference-scanner')).not.toBeNull();
+    expect(onReviewReferences).not.toHaveBeenCalled();
+    const scan = [...container.querySelectorAll<HTMLButtonElement>('button')].find((item) => item.textContent === 'Get new references');
+    await act(async () => scan?.click());
+    expect(onReviewReferences).toHaveBeenCalledWith([expect.objectContaining({ name: 'Mara Quill', brewId: 'live' })]);
+  });
+
   it('merges campaign creatures and SRD monsters in the Monsters category', async () => {
     const container = await renderCompendium();
 

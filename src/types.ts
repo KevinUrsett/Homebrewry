@@ -309,6 +309,20 @@ export type EntityCurrentState = {
   fields: Record<string, CurrentStateField>;
 };
 
+export type BrewReferenceReview = {
+  /** Normalised name, stable across scans and devices. */
+  id: string;
+  name: string;
+  status: 'pending' | 'created' | 'dismissed';
+  brewId: string;
+  brewTitle: string;
+  sectionId: string | null;
+  sectionTitle: string;
+  count: number;
+  context: string;
+  updatedAt: string;
+};
+
 export type LivingWorldData = {
   id: 'living-world';
   campaignId: string;
@@ -318,6 +332,7 @@ export type LivingWorldData = {
   timelineEntries?: TimelineEntry[];
   ideaDrafts?: IdeaDraft[];
   socialEncounters?: SocialEncounter[];
+  referenceReviews?: BrewReferenceReview[];
   campaignMap?: CampaignMap;
   plotBoard?: PlotBoard;
   /** Campaign maps are prepared separately and may be placed in any brew. */
@@ -428,6 +443,8 @@ export type CampaignDataSnapshot = {
   ideaDrafts?: IdeaDraft[];
   /** Optional to retain compatibility with campaign files created before Social Encounters. */
   socialEncounters?: SocialEncounter[];
+  /** Manual reference-discovery inbox and reviewed-name history. */
+  referenceReviews?: BrewReferenceReview[];
   campaignMap?: CampaignMap;
   plotBoard?: PlotBoard;
   /** Optional manual campaign brew selection. */

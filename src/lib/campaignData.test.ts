@@ -6,8 +6,25 @@ import type { Encounter } from '../types';
 import { createEncounter, createPartyMember } from './encounters';
 import { createWorldbuildingEntry, createWorldbuildingType } from './worldbuilding';
 import { createBlankPlotBoard } from './plotBoard';
+import { scanNewBrewReferences } from './brewReferenceScan';
 
 describe('campaign data snapshots', () => {
+  it('keeps manual reference review history through snapshots and cross-device conflict merging', () => {
+    const timestamp = '2026-10-16T08:00:00.000Z';
+    const reviews = scanNewBrewReferences({ id: 'draft', title: 'Draft', content: 'We meet Mara Quill.' }, null, [], [], timestamp);
+    const snapshot = createCampaignDataSnapshot([], [], [], timestamp, [], [], [], [], {
+      campaignId: 'default-campaign', entities: [], entityReferences: [], worldEvents: [], referenceReviews: reviews
+    });
+    expect(parseCampaignDataSnapshot(JSON.parse(JSON.stringify(snapshot))).referenceReviews).toEqual(reviews);
+    expect(parseCampaignDataSnapshot(createCampaignDataSnapshot([], [], [])).referenceReviews).toBeUndefined();
+    const remote = { ...snapshot, referenceReviews: reviews.map((review) => ({ ...review, status: 'dismissed' as const })) };
+    const merged = keepBothCampaignData(snapshot, remote);
+    expect(merged.referenceReviews).toHaveLength(1);
+    expect(merged.referenceReviews?.[0].status).toBe('dismissed');
+    expect(() => parseCampaignDataSnapshot({ ...snapshot, referenceReviews: [{ ...reviews[0], count: -1 }] })).toThrow('invalid reference review');
+    expect(() => parseCampaignDataSnapshot({ ...snapshot, referenceReviews: {} })).toThrow('reference review list');
+  });
+
   it('validates a versioned Drive snapshot before it is used locally', () => {
     const partyMember = createPartyMember('Rook', 16, 42);
     const snapshot = createCampaignDataSnapshot(

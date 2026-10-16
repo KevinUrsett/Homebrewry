@@ -422,6 +422,7 @@ export async function replaceCampaignData(
       timelineEntries: snapshot.timelineEntries ?? [],
       ideaDrafts: snapshot.ideaDrafts ?? [],
       socialEncounters: snapshot.socialEncounters ?? [],
+      referenceReviews: snapshot.referenceReviews ?? [],
       ...(snapshot.campaignMap ? { campaignMap: snapshot.campaignMap } : {}),
       ...(snapshot.plotBoard ? { plotBoard: snapshot.plotBoard } : {}),
       ...(snapshot.currentBrewId ? { currentBrewId: snapshot.currentBrewId } : {})

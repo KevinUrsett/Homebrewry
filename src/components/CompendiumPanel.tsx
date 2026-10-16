@@ -44,11 +44,12 @@ import { campaignStoragePresentation } from '../lib/campaignStorageStatus';
 import { seedBrews } from '../lib/brewStore';
 import { listEncounters } from '../lib/encounterStore';
 import { remainingTalesOnUnwrittenTomesReferences, type CuratedReference } from '../lib/talesOnUnwrittenTomesReferences';
-import { findUnresolvedNames } from '../lib/unresolvedReferences';
+import { pendingBrewReferences } from '../lib/brewReferenceScan';
 import { findWorldbuildingConnections } from '../lib/worldbuildingConnections';
 import { worldbuildingKindLabel } from '../lib/worldbuilding';
 import type {
   Brew,
+  BrewReferenceReview,
   CampaignEntity,
   Encounter,
   EntityCurrentState,
@@ -306,6 +307,10 @@ type CatalogueEntryEditorState = {
 type QuickCreateTarget = 'item' | 'monster' | 'npc';
 
 export type CompendiumPanelProps = {
+  referenceBrews?: readonly Brew[];
+  activeBrewId?: string | null;
+  referenceReviews?: readonly BrewReferenceReview[];
+  onReviewReferences?: (updates: BrewReferenceReview[]) => void;
   catalogueEntries: CatalogueEntry[];
   catalogueError: string | null;
   catalogueLoading: boolean;
@@ -501,6 +506,10 @@ function compendiumMetadataForItem(item: CompendiumItem): CompendiumMetadata {
 }
 
 export function CompendiumPanel({
+  referenceBrews,
+  activeBrewId,
+  referenceReviews = [],
+  onReviewReferences = () => undefined,
   catalogueEntries,
   catalogueError,
   catalogueLoading,
@@ -563,7 +572,6 @@ export function CompendiumPanel({
   const [actionError, setActionError] = useState<string | null>(null);
   const [brews, setBrews] = useState<Brew[]>([]);
   const [encounters, setEncounters] = useState<Encounter[]>([]);
-  const [dismissedNames, setDismissedNames] = useState<Set<string>>(() => new Set());
   const [detailOpen, setDetailOpen] = useState(() => Boolean(catalogueSelection || selectedWorldbuildingId));
   const [localSelectedKey, setLocalSelectedKey] = useState<string | null>(null);
   const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
@@ -786,12 +794,7 @@ export function CompendiumPanel({
     ...catalogueEntries.map((entry) => entry.name),
     ...encounters.map((encounter) => encounter.name)
   ], [catalogueEntries, encounters, worldbuildingEntries]);
-  const unresolved = useMemo(
-    () => findUnresolvedNames(brews.map((brew) => brew.content), knownNames)
-      .filter((item) => !dismissedNames.has(item.name.toLocaleLowerCase()))
-      .slice(0, 30),
-    [brews, dismissedNames, knownNames]
-  );
+  const unresolved = pendingBrewReferences(referenceReviews, knownNames);
   const curatedReferences = useMemo(() => remainingTalesOnUnwrittenTomesReferences(worldbuildingEntries), [worldbuildingEntries]);
 
   const selectedWorldbuilding = isWorldbuildingItem(selected) ? selected.entry : null;
@@ -1294,7 +1297,7 @@ export function CompendiumPanel({
                 {filteredItems.map((item) => <button className="compendium-result" key={item.key} onClick={() => selectItem(item)} type="button"><strong>{item.entry.name}</strong><span>{itemSubtitle(item)}</span><small>{item.sourceLabel}</small></button>)}
                 {!catalogueLoading && !filteredItems.length && <p className="empty-panel">No entries match that search.</p>}
               </div>
-            </> : <div className="compendium-inbox-view"><header><button onClick={openLibrary} type="button">← Library</button><div><p className="eyebrow">Review queue</p><h2>Reference inbox</h2></div></header><input aria-label="Search reference inbox" className="search-input compendium-search" onChange={(event) => setQuery(event.target.value)} placeholder="Filter names to review…" value={query} /><ReferenceInbox curatedReferences={curatedReferences} onCreateCuratedReferences={onCreateCuratedReferences} onCreateSuggestedEntries={onCreateSuggestedEntries} onDismissNames={(names) => setDismissedNames((current) => new Set([...current, ...names.map((name) => name.toLocaleLowerCase())]))} query={query} types={types} unresolved={unresolved} /></div>}
+            </> : <div className="compendium-inbox-view"><header><button onClick={openLibrary} type="button">← Library</button><div><p className="eyebrow">Review queue</p><h2>Reference inbox</h2></div></header><input aria-label="Search reference inbox" className="search-input compendium-search" onChange={(event) => setQuery(event.target.value)} placeholder="Filter names to review…" value={query} /><ReferenceInbox curatedReferences={curatedReferences} onCreateCuratedReferences={onCreateCuratedReferences} onCreateSuggestedEntries={onCreateSuggestedEntries} query={query} types={types} brewScanner={{ brews: referenceBrews ?? brews, activeBrewId, knownNames, reviews: referenceReviews, types, query, onReview: onReviewReferences, onCreate: onCreateSuggestedEntries }} /></div>}
           </section>
         </div>
       )}

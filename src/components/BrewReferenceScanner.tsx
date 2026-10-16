@@ -12,11 +12,12 @@ export type BrewReferenceScannerProps = {
   reviews: readonly BrewReferenceReview[];
   types: readonly WorldbuildingType[];
   query: string;
+  onQueryChange?: (query: string) => void;
   onReview: (updates: BrewReferenceReview[]) => void;
   onCreate: (entries: readonly Pick<WorldbuildingEntry, 'name' | 'kind'>[]) => void;
 };
 
-export function BrewReferenceScanner({ brews, activeBrewId, knownNames, reviews, types, query, onReview, onCreate }: BrewReferenceScannerProps) {
+export function BrewReferenceScanner({ brews, activeBrewId, knownNames, reviews, types, query, onQueryChange, onReview, onCreate }: BrewReferenceScannerProps) {
   const [brewId, setBrewId] = useState<string | null>(activeBrewId ?? null);
   const [scope, setScope] = useState<{ brewId: string; sectionId: string } | null>(null);
   const [outlineQuery, setOutlineQuery] = useState('');
@@ -83,7 +84,7 @@ export function BrewReferenceScanner({ brews, activeBrewId, knownNames, reviews,
 
   return (
     <section aria-label="Brew reference discovery" className="brew-reference-scanner">
-      <header><h3>Get references from a brew</h3><p>Check only when you choose. Review new names before creating entries.</p></header>
+      <header><h2>Get references</h2><p>Choose a brew and a section, then check for new names.</p></header>
       <form className="brew-reference-scan-controls" onSubmit={scan}>
         <label htmlFor={`${id}-brew`}>Brew</label>
         <select id={`${id}-brew`} onChange={(event) => { setBrewId(event.target.value); setScope(null); setOutlineQuery(''); setOutlineOpen(false); setError(null); }} value={brew?.id ?? ''}>
@@ -111,6 +112,7 @@ export function BrewReferenceScanner({ brews, activeBrewId, knownNames, reviews,
       </form>
       <p className="brew-reference-scan-status" role="status">{status}</p>
       {error && <p role="alert">{error}</p>}
+      {onQueryChange && pending.length > 0 && <label className="brew-reference-result-search">Filter results<input aria-label="Filter discovered references" onChange={(event) => onQueryChange(event.target.value)} placeholder="Search names or source text…" type="search" value={query} /></label>}
       <div className="brew-reference-pending-heading"><h4>To create <span>{pending.length}</span></h4><button disabled={!visible.length} onClick={() => setSelectedIds((current) => {
         const next = new Set(current);
         visible.forEach((item) => selected.length === visible.length ? next.delete(item.id) : next.add(item.id));

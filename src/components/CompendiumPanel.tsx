@@ -45,6 +45,7 @@ import { seedBrews } from '../lib/brewStore';
 import { listEncounters } from '../lib/encounterStore';
 import { remainingTalesOnUnwrittenTomesReferences, type CuratedReference } from '../lib/talesOnUnwrittenTomesReferences';
 import { pendingBrewReferences } from '../lib/brewReferenceScan';
+import { BrewReferenceScanner } from './BrewReferenceScanner';
 import { findWorldbuildingConnections } from '../lib/worldbuildingConnections';
 import { worldbuildingKindLabel } from '../lib/worldbuilding';
 import type {
@@ -78,7 +79,7 @@ const BelentorCalendar = lazy(async () => {
 });
 
 type CompendiumMode = 'library' | 'calendar';
-type BrowserMode = 'library' | 'inbox';
+type BrowserMode = 'library' | 'inbox' | 'references';
 type FixedCompendiumCategory =
   | 'all'
   | 'characters'
@@ -1103,9 +1104,10 @@ export function CompendiumPanel({
     onSelectWorldbuilding(null);
   };
 
-  const openInbox = () => {
+  const openReviewView = (next: 'inbox' | 'references') => {
     if (editingWorldbuilding && !window.confirm('Discard unsaved campaign entry changes?')) return;
-    setBrowserMode('inbox');
+    setBrowserMode(next);
+    setQuery('');
     setDetailOpen(false);
     setLocalSelectedKey(null);
     setCategoryPickerOpen(false);
@@ -1239,7 +1241,8 @@ export function CompendiumPanel({
             </div>
             <div className="compendium-toolbar" aria-label="Compendium actions">
               <button aria-expanded={categoryPickerOpen} onClick={() => setCategoryPickerOpen(true)} type="button"><span>Category</span><strong>{activeCategoryLabel}</strong></button>
-              <button onClick={openInbox} type="button">Inbox <span>{curatedReferences.length + unresolved.length}</span></button>
+              <button aria-pressed={browserMode === 'references'} onClick={() => openReviewView('references')} type="button">Get references{unresolved.length > 0 && <span>{unresolved.length}</span>}</button>
+              <button aria-pressed={browserMode === 'inbox'} onClick={() => openReviewView('inbox')} type="button">Inbox <span>{curatedReferences.length}</span></button>
               <button onClick={() => setMode('calendar')} type="button">Calendar</button>
               <button className="primary-button" onClick={() => setActionMenuOpen(true)} type="button">+ Add</button>
               <span className={`sync-badge sync-${storage.tone}`} title={storage.title}>{storage.label}</span>
@@ -1297,7 +1300,12 @@ export function CompendiumPanel({
                 {filteredItems.map((item) => <button className="compendium-result" key={item.key} onClick={() => selectItem(item)} type="button"><strong>{item.entry.name}</strong><span>{itemSubtitle(item)}</span><small>{item.sourceLabel}</small></button>)}
                 {!catalogueLoading && !filteredItems.length && <p className="empty-panel">No entries match that search.</p>}
               </div>
-            </> : <div className="compendium-inbox-view"><header><button onClick={openLibrary} type="button">← Library</button><div><p className="eyebrow">Review queue</p><h2>Reference inbox</h2></div></header><input aria-label="Search reference inbox" className="search-input compendium-search" onChange={(event) => setQuery(event.target.value)} placeholder="Filter names to review…" value={query} /><ReferenceInbox curatedReferences={curatedReferences} onCreateCuratedReferences={onCreateCuratedReferences} onCreateSuggestedEntries={onCreateSuggestedEntries} query={query} types={types} brewScanner={{ brews: referenceBrews ?? brews, activeBrewId, knownNames, reviews: referenceReviews, types, query, onReview: onReviewReferences, onCreate: onCreateSuggestedEntries }} /></div>}
+            </> : browserMode === 'references' ? (
+              <div className="compendium-reference-view">
+                <button className="compendium-reference-back" onClick={openLibrary} type="button">← Compendium</button>
+                <BrewReferenceScanner brews={referenceBrews ?? brews} activeBrewId={activeBrewId} knownNames={knownNames} reviews={referenceReviews} types={types} query={query} onQueryChange={setQuery} onReview={onReviewReferences} onCreate={onCreateSuggestedEntries} />
+              </div>
+            ) : <div className="compendium-inbox-view"><header><button onClick={openLibrary} type="button">← Library</button><div><p className="eyebrow">Review queue</p><h2>Reference inbox</h2></div></header><input aria-label="Search reference inbox" className="search-input compendium-search" onChange={(event) => setQuery(event.target.value)} placeholder="Filter names to review…" value={query} /><ReferenceInbox curatedReferences={curatedReferences} onCreateCuratedReferences={onCreateCuratedReferences} query={query} types={types} /></div>}
           </section>
         </div>
       )}

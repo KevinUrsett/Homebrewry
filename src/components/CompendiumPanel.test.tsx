@@ -181,7 +181,7 @@ async function renderCompendium(onCreateWorldbuilding = vi.fn(), catalogueSelect
 }
 
 describe('CompendiumPanel', () => {
-  it('opens manual discovery and scans the live brew passed by the workspace, not a stale saved copy', async () => {
+  it('opens manual discovery directly from the toolbar and scans the live brew without inbox navigation', async () => {
     const onReviewReferences = vi.fn();
     const container = await renderCompendium(undefined, null, {
       activeBrewId: 'live',
@@ -189,13 +189,32 @@ describe('CompendiumPanel', () => {
       onReviewReferences
     });
     expect(onReviewReferences).not.toHaveBeenCalled();
-    const inbox = [...container.querySelectorAll<HTMLButtonElement>('button')].find((item) => item.textContent?.startsWith('Inbox'));
-    await act(async () => inbox?.click());
+    const getReferences = [...container.querySelectorAll<HTMLButtonElement>('.compendium-toolbar button')].find((item) => item.textContent === 'Get references');
+    expect(getReferences).toBeDefined();
+    await act(async () => getReferences?.click());
     expect(container.querySelector('.brew-reference-scanner')).not.toBeNull();
+    expect(container.querySelector('[aria-label="Reference inbox"]')).toBeNull();
+    expect(container.querySelector('[aria-label="Reference groups"]')).toBeNull();
     expect(onReviewReferences).not.toHaveBeenCalled();
     const scan = [...container.querySelectorAll<HTMLButtonElement>('button')].find((item) => item.textContent === 'Get new references');
     await act(async () => scan?.click());
     expect(onReviewReferences).toHaveBeenCalledWith([expect.objectContaining({ name: 'Mara Quill', brewId: 'live' })]);
+  });
+
+  it('keeps brew discovery out of the inbox and returns directly to the library', async () => {
+    const container = await renderCompendium();
+    const toolbarButton = (text: string) => [...container.querySelectorAll<HTMLButtonElement>('.compendium-toolbar button')].find((item) => item.textContent?.startsWith(text));
+    await act(async () => toolbarButton('Inbox')?.click());
+    expect(container.querySelector('[aria-label="Reference inbox"]')).not.toBeNull();
+    expect(container.querySelector('.brew-reference-scanner')).toBeNull();
+    expect([...container.querySelectorAll('[role="tab"]')].some((item) => item.textContent?.includes('From brew'))).toBe(false);
+    await act(async () => toolbarButton('Get references')?.click());
+    expect(container.querySelector('.brew-reference-scanner')).not.toBeNull();
+    expect(container.querySelector('[aria-label="Reference groups"]')).toBeNull();
+    const back = [...container.querySelectorAll<HTMLButtonElement>('button')].find((item) => item.textContent === '← Compendium');
+    await act(async () => back?.click());
+    expect(container.querySelector('[aria-label="Search compendium"]')).not.toBeNull();
+    expect(container.querySelector('.brew-reference-scanner')).toBeNull();
   });
 
   it('merges campaign creatures and SRD monsters in the Monsters category', async () => {

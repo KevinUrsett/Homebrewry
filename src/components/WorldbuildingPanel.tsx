@@ -6,7 +6,7 @@ import { campaignStoragePresentation } from '../lib/campaignStorageStatus';
 import { seedBrews } from '../lib/brewStore';
 import { listEncounters } from '../lib/encounterStore';
 import { pendingBrewReferences } from '../lib/brewReferenceScan';
-import { BrewReferenceScanner, type BrewReferenceScannerProps } from './BrewReferenceScanner';
+import { BrewReferenceScanner } from './BrewReferenceScanner';
 import { remainingTalesOnUnwrittenTomesReferences, type CuratedReference } from '../lib/talesOnUnwrittenTomesReferences';
 import { findWorldbuildingConnections, type WorldbuildingConnection } from '../lib/worldbuildingConnections';
 import { worldbuildingKindLabel, worldbuildingKindLabels, worldbuildingKinds, touchWorldbuildingEntry } from '../lib/worldbuilding';
@@ -55,11 +55,10 @@ type WorldbuildingPanelProps = {
 
 type WorldbuildingSort = 'name-asc' | 'name-desc' | 'updated-desc' | 'updated-asc' | 'created-desc' | 'kind';
 type WorldbuildingPageMode = 'entries' | 'calendar';
-type ReferenceInboxTab = 'pantheon' | 'people' | 'places' | 'factions' | 'other' | 'this-brew';
+type ReferenceInboxTab = 'pantheon' | 'people' | 'places' | 'factions' | 'other';
 const worldbuildingCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
 const referenceInboxTabs: readonly { id: ReferenceInboxTab; label: string }[] = [
-  { id: 'this-brew', label: 'From brew' },
   { id: 'pantheon', label: 'Pantheon' },
   { id: 'people', label: 'People' },
   { id: 'places', label: 'Places' },
@@ -67,7 +66,7 @@ const referenceInboxTabs: readonly { id: ReferenceInboxTab; label: string }[] = 
   { id: 'other', label: 'Other' }
 ];
 
-function curatedInboxTab(reference: CuratedReference): Exclude<ReferenceInboxTab, 'this-brew'> {
+function curatedInboxTab(reference: CuratedReference): ReferenceInboxTab {
   if (reference.kind === 'deity') return 'pantheon';
   if (['character', 'historical-figure', 'npc'].includes(reference.kind)) return 'people';
   if (['town', 'road', 'landmark', 'region'].includes(reference.kind)) return 'places';
@@ -218,24 +217,22 @@ export type ReferenceInboxProps = {
   curatedReferences: readonly CuratedReference[];
   query: string;
   types: readonly WorldbuildingType[];
-  brewScanner: BrewReferenceScannerProps;
   onCreateCuratedReferences: (references: readonly CuratedReference[]) => void;
-  onCreateSuggestedEntries: (references: readonly Pick<WorldbuildingEntry, 'name' | 'kind'>[]) => void;
 };
 
-export function ReferenceInbox({ curatedReferences, query, types, brewScanner, onCreateCuratedReferences }: ReferenceInboxProps) {
-  const [tab, setTab] = useState<ReferenceInboxTab>('this-brew');
+export function ReferenceInbox({ curatedReferences, query, types, onCreateCuratedReferences }: ReferenceInboxProps) {
+  const [tab, setTab] = useState<ReferenceInboxTab>('pantheon');
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const terms = query.trim().toLocaleLowerCase();
   const grouped = useMemo(() => {
-    const groups: Record<Exclude<ReferenceInboxTab, 'this-brew'>, CuratedReference[]> = { pantheon: [], people: [], places: [], factions: [], other: [] };
+    const groups: Record<ReferenceInboxTab, CuratedReference[]> = { pantheon: [], people: [], places: [], factions: [], other: [] };
     curatedReferences.forEach((reference) => groups[curatedInboxTab(reference)].push(reference));
     return groups;
   }, [curatedReferences]);
-  const currentCurated = tab === 'this-brew' ? [] : grouped[tab].filter((reference) => !terms || [reference.name, reference.notes, ...(reference.aliases ?? [])].join(' ').toLocaleLowerCase().includes(terms));
+  const currentCurated = grouped[tab].filter((reference) => !terms || [reference.name, reference.notes, ...(reference.aliases ?? [])].join(' ').toLocaleLowerCase().includes(terms));
   const currentKeys = currentCurated.map((reference) => referenceSelectionKey('curated', reference.name));
   const selectedCount = currentKeys.filter((key) => selected.has(key)).length;
-  const countFor = (id: ReferenceInboxTab) => id === 'this-brew' ? pendingBrewReferences(brewScanner.reviews, brewScanner.knownNames).length : grouped[id].length;
+  const countFor = (id: ReferenceInboxTab) => grouped[id].length;
   const toggle = (key: string) => setSelected((current) => {
     const next = new Set(current);
     if (next.has(key)) next.delete(key); else next.add(key);
@@ -262,7 +259,7 @@ export function ReferenceInbox({ curatedReferences, query, types, brewScanner, o
     <div className="reference-inbox-tabs" role="tablist" aria-label="Reference groups">
       {referenceInboxTabs.map((item) => <button aria-selected={tab === item.id} className={tab === item.id ? 'is-selected' : ''} key={item.id} onClick={() => setTab(item.id)} role="tab" type="button">{item.label} <span>{countFor(item.id)}</span></button>)}
     </div>
-    {tab === 'this-brew' ? <BrewReferenceScanner {...brewScanner} /> : <section className="reference-inbox-panel">
+    <section className="reference-inbox-panel">
       <header>
         <div><h3>{referenceInboxTabs.find((item) => item.id === tab)?.label}</h3><p>Reviewed campaign references, ready to add when useful.</p></div>
         <div className="reference-inbox-bulk-actions"><button disabled={!currentKeys.length} onClick={selectAll} type="button">{selectedCount === currentKeys.length && currentKeys.length ? 'Clear selection' : 'Select all'}</button><button className="primary-button" disabled={!selectedCount} onClick={() => addCurated(selectedCurated)} type="button">Add selected ({selectedCount})</button></div>
@@ -271,7 +268,7 @@ export function ReferenceInbox({ curatedReferences, query, types, brewScanner, o
         const key = referenceSelectionKey('curated', reference.name);
         return <article key={reference.name}><label className="reference-inbox-check"><input checked={selected.has(key)} onChange={() => toggle(key)} type="checkbox" /><span className="visually-hidden">Select {reference.name}</span></label><div><strong>{reference.name}</strong>{reference.deity ? <><span>{reference.deity.rank} · {reference.deity.alignment}</span><small>Domains · {reference.deity.domains.join(' · ')}</small></> : <><span>{worldbuildingKindLabel(reference.kind, types)}</span>{reference.aliases?.length ? <small>{reference.aliases.join(' · ')}</small> : null}</>}</div><button aria-label={`Create ${reference.name}`} onClick={() => addCurated([reference])} type="button">Add</button></article>;
       })}{!currentCurated.length && <p className="unresolved-reference-empty">No references in this group.</p>}</div>
-    </section>}
+    </section>
   </div>;
 }
 
@@ -280,7 +277,7 @@ export function WorldbuildingPanel({ referenceBrews, activeBrewId, referenceRevi
   const [query, setQuery] = useState('');
   const [kind, setKind] = useState<WorldbuildingKind | 'all'>('all');
   const [sort, setSort] = useState<WorldbuildingSort>('name-asc');
-  const [browserMode, setBrowserMode] = useState<'library' | 'suggestions'>('library');
+  const [browserMode, setBrowserMode] = useState<'library' | 'suggestions' | 'references'>('library');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [addingType, setAddingType] = useState(false);
   const [typeName, setTypeName] = useState('');
@@ -405,12 +402,12 @@ export function WorldbuildingPanel({ referenceBrews, activeBrewId, referenceRevi
         <section className="worldbuilding-workspace">
           <aside className={`worldbuilding-browser ${browserMode === 'suggestions' ? 'is-reference-inbox' : ''}`} aria-label="Worldbuilding entries">
             <input aria-label="Search worldbuilding" className="search-input" onChange={(event) => setQuery(event.target.value)} placeholder="Search towns, people, roads…" value={query} />
-            <div className="worldbuilding-browser-tabs" role="tablist" aria-label="Worldbuilding browser"><button aria-selected={browserMode === 'library'} className={browserMode === 'library' ? 'is-selected' : ''} onClick={() => setBrowserMode('library')} role="tab" type="button">Entries <span>{entries.length}</span></button><button aria-selected={browserMode === 'suggestions'} className={browserMode === 'suggestions' ? 'is-selected' : ''} onClick={() => setBrowserMode('suggestions')} role="tab" type="button">Reference inbox <span>{curatedReferences.length + unresolved.length}</span></button></div>
+            <div className="worldbuilding-browser-tabs" role="tablist" aria-label="Worldbuilding browser"><button aria-selected={browserMode === 'library'} className={browserMode === 'library' ? 'is-selected' : ''} onClick={() => setBrowserMode('library')} role="tab" type="button">Entries <span>{entries.length}</span></button><button aria-selected={browserMode === 'references'} className={browserMode === 'references' ? 'is-selected' : ''} onClick={() => { setBrowserMode('references'); setQuery(''); }} role="tab" type="button">Get references <span>{unresolved.length}</span></button><button aria-selected={browserMode === 'suggestions'} className={browserMode === 'suggestions' ? 'is-selected' : ''} onClick={() => { setBrowserMode('suggestions'); setQuery(''); }} role="tab" type="button">Reference inbox <span>{curatedReferences.length}</span></button></div>
             {browserMode === 'library' ? <>
               <label className="visually-hidden" htmlFor="worldbuilding-kind">Filter type</label><select className="worldbuilding-kind-select" id="worldbuilding-kind" onChange={(event) => setKind(event.target.value as WorldbuildingKind | 'all')} value={kind}><option value="all">All types</option>{typeOptions.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
               <label className="visually-hidden" htmlFor="worldbuilding-sort">Sort entries</label><select className="worldbuilding-kind-select" id="worldbuilding-sort" onChange={(event) => setSort(event.target.value as WorldbuildingSort)} value={sort}><option value="name-asc">Name A–Z</option><option value="name-desc">Name Z–A</option><option value="updated-desc">Recently updated</option><option value="updated-asc">Oldest updated</option><option value="created-desc">Recently created</option><option value="kind">Type, then name</option></select>
               <p className="worldbuilding-count">{filtered.length} entr{filtered.length === 1 ? 'y' : 'ies'}</p><div className="worldbuilding-list">{filtered.map((entry) => <button className={`worldbuilding-list-item ${selected?.id === entry.id ? 'is-selected' : ''}`} key={entry.id} onClick={() => selectEntry(entry.id)} type="button"><strong>{entry.name}</strong><span>{worldbuildingKindLabel(entry.kind, types)}</span>{entry.aliases.length > 0 && <small>{entry.aliases.join(' · ')}</small>}</button>)}{!filtered.length && <p className="empty-panel">No entries match that search.</p>}</div>
-            </> : <ReferenceInbox curatedReferences={curatedReferences} onCreateCuratedReferences={onCreateCuratedReferences} onCreateSuggestedEntries={onCreateSuggestedEntries} query={query} types={types} brewScanner={{ brews: referenceBrews ?? brews, activeBrewId, knownNames, reviews: referenceReviews, types, query, onReview: onReviewReferences, onCreate: onCreateSuggestedEntries }} />}
+            </> : browserMode === 'references' ? <BrewReferenceScanner brews={referenceBrews ?? brews} activeBrewId={activeBrewId} knownNames={knownNames} reviews={referenceReviews} types={types} query={query} onReview={onReviewReferences} onCreate={onCreateSuggestedEntries} /> : <ReferenceInbox curatedReferences={curatedReferences} onCreateCuratedReferences={onCreateCuratedReferences} query={query} types={types} />}
           </aside>
 
           <section className="worldbuilding-details" aria-live="polite">{selected ? (editing ? <WorldbuildingEntryEditor catalogueCategories={catalogueCategories} entry={selected} key={selected.id} onCancel={() => setEditingId(null)} onCreateCatalogueReference={onCreateCatalogueReference} onCreateWorldbuildingReference={onCreateWorldbuildingReference} onSave={(entry) => { onUpdate(entry); setEditingId(null); }} types={types} /> : <WorldbuildingEntryPreview catalogue={catalogue} catalogueCategories={catalogueCategories} combatNotes={combatNotes} connections={connections} currentState={selectedCurrentState} entity={selectedEntity} entry={selected} onCreatePlotBeat={() => onCreatePlotBeat(selected, selectedEntity)} onDelete={onDelete} onEdit={() => setEditingId(selected.id)} onEncounterOpen={onEncounterOpen} onReferenceOpen={onReferenceOpen} onSetNpcStatus={(status) => onSetNpcStatus(selected, status)} onWorldbuildingOpen={onWorldbuildingOpen} types={types} worldbuilding={worldbuilding} />) : <p className="empty-panel">Create an entry, or review an unresolved name from the list.</p>}</section>

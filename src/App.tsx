@@ -73,9 +73,10 @@ import { createCustomCatalogueCategory, createCustomCatalogueEntry, normaliseCus
 import { findCatalogueEntryByName, formatCatalogueReference } from './catalogue/references';
 import type { MonsterEquipment } from './catalogue/magicItems';
 import { formatWorldbuildingReference } from './lib/worldbuildingReferences';
+import { mergeReferenceReviews, referenceNameKey } from './lib/brewReferenceScan';
 import type { GeneratedName } from './lib/nameGenerator';
 import { catalogueCategoryLabel, catalogueCategoryLabels, type CatalogueCategory, type CatalogueEntry, type CustomCatalogueCategory, type CustomCatalogueEntry } from './catalogue/types';
-import type { Brew, BrewAsset, CampaignDataSyncMetadata, CampaignMap, CampaignMapRecord, Encounter, IdeaDraft, LivingWorldData, MobileSection, PartyMember, PlotBoard, PrivateMonsterSyncMetadata, SocialEncounter, ViewMode, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from './types';
+import type { Brew, BrewAsset, BrewReferenceReview, CampaignDataSyncMetadata, CampaignMap, CampaignMapRecord, Encounter, IdeaDraft, LivingWorldData, MobileSection, PartyMember, PlotBoard, PrivateMonsterSyncMetadata, SocialEncounter, ViewMode, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from './types';
 
 const mobileLabels: Record<MobileSection, string> = {
   library: 'Brews',
@@ -856,15 +857,31 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
       .catch(() => setSaveState('Curated reference setup failed'));
   };
 
+  const persistReferenceReviews = (updates: BrewReferenceReview[]) => {
+    const currentWorld = campaignRecordsRef.current.livingWorld ?? livingWorld;
+    const nextLivingWorld = { ...currentWorld, referenceReviews: mergeReferenceReviews(currentWorld.referenceReviews ?? [], updates) };
+    campaignRecordsRef.current = { ...campaignRecordsRef.current, livingWorld: nextLivingWorld };
+    setLivingWorld(nextLivingWorld);
+    void saveLivingWorldData(nextLivingWorld)
+      .then((metadata) => noteCampaignDataSaved(metadata, 'Reference review saved locally'))
+      .catch(() => setSaveState('Reference review save failed'));
+  };
+
   const createSuggestedWorldbuildingEntries = (references: readonly Pick<WorldbuildingEntry, 'name' | 'kind'>[]) => {
     if (!references.length) return;
-    const knownNames = new Set(worldbuildingEntries.flatMap((entry) => [entry.name, ...entry.aliases]).map((name) => name.toLocaleLowerCase()));
+    const currentEntries = campaignRecordsRef.current.worldbuildingEntries;
+    const currentWorld = campaignRecordsRef.current.livingWorld ?? livingWorld;
+    const knownNames = new Set(currentEntries.flatMap((entry) => [entry.name, ...entry.aliases]).map(referenceNameKey));
     const newEntries = references
-      .filter((reference) => !knownNames.has(reference.name.toLocaleLowerCase()))
+      .filter((reference) => { const key = referenceNameKey(reference.name); if (knownNames.has(key)) return false; knownNames.add(key); return true; })
       .map((reference) => createWorldbuildingEntry(reference.name, reference.kind));
-    if (!newEntries.length) return;
-    const nextEntries = [...newEntries, ...worldbuildingEntries];
-    const nextLivingWorld = synchroniseLivingWorld(livingWorld, nextEntries);
+    const nextEntries = [...newEntries, ...currentEntries];
+    const createdNames = new Set(references.map((reference) => referenceNameKey(reference.name)));
+    const nextLivingWorld = synchroniseLivingWorld({
+      ...currentWorld,
+      referenceReviews: currentWorld.referenceReviews?.map((review) => createdNames.has(referenceNameKey(review.name))
+        ? { ...review, status: 'created' as const, updatedAt: new Date().toISOString() } : review)
+    }, nextEntries);
     campaignRecordsRef.current = { ...campaignRecordsRef.current, worldbuildingEntries: nextEntries, livingWorld: nextLivingWorld };
     setWorldbuildingEntries(nextEntries);
     setLivingWorld(nextLivingWorld);
@@ -1190,6 +1207,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
         timelineEntries: result.data.timelineEntries ?? [],
         ideaDrafts: result.data.ideaDrafts ?? [],
         socialEncounters: result.data.socialEncounters ?? [],
+        referenceReviews: result.data.referenceReviews ?? [],
         ...(result.data.campaignMap ? { campaignMap: result.data.campaignMap } : {}),
         ...(result.data.plotBoard ? { plotBoard: result.data.plotBoard } : {}),
         ...(result.data.currentBrewId ? { currentBrewId: result.data.currentBrewId } : {})
@@ -1213,6 +1231,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
         timelineEntries: result.data.timelineEntries ?? [],
         ideaDrafts: result.data.ideaDrafts ?? [],
         socialEncounters: result.data.socialEncounters ?? [],
+        referenceReviews: result.data.referenceReviews ?? [],
         ...(result.data.campaignMap ? { campaignMap: result.data.campaignMap } : {}),
         ...(result.data.plotBoard ? { plotBoard: result.data.plotBoard } : {}),
         ...(result.data.currentBrewId ? { currentBrewId: result.data.currentBrewId } : {})
@@ -2080,6 +2099,10 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
           onCreateCuratedReferences={createCuratedReferences}
           onCreateCustomCategory={createNewCustomCatalogueCategory}
           onCreateSuggestedEntries={createSuggestedWorldbuildingEntries}
+          referenceBrews={brews}
+          activeBrewId={activeId}
+          referenceReviews={livingWorld.referenceReviews}
+          onReviewReferences={persistReferenceReviews}
           onCreateType={createNewWorldbuildingType}
           onCreateWorldbuilding={createNewWorldbuildingEntry}
           onCreateWorldbuildingReference={createWorldbuildingReference}

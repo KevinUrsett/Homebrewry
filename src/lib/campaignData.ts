@@ -1,5 +1,6 @@
 import type {
   Brew,
+  BrewReferenceReview,
   CampaignDataSnapshot,
   CampaignDataSyncMetadata,
   CampaignEntity,
@@ -24,6 +25,7 @@ import { normaliseCustomCatalogueEntry } from '../catalogue/customEntries';
 import { normaliseMonsterEquipment } from '../catalogue/magicItems';
 import { isBelentorDate } from './belentorCalendar';
 import { synchroniseEntityReferences, synchroniseWorldbuildingEntities } from './livingWorld';
+import { mergeReferenceReviews, referenceNameKey } from './brewReferenceScan';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -261,6 +263,27 @@ function parseCampaignMapRecord(value: unknown): CampaignMapRecord {
   };
 }
 
+function parseReferenceReviews(value: unknown): BrewReferenceReview[] {
+  if (!Array.isArray(value)) throw new Error('Campaign data has an invalid reference review list.');
+  return mergeReferenceReviews([], value.map((item): BrewReferenceReview => {
+    if (!isRecord(item) || !['pending', 'created', 'dismissed'].includes(String(item.status))
+      || typeof item.count !== 'number' || !Number.isInteger(item.count) || item.count < 1) {
+      throw new Error('Campaign data has an invalid reference review.');
+    }
+    const name = requiredString(item.name, 'reference review name').trim();
+    if (!name) throw new Error('Campaign data has an invalid reference review name.');
+    return {
+      id: referenceNameKey(name), name, status: item.status as BrewReferenceReview['status'],
+      brewId: requiredString(item.brewId, 'reference review brew'),
+      brewTitle: requiredString(item.brewTitle, 'reference review brew title'),
+      sectionId: item.sectionId === null ? null : requiredString(item.sectionId, 'reference review section'),
+      sectionTitle: requiredString(item.sectionTitle, 'reference review section title'),
+      count: item.count, context: requiredString(item.context, 'reference review context'),
+      updatedAt: requiredString(item.updatedAt, 'reference review timestamp')
+    };
+  }));
+}
+
 function parseNpcRoleplay(value: unknown): NpcRoleplayProfile {
   if (!isRecord(value)) throw new Error('Campaign data has an invalid NPC roleplay profile.');
   const profile: NpcRoleplayProfile = {};
@@ -462,6 +485,7 @@ export function parseCampaignDataSnapshot(value: unknown): CampaignDataSnapshot 
     ...(Array.isArray(value.timelineEntries) ? { timelineEntries: value.timelineEntries.map((entry) => parseTimelineEntry(entry, campaignId)) } : {}),
     ...(Array.isArray(value.ideaDrafts) ? { ideaDrafts: value.ideaDrafts.map(parseIdeaDraft) } : {}),
     ...(Array.isArray(value.socialEncounters) ? { socialEncounters: value.socialEncounters.map(parseSocialEncounter) } : {}),
+    ...(value.referenceReviews === undefined ? {} : { referenceReviews: parseReferenceReviews(value.referenceReviews) }),
     ...(value.campaignMap === undefined ? {} : { campaignMap: parseCampaignMap(value.campaignMap) }),
     ...(value.plotBoard === undefined ? {} : { plotBoard: parsePlotBoard(value.plotBoard) }),
     ...(value.currentBrewId === undefined ? {} : { currentBrewId: requiredString(value.currentBrewId, 'current brew ID') })
@@ -478,7 +502,7 @@ export function createCampaignDataSnapshot(
   customCatalogueCategories: CustomCatalogueCategory[] = [],
   worldbuildingTypes: WorldbuildingType[] = [],
   brews: Brew[] = [],
-  livingWorld: Pick<CampaignDataSnapshot, 'campaignId' | 'entities' | 'entityReferences' | 'worldEvents' | 'timelineEntries' | 'ideaDrafts' | 'socialEncounters' | 'campaignMap' | 'plotBoard' | 'currentBrewId' | 'maps'> = {
+  livingWorld: Pick<CampaignDataSnapshot, 'campaignId' | 'entities' | 'entityReferences' | 'worldEvents' | 'timelineEntries' | 'ideaDrafts' | 'socialEncounters' | 'referenceReviews' | 'campaignMap' | 'plotBoard' | 'currentBrewId' | 'maps'> = {
     // The current app has one campaign companion file per Drive account.
     // A later multi-campaign migration can replace this file-scoped identity.
     campaignId: 'default-campaign',
@@ -504,6 +528,7 @@ export function createCampaignDataSnapshot(
     ...(livingWorld.timelineEntries?.length ? { timelineEntries: [...livingWorld.timelineEntries] } : {}),
     ...(livingWorld.ideaDrafts?.length ? { ideaDrafts: [...livingWorld.ideaDrafts] } : {}),
     ...(livingWorld.socialEncounters?.length ? { socialEncounters: [...livingWorld.socialEncounters] } : {}),
+    ...(livingWorld.referenceReviews?.length ? { referenceReviews: [...livingWorld.referenceReviews] } : {}),
     ...(livingWorld.campaignMap ? { campaignMap: livingWorld.campaignMap } : {}),
     ...(livingWorld.plotBoard ? { plotBoard: livingWorld.plotBoard } : {}),
     ...(livingWorld.currentBrewId ? { currentBrewId: livingWorld.currentBrewId } : {})
@@ -524,6 +549,7 @@ export function hasCampaignData(snapshot: CampaignDataSnapshot): boolean {
     || Boolean(snapshot.timelineEntries?.length)
     || Boolean(snapshot.ideaDrafts?.length)
     || Boolean(snapshot.socialEncounters?.length)
+    || Boolean(snapshot.referenceReviews?.length)
     || Boolean(snapshot.campaignMap)
     || Boolean(snapshot.plotBoard)
     || Boolean(snapshot.currentBrewId)
@@ -587,6 +613,7 @@ export function keepBothCampaignData(
     ...(remote.timelineEntries || local.timelineEntries ? { timelineEntries: [...(remote.timelineEntries ?? []), ...(local.timelineEntries ?? []).filter((entry) => !(remote.timelineEntries ?? []).some((remoteEntry) => remoteEntry.id === entry.id))] } : {}),
     ...(remote.ideaDrafts || local.ideaDrafts ? { ideaDrafts: [...(remote.ideaDrafts ?? []), ...(local.ideaDrafts ?? []).filter((idea) => !(remote.ideaDrafts ?? []).some((remoteIdea) => remoteIdea.id === idea.id))] } : {}),
     ...(remote.socialEncounters || local.socialEncounters ? { socialEncounters: preserveBothRecords(local.socialEncounters ?? [], remote.socialEncounters ?? [], timestamp, createId) } : {}),
+    ...(remote.referenceReviews || local.referenceReviews ? { referenceReviews: mergeReferenceReviews(local.referenceReviews ?? [], remote.referenceReviews ?? []) } : {}),
     ...(remote.campaignMap || local.campaignMap ? { campaignMap: remote.campaignMap ?? local.campaignMap } : {}),
     ...(remote.plotBoard || local.plotBoard ? { plotBoard: remote.plotBoard ?? local.plotBoard } : {}),
     ...(remote.currentBrewId || local.currentBrewId ? { currentBrewId: remote.currentBrewId ?? local.currentBrewId } : {}),

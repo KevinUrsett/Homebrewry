@@ -6,6 +6,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MarkdownEditor } from './MarkdownEditor';
 import type { BrewAsset } from '../types';
 
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
 const asset: BrewAsset = {
   id: 'lantern-art',
   name: 'lantern.jpg',
@@ -77,6 +79,37 @@ describe('MarkdownEditor images', () => {
     });
 
     expect(host.querySelector<HTMLImageElement>('.cm-markdown-image-preview img')?.alt).toBe('New map');
+  });
+
+  it('does not rescan a large document when typing updates parent callbacks', async () => {
+    vi.useFakeTimers();
+    const onChange = vi.fn();
+    const onOpenEncounter = vi.fn();
+    const encounterId = 'ad7d5e0d-4b4d-4fd8-9c78-bf44f9205030';
+    const initialContent = `[[encounter:${encounterId}|Ambush]]\n${'# Section\nLong campaign notes with references and descriptions.\n'.repeat(3000)}`;
+    host = document.createElement('div');
+    document.body.append(host);
+    root = createRoot(host);
+    await act(async () => {
+      root?.render(<MarkdownEditor content={initialContent} onChange={onChange} onOpenEncounter={() => undefined} />);
+    });
+    const view = EditorView.findFromDOM(host.querySelector<HTMLElement>('.cm-editor')!)!;
+    let scans = 0;
+    for (const character of 'Writing without pauses') {
+      act(() => view.dispatch({ changes: { from: view.state.doc.length, insert: character } }));
+      const content = view.state.doc.toString();
+      expect(onChange).toHaveBeenLastCalledWith(content);
+      const scan = vi.spyOn(view.state.doc, 'iterLines');
+      await act(async () => {
+        root?.render(<MarkdownEditor content={content} onChange={(text) => onChange(text)} onOpenEncounter={(id) => onOpenEncounter(id)} />);
+      });
+      scans += scan.mock.calls.length;
+      scan.mockRestore();
+    }
+    expect(scans).toBe(0);
+    expect(view.state.doc.toString()).toBe(`${initialContent}Writing without pauses`);
+    await act(async () => host?.querySelector<HTMLButtonElement>('.cm-encounter-reference-chip')?.click());
+    expect(onOpenEncounter).toHaveBeenCalledWith(encounterId);
   });
 });
 

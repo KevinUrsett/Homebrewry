@@ -123,11 +123,11 @@ const referenceDecorator = new MatchDecorator({
 });
 
 type EncounterOpenHandler = (encounterId: string) => void;
+type EncounterOpenHandlerLookup = () => EncounterOpenHandler | undefined;
 
-const encounterOpenHandler = Facet.define<EncounterOpenHandler, EncounterOpenHandler | undefined>({
+const encounterOpenHandler = Facet.define<EncounterOpenHandlerLookup, EncounterOpenHandlerLookup | undefined>({
   combine: (handlers) => handlers[handlers.length - 1]
 });
-const encounterOpenHandlerCompartment = new Compartment();
 
 const referenceDecorations = ViewPlugin.fromClass(class {
   decorations: DecorationSet;
@@ -147,7 +147,7 @@ const referenceDecorations = ViewPlugin.fromClass(class {
       if (!(target instanceof HTMLElement)) return false;
       const chip = target.closest<HTMLElement>('.cm-encounter-reference-chip[data-encounter-id]');
       const encounterId = chip?.dataset.encounterId;
-      const openEncounter = view.state.facet(encounterOpenHandler);
+      const openEncounter = view.state.facet(encounterOpenHandler)?.();
       if (!encounterId || !openEncounter) return false;
       event.preventDefault();
       openEncounter(encounterId);
@@ -443,14 +443,14 @@ export function MarkdownEditor({
   const imageRotationRef = useRef(onRotateImage);
   const imageDeletionRef = useRef(onDeleteImage);
   const dungeonOpenRef = useRef(onOpenDungeonMap);
-  const latestRef = useRef({ onChange, onSelectionChange, onKeyDown, onCreateWorldbuildingReference, onCreateCatalogueReference });
+  const latestRef = useRef({ onChange, onSelectionChange, onKeyDown, onCreateWorldbuildingReference, onCreateCatalogueReference, onOpenEncounter });
   const [referenceMenu, setReferenceMenu] = useState<ReferenceMenu | null>(null);
   const [mobileReferenceSelection, setMobileReferenceSelection] = useState<MobileReferenceSelection | null>(null);
   const [mobileReferenceBottom, setMobileReferenceBottom] = useState(84);
 
   useEffect(() => {
-    latestRef.current = { onChange, onSelectionChange, onKeyDown, onCreateWorldbuildingReference, onCreateCatalogueReference };
-  }, [onChange, onCreateCatalogueReference, onCreateWorldbuildingReference, onKeyDown, onSelectionChange]);
+    latestRef.current = { onChange, onSelectionChange, onKeyDown, onCreateWorldbuildingReference, onCreateCatalogueReference, onOpenEncounter };
+  }, [onChange, onCreateCatalogueReference, onCreateWorldbuildingReference, onKeyDown, onSelectionChange, onOpenEncounter]);
 
   useEffect(() => {
     imageRotationRef.current = onRotateImage;
@@ -460,12 +460,6 @@ export function MarkdownEditor({
     imageDeletionRef.current = onDeleteImage;
   }, [onDeleteImage]);
   useEffect(() => { dungeonOpenRef.current = onOpenDungeonMap; }, [onOpenDungeonMap]);
-
-  useEffect(() => {
-    viewRef.current?.dispatch({
-      effects: encounterOpenHandlerCompartment.reconfigure(onOpenEncounter ? encounterOpenHandler.of(onOpenEncounter) : [])
-    });
-  }, [onOpenEncounter]);
 
   useEffect(() => {
     assetsRef.current = assets;
@@ -508,7 +502,9 @@ export function MarkdownEditor({
             writingsuggestions: resolvedSpellcheckEnabled ? 'true' : 'false'
           }),
           referenceDecorations,
-          encounterOpenHandlerCompartment.of(onOpenEncounter ? encounterOpenHandler.of(onOpenEncounter) : []),
+          // Parent callbacks change while typing. Read the latest handler without
+          // reconfiguring CodeMirror and rebuilding every image/map decoration.
+          encounterOpenHandler.of(() => latestRef.current.onOpenEncounter),
           imageAssetLookupCompartment.of(imageAssetLookup.of((source) => assetsRef.current.get(source.slice('asset://'.length)))),
           deferredEmbeddedPreviewRefresh,
           imagePreviews((asset) => imageRotationRef.current?.(asset), (asset) => imageDeletionRef.current?.(asset), (title) => dungeonOpenRef.current?.(title)),

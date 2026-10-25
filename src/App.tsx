@@ -2,6 +2,7 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { CompendiumPanel } from './components/CompendiumPanel';
 import { CampaignPanel, type PlotBeatDraftSeed } from './components/CampaignPanel';
 import { BrewPreview } from './components/BrewPreview';
+import { WorkspacePreview } from './components/WorkspacePreview';
 import { MapsPanel } from './components/MapsPanel';
 import { EncounterPanel } from './components/EncounterPanel';
 import { EditorPane } from './components/EditorPane';
@@ -2212,9 +2213,10 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
             />
             <section className="preview-pane" aria-label="Live preview">
               <div className="preview-canvas">
+                <WorkspacePreview viewMode={viewMode} mobileSection={mobileSection}>{(printing) => (
                 <BrewPreview
                   assets={assetMap}
-                  brew={renderedBrew}
+                  brew={printing || viewMode === 'preview' || mobileSection === 'preview' ? activeBrew : renderedBrew}
                   catalogue={catalogueMap}
                   catalogueCategories={customCatalogueCategories}
                   encounters={encounterMap}
@@ -2228,6 +2230,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
                   worldbuilding={worldbuildingMap}
                   worldbuildingTypes={worldbuildingTypes}
                 />
+                )}</WorkspacePreview>
               </div>
             </section>
           </div>

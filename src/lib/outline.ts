@@ -17,7 +17,7 @@ export function getOutlineLocations(markdown: string): OutlineLocation[] {
   let from = 0;
 
   return markdown.split('\n').flatMap((line) => {
-    const match = line.match(/^(#{1,4})\s+(.+?)\s*#*\s*$/);
+    const match = line.match(/^(#{1,6})\s+(.+?)\s*#*\s*$/);
     const lineStart = from;
     from += line.length + 1;
     if (!match) return [];

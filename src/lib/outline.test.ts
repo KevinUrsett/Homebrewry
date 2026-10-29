@@ -3,10 +3,12 @@ import { getOutline, insertAtOutlineSectionEnd } from './outline';
 
 describe('getOutline', () => {
   it('returns nested headings with stable ids', () => {
-    expect(getOutline('# Intro\n## Rules\n## Rules\n##### Ignore me')).toEqual([
+    expect(getOutline('# Intro\n## Rules\n## Rules\n##### Deep room\n###### Room detail')).toEqual([
       { id: 'intro', level: 1, text: 'Intro' },
       { id: 'rules', level: 2, text: 'Rules' },
-      { id: 'rules-2', level: 2, text: 'Rules' }
+      { id: 'rules-2', level: 2, text: 'Rules' },
+      { id: 'deep-room', level: 5, text: 'Deep room' },
+      { id: 'room-detail', level: 6, text: 'Room detail' }
     ]);
   });
 

@@ -44,6 +44,7 @@ import { keepBothCampaignDataVersions, keepDriveCampaignData, overwriteDriveCamp
 import { keepBothVersions, resolveWithDriveVersion } from './lib/conflicts';
 import { isGoogleConfigured, requestDriveAccess } from './lib/googleIdentity';
 import { getOutline, getOutlineLocations, insertAtOutlineSectionEnd } from './lib/outline';
+import { placeMapInBrew } from './lib/mapBrewPlacement';
 import { importHomebrewerySource, titleFromImportedSource } from './lib/importer';
 import type { PrivateMonsterImportReport } from './lib/privateMonsterImport';
 import { clearPrivateMonsterEntries, listPrivateMonsterEntries, replacePrivateMonsterEntries } from './lib/privateMonsterStore';
@@ -647,7 +648,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
   };
 
   const beginCampaignMapInsertion = (map: CampaignMapRecord) => {
-    setPendingInsertion({ label: map.name || 'Untitled map', content: `\n:::map ${map.id}\n`, mapId: map.id });
+    setPendingInsertion({ label: `${map.name || 'Untitled map'} and numbered rooms`, mapId: map.id });
     setMapsOpen(false);
     setMobileSection('outline');
     setSaveState('Choose an outline section for this map');
@@ -725,6 +726,22 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
 
   const insertPendingAtSection = (item: { id: string } | null) => {
     if (!activeBrew || !pendingInsertion) return;
+    if (pendingInsertion.mapId && !pendingInsertion.mapRoomId) {
+      const map = (livingWorld.maps ?? []).find((candidate) => candidate.id === pendingInsertion.mapId);
+      if (!map) { setSaveState('Map unavailable. Open Maps and try again.'); return; }
+      try {
+        const placed = placeMapInBrew(activeBrew, map, item?.id ?? null, encounters);
+        updateContent(placed.content);
+        persistCampaignMapRecord(placed.map);
+        setPendingInsertion(null);
+        setViewMode('editor');
+        setMobileSection('editor');
+        setSaveState(`Map placed · ${placed.roomsAdded} room sections added`);
+      } catch (error) {
+        setSaveState(error instanceof Error ? error.message : 'Map placement failed. Try again.');
+      }
+      return;
+    }
     if (pendingInsertion.mapId) {
       const map = (livingWorld.maps ?? []).find((candidate) => candidate.id === pendingInsertion.mapId);
       if (map) {
@@ -2257,7 +2274,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
               setMobileSection('editor');
               window.requestAnimationFrame(() => editorRef.current?.focus(target.from));
             }}
-            outline={outline}
+            outline={pendingInsertion ? getOutline(activeBrew.content) : outline}
           />
         </div>
       )}

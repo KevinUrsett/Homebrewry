@@ -71,6 +71,7 @@ import {
   saveWorldbuildingType
 } from './lib/worldbuildingStore';
 import { loadCatalogue, toCatalogueMap } from './catalogue/catalogueData';
+import { readCompendiumInbox } from './lib/compendiumInbox';
 import { createCustomCatalogueCategory, createCustomCatalogueEntry, normaliseCustomCatalogueEntry } from './catalogue/customEntries';
 import { createHujinNothicPrime, HUJIN_NOTHIC_PRIME_ID } from './catalogue/hujinNothicPrime';
 import { findCatalogueEntryByName, formatCatalogueReference } from './catalogue/references';
@@ -1620,6 +1621,39 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
     noteCampaignDataSaved(saved.metadata, existing ? 'Custom monster updated locally' : 'Custom monster created locally');
   };
 
+  const importCompendiumInbox = async () => {
+    try {
+      const token = accessToken ?? await requestDriveAccess({ force: true });
+      rememberDriveAccessToken(token);
+      const entries = await readCompendiumInbox(token);
+      const existingById = new Map(customCatalogueEntries.map((entry) => [entry.id, entry]));
+      const changed = entries.filter((entry) => {
+        const old = existingById.get(entry.id);
+        return !old || JSON.stringify({ ...old, updatedAt: '', version: 0 }) !== JSON.stringify({ ...entry, updatedAt: '', version: 0 });
+      });
+      if (!changed.length) { setSaveState('Compendium inbox is up to date'); return; }
+      if (!window.confirm(`Import ${changed.length} custom Compendium entr${changed.length === 1 ? 'y' : 'ies'} from the connected Google Sheet? Existing entries with matching IDs will be updated.`)) return;
+      let metadata: CampaignDataSyncMetadata | null = null;
+      for (const entry of changed) {
+        const old = existingById.get(entry.id);
+        const result = await saveCustomCatalogueEntry({
+          ...entry,
+          createdAt: old?.createdAt ?? entry.createdAt,
+          updatedAt: new Date().toISOString(),
+          version: (old?.version ?? 0) + 1
+        });
+        existingById.set(entry.id, result.entry);
+        metadata = result.metadata;
+      }
+      const updated = [...existingById.values()];
+      campaignRecordsRef.current = { ...campaignRecordsRef.current, customCatalogueEntries: updated };
+      setCustomCatalogueEntries(updated);
+      if (metadata) noteCampaignDataSaved(metadata, `Imported ${changed.length} Compendium entr${changed.length === 1 ? 'y' : 'ies'}`);
+    } catch (error) {
+      setSaveState(error instanceof Error ? error.message : 'Compendium inbox import failed');
+    }
+  };
+
   const deleteCustomMonster = async (entry: CustomCatalogueEntry) => {
     const metadata = await deleteCustomCatalogueEntry(entry.id);
     const nextEntries = customCatalogueEntries.filter((item) => item.id !== entry.id);
@@ -2162,6 +2196,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
           onInsertReference={insertCatalogueReference}
           onOpenNameGenerator={() => setNameGeneratorTarget('worldbuilding')}
           onOpenPrivateMonsterImport={() => setPrivateMonsterImportOpen(true)}
+          onImportCompendiumInbox={importCompendiumInbox}
           onSaveCustomEntry={saveGenericCustomEntry}
           onSaveCustomMonster={saveCustomMonster}
           onQuickCreateHandled={() => setQuickCreateTarget(null)}

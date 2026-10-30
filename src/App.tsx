@@ -281,6 +281,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     Promise.all([
       seedBrews(),
       listAssets(),
@@ -309,6 +310,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
         storedLivingWorld,
         storedPrivateMonsterSync
       ]) => {
+        if (cancelled) return;
         // A one-time, opt-in import link creates an editable, campaign-owned
         // monster. It does not modify the bundled SRD or replace other monsters.
         const url = new URL(window.location.href);
@@ -322,6 +324,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
           ) ?? null;
           if (!importedMonster) {
             const saved = await saveCustomCatalogueEntry(createHujinNothicPrime());
+            if (cancelled) return;
             importedMonster = saved.entry;
             nextCustomEntries = [...storedCustomCatalogueEntries, saved.entry];
             nextCampaignMetadata = saved.metadata;
@@ -361,8 +364,9 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
         if (importedMonsterWasCreated) noteCampaignDataSaved(nextCampaignMetadata, 'Hujin\'Nothic Prime saved locally');
         else setSaveState(importedMonster ? 'Hujin\'Nothic Prime already in your Compendium' : 'Saved locally');
       })
-      .catch(() => setSaveState('Local storage is unavailable'))
-      .finally(() => setLoading(false));
+      .catch(() => { if (!cancelled) setSaveState('Local storage is unavailable'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {

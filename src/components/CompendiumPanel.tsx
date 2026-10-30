@@ -334,7 +334,7 @@ export type CompendiumPanelProps = {
   onInsertReference: (entry: CatalogueEntry) => void;
   onOpenNameGenerator?: () => void;
   onOpenPrivateMonsterImport: () => void;
-  onImportCompendiumInbox: () => Promise<void>;
+  onImportCompendiumInbox?: () => Promise<void>;
   onQuickCreateHandled?: () => void;
   onSaveCustomEntry: (entry: CustomCatalogueEntry) => Promise<void>;
   onSaveCustomMonster: (entry: CustomCatalogueEntry) => Promise<void>;
@@ -534,7 +534,7 @@ export function CompendiumPanel({
   onInsertReference,
   onOpenNameGenerator = () => undefined,
   onOpenPrivateMonsterImport,
-  onImportCompendiumInbox,
+  onImportCompendiumInbox = async () => undefined,
   onQuickCreateHandled = () => undefined,
   onSaveCustomEntry,
   onSaveCustomMonster,

@@ -315,6 +315,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
         let nextCustomEntries = storedCustomCatalogueEntries;
         let nextCampaignMetadata = storedCampaignDataSync;
         let importedMonster: CustomCatalogueEntry | null = null;
+        let importedMonsterWasCreated = false;
         if (url.searchParams.get('importMonster') === HUJIN_NOTHIC_PRIME_ID) {
           importedMonster = storedCustomCatalogueEntries.find((entry) =>
             entry.id === HUJIN_NOTHIC_PRIME_ID || entry.name.toLocaleLowerCase() === "hujin'nothic prime"
@@ -324,6 +325,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
             importedMonster = saved.entry;
             nextCustomEntries = [...storedCustomCatalogueEntries, saved.entry];
             nextCampaignMetadata = saved.metadata;
+            importedMonsterWasCreated = true;
           }
           url.searchParams.delete('importMonster');
           window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
@@ -356,7 +358,8 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
           setWorldbuildingOpen(true);
           setMobileSection('worldbuilding');
         }
-        setSaveState(importedMonster ? 'Hujin\'Nothic Prime saved to custom monsters' : 'Saved locally');
+        if (importedMonsterWasCreated) noteCampaignDataSaved(nextCampaignMetadata, 'Hujin\'Nothic Prime saved locally');
+        else setSaveState(importedMonster ? 'Hujin\'Nothic Prime already in your Compendium' : 'Saved locally');
       })
       .catch(() => setSaveState('Local storage is unavailable'))
       .finally(() => setLoading(false));

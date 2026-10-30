@@ -72,6 +72,7 @@ import {
 } from './lib/worldbuildingStore';
 import { loadCatalogue, toCatalogueMap } from './catalogue/catalogueData';
 import { createCustomCatalogueCategory, createCustomCatalogueEntry, normaliseCustomCatalogueEntry } from './catalogue/customEntries';
+import { createHujinNothicPrime, HUJIN_NOTHIC_PRIME_ID } from './catalogue/hujinNothicPrime';
 import { findCatalogueEntryByName, formatCatalogueReference } from './catalogue/references';
 import type { MonsterEquipment } from './catalogue/magicItems';
 import { formatWorldbuildingReference } from './lib/worldbuildingReferences';
@@ -294,7 +295,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
       getLivingWorldData(),
       getPrivateMonsterSyncMetadata()
     ])
-      .then(([
+      .then(async ([
         storedBrews,
         storedAssets,
         storedEncounters,
@@ -308,6 +309,25 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
         storedLivingWorld,
         storedPrivateMonsterSync
       ]) => {
+        // A one-time, opt-in import link creates an editable, campaign-owned
+        // monster. It does not modify the bundled SRD or replace other monsters.
+        const url = new URL(window.location.href);
+        let nextCustomEntries = storedCustomCatalogueEntries;
+        let nextCampaignMetadata = storedCampaignDataSync;
+        let importedMonster: CustomCatalogueEntry | null = null;
+        if (url.searchParams.get('importMonster') === HUJIN_NOTHIC_PRIME_ID) {
+          importedMonster = storedCustomCatalogueEntries.find((entry) =>
+            entry.id === HUJIN_NOTHIC_PRIME_ID || entry.name.toLocaleLowerCase() === "hujin'nothic prime"
+          ) ?? null;
+          if (!importedMonster) {
+            const saved = await saveCustomCatalogueEntry(createHujinNothicPrime());
+            importedMonster = saved.entry;
+            nextCustomEntries = [...storedCustomCatalogueEntries, saved.entry];
+            nextCampaignMetadata = saved.metadata;
+          }
+          url.searchParams.delete('importMonster');
+          window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+        }
         setBrews(storedBrews);
         setAssets(storedAssets);
         setEncounters(storedEncounters);
@@ -315,9 +335,9 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
         setWorldbuildingEntries(storedWorldbuildingEntries);
         setWorldbuildingTypes(storedWorldbuildingTypes);
         setPrivateMonsterEntries(storedPrivateMonsterEntries);
-        setCustomCatalogueEntries(storedCustomCatalogueEntries);
+        setCustomCatalogueEntries(nextCustomEntries);
         setCustomCatalogueCategories(storedCustomCatalogueCategories);
-        setCampaignDataSync(storedCampaignDataSync);
+        setCampaignDataSync(nextCampaignMetadata);
         const syncedLivingWorld = synchroniseLivingWorld(storedLivingWorld, storedWorldbuildingEntries);
         setLivingWorld(syncedLivingWorld);
         if (JSON.stringify(syncedLivingWorld.entities) !== JSON.stringify(storedLivingWorld.entities)) {
@@ -331,7 +351,12 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
         setActiveId(storedBrews.some((brew) => brew.id === preferredBrewId) ? preferredBrewId! : storedBrews[0]?.id ?? null);
         setEncounterSelectedId(storedEncounters[0]?.id ?? null);
         setWorldbuildingSelectedId(storedWorldbuildingEntries[0]?.id ?? null);
-        setSaveState('Saved locally');
+        if (importedMonster) {
+          setCatalogueSelection(importedMonster);
+          setWorldbuildingOpen(true);
+          setMobileSection('worldbuilding');
+        }
+        setSaveState(importedMonster ? 'Hujin\'Nothic Prime saved to custom monsters' : 'Saved locally');
       })
       .catch(() => setSaveState('Local storage is unavailable'))
       .finally(() => setLoading(false));

@@ -1,7 +1,7 @@
 import { isLocalPreviewMode } from './runtimeMode';
 
 const GOOGLE_IDENTITY_URL = 'https://accounts.google.com/gsi/client';
-const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets.readonly';
 const PREVIEW_ACCESS_TOKEN = 'homebrewry-local-preview';
 
 const DRIVE_AUTH_PROMPT = 'select_account consent';

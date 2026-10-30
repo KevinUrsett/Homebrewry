@@ -120,7 +120,8 @@ export default function RootApp() {
       setDriveStatus(`${brewCount} brew${brewCount === 1 ? '' : 's'} ready. ${recoveredLocalCache ? 'The PC cache was repaired from Drive.' : 'Google Drive is connected for this session.'}`);
       setConnectionPhase('ready');
       if (brewCount > 0) {
-        setPendingDestination('library');
+        // Let the workspace import flow open the selected monster itself.
+        setPendingDestination(new URLSearchParams(window.location.search).get('importMonster') === 'hujin-nothic-prime' ? null : 'library');
         setWorkspaceOpen(true);
       }
     } catch (error) {

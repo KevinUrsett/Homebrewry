@@ -120,7 +120,7 @@ export default function RootApp() {
       setDriveStatus(`${brewCount} brew${brewCount === 1 ? '' : 's'} ready. ${recoveredLocalCache ? 'The PC cache was repaired from Drive.' : 'Google Drive is connected for this session.'}`);
       setConnectionPhase('ready');
       if (brewCount > 0) {
-        setPendingDestination('library');
+        setPendingDestination(new URLSearchParams(window.location.search).get('importMonster') === 'hujin-nothic-prime' ? 'catalogue' : 'library');
         setWorkspaceOpen(true);
       }
     } catch (error) {

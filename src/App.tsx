@@ -759,7 +759,9 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
 
   const selectDungeonPosition = (position: DungeonPosition, status?: DungeonRoomStatus | 'unvisited') => {
     setDungeonPosition(position);
-    if (activeDungeon && dungeonMode === 'run') updateDungeon(activeDungeon.id, (dungeon) => updateDungeonProgress(dungeon, position, status));
+    if (activeDungeon && dungeonMode === 'run' && position.roomId) {
+      updateDungeon(activeDungeon.id, (dungeon) => updateDungeonProgress(dungeon, position, status));
+    }
   };
 
   const beginDungeonInsertion = (dungeon: DungeonRecord) => {
@@ -1926,9 +1928,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
   };
 
   const uploadMapImage = async (file: File): Promise<string | null> => {
-    const suggestedAlt = file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ');
-    const alt = window.prompt('Name this map image:', suggestedAlt);
-    if (alt === null) return null;
+    const alt = file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ');
     try {
       const asset = createAsset(file, alt);
       await saveAsset(asset);
@@ -2310,10 +2310,12 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
           onCreateEncounter={createRoomEncounter}
           onDelete={deleteDungeonRecord}
           onInsert={beginDungeonInsertion}
-          onModeChange={(mode) => {
-            if (mode === dungeonMode) return;
+          onModeChange={(mode, position) => {
             setDungeonMode(mode);
-            setDungeonPosition(null);
+            setDungeonPosition(position);
+            if (mode === 'run' && activeDungeon && position.roomId) {
+              updateDungeon(activeDungeon.id, (dungeon) => updateDungeonProgress(dungeon, position));
+            }
           }}
           onMoveRooms={moveRoomsIntoDungeon}
           onOpenEncounter={openRoomEncounter}

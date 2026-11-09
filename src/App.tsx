@@ -2151,7 +2151,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
       <nav className="desktop-view-controls desktop-mode-rail" aria-label="Workspace navigation">
           {(['editor', 'split', 'preview'] as ViewMode[]).map((mode) => (
             <button
-              className={viewMode === mode ? 'is-selected' : ''}
+              className={viewMode === mode && !dungeonsOpen ? 'is-selected' : ''}
               key={mode}
               onClick={() => {
                 setViewMode(mode);

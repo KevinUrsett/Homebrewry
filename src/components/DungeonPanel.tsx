@@ -266,7 +266,7 @@ export function DungeonPanel({
   };
 
   return (
-    <main aria-label="Dungeons workspace" className="maps-panel dungeon-panel">
+    <main aria-label="Dungeons workspace" className={`maps-panel dungeon-panel${editing ? '' : ' is-running'}`}>
       <header className="panel-header">
         <div><p className="eyebrow">Campaign workspace</p><h1>Dungeons</h1><p>Prepare and run maps, rooms, and encounters.</p></div>
         <div className="dungeon-actions">
@@ -294,7 +294,7 @@ export function DungeonPanel({
               <div className="dungeon-actions">
                 <button aria-pressed={editing} onClick={() => onModeChange('prepare')} type="button">Prepare</button>
                 <button aria-pressed={!editing} className="primary-button" onClick={() => onModeChange('run')} type="button">{dungeon.progress && editing ? 'Resume' : 'Run dungeon'}</button>
-                <button onClick={() => onInsert(dungeon)} type="button">Insert into brew</button>
+                {editing && <button onClick={() => onInsert(dungeon)} type="button">Insert into brew</button>}
                 {editing && <button className="danger-button" onClick={() => onDelete(dungeon.id)} type="button">Delete dungeon</button>}
               </div>
             </header>

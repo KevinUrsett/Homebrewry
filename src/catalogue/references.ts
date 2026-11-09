@@ -8,7 +8,7 @@ import {
 
 const referenceExpression = /\[\[([a-z][a-z0-9-]*):([0-9a-f-]+)(?:\|([^\]\r\n]+))?\]\]/gi;
 const catalogueUrlExpression = /^catalogue:\/\/([a-z][a-z0-9-]*)\/([0-9a-f-]+)$/i;
-const reservedReferenceCategories = new Set(['encounter', 'world']);
+const reservedReferenceCategories = new Set(['dungeon', 'encounter', 'world']);
 
 export type CatalogueReferenceMatch = CatalogueReference & {
   from: number;

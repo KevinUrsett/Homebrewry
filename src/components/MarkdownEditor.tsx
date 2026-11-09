@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { Compartment, EditorState, Facet, StateEffect } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
-import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import { HighlightStyle, syntaxHighlighting, syntaxTree } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
 import {
   Decoration,
@@ -14,7 +14,8 @@ import {
 } from '@codemirror/view';
 import { catalogueCategories, catalogueCategoryLabel, type CatalogueCategory, type CustomCatalogueCategory } from '../catalogue/types';
 import { normalizeWorldbuildingName, worldbuildingKindLabels, worldbuildingKinds } from '../lib/worldbuilding';
-import type { BrewAsset, CampaignMapRecord, WorldbuildingKind, WorldbuildingType } from '../types';
+import { dungeonReferenceLine, legacyMapId } from '../lib/dungeonReferences';
+import type { BrewAsset, DungeonRecord, WorldbuildingKind, WorldbuildingType } from '../types';
 
 export type MarkdownEditorHandle = {
   getSelection: () => { start: number; end: number };
@@ -40,8 +41,8 @@ type MarkdownEditorProps = {
   onRotateImage?: (asset: BrewAsset) => void;
   onDeleteImage?: (asset: BrewAsset) => void;
   onOpenDungeonMap?: (title: string) => void;
-  maps?: ReadonlyMap<string, CampaignMapRecord>;
-  onOpenCampaignMap?: (mapId: string) => void;
+  dungeons?: ReadonlyMap<string, DungeonRecord>;
+  onOpenDungeon?: (dungeonId: string) => void;
   onOpenEncounter?: (encounterId: string) => void;
 };
 
@@ -56,7 +57,7 @@ type ReferenceMenu = {
 type MobileReferenceSelection = Pick<ReferenceMenu, 'name' | 'from' | 'to'>;
 
 const emptyAssets = new Map<string, BrewAsset>();
-const emptyMaps = new Map<string, CampaignMapRecord>();
+const emptyDungeons = new Map<string, DungeonRecord>();
 const refreshEmbeddedPreviews = StateEffect.define<null>();
 const embeddedPreviewRefreshDelay = 140;
 
@@ -277,11 +278,11 @@ class MarkdownImageLabel extends WidgetType {
   }
 }
 
-class CampaignMapChip extends WidgetType {
-  constructor(private readonly mapId: string, private readonly name: string, private readonly roomCount: number, private readonly onOpen?: (mapId: string) => void) { super(); }
+class DungeonCardChip extends WidgetType {
+  constructor(private readonly dungeonId: string, private readonly name: string, private readonly roomCount: number, private readonly onOpen: (id: string) => void) { super(); }
 
-  eq(other: CampaignMapChip) {
-    return other.mapId === this.mapId && other.name === this.name && other.roomCount === this.roomCount;
+  eq(other: DungeonCardChip) {
+    return other.dungeonId === this.dungeonId && other.name === this.name && other.roomCount === this.roomCount;
   }
 
   toDOM() {
@@ -291,15 +292,15 @@ class CampaignMapChip extends WidgetType {
     const label = document.createElement('strong');
     label.textContent = this.name;
     const meta = document.createElement('small');
-    meta.textContent = `${this.roomCount} numbered area${this.roomCount === 1 ? '' : 's'}`;
+    meta.textContent = `Dungeon · ${this.roomCount} room${this.roomCount === 1 ? '' : 's'}`;
     details.append(label, meta);
     const open = document.createElement('button');
     open.type = 'button';
-    open.textContent = 'Edit map';
+    open.textContent = 'Open dungeon';
     open.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
-      this.onOpen?.(this.mapId);
+      this.onOpen(this.dungeonId);
     });
     card.append(details, open);
     return card;
@@ -308,29 +309,35 @@ class CampaignMapChip extends WidgetType {
   ignoreEvent() { return false; }
 }
 
-function campaignMapDecorations(view: EditorView, maps: ReadonlyMap<string, CampaignMapRecord>, onOpen?: (mapId: string) => void): DecorationSet {
+function dungeonCardDecorations(view: EditorView, dungeons: ReadonlyMap<string, DungeonRecord>, onOpen: (id: string) => void): DecorationSet {
   const decorations = [];
   let position = 0;
   for (const line of view.state.doc.iterLines()) {
-    const match = line.match(/^\s*:::map\s+([0-9a-f-]+)\s*$/i);
-    if (match) {
-      const mapId = match[1];
-      const map = maps.get(mapId);
-      decorations.push(Decoration.replace({ widget: new CampaignMapChip(mapId, map?.name || 'Map unavailable', map?.rooms.length || 0, onOpen), inclusive: false }).range(position, position + line.length));
+    const reference = dungeonReferenceLine(line);
+    const dungeonId = reference?.id ?? legacyMapId(line);
+    if (dungeonId) {
+      let node = syntaxTree(view.state).resolveInner(position + line.indexOf(line.trimStart()), 1);
+      while (node.parent && node.name !== 'FencedCode' && node.name !== 'CodeBlock') node = node.parent;
+      if (node.name !== 'FencedCode' && node.name !== 'CodeBlock') {
+        const dungeon = dungeons.get(dungeonId);
+        const name = dungeon?.name || reference?.label || 'Dungeon unavailable';
+        const count = dungeon?.areas.reduce((total, area) => total + area.rooms.length, 0) ?? 0;
+        decorations.push(Decoration.replace({ widget: new DungeonCardChip(dungeonId, name, count, onOpen), inclusive: false }).range(position, position + line.length));
+      }
     }
     position += line.length + 1;
   }
   return Decoration.set(decorations, true);
 }
 
-function campaignMapPreviews(maps: ReadonlyMap<string, CampaignMapRecord>, onOpen?: (mapId: string) => void) {
+function dungeonCardPreviews(getDungeons: () => ReadonlyMap<string, DungeonRecord>, onOpen: (id: string) => void) {
   return ViewPlugin.fromClass(class {
     decorations: DecorationSet;
-    constructor(view: EditorView) { this.decorations = campaignMapDecorations(view, maps, onOpen); }
+    constructor(view: EditorView) { this.decorations = dungeonCardDecorations(view, getDungeons(), onOpen); }
     update(update: ViewUpdate) {
       if (update.docChanged) this.decorations = this.decorations.map(update.changes);
       if (update.transactions.some((transaction) => transaction.reconfigured || transaction.effects.some((effect) => effect.is(refreshEmbeddedPreviews)))) {
-        this.decorations = campaignMapDecorations(update.view, maps, onOpen);
+        this.decorations = dungeonCardDecorations(update.view, getDungeons(), onOpen);
       }
     }
   }, { decorations: (value) => value.decorations });
@@ -428,8 +435,8 @@ export function MarkdownEditor({
   onRotateImage,
   onDeleteImage,
   onOpenDungeonMap,
-  maps = emptyMaps,
-  onOpenCampaignMap,
+  dungeons = emptyDungeons,
+  onOpenDungeon,
   onOpenEncounter,
   ref
 }: MarkdownEditorProps & { ref?: Ref<MarkdownEditorHandle> }) {
@@ -443,6 +450,8 @@ export function MarkdownEditor({
   const imageRotationRef = useRef(onRotateImage);
   const imageDeletionRef = useRef(onDeleteImage);
   const dungeonOpenRef = useRef(onOpenDungeonMap);
+  const dungeonRecordsRef = useRef(dungeons);
+  const dungeonCardOpenRef = useRef(onOpenDungeon);
   const latestRef = useRef({ onChange, onSelectionChange, onKeyDown, onCreateWorldbuildingReference, onCreateCatalogueReference, onOpenEncounter });
   const [referenceMenu, setReferenceMenu] = useState<ReferenceMenu | null>(null);
   const [mobileReferenceSelection, setMobileReferenceSelection] = useState<MobileReferenceSelection | null>(null);
@@ -460,6 +469,11 @@ export function MarkdownEditor({
     imageDeletionRef.current = onDeleteImage;
   }, [onDeleteImage]);
   useEffect(() => { dungeonOpenRef.current = onOpenDungeonMap; }, [onOpenDungeonMap]);
+  useEffect(() => { dungeonCardOpenRef.current = onOpenDungeon; }, [onOpenDungeon]);
+  useEffect(() => {
+    dungeonRecordsRef.current = dungeons;
+    viewRef.current?.dispatch({ effects: refreshEmbeddedPreviews.of(null) });
+  }, [dungeons]);
 
   useEffect(() => {
     assetsRef.current = assets;
@@ -508,7 +522,7 @@ export function MarkdownEditor({
           imageAssetLookupCompartment.of(imageAssetLookup.of((source) => assetsRef.current.get(source.slice('asset://'.length)))),
           deferredEmbeddedPreviewRefresh,
           imagePreviews((asset) => imageRotationRef.current?.(asset), (asset) => imageDeletionRef.current?.(asset), (title) => dungeonOpenRef.current?.(title)),
-          campaignMapPreviews(maps, onOpenCampaignMap),
+          dungeonCardPreviews(() => dungeonRecordsRef.current, (id) => dungeonCardOpenRef.current?.(id)),
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
               const nextContent = update.state.doc.toString();

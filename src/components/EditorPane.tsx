@@ -2,7 +2,7 @@ import { type RefObject, useRef } from 'react';
 import { MarkdownEditor, type MarkdownEditorHandle } from './MarkdownEditor';
 import { ReferenceMenu } from './ReferenceMenu';
 import type { CatalogueCategory, CustomCatalogueCategory } from '../catalogue/types';
-import type { BrewAsset, CampaignMapRecord, WorldbuildingKind, WorldbuildingType } from '../types';
+import type { BrewAsset, DungeonRecord, WorldbuildingKind, WorldbuildingType } from '../types';
 
 type EditorPaneProps = {
   title: string;
@@ -34,9 +34,9 @@ type EditorPaneProps = {
   assets: ReadonlyMap<string, BrewAsset>;
   onRotateImage: (asset: BrewAsset) => void;
   onDeleteImage: (asset: BrewAsset) => void;
-  onOpenMaps: () => void;
-  maps: ReadonlyMap<string, CampaignMapRecord>;
-  onOpenCampaignMap: (mapId: string) => void;
+  onOpenDungeons: () => void;
+  dungeons: ReadonlyMap<string, DungeonRecord>;
+  onOpenDungeon: (dungeonId: string) => void;
   onToggleSpellcheck: () => void;
   onFindChange: (value: string) => void;
   onReplaceChange: (value: string) => void;
@@ -74,9 +74,9 @@ export function EditorPane({
   assets,
   onRotateImage,
   onDeleteImage,
-  onOpenMaps,
-  maps,
-  onOpenCampaignMap,
+  onOpenDungeons,
+  dungeons,
+  onOpenDungeon,
   onToggleSpellcheck,
   onFindChange,
   onReplaceChange,
@@ -97,7 +97,7 @@ export function EditorPane({
         <button onClick={() => onInsert('\n```item\n', '\n```\n')} type="button">Item</button>
         <button onClick={() => onInsert('\n```spell\n', '\n```\n')} type="button">Spell</button>
         <button onClick={() => onInsert('\n:::pagebreak\n')} type="button">Page</button>
-        <button onClick={onOpenMaps} type="button">Map</button>
+        <button onClick={onOpenDungeons} type="button">Dungeon</button>
         <button onClick={() => imageInputRef.current?.click()} type="button">Image</button>
         <ReferenceMenu customCategories={customCatalogueCategories} onBrowseCatalogue={onOpenCatalogue} onSelectCategory={onInsertReferenceCategory} />
         <button onClick={onOpenEncounters} type="button">Encounter</button>
@@ -142,8 +142,8 @@ export function EditorPane({
       <MarkdownEditor
         content={content}
         assets={assets}
-        maps={maps}
-        onOpenCampaignMap={onOpenCampaignMap}
+        dungeons={dungeons}
+        onOpenDungeon={onOpenDungeon}
         onOpenEncounter={onOpenEncounter}
         onRotateImage={onRotateImage}
         onDeleteImage={onDeleteImage}

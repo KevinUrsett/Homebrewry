@@ -3,7 +3,7 @@ import { CompendiumPanel } from './components/CompendiumPanel';
 import { CampaignPanel, type PlotBeatDraftSeed } from './components/CampaignPanel';
 import { BrewPreview } from './components/BrewPreview';
 import { WorkspacePreview } from './components/WorkspacePreview';
-import { MapsPanel } from './components/MapsPanel';
+import { DungeonPanel } from './components/DungeonPanel';
 import { EncounterPanel } from './components/EncounterPanel';
 import { EditorPane } from './components/EditorPane';
 import { ImportDialog } from './components/ImportDialog';
@@ -24,12 +24,14 @@ import {
   getCampaignDataSyncMetadata,
   getLivingWorldData,
   getPrivateMonsterSyncMetadata,
+  livingWorldFromSnapshot,
   replaceBrews,
   replaceCampaignData,
   replacePrivateMonsterData,
   saveBrew,
   saveCampaignDataSyncMetadata,
   saveLivingWorldData,
+  saveMovedDungeonRooms,
   savePrivateMonsterSyncMetadata,
   seedBrews
 } from './lib/brewStore';
@@ -44,7 +46,10 @@ import { keepBothCampaignDataVersions, keepDriveCampaignData, overwriteDriveCamp
 import { keepBothVersions, resolveWithDriveVersion } from './lib/conflicts';
 import { isGoogleConfigured, requestDriveAccess } from './lib/googleIdentity';
 import { getOutline, getOutlineLocations, insertAtOutlineSectionEnd } from './lib/outline';
-import { placeMapInBrew } from './lib/mapBrewPlacement';
+import { campaignDungeons, cleanDungeonProgress, createDungeon, updateDungeonArea, updateDungeonProgress } from './lib/dungeons';
+import { dungeonRoomMoves, moveDungeonRooms, prepareInlineDungeonMove, type DungeonRoomMove } from './lib/dungeonBrewMigration';
+import { formatDungeonReference } from './lib/dungeonReferences';
+import { isLocalPreviewMode } from './lib/runtimeMode';
 import { importHomebrewerySource, titleFromImportedSource } from './lib/importer';
 import type { PrivateMonsterImportReport } from './lib/privateMonsterImport';
 import { clearPrivateMonsterEntries, listPrivateMonsterEntries, replacePrivateMonsterEntries } from './lib/privateMonsterStore';
@@ -80,7 +85,7 @@ import { formatWorldbuildingReference } from './lib/worldbuildingReferences';
 import { mergeReferenceReviews, referenceNameKey } from './lib/brewReferenceScan';
 import type { GeneratedName } from './lib/nameGenerator';
 import { catalogueCategoryLabel, catalogueCategoryLabels, type CatalogueCategory, type CatalogueEntry, type CustomCatalogueCategory, type CustomCatalogueEntry } from './catalogue/types';
-import type { Brew, BrewAsset, BrewReferenceReview, CampaignDataSyncMetadata, CampaignMap, CampaignMapRecord, Encounter, IdeaDraft, LivingWorldData, MobileSection, PartyMember, PlotBoard, PrivateMonsterSyncMetadata, SocialEncounter, ViewMode, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from './types';
+import type { Brew, BrewAsset, BrewReferenceReview, CampaignDataSyncMetadata, CampaignMap, DungeonPosition, DungeonRecord, DungeonRoomStatus, Encounter, IdeaDraft, LivingWorldData, MobileSection, PartyMember, PlotBoard, PrivateMonsterSyncMetadata, SocialEncounter, ViewMode, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from './types';
 
 const mobileLabels: Record<MobileSection, string> = {
   library: 'Brews',
@@ -90,7 +95,7 @@ const mobileLabels: Record<MobileSection, string> = {
   catalogue: 'Compendium',
   campaign: 'Campaign',
   encounters: 'Encounters',
-  maps: 'Maps',
+  dungeons: 'Dungeons',
   worldbuilding: 'Compendium'
 };
 
@@ -99,7 +104,7 @@ const mobilePrimarySections = ['library', 'editor', 'preview', 'encounters'] as 
 const mobileToolSections = [
   { id: 'compendium', label: 'Compendium' },
   { id: 'campaign', label: 'Campaign' },
-  { id: 'maps', label: 'Maps' },
+  { id: 'dungeons', label: 'Dungeons' },
   { id: 'ideas', label: 'My ideas' }
 ] as const;
 
@@ -109,6 +114,16 @@ type DriveSaveNotice = {
 };
 
 type QuickCreateTarget = 'item' | 'monster' | 'npc';
+type DungeonMode = 'prepare' | 'run';
+type DungeonOrigin = { brewId: string; mode: 'editor' | 'preview'; anchor?: string };
+type DungeonRoomTarget = { dungeonId: string; areaId: string; roomId: string };
+type DungeonEncounterRoute = {
+  target: DungeonRoomTarget;
+  mode: DungeonMode;
+  kind: 'combat' | 'social';
+  encounterId: string;
+  building?: boolean;
+};
 
 type AppProps = {
   driveAccessToken?: string | null;
@@ -193,15 +208,21 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
   const [partyMembers, setPartyMembers] = useState<PartyMember[]>([]);
   const [encountersOpen, setEncountersOpen] = useState(false);
   const [encounterSelectedId, setEncounterSelectedId] = useState<string | null>(null);
-  const [pendingInsertion, setPendingInsertion] = useState<{ label: string; content?: string; ideaId?: string; mapId?: string; mapRoomId?: string } | null>(null);
+  const [pendingInsertion, setPendingInsertion] = useState<{ label: string; content?: string; ideaId?: string; dungeonId?: string; brewId?: string } | null>(null);
   const [worldbuildingEntries, setWorldbuildingEntries] = useState<WorldbuildingEntry[]>([]);
   const [worldbuildingTypes, setWorldbuildingTypes] = useState<WorldbuildingType[]>([]);
   const [worldbuildingOpen, setWorldbuildingOpen] = useState(false);
   const [ideasOpen, setIdeasOpen] = useState(false);
   const [captureMenuOpen, setCaptureMenuOpen] = useState(false);
   const [quickCreateTarget, setQuickCreateTarget] = useState<QuickCreateTarget | null>(null);
-  const [mapsOpen, setMapsOpen] = useState(false);
-  const [selectedMapId, setSelectedMapId] = useState<string | null>(null);
+  const [dungeonsOpen, setDungeonsOpen] = useState(false);
+  const [selectedDungeonId, setSelectedDungeonId] = useState<string | null>(null);
+  const [dungeonMode, setDungeonMode] = useState<DungeonMode>('prepare');
+  const [dungeonPosition, setDungeonPosition] = useState<DungeonPosition | null>(null);
+  const [dungeonOrigin, setDungeonOrigin] = useState<DungeonOrigin | null>(null);
+  const [dungeonEncounter, setDungeonEncounter] = useState<DungeonEncounterRoute | null>(null);
+  const returnDungeonCardRef = useRef<string | null>(null);
+  const roomEncounterPendingRef = useRef(false);
   const [nameGeneratorTarget, setNameGeneratorTarget] = useState<'editor' | 'worldbuilding' | null>(null);
   const [worldbuildingSelectedId, setWorldbuildingSelectedId] = useState<string | null>(null);
   const [campaignDataSync, setCampaignDataSync] = useState<CampaignDataSyncMetadata | null>(null);
@@ -441,8 +462,16 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
     () => deferredBrews.find((brew) => brew.id === activeId) ?? activeBrew,
     [activeBrew, activeId, deferredBrews]
   );
-  const campaignMaps = livingWorld.maps ?? [];
-  const campaignMapRecords = useMemo(() => new Map(campaignMaps.map((map) => [map.id, map])), [campaignMaps]);
+  const dungeons = useMemo(() => campaignDungeons({ dungeons: livingWorld.dungeons, maps: livingWorld.maps }), [livingWorld.dungeons, livingWorld.maps]);
+  const dungeonRecords = useMemo(() => new Map(dungeons.map((dungeon) => [dungeon.id, dungeon])), [dungeons]);
+  const activeDungeon = (selectedDungeonId ? dungeonRecords.get(selectedDungeonId) : undefined) ?? dungeons[0];
+  useEffect(() => {
+    if (dungeonsOpen || !returnDungeonCardRef.current) return;
+    const anchor = returnDungeonCardRef.current;
+    returnDungeonCardRef.current = null;
+    const frame = window.requestAnimationFrame(() => document.getElementById(anchor)?.scrollIntoView({ block: 'center' }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [dungeonsOpen]);
   const assetMap = useMemo(() => new Map(assets.map((asset) => [asset.id, asset])), [assets]);
   const catalogueEntries = useMemo(
     () => [...baseCatalogueEntries, ...privateMonsterEntries, ...customCatalogueEntries].sort((left, right) => left.category.localeCompare(right.category) || left.name.localeCompare(right.name)),
@@ -483,6 +512,15 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
 
   const saveActiveBrewNow = async () => {
     if (!activeBrew || savingToDrive || syncing) return;
+    if (isLocalPreviewMode()) {
+      try {
+        await saveBrew(activeBrew);
+        setSaveState('Saved locally');
+      } catch {
+        setSaveState('Local save failed');
+      }
+      return;
+    }
     try {
       setSavingToDrive(true);
       setSaveState('Saving to Google Drive…');
@@ -595,7 +633,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
     setCampaignOpen(false);
     setEncountersOpen(false);
     setWorldbuildingOpen(true);
-    setMapsOpen(false);
+    setDungeonsOpen(false);
     setIdeasOpen(false);
     setPendingInsertion(null);
     setMobileSection('worldbuilding');
@@ -633,67 +671,203 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
     notePrivateMonsterDataSaved(metadata, [], 'Private monsters removed locally');
   };
 
-  const openEncounters = (encounter?: Encounter) => {
+  const openEncounters = (encounter?: Encounter, room?: DungeonEncounterRoute) => {
+    setDungeonEncounter(room ?? null);
     setMobileToolsOpen(false);
     if (encounter) setEncounterSelectedId(encounter.id);
     setCampaignOpen(false);
     setEncountersOpen(true);
     setWorldbuildingOpen(false);
-    setMapsOpen(false);
+    setDungeonsOpen(false);
     setIdeasOpen(false);
     setPendingInsertion(null);
     setMobileSection('encounters');
   };
 
-  const openMaps = (map?: CampaignMapRecord) => {
+  const openDungeons = (dungeonId?: string, mode: DungeonMode = 'prepare', origin: DungeonOrigin | null = null) => {
     setMobileToolsOpen(false);
-    if (map) setSelectedMapId(map.id);
     setCampaignOpen(false);
     setEncountersOpen(false);
     setWorldbuildingOpen(false);
     setIdeasOpen(false);
-    setMapsOpen(true);
+    setDungeonsOpen(true);
     setPendingInsertion(null);
-    setMobileSection('maps');
+    setDungeonEncounter(null);
+    if (dungeonId) setSelectedDungeonId(dungeonId);
+    setDungeonMode(mode);
+    setDungeonPosition(null);
+    setDungeonOrigin(origin);
+    setMobileSection('dungeons');
   };
 
-  const persistCampaignMapRecord = (map: CampaignMapRecord) => {
-    const nextLivingWorld = { ...livingWorld, maps: [map, ...(livingWorld.maps ?? []).filter((item) => item.id !== map.id)] };
-    campaignRecordsRef.current = { ...campaignRecordsRef.current, livingWorld: nextLivingWorld };
-    setLivingWorld(nextLivingWorld);
-    void saveLivingWorldData(nextLivingWorld).then((metadata) => noteCampaignDataSaved(metadata, 'Map saved locally')).catch(() => setSaveState('Map save failed'));
+  const openDungeonFromBrew = (dungeonId?: string, anchor?: string) => {
+    if (!activeBrew) return;
+    const mode = anchor ? 'preview' : 'editor';
+    openDungeons(dungeonId, anchor && dungeonId && dungeonRecords.has(dungeonId) ? 'run' : 'prepare', { brewId: activeBrew.id, mode, anchor });
   };
 
-  const createCampaignMapRecord = () => {
-    const now = new Date().toISOString();
-    const map: CampaignMapRecord = { id: crypto.randomUUID(), name: 'New map', rooms: [], markers: [], linkedBrewIds: [], createdAt: now, updatedAt: now, version: 1 };
-    persistCampaignMapRecord(map);
-    setSelectedMapId(map.id);
+  const backToDungeonBrew = () => {
+    if (!dungeonOrigin) return;
+    returnDungeonCardRef.current = dungeonOrigin.anchor ?? null;
+    if (brews.some((brew) => brew.id === dungeonOrigin.brewId)) setActiveId(dungeonOrigin.brewId);
+    setViewMode(dungeonOrigin.mode);
+    setMobileSection(dungeonOrigin.mode);
+    setDungeonsOpen(false);
+    setDungeonOrigin(null);
   };
 
-  const deleteCampaignMapRecord = (map: CampaignMapRecord) => {
-    if (!window.confirm(`Delete “${map.name || 'Untitled map'}”? Brew map blocks will remain, but show as unavailable.`)) return;
-    const nextLivingWorld = { ...livingWorld, maps: (livingWorld.maps ?? []).filter((item) => item.id !== map.id) };
-    campaignRecordsRef.current = { ...campaignRecordsRef.current, livingWorld: nextLivingWorld };
-    setLivingWorld(nextLivingWorld);
-    setSelectedMapId(nextLivingWorld.maps[0]?.id ?? null);
-    void saveLivingWorldData(nextLivingWorld).then((metadata) => noteCampaignDataSaved(metadata, 'Map deleted locally')).catch(() => setSaveState('Map deletion failed'));
+  const persistDungeons = (world: LivingWorldData, records: DungeonRecord[]) => {
+    const next = { ...world, maps: undefined, dungeons: records };
+    campaignRecordsRef.current.livingWorld = next;
+    setLivingWorld(next);
+    setSaveState('Saving dungeon…');
+    void saveLivingWorldData(next)
+      .then((metadata) => noteCampaignDataSaved(metadata, 'Dungeon saved locally'))
+      .catch(() => setSaveState('Dungeon save failed'));
   };
 
-  const beginCampaignMapInsertion = (map: CampaignMapRecord) => {
-    setPendingInsertion({ label: `${map.name || 'Untitled map'} and numbered rooms`, mapId: map.id });
-    setMapsOpen(false);
+  const updateDungeon = (id: string, update: (dungeon: DungeonRecord) => DungeonRecord) => {
+    const world = campaignRecordsRef.current.livingWorld ?? livingWorld;
+    const records = campaignDungeons(world);
+    const dungeon = records.find((item) => item.id === id);
+    if (!dungeon) return;
+    const updated = update(dungeon);
+    if (updated === dungeon) return;
+    const next = cleanDungeonProgress({ ...updated, updatedAt: new Date().toISOString(), version: dungeon.version + 1 });
+    persistDungeons(world, records.map((item) => item.id === id ? next : item));
+  };
+
+  const createDungeonRecord = () => {
+    const world = campaignRecordsRef.current.livingWorld ?? livingWorld;
+    const dungeon = createDungeon();
+    persistDungeons(world, [dungeon, ...campaignDungeons(world)]);
+    setSelectedDungeonId(dungeon.id);
+    setDungeonMode('prepare');
+    setDungeonPosition(null);
+  };
+
+  const deleteDungeonRecord = (id: string) => {
+    const world = campaignRecordsRef.current.livingWorld ?? livingWorld;
+    const records = campaignDungeons(world);
+    const dungeon = records.find((item) => item.id === id);
+    if (!dungeon || !window.confirm(`Delete “${dungeon.name || 'Untitled dungeon'}” and its rooms?`)) return;
+    const remaining = records.filter((item) => item.id !== id);
+    persistDungeons(world, remaining);
+    setSelectedDungeonId(remaining[0]?.id ?? null);
+    setDungeonPosition(null);
+  };
+
+  const selectDungeonPosition = (position: DungeonPosition, status?: DungeonRoomStatus | 'unvisited') => {
+    setDungeonPosition(position);
+    if (activeDungeon && dungeonMode === 'run') updateDungeon(activeDungeon.id, (dungeon) => updateDungeonProgress(dungeon, position, status));
+  };
+
+  const beginDungeonInsertion = (dungeon: DungeonRecord) => {
+    if (!activeBrew) return;
+    setPendingInsertion({ label: dungeon.name || 'Untitled dungeon', content: formatDungeonReference(dungeon), dungeonId: dungeon.id, brewId: activeBrew.id });
+    setDungeonsOpen(false);
+    setDungeonOrigin(null);
+    setViewMode('editor');
     setMobileSection('outline');
-    setSaveState('Choose an outline section for this map');
+    setSaveState('Choose an outline section for this dungeon');
   };
 
-  const beginCampaignMapRoomLink = (map: CampaignMapRecord, roomId: string) => {
-    const room = map.rooms.find((item) => item.id === roomId);
+  const saveDungeonBrewEdit = async (source: Brew, content: string, nextWorld: LivingWorldData, message: string) => {
+    const brew: Brew = {
+      ...source,
+      content,
+      updatedAt: new Date().toISOString(),
+      updatedOnDeviceId: currentDeviceId(),
+      version: source.version + 1,
+      syncState: source.drive ? 'pending' : 'local'
+    };
+    campaignMutationRef.current += 1;
+    const metadata = await saveMovedDungeonRooms(brew, nextWorld);
+    historyRef.current = [...historyRef.current, source.content].slice(-150);
+    redoRef.current = [];
+    setBrews((current) => current.map((item) => item.id === brew.id ? brew : item));
+    campaignRecordsRef.current.livingWorld = nextWorld;
+    setLivingWorld(nextWorld);
+    noteCampaignDataSaved(metadata, message);
+  };
+
+  const moveRoomsIntoDungeon = async (dungeonId: string, moves: DungeonRoomMove[]) => {
+    const world = campaignRecordsRef.current.livingWorld ?? livingWorld;
+    const records = campaignDungeons(world);
+    const dungeon = records.find((item) => item.id === dungeonId);
+    if (!activeBrew || !dungeon) throw new Error('Open the brew and dungeon again.');
+    const moved = moveDungeonRooms(activeBrew, dungeon, moves, new Date().toISOString());
+    const nextWorld = { ...world, maps: undefined, dungeons: records.map((item) => item.id === dungeonId ? moved.dungeon : item) };
+    await saveDungeonBrewEdit(activeBrew, moved.content, nextWorld, 'Rooms moved into dungeon');
+  };
+
+  const moveInlineDungeon = async (block: Parameters<typeof prepareInlineDungeonMove>[1], anchor: string) => {
+    if (!activeBrew) return;
+    try {
+      const moved = prepareInlineDungeonMove(activeBrew, block);
+      if (!window.confirm('Move this inline dungeon into Dungeons and replace it with a card?\n\n' + moved.source)) return;
+      const world = campaignRecordsRef.current.livingWorld ?? livingWorld;
+      const nextWorld = { ...world, maps: undefined, dungeons: [moved.dungeon, ...campaignDungeons(world)] };
+      await saveDungeonBrewEdit(activeBrew, moved.content, nextWorld, 'Inline dungeon moved');
+      openDungeons(moved.dungeon.id, 'prepare', { brewId: activeBrew.id, mode: 'preview', anchor });
+    } catch (error) {
+      setSaveState(error instanceof Error ? error.message : 'Could not move this dungeon');
+    }
+  };
+
+  const openRoomEncounter = (target: DungeonRoomTarget, encounter: { id: string; kind: 'combat' | 'social' }) => {
+    openEncounters(encounter.kind === 'combat' ? encounterMap.get(encounter.id) : undefined, { target, mode: dungeonMode, kind: encounter.kind, encounterId: encounter.id });
+  };
+
+  const createRoomEncounter = async (target: DungeonRoomTarget) => {
+    if (roomEncounterPendingRef.current) return;
+    const room = dungeonRecords.get(target.dungeonId)?.areas.find((area) => area.id === target.areaId)?.rooms.find((item) => item.id === target.roomId);
     if (!room) return;
-    setPendingInsertion({ label: `${map.name || 'Untitled map'} · ${room.name || `Room ${room.number}`}`, mapId: map.id, mapRoomId: room.id });
-    setMapsOpen(false);
-    setMobileSection('outline');
-    setSaveState('Choose an outline section to connect this room');
+    roomEncounterPendingRef.current = true;
+    const encounter = createCombatEncounter(room.name.trim() || 'New encounter', partyMembers);
+    try {
+      const metadata = await saveEncounter(encounter);
+      const records = campaignRecordsRef.current;
+      records.encounters = [encounter, ...records.encounters];
+      setEncounters(records.encounters);
+      noteCampaignDataSaved(metadata, 'Encounter saved locally');
+      openEncounters(encounter, { target, mode: dungeonMode, kind: 'combat', encounterId: encounter.id, building: true });
+    } catch {
+      setSaveState('Could not save the new encounter');
+    } finally {
+      roomEncounterPendingRef.current = false;
+    }
+  };
+
+  const backToDungeonRoom = () => {
+    if (!dungeonEncounter) return;
+    setEncountersOpen(false);
+    setDungeonsOpen(true);
+    setSelectedDungeonId(dungeonEncounter.target.dungeonId);
+    setDungeonMode(dungeonEncounter.mode);
+    setDungeonPosition(dungeonEncounter.target);
+    setMobileSection('dungeons');
+    setDungeonEncounter(null);
+  };
+
+  const useEncounterInRoom = () => {
+    if (!dungeonEncounter?.building || !encounterMap.has(dungeonEncounter.encounterId)) return;
+    const { target, encounterId } = dungeonEncounter;
+    const world = campaignRecordsRef.current.livingWorld ?? livingWorld;
+    const room = campaignDungeons(world).find((item) => item.id === target.dungeonId)?.areas.find((area) => area.id === target.areaId)?.rooms.find((item) => item.id === target.roomId);
+    if (!room) {
+      setSaveState('The room is unavailable');
+      return;
+    }
+    if (!room.encounterIds.includes(encounterId)) {
+      updateDungeon(target.dungeonId, (dungeon) => updateDungeonArea(dungeon, target.areaId, (area) => ({
+        ...area,
+        rooms: area.rooms.map((item) => item.id === target.roomId
+          ? { ...item, encounterIds: [...item.encounterIds, encounterId], updatedAt: new Date().toISOString() }
+          : item)
+      })));
+    }
+    backToDungeonRoom();
   };
 
   const openWorldbuilding = (entry?: WorldbuildingEntry) => {
@@ -704,7 +878,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
     setEncountersOpen(false);
     setWorldbuildingOpen(true);
     setIdeasOpen(false);
-    setMapsOpen(false);
+    setDungeonsOpen(false);
     setPendingInsertion(null);
     setMobileSection('worldbuilding');
   };
@@ -724,7 +898,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
     setMobileToolsOpen(false);
     setEncountersOpen(false);
     setWorldbuildingOpen(false);
-    setMapsOpen(false);
+    setDungeonsOpen(false);
     setIdeasOpen(false);
     setCampaignOpen(true);
     setPendingInsertion(null);
@@ -759,33 +933,16 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
 
   const insertPendingAtSection = (item: { id: string } | null) => {
     if (!activeBrew || !pendingInsertion) return;
-    if (pendingInsertion.mapId && !pendingInsertion.mapRoomId) {
-      const map = (livingWorld.maps ?? []).find((candidate) => candidate.id === pendingInsertion.mapId);
-      if (!map) { setSaveState('Map unavailable. Open Maps and try again.'); return; }
-      try {
-        const placed = placeMapInBrew(activeBrew, map, item?.id ?? null, encounters);
-        updateContent(placed.content);
-        persistCampaignMapRecord(placed.map);
+    if (pendingInsertion.dungeonId) {
+      if (activeBrew.id !== pendingInsertion.brewId || !dungeonRecords.has(pendingInsertion.dungeonId)) {
         setPendingInsertion(null);
-        setViewMode('editor');
         setMobileSection('editor');
-        setSaveState(`Map placed · ${placed.roomsAdded} room sections added`);
-      } catch (error) {
-        setSaveState(error instanceof Error ? error.message : 'Map placement failed. Try again.');
+        setSaveState('Open the brew and choose the dungeon again');
+        return;
       }
-      return;
-    }
-    if (pendingInsertion.mapId) {
-      const map = (livingWorld.maps ?? []).find((candidate) => candidate.id === pendingInsertion.mapId);
-      if (map) {
-        const now = new Date().toISOString();
-        persistCampaignMapRecord({
-          ...map,
-          linkedBrewIds: map.linkedBrewIds.includes(activeBrew.id) ? map.linkedBrewIds : [...map.linkedBrewIds, activeBrew.id],
-          rooms: pendingInsertion.mapRoomId ? map.rooms.map((room) => room.id === pendingInsertion.mapRoomId ? { ...room, brewSectionId: item ? `${activeBrew.id}:${item.id}` : undefined, updatedAt: now } : room) : map.rooms,
-          updatedAt: now,
-          version: map.version + 1
-        });
+      if (item && !getOutlineLocations(activeBrew.content).some((heading) => heading.id === item.id)) {
+        setSaveState('That section changed. Choose an outline section again.');
+        return;
       }
     }
     if (pendingInsertion.content) updateContent(insertAtOutlineSectionEnd(activeBrew.content, item?.id ?? null, pendingInsertion.content));
@@ -1249,20 +1406,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
       setCustomCatalogueEntries(result.data.customCatalogueEntries);
       setCustomCatalogueCategories(result.data.customCatalogueCategories);
       setWorldbuildingTypes(result.data.worldbuildingTypes);
-      setLivingWorld({
-        id: 'living-world',
-        campaignId: result.data.campaignId,
-        entities: result.data.entities,
-        entityReferences: result.data.entityReferences,
-        worldEvents: result.data.worldEvents,
-        timelineEntries: result.data.timelineEntries ?? [],
-        ideaDrafts: result.data.ideaDrafts ?? [],
-        socialEncounters: result.data.socialEncounters ?? [],
-        referenceReviews: result.data.referenceReviews ?? [],
-        ...(result.data.campaignMap ? { campaignMap: result.data.campaignMap } : {}),
-        ...(result.data.plotBoard ? { plotBoard: result.data.plotBoard } : {}),
-        ...(result.data.currentBrewId ? { currentBrewId: result.data.currentBrewId } : {})
-      });
+      setLivingWorld(livingWorldFromSnapshot(result.data));
       setEncounterSelectedId((current) => result.data.encounters.some((encounter) => encounter.id === current) ? current : result.data.encounters[0]?.id ?? null);
       setWorldbuildingSelectedId((current) => result.data.worldbuildingEntries.some((entry) => entry.id === current) ? current : result.data.worldbuildingEntries[0]?.id ?? null);
     }
@@ -1273,20 +1417,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
       customCatalogueEntries: result.data.customCatalogueEntries,
       customCatalogueCategories: result.data.customCatalogueCategories,
       worldbuildingTypes: result.data.worldbuildingTypes,
-      livingWorld: {
-        id: 'living-world',
-        campaignId: result.data.campaignId,
-        entities: result.data.entities,
-        entityReferences: result.data.entityReferences,
-        worldEvents: result.data.worldEvents,
-        timelineEntries: result.data.timelineEntries ?? [],
-        ideaDrafts: result.data.ideaDrafts ?? [],
-        socialEncounters: result.data.socialEncounters ?? [],
-        referenceReviews: result.data.referenceReviews ?? [],
-        ...(result.data.campaignMap ? { campaignMap: result.data.campaignMap } : {}),
-        ...(result.data.plotBoard ? { plotBoard: result.data.plotBoard } : {}),
-        ...(result.data.currentBrewId ? { currentBrewId: result.data.currentBrewId } : {})
-      }
+      livingWorld: livingWorldFromSnapshot(result.data)
     };
     campaignMetadataRef.current = result.metadata;
     setCampaignDataSync(result.metadata);
@@ -1952,18 +2083,19 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
   }
 
   const renderedBrew = previewBrew ?? activeBrew;
-  const toolPanelOpen = ideasOpen || campaignOpen || mapsOpen || worldbuildingOpen;
+  const toolPanelOpen = ideasOpen || campaignOpen || dungeonsOpen || worldbuildingOpen;
 
   const selectMobilePrimarySection = (section: typeof mobilePrimarySections[number]) => {
     setMobileToolsOpen(false);
     setCaptureMenuOpen(false);
     setCampaignOpen(false);
-    setMapsOpen(false);
+    setDungeonsOpen(false);
     setWorldbuildingOpen(false);
     setIdeasOpen(false);
     setPendingInsertion(null);
 
     if (section === 'encounters') {
+      if (!encountersOpen) setDungeonEncounter(null);
       setEncountersOpen(true);
       setMobileSection('encounters');
       return;
@@ -1982,8 +2114,8 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
       openCampaign();
       return;
     }
-    if (tool === 'maps') {
-      openMaps();
+    if (tool === 'dungeons') {
+      openDungeons();
       return;
     }
     openIdeas();
@@ -2025,7 +2157,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
                 setViewMode(mode);
                 setCampaignOpen(false);
                 setEncountersOpen(false);
-                setMapsOpen(false);
+                setDungeonsOpen(false);
                 setWorldbuildingOpen(false);
                 setIdeasOpen(false);
                 setPendingInsertion(null);
@@ -2038,7 +2170,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
           <button className={worldbuildingOpen ? 'is-selected' : ''} onClick={() => worldbuildingOpen ? closeCompendium() : openWorldbuilding()} type="button">Compendium</button>
           <button className={campaignOpen ? 'is-selected' : ''} onClick={() => campaignOpen ? setCampaignOpen(false) : openCampaign()} type="button">Campaign</button>
           <button className={encountersOpen ? 'is-selected' : ''} onClick={() => encountersOpen ? setEncountersOpen(false) : openEncounters()} type="button">Encounters</button>
-          <button className={mapsOpen ? 'is-selected' : ''} onClick={() => mapsOpen ? setMapsOpen(false) : openMaps()} type="button">Maps</button>
+          <button className={dungeonsOpen ? 'is-selected' : ''} onClick={() => dungeonsOpen ? setDungeonsOpen(false) : openDungeons()} type="button">Dungeons</button>
           <button className={ideasOpen ? 'is-selected' : ''} onClick={() => ideasOpen ? setIdeasOpen(false) : openIdeas()} type="button">My ideas</button>
           <button onClick={() => window.print()} type="button">Print</button>
       </nav>
@@ -2118,6 +2250,16 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
       ) : encountersOpen ? (
         <EncounterPanel
           encounters={encounters}
+          dungeonActions={dungeonEncounter ? (
+            <div className="dungeon-encounter-return">
+              <button onClick={backToDungeonRoom} type="button">Back to room</button>
+              {dungeonEncounter.building && <button className="primary-button" disabled={!encounterMap.has(dungeonEncounter.encounterId)} onClick={useEncounterInRoom} type="button">Use in room</button>}
+            </div>
+          ) : undefined}
+          initialKind={dungeonEncounter?.kind}
+          initialSocialEncounterId={dungeonEncounter?.kind === 'social' ? dungeonEncounter.encounterId : undefined}
+          initialView={dungeonEncounter?.mode === 'run' && !dungeonEncounter.building ? 'run' : undefined}
+          initiallyEditing={dungeonEncounter?.mode === 'prepare'}
           campaignPosition={campaignPosition}
           partyLocation={partyLocation}
           locationEntities={livingWorld.entities.filter((entity) => entity.kind === 'location' || entity.kind === 'settlement')}
@@ -2154,19 +2296,34 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
           partyMembers={partyMembers}
           selectedId={encounterSelectedId}
         />
-      ) : mapsOpen ? (
-        <MapsPanel
+      ) : dungeonsOpen ? (
+        <DungeonPanel
           assets={assets}
+          dungeons={dungeons}
+          dungeonId={activeDungeon?.id ?? null}
           encounters={encounters}
-          maps={campaignMaps}
-          onCreate={createCampaignMapRecord}
-          onDelete={deleteCampaignMapRecord}
-          onInsert={beginCampaignMapInsertion}
-          onLinkRoom={beginCampaignMapRoomLink}
+          key={`${activeDungeon?.id ?? 'library'}-${dungeonMode}`}
+          legacyMoves={activeDungeon ? dungeonRoomMoves(activeBrew, activeDungeon) : []}
+          mode={dungeonMode}
+          onBackToBrew={dungeonOrigin ? backToDungeonBrew : undefined}
+          onCreate={createDungeonRecord}
+          onCreateEncounter={createRoomEncounter}
+          onDelete={deleteDungeonRecord}
+          onInsert={beginDungeonInsertion}
+          onModeChange={(mode) => {
+            if (mode === dungeonMode) return;
+            setDungeonMode(mode);
+            setDungeonPosition(null);
+          }}
+          onMoveRooms={moveRoomsIntoDungeon}
+          onOpenEncounter={openRoomEncounter}
+          onPosition={selectDungeonPosition}
+          onSelect={(id) => { setSelectedDungeonId(id); setDungeonPosition(null); }}
+          onUpdate={updateDungeon}
+          onUpdateArea={(id, areaId, update) => updateDungeon(id, (dungeon) => updateDungeonArea(dungeon, areaId, update))}
           onUploadImage={uploadMapImage}
-          onSave={persistCampaignMapRecord}
-          onSelect={setSelectedMapId}
-          selectedId={selectedMapId}
+          position={dungeonPosition}
+          socialEncounters={livingWorld.socialEncounters ?? []}
         />
       ) : worldbuildingOpen ? (
         <CompendiumPanel
@@ -2287,9 +2444,9 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
               assets={assetMap}
               onRotateImage={(asset) => { void rotateImage(asset); }}
               onDeleteImage={(asset) => { void deleteImage(asset); }}
-              onOpenMaps={openMaps}
-              maps={campaignMapRecords}
-              onOpenCampaignMap={(mapId) => openMaps(campaignMapRecords.get(mapId))}
+              dungeons={dungeonRecords}
+              onOpenDungeons={openDungeonFromBrew}
+              onOpenDungeon={(id) => openDungeonFromBrew(id)}
               onToggleSpellcheck={() => setSpellcheckEnabled((current) => { const next = !current; localStorage.setItem('homebrewry-spellcheck', next ? 'on' : 'off'); return next; })}
               onUndo={undo}
               replaceValue={replaceValue}
@@ -2304,7 +2461,9 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
                   catalogue={catalogueMap}
                   catalogueCategories={customCatalogueCategories}
                   encounters={encounterMap}
-                  maps={campaignMapRecords}
+                  dungeons={dungeonRecords}
+                  onDungeonOpen={openDungeonFromBrew}
+                  onMoveInlineDungeon={(block, anchor) => { void moveInlineDungeon(block, anchor); }}
                   onEncounterOpen={openEncounters}
                   onReferenceOpen={openReferenceEntry}
                   onAddWorldbuildingNote={addWorldbuildingQuickNote}
@@ -2321,7 +2480,6 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
 
           <OutlinePanel
             insertionLabel={pendingInsertion?.label ?? null}
-            selectionAction={pendingInsertion?.mapRoomId ? 'connect' : 'insert'}
             onCancelInsertion={() => {
               setPendingInsertion(null);
               setSaveState('Placement cancelled');
@@ -2345,7 +2503,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
           />
         </div>
       )}
-      {!ideasOpen && !campaignOpen && !encountersOpen && !mapsOpen && !worldbuildingOpen && mobileSection === 'editor' && (
+      {!ideasOpen && !campaignOpen && !encountersOpen && !dungeonsOpen && !worldbuildingOpen && mobileSection === 'editor' && (
         <div className="mobile-capture-menu">
           {captureMenuOpen && (
             <section aria-label="Quick writing actions" className="mobile-writing-tools" role="dialog">
@@ -2362,7 +2520,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
                 <button onClick={() => { insertText('\n:::descriptive\n', '\n:::\n'); setCaptureMenuOpen(false); }} type="button">Descr</button>
                 <button onClick={() => { insertText('\n:::pagebreak\n'); setCaptureMenuOpen(false); }} type="button">Page</button>
                 <button onClick={() => { document.getElementById('brew-image-input')?.click(); setCaptureMenuOpen(false); }} type="button">Image</button>
-                <button onClick={() => { setCaptureMenuOpen(false); openMaps(); }} type="button">Map</button>
+                <button onClick={() => { setCaptureMenuOpen(false); openDungeonFromBrew(); }} type="button">Dungeon</button>
                 <button onClick={() => { setCaptureMenuOpen(false); openCatalogue(); }} type="button">Reference</button>
                 <button onClick={() => { setCaptureMenuOpen(false); openEncounters(); }} type="button">Encounter</button>
                 <button onClick={() => { setCaptureMenuOpen(false); setNameGeneratorTarget('editor'); }} type="button">Name</button>

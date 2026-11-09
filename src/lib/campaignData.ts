@@ -5,6 +5,9 @@ import type {
   CampaignDataSyncMetadata,
   CampaignEntity,
   CampaignMapRecord,
+  DungeonArea,
+  DungeonRecord,
+  DungeonRoomStatus,
   CampaignMap,
   PlotBoard,
   EntityReference,
@@ -26,6 +29,7 @@ import { normaliseMonsterEquipment } from '../catalogue/magicItems';
 import { isBelentorDate } from './belentorCalendar';
 import { synchroniseEntityReferences, synchroniseWorldbuildingEntities } from './livingWorld';
 import { mergeReferenceReviews, referenceNameKey } from './brewReferenceScan';
+import { campaignDungeons } from './dungeons';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -223,8 +227,8 @@ function parsePartyMember(value: unknown): PartyMember {
   };
 }
 
-function parseCampaignMapRecord(value: unknown): CampaignMapRecord {
-  if (!isRecord(value) || !Array.isArray(value.rooms) || !Array.isArray(value.markers) || !Array.isArray(value.linkedBrewIds)) throw new Error('Campaign data has an invalid map.');
+function parseDungeonArea(value: unknown): DungeonArea {
+  if (!isRecord(value) || !Array.isArray(value.rooms) || !Array.isArray(value.markers)) throw new Error('Campaign data has an invalid map.');
   const roomIds = new Set<string>();
   const rooms = value.rooms.map((room) => {
     if (!isRecord(room)) throw new Error('Campaign data has an invalid map room.');
@@ -235,10 +239,12 @@ function parseCampaignMapRecord(value: unknown): CampaignMapRecord {
     return {
       id,
       number,
+      ...(room.numberLabel === undefined ? {} : { numberLabel: requiredString(room.numberLabel, 'map room number label') }),
       name: requiredString(room.name, 'map room name'),
       notes: requiredString(room.notes, 'map room notes'),
       readAloud: requiredString(room.readAloud, 'map room read-aloud text'),
       encounterIds: requiredStringArray(room.encounterIds, 'map room encounters'),
+      ...(room.socialEncounterIds === undefined ? {} : { socialEncounterIds: requiredStringArray(room.socialEncounterIds, 'room social encounters') }),
       ...(room.brewSectionId === undefined ? {} : { brewSectionId: requiredString(room.brewSectionId, 'map room brew section') }),
       updatedAt: requiredString(room.updatedAt, 'map room update time')
     };
@@ -255,11 +261,48 @@ function parseCampaignMapRecord(value: unknown): CampaignMapRecord {
     name: requiredString(value.name, 'map name'),
     ...(value.imageSource === undefined ? {} : { imageSource: requiredString(value.imageSource, 'map image source') }),
     rooms,
-    markers,
+    markers
+  };
+}
+
+function parseCampaignMapRecord(value: unknown): CampaignMapRecord {
+  if (!isRecord(value)) throw new Error('Campaign data has an invalid map.');
+  return {
+    ...parseDungeonArea(value),
     linkedBrewIds: requiredStringArray(value.linkedBrewIds, 'map linked brews'),
     createdAt: requiredString(value.createdAt, 'map creation time'),
     updatedAt: requiredString(value.updatedAt, 'map update time'),
     version: nullableNumber(value.version, 'map version') ?? 1
+  };
+}
+
+function parseDungeon(value: unknown): DungeonRecord {
+  if (!isRecord(value) || !Array.isArray(value.areas) || !value.areas.length) throw new Error('Campaign data has an invalid dungeon.');
+  const areas = value.areas.map(parseDungeonArea);
+  const roomIds = new Set(areas.flatMap((area) => area.rooms.map((room) => room.id)));
+  if (new Set(areas.map((area) => area.id)).size !== areas.length || roomIds.size !== areas.reduce((count, area) => count + area.rooms.length, 0)) {
+    throw new Error('Campaign data has duplicate dungeon areas or rooms.');
+  }
+  let progress: DungeonRecord['progress'];
+  if (value.progress !== undefined) {
+    const raw = value.progress;
+    if (!isRecord(raw) || !isRecord(raw.roomStatuses)) throw new Error('Campaign data has invalid dungeon progress.');
+    const area = areas.find((item) => item.id === raw.areaId);
+    if (!area || (raw.roomId !== null && !area.rooms.some((room) => room.id === raw.roomId))) throw new Error('Campaign data has an invalid dungeon position.');
+    const statuses = Object.entries(raw.roomStatuses).map(([roomId, status]): [string, DungeonRoomStatus] => {
+      if (!roomIds.has(roomId) || (status !== 'visited' && status !== 'cleared')) throw new Error('Campaign data has an invalid dungeon room status.');
+      return [roomId, status];
+    });
+    progress = { areaId: area.id, roomId: raw.roomId === null ? null : requiredString(raw.roomId, 'dungeon progress room'), roomStatuses: Object.fromEntries(statuses) };
+  }
+  return {
+    id: requiredString(value.id, 'dungeon ID'),
+    name: requiredString(value.name, 'dungeon name'),
+    areas,
+    ...(progress ? { progress } : {}),
+    createdAt: requiredString(value.createdAt, 'dungeon creation time'),
+    updatedAt: requiredString(value.updatedAt, 'dungeon update time'),
+    version: nullableNumber(value.version, 'dungeon version') ?? 1
   };
 }
 
@@ -446,7 +489,7 @@ export function parseCampaignDataSnapshot(value: unknown): CampaignDataSnapshot 
     throw new Error('This Drive campaign data file is not a supported Homebrewry backup.');
   }
   const schemaVersion = value.schemaVersion;
-  if (schemaVersion !== 1 && schemaVersion !== 2 && schemaVersion !== 3 && schemaVersion !== 4 && schemaVersion !== 5 && schemaVersion !== 6) {
+  if (schemaVersion !== 1 && schemaVersion !== 2 && schemaVersion !== 3 && schemaVersion !== 4 && schemaVersion !== 5 && schemaVersion !== 6 && schemaVersion !== 7) {
     throw new Error('This Drive campaign data file is not a supported Homebrewry backup.');
   }
   if (!Array.isArray(value.encounters) || !Array.isArray(value.partyMembers) || !Array.isArray(value.worldbuildingEntries)) {
@@ -455,16 +498,17 @@ export function parseCampaignDataSnapshot(value: unknown): CampaignDataSnapshot 
   if ((schemaVersion === 2 || schemaVersion === 3) && !Array.isArray(value.customCatalogueEntries)) {
     throw new Error('This Drive campaign data file has an invalid custom catalogue collection.');
   }
-  if ((schemaVersion === 4 || schemaVersion === 5) && (!Array.isArray(value.customCatalogueEntries) || !Array.isArray(value.customCatalogueCategories) || !Array.isArray(value.worldbuildingTypes))) {
+  if (schemaVersion >= 4 && (!Array.isArray(value.customCatalogueEntries) || !Array.isArray(value.customCatalogueCategories) || !Array.isArray(value.worldbuildingTypes))) {
     throw new Error('This Drive campaign data file has an invalid campaign taxonomy collection.');
   }
-  if ((schemaVersion === 5 || schemaVersion === 6) && (!Array.isArray(value.entities) || !Array.isArray(value.entityReferences) || !Array.isArray(value.worldEvents))) {
+  if (schemaVersion >= 5 && (!Array.isArray(value.entities) || !Array.isArray(value.entityReferences) || !Array.isArray(value.worldEvents))) {
     throw new Error('This Drive campaign data file has an invalid Living World collection.');
   }
   const campaignId = schemaVersion >= 5 ? requiredString(value.campaignId, 'campaign ID') : legacyCampaignId(value);
+  if (schemaVersion === 7 && !Array.isArray(value.dungeons)) throw new Error('Campaign data is missing its dungeon collection.');
 
   return {
-    schemaVersion: schemaVersion === 6 ? 6 : 5,
+    schemaVersion: schemaVersion === 7 ? 7 : schemaVersion === 6 ? 6 : 5,
     campaignId,
     updatedAt: requiredString(value.updatedAt, 'campaign update time'),
     encounters: value.encounters.map(parseEncounter),
@@ -488,8 +532,9 @@ export function parseCampaignDataSnapshot(value: unknown): CampaignDataSnapshot 
     ...(value.referenceReviews === undefined ? {} : { referenceReviews: parseReferenceReviews(value.referenceReviews) }),
     ...(value.campaignMap === undefined ? {} : { campaignMap: parseCampaignMap(value.campaignMap) }),
     ...(value.plotBoard === undefined ? {} : { plotBoard: parsePlotBoard(value.plotBoard) }),
-    ...(value.currentBrewId === undefined ? {} : { currentBrewId: requiredString(value.currentBrewId, 'current brew ID') })
-    ,...(schemaVersion >= 6 && Array.isArray(value.maps) ? { maps: value.maps.map(parseCampaignMapRecord) } : {})
+    ...(value.currentBrewId === undefined ? {} : { currentBrewId: requiredString(value.currentBrewId, 'current brew ID') }),
+    ...(schemaVersion === 6 && Array.isArray(value.maps) ? { maps: value.maps.map(parseCampaignMapRecord) } : {}),
+    ...(schemaVersion === 7 ? { dungeons: (value.dungeons as unknown[]).map(parseDungeon) } : {})
   };
 }
 
@@ -502,7 +547,7 @@ export function createCampaignDataSnapshot(
   customCatalogueCategories: CustomCatalogueCategory[] = [],
   worldbuildingTypes: WorldbuildingType[] = [],
   brews: Brew[] = [],
-  livingWorld: Pick<CampaignDataSnapshot, 'campaignId' | 'entities' | 'entityReferences' | 'worldEvents' | 'timelineEntries' | 'ideaDrafts' | 'socialEncounters' | 'referenceReviews' | 'campaignMap' | 'plotBoard' | 'currentBrewId' | 'maps'> = {
+  livingWorld: Pick<CampaignDataSnapshot, 'campaignId' | 'entities' | 'entityReferences' | 'worldEvents' | 'timelineEntries' | 'ideaDrafts' | 'socialEncounters' | 'referenceReviews' | 'campaignMap' | 'plotBoard' | 'currentBrewId' | 'maps' | 'dungeons'> = {
     // The current app has one campaign companion file per Drive account.
     // A later multi-campaign migration can replace this file-scoped identity.
     campaignId: 'default-campaign',
@@ -513,7 +558,7 @@ export function createCampaignDataSnapshot(
 ): CampaignDataSnapshot {
   const entities = synchroniseWorldbuildingEntities(livingWorld.campaignId, worldbuildingEntries, livingWorld.entities);
   return {
-    schemaVersion: 6,
+    schemaVersion: livingWorld.dungeons ? 7 : 6,
     campaignId: livingWorld.campaignId,
     updatedAt: timestamp,
     encounters: [...encounters],
@@ -531,8 +576,8 @@ export function createCampaignDataSnapshot(
     ...(livingWorld.referenceReviews?.length ? { referenceReviews: [...livingWorld.referenceReviews] } : {}),
     ...(livingWorld.campaignMap ? { campaignMap: livingWorld.campaignMap } : {}),
     ...(livingWorld.plotBoard ? { plotBoard: livingWorld.plotBoard } : {}),
-    ...(livingWorld.currentBrewId ? { currentBrewId: livingWorld.currentBrewId } : {})
-    ,...(livingWorld.maps?.length ? { maps: [...livingWorld.maps] } : {})
+    ...(livingWorld.currentBrewId ? { currentBrewId: livingWorld.currentBrewId } : {}),
+    ...(livingWorld.dungeons ? { dungeons: livingWorld.dungeons } : livingWorld.maps?.length ? { maps: livingWorld.maps } : {})
   };
 }
 
@@ -553,7 +598,8 @@ export function hasCampaignData(snapshot: CampaignDataSnapshot): boolean {
     || Boolean(snapshot.campaignMap)
     || Boolean(snapshot.plotBoard)
     || Boolean(snapshot.currentBrewId)
-    || Boolean(snapshot.maps?.length);
+    || Boolean(snapshot.maps?.length)
+    || Boolean(snapshot.dungeons?.length);
 }
 
 export function campaignDataChangedLocally(metadata: CampaignDataSyncMetadata): boolean {
@@ -597,8 +643,9 @@ export function keepBothCampaignData(
   timestamp = new Date().toISOString(),
   createId: () => string = () => crypto.randomUUID()
 ): CampaignDataSnapshot {
+  const useDungeons = Boolean(local.dungeons || remote.dungeons);
   return {
-    schemaVersion: 6,
+    schemaVersion: useDungeons ? 7 : 6,
     campaignId: remote.campaignId,
     updatedAt: timestamp,
     encounters: preserveBothRecords(local.encounters, remote.encounters, timestamp, createId),
@@ -617,6 +664,8 @@ export function keepBothCampaignData(
     ...(remote.campaignMap || local.campaignMap ? { campaignMap: remote.campaignMap ?? local.campaignMap } : {}),
     ...(remote.plotBoard || local.plotBoard ? { plotBoard: remote.plotBoard ?? local.plotBoard } : {}),
     ...(remote.currentBrewId || local.currentBrewId ? { currentBrewId: remote.currentBrewId ?? local.currentBrewId } : {}),
-    ...(remote.maps || local.maps ? { maps: preserveBothRecords(local.maps ?? [], remote.maps ?? [], timestamp, createId) } : {})
+    ...(useDungeons
+      ? { dungeons: preserveBothRecords(campaignDungeons(local), campaignDungeons(remote), timestamp, createId) }
+      : remote.maps || local.maps ? { maps: preserveBothRecords(local.maps ?? [], remote.maps ?? [], timestamp, createId) } : {})
   };
 }

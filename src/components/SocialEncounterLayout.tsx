@@ -5,6 +5,7 @@ import { SocialNpcOverview } from './SocialNpcOverview';
 
 type Props = {
   encounters: SocialEncounter[];
+  initialEncounterId?: string;
   worldbuildingEntries: WorldbuildingEntry[];
   onCreateNpc: (name: string, details?: SocialNpcDetails) => WorldbuildingEntry;
   onDeleteEncounter: (encounter: SocialEncounter) => void;
@@ -30,8 +31,8 @@ function kindLabel(kind: string): string {
   return kind.replaceAll('-', ' ').replace(/\b\w/g, (letter) => letter.toLocaleUpperCase());
 }
 
-export function SocialEncounterLayout({ encounters, worldbuildingEntries, onCreateNpc, onDeleteEncounter, onOpenWorldbuildingEntry, onUpdateEncounter, onUpdateNpc }: Props) {
-  const [selectedEncounterId, setSelectedEncounterId] = useState<string | null>(encounters[0]?.id ?? null);
+export function SocialEncounterLayout({ encounters, initialEncounterId, worldbuildingEntries, onCreateNpc, onDeleteEncounter, onOpenWorldbuildingEntry, onUpdateEncounter, onUpdateNpc }: Props) {
+  const [selectedEncounterId, setSelectedEncounterId] = useState<string | null>(initialEncounterId ?? encounters[0]?.id ?? null);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');

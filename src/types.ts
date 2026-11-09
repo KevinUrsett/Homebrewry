@@ -335,8 +335,9 @@ export type LivingWorldData = {
   referenceReviews?: BrewReferenceReview[];
   campaignMap?: CampaignMap;
   plotBoard?: PlotBoard;
-  /** Campaign maps are prepared separately and may be placed in any brew. */
+  /** Maps from older campaign backups, converted to dungeons on first edit. */
   maps?: CampaignMapRecord[];
+  dungeons?: DungeonRecord[];
   /** Deliberately selected campaign brew, independent from the editor tab. */
   currentBrewId?: string;
 };
@@ -344,10 +345,12 @@ export type LivingWorldData = {
 export type CampaignMapRoom = {
   id: string;
   number: number;
+  numberLabel?: string;
   name: string;
   notes: string;
   readAloud: string;
   encounterIds: string[];
+  socialEncounterIds?: string[];
   /** Optional heading ID in a linked brew. */
   brewSectionId?: string;
   updatedAt: string;
@@ -366,6 +369,22 @@ export type CampaignMapRecord = {
   rooms: CampaignMapRoom[];
   markers: CampaignMapMarker[];
   linkedBrewIds: string[];
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+};
+
+export type DungeonArea = Pick<CampaignMapRecord, 'id' | 'name' | 'imageSource' | 'rooms' | 'markers'>;
+
+export type DungeonRoomStatus = 'visited' | 'cleared';
+
+export type DungeonPosition = { areaId: string; roomId: string | null };
+
+export type DungeonRecord = {
+  id: string;
+  name: string;
+  areas: DungeonArea[];
+  progress?: DungeonPosition & { roomStatuses: Record<string, DungeonRoomStatus> };
   createdAt: string;
   updatedAt: string;
   version: number;
@@ -425,7 +444,7 @@ export type WorldbuildingEntry = {
  */
 export type CampaignDataSnapshot = {
   /** Schema 5 remains accepted for compatibility with locally staged test/data snapshots. */
-  schemaVersion: 5 | 6;
+  schemaVersion: 5 | 6 | 7;
   campaignId: string;
   updatedAt: string;
   encounters: Encounter[];
@@ -450,6 +469,7 @@ export type CampaignDataSnapshot = {
   /** Optional manual campaign brew selection. */
   currentBrewId?: string;
   maps?: CampaignMapRecord[];
+  dungeons?: DungeonRecord[];
 };
 
 export type CampaignDataConflict = {
@@ -495,4 +515,4 @@ export type OutlineItem = {
 };
 
 export type ViewMode = 'split' | 'editor' | 'preview';
-export type MobileSection = 'library' | 'editor' | 'preview' | 'outline' | 'catalogue' | 'campaign' | 'encounters' | 'maps' | 'worldbuilding';
+export type MobileSection = 'library' | 'editor' | 'preview' | 'outline' | 'catalogue' | 'campaign' | 'encounters' | 'dungeons' | 'worldbuilding';

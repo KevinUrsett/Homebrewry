@@ -1,4 +1,4 @@
-import { useState, type ComponentProps } from 'react';
+import { useState, type ComponentProps, type ReactNode } from 'react';
 import type { SocialEncounter, WorldbuildingEntry } from '../types';
 import type { SocialNpcDetails } from '../lib/socialNpcSearch';
 import { EncounterPanel as CombatEncounterPanel } from './CombatEncounterPanel';
@@ -7,6 +7,9 @@ import '../social-encounter.css';
 
 type CombatEncounterPanelProps = ComponentProps<typeof CombatEncounterPanel>;
 type EncounterPanelProps = CombatEncounterPanelProps & {
+  dungeonActions?: ReactNode;
+  initialKind?: EncounterKind;
+  initialSocialEncounterId?: string;
   socialEncounters?: SocialEncounter[];
   worldbuildingEntries?: WorldbuildingEntry[];
   onCreateSocialNpc?: (name: string, details?: SocialNpcDetails) => WorldbuildingEntry;
@@ -18,6 +21,9 @@ type EncounterPanelProps = CombatEncounterPanelProps & {
 type EncounterKind = 'combat' | 'social';
 
 export function EncounterPanel({
+  dungeonActions,
+  initialKind = 'combat',
+  initialSocialEncounterId,
   socialEncounters = [],
   worldbuildingEntries = [],
   onCreateSocialNpc = (name, details) => ({ id: crypto.randomUUID(), name, kind: 'npc', aliases: [], notes: '', ...details, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), version: 1 }),
@@ -27,10 +33,11 @@ export function EncounterPanel({
   onUpdateSocialNpc = () => undefined,
   ...combatProps
 }: EncounterPanelProps) {
-  const [kind, setKind] = useState<EncounterKind>('combat');
+  const [kind, setKind] = useState<EncounterKind>(initialKind);
 
   return (
     <div className="encounter-kind-shell">
+      {dungeonActions}
       <nav aria-label="Encounter type" className="encounter-kind-tabs" role="tablist">
         <button aria-selected={kind === 'combat'} className={kind === 'combat' ? 'is-selected' : ''} onClick={() => setKind('combat')} role="tab" type="button">Combat</button>
         <button aria-selected={kind === 'social'} className={kind === 'social' ? 'is-selected' : ''} onClick={() => setKind('social')} role="tab" type="button">Social</button>
@@ -40,7 +47,7 @@ export function EncounterPanel({
           <header className="encounter-page-header">
             <div><p className="eyebrow">Roleplay toolkit</p><h1>Social encounters</h1><p>Keep every NPC in the scene visible and open their information when needed.</p></div>
           </header>
-          <SocialEncounterLayout encounters={socialEncounters} onCreateNpc={onCreateSocialNpc} onDeleteEncounter={onDeleteSocialEncounter} onOpenWorldbuildingEntry={onOpenWorldbuildingEntry} onUpdateEncounter={onUpdateSocialEncounter} onUpdateNpc={onUpdateSocialNpc} worldbuildingEntries={worldbuildingEntries} />
+          <SocialEncounterLayout encounters={socialEncounters} initialEncounterId={initialSocialEncounterId} onCreateNpc={onCreateSocialNpc} onDeleteEncounter={onDeleteSocialEncounter} onOpenWorldbuildingEntry={onOpenWorldbuildingEntry} onUpdateEncounter={onUpdateSocialEncounter} onUpdateNpc={onUpdateSocialNpc} worldbuildingEntries={worldbuildingEntries} />
         </main>
       )}
     </div>

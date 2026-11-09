@@ -3,6 +3,7 @@ import type { CatalogueEntry, CustomCatalogueCategory, CustomCatalogueEntry } fr
 import type { Brew, CampaignDataSnapshot, CampaignDataSyncMetadata, Encounter, LivingWorldData, PartyMember, PrivateMonsterSyncMetadata, WorldbuildingEntry, WorldbuildingType } from '../types';
 import { deleteBrewFromDrive, saveBrewToDrive } from './driveBrewStorage';
 import { getDriveAccessToken } from './googleIdentity';
+import { isLocalPreviewMode } from './runtimeMode';
 
 const DATABASE_NAME = 'homebrewry';
 const ACTIVE_DATABASE_KEY = 'homebrewry-active-local-database';
@@ -202,6 +203,26 @@ export async function saveLivingWorldData(data: LivingWorldData): Promise<Campai
   return markCampaignDataChanged();
 }
 
+export async function saveMovedDungeonRooms(brew: Brew, data: LivingWorldData): Promise<CampaignDataSyncMetadata> {
+  const database = await getDatabase();
+  const transaction = database.transaction([STORE_NAME, LIVING_WORLD_STORE_NAME, CAMPAIGN_DATA_SYNC_STORE_NAME], 'readwrite');
+  const brews = transaction.objectStore(STORE_NAME);
+  const metadataStore = transaction.objectStore(CAMPAIGN_DATA_SYNC_STORE_NAME);
+  const [storedBrew, storedMetadata] = await Promise.all([brews.get(brew.id), metadataStore.get('campaign-data')]);
+  if (storedBrew && storedBrew.version >= brew.version) {
+    await transaction.done;
+    throw new Error('This brew changed. Reopen the room review and try again.');
+  }
+  const metadata = changedCampaignMetadata(storedMetadata ?? createCampaignDataSyncMetadata());
+  await Promise.all([
+    brews.put(brew),
+    transaction.objectStore(LIVING_WORLD_STORE_NAME).put(data),
+    metadataStore.put(metadata),
+    transaction.done
+  ]);
+  return metadata;
+}
+
 export function createBrew(title = 'Untitled Brew'): Brew {
   const now = new Date().toISOString();
 
@@ -255,10 +276,15 @@ export async function seedBrews(): Promise<Brew[]> {
   return listBrews();
 }
 
-/** Saves to Drive first, then refreshes the device cache. */
+/** Saves to Drive first in production and keeps preview drafts on the device. */
 export async function saveBrew(brew: Brew): Promise<void> {
   const prior = brewSaveQueues.get(brew.id) ?? Promise.resolve();
   const task = prior.catch(() => undefined).then(async () => {
+    if (isLocalPreviewMode()) {
+      const database = await getDatabase();
+      await database.put(STORE_NAME, { ...brew, syncState: 'local' });
+      return;
+    }
     const accessToken = getDriveAccessToken();
     if (!accessToken) throw new Error('Connect Google Drive before saving a brew.');
 
@@ -293,11 +319,16 @@ export async function replaceBrews(brews: Brew[]): Promise<void> {
 }
 
 export async function deleteBrew(id: string): Promise<void> {
+  const pending = brewSaveQueues.get(id);
+  if (pending) await pending.catch(() => undefined);
+  if (isLocalPreviewMode()) {
+    const database = await getDatabase();
+    await database.delete(STORE_NAME, id);
+    return;
+  }
   const accessToken = getDriveAccessToken();
   if (!accessToken) throw new Error('Connect Google Drive before deleting a brew.');
 
-  const pending = brewSaveQueues.get(id);
-  if (pending) await pending.catch(() => undefined);
   const database = await getDatabase();
   const stored = await database.get(STORE_NAME, id) as Brew | undefined;
   if (stored) await deleteBrewFromDrive(accessToken, stored);
@@ -329,13 +360,16 @@ export async function saveCampaignDataSyncMetadata(metadata: CampaignDataSyncMet
   await database.put(CAMPAIGN_DATA_SYNC_STORE_NAME, metadata);
 }
 
-export async function markCampaignDataChanged(): Promise<CampaignDataSyncMetadata> {
-  const current = await getCampaignDataSyncMetadata();
-  const next: CampaignDataSyncMetadata = {
+function changedCampaignMetadata(current: CampaignDataSyncMetadata): CampaignDataSyncMetadata {
+  return {
     ...current,
     lastLocalChangeAt: new Date().toISOString(),
     syncState: current.conflict ? 'conflict' : current.drive ? 'pending' : 'local'
   };
+}
+
+export async function markCampaignDataChanged(): Promise<CampaignDataSyncMetadata> {
+  const next = changedCampaignMetadata(await getCampaignDataSyncMetadata());
   await saveCampaignDataSyncMetadata(next);
   return next;
 }
@@ -368,6 +402,24 @@ export async function markPrivateMonsterDataChanged(): Promise<PrivateMonsterSyn
   };
   await savePrivateMonsterSyncMetadata(next);
   return next;
+}
+
+export function livingWorldFromSnapshot(snapshot: CampaignDataSnapshot): LivingWorldData {
+  return {
+    id: 'living-world',
+    campaignId: snapshot.campaignId,
+    entities: snapshot.entities,
+    entityReferences: snapshot.entityReferences,
+    worldEvents: snapshot.worldEvents,
+    timelineEntries: snapshot.timelineEntries ?? [],
+    ideaDrafts: snapshot.ideaDrafts ?? [],
+    socialEncounters: snapshot.socialEncounters ?? [],
+    referenceReviews: snapshot.referenceReviews ?? [],
+    campaignMap: snapshot.campaignMap,
+    plotBoard: snapshot.plotBoard,
+    currentBrewId: snapshot.currentBrewId,
+    ...(snapshot.dungeons ? { dungeons: snapshot.dungeons } : { maps: snapshot.maps ?? [] })
+  };
 }
 
 export async function replaceCampaignData(
@@ -413,21 +465,7 @@ export async function replaceCampaignData(
     ...snapshot.customCatalogueEntries.map((entry) => customCatalogue.put(entry)),
     ...snapshot.customCatalogueCategories.map((category: CustomCatalogueCategory) => customCatalogueCategories.put(category)),
     ...snapshot.worldbuildingTypes.map((type: WorldbuildingType) => worldbuildingTypes.put(type)),
-    livingWorld.put({
-      id: 'living-world',
-      campaignId: snapshot.campaignId,
-      entities: snapshot.entities,
-      entityReferences: snapshot.entityReferences,
-      worldEvents: snapshot.worldEvents,
-      timelineEntries: snapshot.timelineEntries ?? [],
-      ideaDrafts: snapshot.ideaDrafts ?? [],
-      socialEncounters: snapshot.socialEncounters ?? [],
-      referenceReviews: snapshot.referenceReviews ?? [],
-      ...(snapshot.campaignMap ? { campaignMap: snapshot.campaignMap } : {}),
-      ...(snapshot.plotBoard ? { plotBoard: snapshot.plotBoard } : {}),
-      ...(snapshot.currentBrewId ? { currentBrewId: snapshot.currentBrewId } : {})
-      ,maps: snapshot.maps ?? []
-    } satisfies LivingWorldData),
+    livingWorld.put(livingWorldFromSnapshot(snapshot)),
     metadataStore.put(metadata)
   ]);
   await transaction.done;

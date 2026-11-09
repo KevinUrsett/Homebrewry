@@ -1,4 +1,5 @@
 import { normaliseHomebrewerySource } from './homebrewery';
+import { dungeonReferenceLine } from '../lib/dungeonReferences';
 
 export type RendererBlock =
   | { type: 'markdown'; content: string }
@@ -8,6 +9,7 @@ export type RendererBlock =
   | { type: 'wide'; content: string }
   | { type: 'homebrewery'; content: string; classes: string[] }
   | { type: 'map'; mapId: string }
+  | { type: 'dungeon-card'; dungeonId: string; label: string }
   | { type: 'dungeon'; title: string; mapSource?: string; rooms: { number: string; title: string }[]; markers: { number: string; x: number; y: number }[] }
   | { type: 'spacer'; size: number }
   | { type: 'pagebreak' }
@@ -29,6 +31,7 @@ export function parseRendererBlocks(source: string): RendererBlock[] {
   const lines = normaliseHomebrewerySource(source).split('\n');
   const blocks: RendererBlock[] = [];
   let markdown: string[] = [];
+  let markdownFence: string | undefined;
 
   const flushMarkdown = () => {
     const content = markdown.join('\n').trim();
@@ -37,6 +40,18 @@ export function parseRendererBlocks(source: string): RendererBlock[] {
   };
 
   for (let index = 0; index < lines.length; index += 1) {
+    if (markdownFence) {
+      const closing = lines[index].match(/^ {0,3}(`{3,}|~{3,})\s*$/)?.[1];
+      if (closing?.[0] === markdownFence[0] && closing.length >= markdownFence.length) markdownFence = undefined;
+      markdown.push(lines[index]);
+      continue;
+    }
+    const dungeonReference = dungeonReferenceLine(lines[index]);
+    if (dungeonReference) {
+      flushMarkdown();
+      blocks.push({ type: 'dungeon-card', dungeonId: dungeonReference.id, label: dungeonReference.label });
+      continue;
+    }
     const directive = lines[index].match(/^:::(note|warning|tip|descriptive|columns|wide|homebrewery|statblock|item|spell|dungeon|map|pagebreak|columnbreak|spacer)(?:\s+(.+))?\s*$/i);
     const dungeonShorthand = directive ? null : lines[index].match(/^:::\s*(.+?)\s*$/);
     if (directive || dungeonShorthand) {
@@ -108,6 +123,7 @@ export function parseRendererBlocks(source: string): RendererBlock[] {
       continue;
     }
 
+    markdownFence = lines[index].match(/^ {0,3}(`{3,}|~{3,})/)?.[1];
     markdown.push(lines[index]);
   }
 

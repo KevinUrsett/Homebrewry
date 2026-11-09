@@ -54,6 +54,8 @@ type EncounterPanelProps = {
   locationEntities?: CampaignEntity[];
   worldEvents?: readonly WorldEvent[];
   selectedId: string | null;
+  initialView?: EncounterView;
+  initiallyEditing?: boolean;
   partyMembers: PartyMember[];
   npcEntities?: CampaignEntity[];
   currentStateByEntityId?: ReadonlyMap<string, EntityCurrentState>;
@@ -379,6 +381,8 @@ export function EncounterPanel({
   locationEntities = [],
   worldEvents = [],
   selectedId,
+  initialView = 'create',
+  initiallyEditing = false,
   partyMembers,
   npcEntities = [],
   currentStateByEntityId = new Map(),
@@ -401,11 +405,11 @@ export function EncounterPanel({
   onSetPartyLocation = () => undefined
 }: EncounterPanelProps) {
   const [monsterQuery, setMonsterQuery] = useState('');
-  const [encounterView, setEncounterView] = useState<EncounterView>('create');
+  const [encounterView, setEncounterView] = useState<EncounterView>(initialView);
   const [treasureQuery, setTreasureQuery] = useState('');
   const [savedListAdjusting, setSavedListAdjusting] = useState(false);
   const [savedListHeight, setSavedListHeight] = useState(readSavedEncounterListHeight);
-  const [editingEncounter, setEditingEncounter] = useState(false);
+  const [editingEncounter, setEditingEncounter] = useState(initiallyEditing);
   const [monsterFilters, setMonsterFilters] = useState<EncounterMonsterFilters>(() => ({ ...defaultEncounterMonsterFilters }));
   const [monsterFiltersOpen, setMonsterFiltersOpen] = useState(false);
   const [partyName, setPartyName] = useState('');

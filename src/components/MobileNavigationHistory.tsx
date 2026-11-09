@@ -24,7 +24,7 @@ const SWIPE_DISTANCE = 64;
 const mobileToolLabels: Partial<Record<MobileLocation['section'], string>> = {
   worldbuilding: 'Compendium',
   campaign: 'Campaign',
-  maps: 'Maps'
+  dungeons: 'Dungeons'
 };
 
 type SwipeStart = {

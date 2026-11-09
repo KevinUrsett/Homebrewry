@@ -115,7 +115,8 @@ type DriveSaveNotice = {
 
 type QuickCreateTarget = 'item' | 'monster' | 'npc';
 type DungeonMode = 'prepare' | 'run';
-type DungeonOrigin = { brewId: string; mode: 'editor' | 'preview'; anchor?: string };
+type DungeonBrewLocation = { mode: 'editor'; position?: number } | { mode: 'preview'; anchor: string };
+type DungeonOrigin = DungeonBrewLocation & { brewId: string };
 type DungeonRoomTarget = { dungeonId: string; areaId: string; roomId: string };
 type DungeonEncounterRoute = {
   target: DungeonRoomTarget;
@@ -221,7 +222,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
   const [dungeonPosition, setDungeonPosition] = useState<DungeonPosition | null>(null);
   const [dungeonOrigin, setDungeonOrigin] = useState<DungeonOrigin | null>(null);
   const [dungeonEncounter, setDungeonEncounter] = useState<DungeonEncounterRoute | null>(null);
-  const returnDungeonCardRef = useRef<string | null>(null);
+  const returnDungeonCardRef = useRef<DungeonBrewLocation | null>(null);
   const roomEncounterPendingRef = useRef(false);
   const [nameGeneratorTarget, setNameGeneratorTarget] = useState<'editor' | 'worldbuilding' | null>(null);
   const [worldbuildingSelectedId, setWorldbuildingSelectedId] = useState<string | null>(null);
@@ -466,10 +467,13 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
   const dungeonRecords = useMemo(() => new Map(dungeons.map((dungeon) => [dungeon.id, dungeon])), [dungeons]);
   const activeDungeon = (selectedDungeonId ? dungeonRecords.get(selectedDungeonId) : undefined) ?? dungeons[0];
   useEffect(() => {
-    if (dungeonsOpen || !returnDungeonCardRef.current) return;
-    const anchor = returnDungeonCardRef.current;
+    const location = returnDungeonCardRef.current;
+    if (dungeonsOpen || !location) return;
     returnDungeonCardRef.current = null;
-    const frame = window.requestAnimationFrame(() => document.getElementById(anchor)?.scrollIntoView({ block: 'center' }));
+    const frame = window.requestAnimationFrame(() => {
+      if (location.mode === 'preview') document.getElementById(location.anchor)?.scrollIntoView({ block: 'center' });
+      else if (location.position !== undefined) editorRef.current?.scrollTo(location.position);
+    });
     return () => window.cancelAnimationFrame(frame);
   }, [dungeonsOpen]);
   const assetMap = useMemo(() => new Map(assets.map((asset) => [asset.id, asset])), [assets]);
@@ -700,17 +704,16 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
     setMobileSection('dungeons');
   };
 
-  const openDungeonFromBrew = (dungeonId?: string, anchor?: string) => {
+  const openDungeonFromBrew = (location: DungeonBrewLocation, dungeonId?: string) => {
     if (!activeBrew) return;
-    const mode = anchor ? 'preview' : 'editor';
-    openDungeons(dungeonId, anchor && dungeonId && dungeonRecords.has(dungeonId) ? 'run' : 'prepare', { brewId: activeBrew.id, mode, anchor });
+    openDungeons(dungeonId, dungeonId && dungeonRecords.has(dungeonId) ? 'run' : 'prepare', { ...location, brewId: activeBrew.id });
   };
 
   const backToDungeonBrew = () => {
     if (!dungeonOrigin) return;
-    returnDungeonCardRef.current = dungeonOrigin.anchor ?? null;
+    returnDungeonCardRef.current = dungeonOrigin;
     if (brews.some((brew) => brew.id === dungeonOrigin.brewId)) setActiveId(dungeonOrigin.brewId);
-    setViewMode(dungeonOrigin.mode);
+    setViewMode((mode) => mode === 'split' ? mode : dungeonOrigin.mode);
     setMobileSection(dungeonOrigin.mode);
     setDungeonsOpen(false);
     setDungeonOrigin(null);
@@ -2447,8 +2450,8 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
               onRotateImage={(asset) => { void rotateImage(asset); }}
               onDeleteImage={(asset) => { void deleteImage(asset); }}
               dungeons={dungeonRecords}
-              onOpenDungeons={openDungeonFromBrew}
-              onOpenDungeon={(id) => openDungeonFromBrew(id)}
+              onOpenDungeons={() => openDungeonFromBrew({ mode: 'editor' })}
+              onOpenDungeon={(id, position) => openDungeonFromBrew({ mode: 'editor', position }, id)}
               onToggleSpellcheck={() => setSpellcheckEnabled((current) => { const next = !current; localStorage.setItem('homebrewry-spellcheck', next ? 'on' : 'off'); return next; })}
               onUndo={undo}
               replaceValue={replaceValue}
@@ -2464,7 +2467,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
                   catalogueCategories={customCatalogueCategories}
                   encounters={encounterMap}
                   dungeons={dungeonRecords}
-                  onDungeonOpen={openDungeonFromBrew}
+                  onDungeonOpen={(id, anchor) => openDungeonFromBrew({ mode: 'preview', anchor }, id)}
                   onMoveInlineDungeon={(block, anchor) => { void moveInlineDungeon(block, anchor); }}
                   onEncounterOpen={openEncounters}
                   onReferenceOpen={openReferenceEntry}
@@ -2522,7 +2525,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
                 <button onClick={() => { insertText('\n:::descriptive\n', '\n:::\n'); setCaptureMenuOpen(false); }} type="button">Descr</button>
                 <button onClick={() => { insertText('\n:::pagebreak\n'); setCaptureMenuOpen(false); }} type="button">Page</button>
                 <button onClick={() => { document.getElementById('brew-image-input')?.click(); setCaptureMenuOpen(false); }} type="button">Image</button>
-                <button onClick={() => { setCaptureMenuOpen(false); openDungeonFromBrew(); }} type="button">Dungeon</button>
+                <button onClick={() => { setCaptureMenuOpen(false); openDungeonFromBrew({ mode: 'editor' }); }} type="button">Dungeon</button>
                 <button onClick={() => { setCaptureMenuOpen(false); openCatalogue(); }} type="button">Reference</button>
                 <button onClick={() => { setCaptureMenuOpen(false); openEncounters(); }} type="button">Encounter</button>
                 <button onClick={() => { setCaptureMenuOpen(false); setNameGeneratorTarget('editor'); }} type="button">Name</button>

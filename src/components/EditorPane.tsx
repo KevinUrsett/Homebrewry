@@ -36,7 +36,7 @@ type EditorPaneProps = {
   onDeleteImage: (asset: BrewAsset) => void;
   onOpenDungeons: () => void;
   dungeons: ReadonlyMap<string, DungeonRecord>;
-  onOpenDungeon: (dungeonId: string) => void;
+  onOpenDungeon: (dungeonId: string, position: number) => void;
   onToggleSpellcheck: () => void;
   onFindChange: (value: string) => void;
   onReplaceChange: (value: string) => void;

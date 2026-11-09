@@ -3,6 +3,9 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { EditorView } from '@codemirror/view';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createDungeon } from '../lib/dungeons';
+import { formatDungeonReference } from '../lib/dungeonReferences';
+import { BrewPreview } from './BrewPreview';
 import { MarkdownEditor } from './MarkdownEditor';
 import type { BrewAsset } from '../types';
 
@@ -141,6 +144,47 @@ describe('MarkdownEditor encounter references', () => {
 
     expect(onOpenEncounter).toHaveBeenCalledWith(encounterId);
   });
+});
+
+it('shows the Preview dungeon card in Edit and opens it at its current source position', async () => {
+  const dungeon = createDungeon('Sunken vault');
+  const dungeons = new Map([[dungeon.id, dungeon]]);
+  const reference = formatDungeonReference({ id: dungeon.id, name: 'Old vault name' });
+  const prefix = '# Session\n\n';
+  const content = prefix + reference;
+  const onOpenDungeon = vi.fn();
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+
+  try {
+    await act(async () => {
+      root.render(<>
+        <MarkdownEditor content={content} dungeons={dungeons} onChange={() => undefined} onOpenDungeon={onOpenDungeon} />
+        <BrewPreview brew={{
+          id: 'brew', title: 'Session', content, version: 1, createdAt: dungeon.createdAt, updatedAt: dungeon.updatedAt,
+          rendererSettings: { accentColor: '#6a2f26', parchmentTone: 'warm' }
+        }} dungeons={dungeons} onDungeonOpen={() => undefined} />
+      </>);
+    });
+
+    const editor = host.querySelector<HTMLElement>('.cm-editor')!;
+    const editCard = editor.querySelector<HTMLButtonElement>('button.brew-map-card')!;
+    const previewCard = host.querySelector<HTMLButtonElement>('.brew-preview button.brew-map-card')!;
+    expect(editor.querySelector('.cm-inline-reference')).toBeNull();
+    expect(editCard.textContent).toBe(previewCard.textContent);
+    expect(editCard.getAttribute('aria-label')).toBe('Open Sunken vault');
+    expect(editCard.textContent).toContain('1 area · 0 rooms');
+
+    const view = EditorView.findFromDOM(editor)!;
+    act(() => view.dispatch({ changes: { from: 0, insert: prefix } }));
+    await act(async () => editor.querySelector<HTMLElement>('.brew-map-card strong')?.click());
+    expect(onOpenDungeon).toHaveBeenCalledWith(dungeon.id, prefix.length * 2);
+    expect(view.state.doc.toString()).toBe(prefix + content);
+  } finally {
+    act(() => root.unmount());
+    host.remove();
+  }
 });
 
 

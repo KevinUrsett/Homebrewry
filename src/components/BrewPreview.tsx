@@ -2,6 +2,7 @@ import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type Mo
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { catalogueReferenceFromUrl, entryFromReference, remarkCatalogueReferences } from '../catalogue/references';
+import { dungeonCardDetails } from '../lib/dungeonReferences';
 import { encounterReferenceFromUrl, remarkEncounterReferences } from '../lib/encounterReferences';
 import { worldbuildingReferenceFromUrl, remarkWorldbuildingReferences } from '../lib/worldbuildingReferences';
 import { remarkAutoReferences } from '../lib/autoReferences';
@@ -62,19 +63,22 @@ function DungeonReferenceCard({ dungeon, dungeonId, label, anchor, onOpen }: {
   anchor: string;
   onOpen?: BrewPreviewProps['onDungeonOpen'];
 }) {
-  const name = dungeon?.name.trim() || label;
-  const roomCount = dungeon?.areas.reduce((total, area) => total + area.rooms.length, 0) ?? 0;
+  const { name, summary, action, actionLabel, missing } = dungeonCardDetails(dungeon, label);
+  const className = `brew-map-card${missing ? ' is-missing' : ''}`;
+  const details = (
+    <span className="brew-map-card-details">
+      <small>Dungeon</small>
+      <strong>{name}</strong>
+      <span>{summary}</span>
+    </span>
+  );
+  if (!onOpen) return <section className={className} id={anchor}>{details}</section>;
+
   return (
-    <section className={`brew-map-card${dungeon ? '' : ' is-missing'}`} id={anchor}>
-      <header>
-        <div>
-          <small>Dungeon</small>
-          <h3>{name}</h3>
-          <p>{dungeon ? `${dungeon.areas.length} area${dungeon.areas.length === 1 ? '' : 's'} · ${roomCount} room${roomCount === 1 ? '' : 's'}` : 'Dungeon unavailable on this device'}</p>
-        </div>
-        {onOpen && <button aria-label={dungeon ? `Open ${name}` : `Find ${name}`} className="primary-button" onClick={() => onOpen(dungeonId, anchor)} type="button">{dungeon ? 'Open dungeon' : 'Browse dungeons'}</button>}
-      </header>
-    </section>
+    <button aria-label={actionLabel} className={className} id={anchor} onClick={() => onOpen(dungeonId, anchor)} type="button">
+      {details}
+      <span className="primary-button brew-map-card-action">{action}</span>
+    </button>
   );
 }
 

@@ -14,7 +14,7 @@ import {
 } from '@codemirror/view';
 import { catalogueCategories, catalogueCategoryLabel, type CatalogueCategory, type CustomCatalogueCategory } from '../catalogue/types';
 import { normalizeWorldbuildingName, worldbuildingKindLabels, worldbuildingKinds } from '../lib/worldbuilding';
-import { dungeonReferenceLine, legacyMapId } from '../lib/dungeonReferences';
+import { dungeonCardDetails, dungeonReferenceLine, legacyMapId } from '../lib/dungeonReferences';
 import type { BrewAsset, DungeonRecord, WorldbuildingKind, WorldbuildingType } from '../types';
 
 export type MarkdownEditorHandle = {
@@ -22,6 +22,8 @@ export type MarkdownEditorHandle = {
   focus: (position?: number) => void;
   scrollTo: (position: number) => void;
 };
+
+type DungeonOpenHandler = (dungeonId: string, position: number) => void;
 
 export const SpellcheckContext = createContext(true);
 
@@ -42,7 +44,7 @@ type MarkdownEditorProps = {
   onDeleteImage?: (asset: BrewAsset) => void;
   onOpenDungeonMap?: (title: string) => void;
   dungeons?: ReadonlyMap<string, DungeonRecord>;
-  onOpenDungeon?: (dungeonId: string) => void;
+  onOpenDungeon?: DungeonOpenHandler;
   onOpenEncounter?: (encounterId: string) => void;
 };
 
@@ -117,10 +119,13 @@ class ReferenceChip extends WidgetType {
 
 const referenceDecorator = new MatchDecorator({
   regexp: /\[\[([a-z][a-z0-9-]*):([0-9a-f-]+)(?:\|([^\]\r\n]+))?\]\]/gi,
-  decoration: (match) => Decoration.replace({
-    widget: new ReferenceChip(match[3]?.trim() || 'Reference', match[1], match[2]),
-    inclusive: false
-  })
+  decoration: (match, view, position) => {
+    if (match[1].toLowerCase() === 'dungeon' && dungeonReferenceLine(view.state.doc.lineAt(position).text)) return null;
+    return Decoration.replace({
+      widget: new ReferenceChip(match[3]?.trim() || 'Reference', match[1], match[2]),
+      inclusive: false
+    });
+  }
 });
 
 type EncounterOpenHandler = (encounterId: string) => void;
@@ -278,38 +283,42 @@ class MarkdownImageLabel extends WidgetType {
   }
 }
 
-class DungeonCardChip extends WidgetType {
-  constructor(private readonly dungeonId: string, private readonly name: string, private readonly roomCount: number, private readonly onOpen: (id: string) => void) { super(); }
+class DungeonCardWidget extends WidgetType {
+  constructor(
+    private readonly dungeonId: string,
+    private readonly details: ReturnType<typeof dungeonCardDetails>,
+    private readonly onOpen: DungeonOpenHandler
+  ) { super(); }
 
-  eq(other: DungeonCardChip) {
-    return other.dungeonId === this.dungeonId && other.name === this.name && other.roomCount === this.roomCount;
+  eq(other: DungeonCardWidget) {
+    return other.dungeonId === this.dungeonId && other.details.name === this.details.name
+      && other.details.summary === this.details.summary;
   }
 
-  toDOM() {
-    const card = document.createElement('span');
-    card.className = 'cm-campaign-map-chip';
+  toDOM(view: EditorView) {
+    const card = document.createElement('button');
+    card.className = `brew-map-card${this.details.missing ? ' is-missing' : ''}`;
+    card.type = 'button';
+    card.setAttribute('aria-label', this.details.actionLabel);
     const details = document.createElement('span');
-    const label = document.createElement('strong');
-    label.textContent = this.name;
-    const meta = document.createElement('small');
-    meta.textContent = `Dungeon · ${this.roomCount} room${this.roomCount === 1 ? '' : 's'}`;
-    details.append(label, meta);
-    const open = document.createElement('button');
-    open.type = 'button';
-    open.textContent = 'Open dungeon';
-    open.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      this.onOpen(this.dungeonId);
-    });
-    card.append(details, open);
+    details.className = 'brew-map-card-details';
+    const category = document.createElement('small');
+    category.textContent = 'Dungeon';
+    const name = document.createElement('strong');
+    name.textContent = this.details.name;
+    const summary = document.createElement('span');
+    summary.textContent = this.details.summary;
+    details.append(category, name, summary);
+    const action = document.createElement('span');
+    action.className = 'primary-button brew-map-card-action';
+    action.textContent = this.details.action;
+    card.append(details, action);
+    card.addEventListener('click', () => this.onOpen(this.dungeonId, view.posAtDOM(card)));
     return card;
   }
-
-  ignoreEvent() { return false; }
 }
 
-function dungeonCardDecorations(view: EditorView, dungeons: ReadonlyMap<string, DungeonRecord>, onOpen: (id: string) => void): DecorationSet {
+function dungeonCardDecorations(view: EditorView, dungeons: ReadonlyMap<string, DungeonRecord>, onOpen: DungeonOpenHandler): DecorationSet {
   const decorations = [];
   let position = 0;
   for (const line of view.state.doc.iterLines()) {
@@ -319,10 +328,8 @@ function dungeonCardDecorations(view: EditorView, dungeons: ReadonlyMap<string, 
       let node = syntaxTree(view.state).resolveInner(position + line.indexOf(line.trimStart()), 1);
       while (node.parent && node.name !== 'FencedCode' && node.name !== 'CodeBlock') node = node.parent;
       if (node.name !== 'FencedCode' && node.name !== 'CodeBlock') {
-        const dungeon = dungeons.get(dungeonId);
-        const name = dungeon?.name || reference?.label || 'Dungeon unavailable';
-        const count = dungeon?.areas.reduce((total, area) => total + area.rooms.length, 0) ?? 0;
-        decorations.push(Decoration.replace({ widget: new DungeonCardChip(dungeonId, name, count, onOpen), inclusive: false }).range(position, position + line.length));
+        const details = dungeonCardDetails(dungeons.get(dungeonId), reference?.label ?? 'Dungeon');
+        decorations.push(Decoration.replace({ widget: new DungeonCardWidget(dungeonId, details, onOpen), inclusive: false }).range(position, position + line.length));
       }
     }
     position += line.length + 1;
@@ -330,7 +337,7 @@ function dungeonCardDecorations(view: EditorView, dungeons: ReadonlyMap<string, 
   return Decoration.set(decorations, true);
 }
 
-function dungeonCardPreviews(getDungeons: () => ReadonlyMap<string, DungeonRecord>, onOpen: (id: string) => void) {
+function dungeonCardPreviews(getDungeons: () => ReadonlyMap<string, DungeonRecord>, onOpen: DungeonOpenHandler) {
   return ViewPlugin.fromClass(class {
     decorations: DecorationSet;
     constructor(view: EditorView) { this.decorations = dungeonCardDecorations(view, getDungeons(), onOpen); }
@@ -496,7 +503,8 @@ export function MarkdownEditor({
     scrollTo: (position) => {
       const view = viewRef.current;
       if (!view) return;
-      view.dispatch({ effects: EditorView.scrollIntoView(position, { y: 'start', yMargin: 16 }) });
+      const target = Math.max(0, Math.min(position, view.state.doc.length));
+      view.dispatch({ effects: EditorView.scrollIntoView(target, { y: 'start', yMargin: 16 }) });
     }
   }), []);
 
@@ -522,7 +530,7 @@ export function MarkdownEditor({
           imageAssetLookupCompartment.of(imageAssetLookup.of((source) => assetsRef.current.get(source.slice('asset://'.length)))),
           deferredEmbeddedPreviewRefresh,
           imagePreviews((asset) => imageRotationRef.current?.(asset), (asset) => imageDeletionRef.current?.(asset), (title) => dungeonOpenRef.current?.(title)),
-          dungeonCardPreviews(() => dungeonRecordsRef.current, (id) => dungeonCardOpenRef.current?.(id)),
+          dungeonCardPreviews(() => dungeonRecordsRef.current, (id, position) => dungeonCardOpenRef.current?.(id, position)),
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
               const nextContent = update.state.doc.toString();

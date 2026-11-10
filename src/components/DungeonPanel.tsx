@@ -513,8 +513,8 @@ export function DungeonPanel({
                     {hasImage && <button className="dungeon-button is-quiet dungeon-place-pin" onClick={() => startPlacement(activeRoom.id)} type="button">
                       <DungeonIcon name="pin" />{area.markers.some((marker) => marker.roomId === activeRoom.id) ? 'Move pin' : 'Place pin'}
                     </button>}
-                    <label className="dungeon-field">Read aloud<textarea onChange={(event) => updateRoom({ readAloud: event.target.value })} placeholder="What the players see and hear…" rows={3} value={activeRoom.readAloud} /></label>
-                    <label className="dungeon-field">GM notes<textarea onChange={(event) => updateRoom({ notes: event.target.value })} placeholder="Secrets, checks and discoveries…" rows={4} value={activeRoom.notes} /></label>
+                    <label className="dungeon-field">Read aloud<textarea onChange={(event) => updateRoom({ readAloud: event.target.value })} placeholder="What the players see and hear…" rows={7} value={activeRoom.readAloud} /></label>
+                    <label className="dungeon-field">GM notes<textarea onChange={(event) => updateRoom({ notes: event.target.value })} placeholder="Secrets, checks and discoveries…" rows={9} value={activeRoom.notes} /></label>
                   </>
                 ) : (
                   <>

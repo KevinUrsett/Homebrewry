@@ -94,7 +94,7 @@ export const DungeonRoomText = memo(function DungeonRoomText({ room, heading: He
 }) {
   return (
     <>
-      {room.readAloud && <div className="dungeon-read-aloud"><Heading>Read aloud</Heading><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{room.readAloud}</ReactMarkdown></div>}
+      {room.readAloud && <div aria-label="Read aloud" className="dungeon-read-aloud" role="group"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{room.readAloud}</ReactMarkdown></div>}
       {room.notes && <div className="dungeon-room-notes"><Heading>GM notes</Heading><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{room.notes}</ReactMarkdown></div>}
       {!room.readAloud && !room.notes && <p className="dungeon-empty-note">No notes for this room yet.</p>}
     </>

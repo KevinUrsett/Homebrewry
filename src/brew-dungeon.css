@@ -76,16 +76,15 @@
   -webkit-user-select: none;
   user-select: none;
 }
-.brew-dungeon-room-text .dungeon-read-aloud { background: none; border: 0; padding: 0; }
-.brew-dungeon-room-text .dungeon-read-aloud > p { font-style: italic; }
-.brew-dungeon-room-text :is(.dungeon-read-aloud, .dungeon-room-notes) > h4 {
+.brew-preview .dungeon-read-aloud > p { text-indent: 0; }
+.brew-dungeon-room-text .dungeon-room-notes > h4 {
   color: var(--dungeon-muted);
   font: 700 .68rem/1.4 Inter, sans-serif;
   letter-spacing: .055em;
   margin: 0 0 3px;
   text-transform: uppercase;
 }
-.brew-dungeon-room-text :is(.dungeon-read-aloud, .dungeon-room-notes) > p:last-child { margin-bottom: 0; }
+.brew-dungeon-room-text .dungeon-room-notes > p:last-child { margin-bottom: 0; }
 .brew-dungeon-content .dungeon-empty-note { margin: 0; padding: 0; }
 .brew-dungeon-content > .dungeon-empty-note { padding-inline: var(--dungeon-inset); }
 @media (hover: hover) {

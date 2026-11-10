@@ -1,7 +1,7 @@
 import { memo, useId, useLayoutEffect, useRef, useState } from 'react';
 import { dungeonCardDetails } from '../lib/dungeonReferences';
-import { roomNumber } from '../lib/dungeons';
-import type { BrewAsset, DungeonArea, DungeonRecord } from '../types';
+import { dungeonMapName, dungeonRooms, roomNumber } from '../lib/dungeons';
+import type { BrewAsset, DungeonRecord } from '../types';
 import { DungeonRoomMap, DungeonRoomText } from './DungeonRoomContent';
 import '../brew-dungeon.css';
 
@@ -12,15 +12,15 @@ export type BrewDungeonCardState = {
 
 const closedCard: BrewDungeonCardState = { expanded: false, foldedRooms: new Set() };
 
-function BrewDungeonArea({ area, assets, foldedRooms, onFold }: {
-  area: DungeonArea;
+function BrewDungeonContent({ dungeon, id, assets, foldedRooms, onFold }: {
+  dungeon: DungeonRecord;
+  id: string;
   assets?: ReadonlyMap<string, BrewAsset>;
   foldedRooms: ReadonlySet<string>;
   onFold: (key: string, folded: boolean) => void;
 }) {
-  const section = useRef<HTMLElement>(null);
-  const asset = area.imageSource?.startsWith('asset://') ? assets?.get(area.imageSource.slice(8)) : undefined;
-  const rooms = [...area.rooms].sort((left, right) => left.number - right.number);
+  const section = useRef<HTMLDivElement>(null);
+  const rooms = dungeonRooms(dungeon);
   const jumpToRoom = (roomId: string) => {
     const room = Array.from(section.current?.querySelectorAll<HTMLDetailsElement>('.brew-dungeon-room') ?? [])
       .find((element) => element.dataset.roomId === roomId);
@@ -31,24 +31,24 @@ function BrewDungeonArea({ area, assets, foldedRooms, onFold }: {
   };
 
   return (
-    <section className="brew-dungeon-area" ref={section}>
-      <h3 className="brew-dungeon-area-heading">{area.name.trim() || 'Untitled area'}</h3>
-      {area.imageSource && <div className="brew-dungeon-map">
-        <DungeonRoomMap area={area} asset={asset} empty={() => <p className="dungeon-empty-note">Map unavailable on this device.</p>}
-          key={area.imageSource} onSelect={jumpToRoom} />
-      </div>}
-      {rooms.map((room) => {
-        const key = JSON.stringify([area.id, room.id]);
-        return (
-          <details className="brew-dungeon-room" data-room-id={room.id} key={room.id} open={!foldedRooms.has(key)}
-            onToggle={(event) => onFold(key, !event.currentTarget.open)}>
-            <summary><span className="brew-dungeon-room-number">{roomNumber(room)}</span><strong>{room.name.trim() || 'Untitled room'}</strong></summary>
-            <div className="brew-dungeon-room-text"><DungeonRoomText room={room} heading="h4" /></div>
-          </details>
-        );
-      })}
-      {!rooms.length && <p className="dungeon-empty-note">No rooms in this area yet.</p>}
-    </section>
+    <div className="brew-dungeon-content" id={id} ref={section}>
+      {dungeon.areas.filter((area) => area.imageSource).map((map, index) => (
+        <div className="brew-dungeon-map" key={map.id}>
+          <DungeonRoomMap area={map} label={dungeonMapName(map, index)}
+            asset={map.imageSource?.startsWith('asset://') ? assets?.get(map.imageSource.slice(8)) : undefined}
+            empty={() => <p className="dungeon-empty-note">Map unavailable on this device.</p>}
+            key={map.imageSource} onSelect={jumpToRoom} />
+        </div>
+      ))}
+      {rooms.map(({ room }) => (
+        <details className="brew-dungeon-room" data-room-id={room.id} key={room.id} open={!foldedRooms.has(room.id)}
+          onToggle={(event) => onFold(room.id, !event.currentTarget.open)}>
+          <summary><span className="brew-dungeon-room-number">{roomNumber(room)}</span><strong>{room.name.trim() || 'Untitled room'}</strong></summary>
+          <div className="brew-dungeon-room-text"><DungeonRoomText room={room} heading="h4" /></div>
+        </details>
+      ))}
+      {!rooms.length && <p className="dungeon-empty-note">No rooms in this dungeon yet.</p>}
+    </div>
   );
 }
 
@@ -97,10 +97,7 @@ export const BrewDungeonCard = memo(function BrewDungeonCard({ dungeon, label, a
         {details}
         <span className="primary-button brew-map-card-action">{expanded ? 'Collapse' : action}</span>
       </button>
-      {expanded && dungeon && <div className="brew-dungeon-content" id={bodyId}>
-        {dungeon.areas.map((area) => <BrewDungeonArea area={area} assets={assets} foldedRooms={state.foldedRooms} key={area.id} onFold={foldRoom} />)}
-        {!dungeon.areas.length && <p className="dungeon-empty-note">No areas in this dungeon yet.</p>}
-      </div>}
+      {expanded && dungeon && <BrewDungeonContent assets={assets} dungeon={dungeon} foldedRooms={state.foldedRooms} id={bodyId} onFold={foldRoom} />}
     </section>
   );
 });

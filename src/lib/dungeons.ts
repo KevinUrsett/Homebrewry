@@ -1,7 +1,17 @@
-import type { CampaignDataSnapshot, CampaignMapRoom, DungeonArea, DungeonPosition, DungeonRecord, DungeonRoomStatus } from '../types';
+import type { CampaignDataSnapshot, CampaignMapMarker, CampaignMapRoom, DungeonArea, DungeonPosition, DungeonRecord, DungeonRoomStatus } from '../types';
 
 export function roomNumber(room: CampaignMapRoom): string {
   return room.numberLabel ?? String(room.number);
+}
+
+export function dungeonRooms(dungeon: DungeonRecord) {
+  return dungeon.areas.flatMap((area) => area.rooms.map((room) => ({ room, areaId: area.id })))
+    .sort((left, right) => left.room.number - right.room.number);
+}
+
+export function dungeonMapName(map: DungeonArea, index: number): string {
+  const name = map.name.trim();
+  return !name || /^(?:Area \d+|Map)$/i.test(name) ? `Map ${index + 1}` : name;
 }
 
 export function campaignDungeons(data: Pick<CampaignDataSnapshot, 'dungeons' | 'maps'>): DungeonRecord[] {
@@ -21,11 +31,34 @@ export function createDungeonArea(name: string): DungeonArea {
 
 export function createDungeon(name = 'New dungeon'): DungeonRecord {
   const now = new Date().toISOString();
-  return { id: crypto.randomUUID(), name, areas: [createDungeonArea('Area 1')], createdAt: now, updatedAt: now, version: 1 };
+  return { id: crypto.randomUUID(), name, areas: [createDungeonArea('Map')], createdAt: now, updatedAt: now, version: 1 };
 }
 
 export function updateDungeonArea(dungeon: DungeonRecord, areaId: string, update: (area: DungeonArea) => DungeonArea): DungeonRecord {
   return { ...dungeon, areas: dungeon.areas.map((area) => area.id === areaId ? update(area) : area) };
+}
+
+export function placeDungeonPin(dungeon: DungeonRecord, mapId: string, pin: CampaignMapMarker): DungeonRecord {
+  const source = dungeon.areas.find((area) => area.rooms.some((room) => room.id === pin.roomId));
+  const room = source?.rooms.find((item) => item.id === pin.roomId);
+  if (!source || !room || !dungeon.areas.some((area) => area.id === mapId)) return dungeon;
+
+  // Saved maps own their pins and rooms in the existing backup format.
+  const areas = dungeon.areas.map((area) => {
+    if (area.id === mapId) return {
+      ...area,
+      rooms: source.id === mapId ? area.rooms : [...area.rooms, room],
+      markers: [...area.markers.filter((marker) => marker.roomId !== pin.roomId), pin]
+    };
+    if (area.id === source.id) return {
+      ...area,
+      rooms: area.rooms.filter((item) => item.id !== pin.roomId),
+      markers: area.markers.filter((marker) => marker.roomId !== pin.roomId)
+    };
+    return area;
+  });
+  const progress = dungeon.progress?.roomId === pin.roomId ? { ...dungeon.progress, areaId: mapId } : dungeon.progress;
+  return { ...dungeon, areas, progress };
 }
 
 export function updateDungeonProgress(dungeon: DungeonRecord, position: DungeonPosition, status?: DungeonRoomStatus | 'unvisited'): DungeonRecord {

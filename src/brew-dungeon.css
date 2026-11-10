@@ -13,18 +13,11 @@
   color: #38291f;
   display: grid;
   font: .97rem/1.52 "Bookinsanity", Georgia, serif;
-  gap: 22px;
+  gap: 8px;
   min-width: 0;
   overflow-wrap: anywhere;
   padding: clamp(10px, 3vw, 20px);
   white-space: normal;
-}
-.brew-dungeon-area { display: grid; gap: 8px; min-width: 0; }
-.brew-dungeon-card-shell .brew-dungeon-content .brew-dungeon-area-heading {
-  border: 0;
-  color: #783626;
-  font: 700 1.36rem/1.15 "Mr Eaves Small Caps", Georgia, serif;
-  margin: 0 0 3px;
 }
 .brew-dungeon-map { background: #f1e7d4; border-radius: 7px; padding: 18px; }
 .brew-dungeon-map .maps-canvas { background: transparent; margin: 0 auto; max-width: 100%; min-height: 0; overflow: visible; touch-action: pan-y pinch-zoom; width: fit-content; }

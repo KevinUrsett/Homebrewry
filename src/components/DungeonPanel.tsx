@@ -1,5 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { createDungeonArea, roomNumber } from '../lib/dungeons';
+import { createDungeonArea, dungeonMapName, dungeonRooms, placeDungeonPin, roomNumber, updateDungeonArea } from '../lib/dungeons';
+import { dungeonRoomSummary } from '../lib/dungeonReferences';
 import { DungeonRoomMap, DungeonRoomText } from './DungeonRoomContent';
 import type { DungeonRoomMove } from '../lib/dungeonBrewMigration';
 import type { BrewAsset, CampaignMapRoom, DungeonArea, DungeonPosition, DungeonRecord, DungeonRoomStatus, Encounter, SocialEncounter } from '../types';
@@ -189,7 +190,7 @@ function MoveRoomsReview({ dungeon, moves, onMove }: {
   );
 }
 
-type WorkspaceDialog = 'dungeons' | 'options' | 'map' | 'dungeon-name' | 'area-name' | 'migration';
+type WorkspaceDialog = 'dungeons' | 'options' | 'map' | 'add-map' | 'dungeon-name' | 'migration';
 
 function RenameForm({ label, name, onSave }: { label: string; name: string; onSave: (name: string) => void }) {
   return <form className="dungeon-rename" onSubmit={(event) => {
@@ -210,24 +211,29 @@ export function DungeonPanel({
   const dungeon = dungeons.find((item) => item.id === dungeonId) ?? dungeons[0];
   const editing = mode === 'prepare';
   const currentPosition = position ?? (editing ? null : dungeon?.progress);
-  const area = dungeon?.areas.find((item) => item.id === currentPosition?.areaId) ?? dungeon?.areas[0];
-  const activeRoom = area?.rooms.find((room) => room.id === currentPosition?.roomId);
+  const rooms = dungeon ? dungeonRooms(dungeon) : [];
+  const activeEntry = rooms.find(({ room }) => room.id === currentPosition?.roomId);
+  const activeRoom = activeEntry?.room;
+  const maps = dungeon?.areas.filter((item) => item.imageSource) ?? [];
+  const [selectedMapId, setSelectedMapId] = useState<string | null>(null);
+  const map = maps.find((item) => item.id === selectedMapId)
+    ?? maps.find((item) => item.id === currentPosition?.areaId) ?? maps[0] ?? dungeon?.areas[0];
   const [roomOpen, setRoomOpen] = useState(() => Boolean(activeRoom));
   const [placement, setPlacement] = useState<{ roomId: string | null } | null>(null);
   const [popup, setPopup] = useState<WorkspaceDialog | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadFailed, setUploadFailed] = useState(false);
   const uploadInput = useRef<HTMLInputElement>(null);
+  const uploadNewMap = useRef(false);
   const panel = useRef<HTMLElement>(null);
   const roomHeading = useRef<HTMLHeadingElement>(null);
   const overviewScroll = useRef(0);
   const roomOpener = useRef<HTMLButtonElement | null>(null);
-  const asset = area?.imageSource?.startsWith('asset://') ? assets.find((item) => item.id === area.imageSource?.slice(8)) : undefined;
-  const hasImage = Boolean(asset || area?.imageSource?.startsWith('https://'));
-  const pinRoom = area?.rooms.find((room) => room.id === placement?.roomId);
+  const asset = map?.imageSource?.startsWith('asset://') ? assets.find((item) => item.id === map.imageSource?.slice(8)) : undefined;
+  const hasImage = Boolean(asset || map?.imageSource?.startsWith('https://'));
+  const pinRoom = rooms.find(({ room }) => room.id === placement?.roomId)?.room;
   const showRoom = roomOpen && Boolean(activeRoom);
   const roomStatus = (activeRoom && dungeon?.progress?.roomStatuses[activeRoom.id]) ?? 'unvisited';
-  const rooms = [...(area?.rooms ?? [])].sort((left, right) => left.number - right.number);
   const title = dungeon?.name.trim() || 'Untitled dungeon';
   const resumePosition = editing && !showRoom && dungeon?.progress?.roomId ? dungeon.progress : undefined;
 
@@ -248,58 +254,58 @@ export function DungeonPanel({
     setRoomOpen(false);
     panel.current?.scrollTo({ top: 0 });
   };
-  const selectArea = (areaId: string) => {
-    setPlacement(null);
-    setUploadFailed(false);
-    overview();
-    onPosition({ areaId, roomId: null });
-  };
-  const selectRoom = (roomId: string, trigger?: HTMLButtonElement) => {
-    if (!area) return;
+  const selectRoom = (areaId: string, roomId: string, trigger?: HTMLButtonElement) => {
     if (!showRoom) {
       overviewScroll.current = panel.current?.scrollTop ?? 0;
       roomOpener.current = trigger ?? null;
     }
+    if (maps.some((item) => item.id === areaId)) setSelectedMapId(areaId);
     setPlacement(null);
     setRoomOpen(true);
-    onPosition({ areaId: area.id, roomId });
+    onPosition({ areaId, roomId });
   };
-  const updateArea = (update: (current: DungeonArea) => DungeonArea) => {
-    if (dungeon && area) onUpdateArea(dungeon.id, area.id, update);
+  const updateArea = (areaId: string, update: (current: DungeonArea) => DungeonArea) => {
+    if (dungeon) onUpdateArea(dungeon.id, areaId, update);
   };
   const updateRoom = (changes: Partial<CampaignMapRoom>) => {
-    updateArea((current) => ({
+    if (!activeEntry) return;
+    updateArea(activeEntry.areaId, (current) => ({
       ...current,
-      rooms: current.rooms.map((room) => room.id === activeRoom?.id ? { ...room, ...changes, updatedAt: new Date().toISOString() } : room)
+      rooms: current.rooms.map((room) => room.id === activeEntry.room.id ? { ...room, ...changes, updatedAt: new Date().toISOString() } : room)
     }));
   };
   const addRoom = (point?: { x: number; y: number }, trigger?: HTMLButtonElement) => {
-    if (!area) return;
+    if (!dungeon || !map) return;
     const id = crypto.randomUUID();
-    updateArea((current) => {
-      const number = Math.max(0, ...current.rooms.map((room) => room.number)) + 1;
-      return {
-        ...current,
-        rooms: [...current.rooms, { id, number, name: `Room ${number}`, notes: '', readAloud: '', encounterIds: [], updatedAt: new Date().toISOString() }],
-        markers: point ? [...current.markers, { roomId: id, ...point }] : current.markers
-      };
+    onUpdate(dungeon.id, (current) => {
+      const number = current.areas.reduce((highest, group) => group.rooms.reduce((max, room) => Math.max(max, room.number), highest), 0) + 1;
+      return updateDungeonArea(current, map.id, (group) => ({
+        ...group,
+        rooms: [...group.rooms, { id, number, name: `Room ${number}`, notes: '', readAloud: '', encounterIds: [], updatedAt: new Date().toISOString() }],
+        markers: point ? [...group.markers, { roomId: id, ...point }] : group.markers
+      }));
     });
-    selectRoom(id, trigger);
+    selectRoom(map.id, id, trigger);
   };
   const movePin = (roomId: string, point: { x: number; y: number }) => {
-    updateArea((current) => ({
-      ...current,
-      markers: [...current.markers.filter((marker) => marker.roomId !== roomId), { roomId, ...point }]
-    }));
+    if (dungeon && map) onUpdate(dungeon.id, (current) => placeDungeonPin(current, map.id, { roomId, ...point }));
   };
   const startPlacement = (roomId: string | null) => {
     overview();
     setPlacement({ roomId });
   };
-  const changeMap = (imageSource?: string) => {
-    updateArea((current) => ({ ...current, imageSource }));
+  const changeMap = (imageSource?: string, adding = false) => {
+    if (dungeon && imageSource && adding) {
+      const created = { ...createDungeonArea('Map'), imageSource };
+      onUpdate(dungeon.id, (current) => ({ ...current, areas: [...current.areas, created] }));
+      setSelectedMapId(created.id);
+    } else if (map) updateArea(map.id, (current) => ({ ...current, imageSource }));
     setPlacement(null);
     setUploadFailed(false);
+  };
+  const openMapUpload = (adding = false) => {
+    uploadNewMap.current = adding;
+    uploadInput.current?.click();
   };
 
   return (
@@ -314,9 +320,9 @@ export function DungeonPanel({
               <span>{title}</span><DungeonIcon name="down" />
             </button> : 'Dungeons'}</h1>
           </div>
-          {dungeon && area && <div className="dungeon-actions">
+          {dungeon && map && <div className="dungeon-actions">
             <button className={`dungeon-button ${editing ? 'is-primary' : 'is-secondary'}`} onClick={() => onModeChange(editing ? 'run' : 'prepare',
-              resumePosition ?? { areaId: area.id, roomId: showRoom ? activeRoom?.id ?? null : null })} type="button">
+              resumePosition ?? { areaId: activeEntry?.areaId ?? map.id, roomId: showRoom ? activeRoom?.id ?? null : null })} type="button">
               <DungeonIcon name={editing ? 'play' : 'edit'} />{editing ? (resumePosition ? 'Resume' : 'Run') : 'Prepare'}
             </button>
             {editing && <button aria-haspopup="dialog" aria-label="Dungeon options" className="dungeon-button is-icon is-secondary" onClick={() => setPopup('options')} type="button"><DungeonIcon name="more" /></button>}
@@ -329,65 +335,61 @@ export function DungeonPanel({
           <p>Bring your maps, rooms and encounters together.</p>
           <button className="dungeon-button is-primary" onClick={onCreate} type="button"><DungeonIcon name="plus" /> New dungeon</button>
         </section>}
-        {dungeon && area && <>
-          {(editing || dungeon.areas.length > 1) && <nav aria-label="Dungeon areas" className="dungeon-areas">
-            <div className="dungeon-area-list">
-              {dungeon.areas.map((item) => <button aria-pressed={item.id === area.id} className="dungeon-button dungeon-area-tab" key={item.id} onClick={() => {
-                if (item.id !== area.id) selectArea(item.id);
-              }} type="button"><span>{item.name.trim() || 'Untitled area'}</span></button>)}
-            </div>
-            {editing && <button aria-label="Add area" className="dungeon-button is-quiet" onClick={() => {
-              const created = createDungeonArea(`Area ${dungeon.areas.length + 1}`);
-              onUpdate(dungeon.id, (current) => ({ ...current, areas: [...current.areas, created] }));
-              selectArea(created.id);
-            }} type="button"><DungeonIcon name="plus" /> Area</button>}
-          </nav>}
-
-          <div className={`dungeon-workspace-grid${!editing && !area.imageSource ? ' is-list-only' : ''}`}>
-            <section aria-label="Area map" className="dungeon-map-panel dungeon-surface">
+        {dungeon && map && <>
+          <div className={`dungeon-workspace-grid${!editing && !map.imageSource ? ' is-list-only' : ''}`}>
+            <section aria-label="Dungeon map" className="dungeon-map-panel dungeon-surface">
               <header className="dungeon-section-heading">
                 <h2>{placement ? (pinRoom ? `Tap the map to place room ${roomNumber(pinRoom)}` : 'Tap the map to add a room') : 'Map'}</h2>
                 {placement
                   ? <button className="dungeon-button is-quiet" onClick={() => {
                     setPlacement(null);
-                    if (pinRoom) selectRoom(pinRoom.id);
+                    const entry = rooms.find(({ room }) => room.id === pinRoom?.id);
+                    if (entry) selectRoom(entry.areaId, entry.room.id);
                   }} type="button">Cancel</button>
                   : editing && hasImage && <div className="dungeon-actions">
                     <button aria-label="Add pin" className="dungeon-button is-quiet" onClick={() => startPlacement(null)} type="button"><DungeonIcon name="plus" /> Pin</button>
                     <button aria-haspopup="dialog" aria-label="Map options" className="dungeon-button is-icon" onClick={() => setPopup('map')} type="button"><DungeonIcon name="more" /></button>
                   </div>}
               </header>
+              {maps.length > 1 && <select aria-label="Choose map" className="dungeon-map-picker" onChange={(event) => {
+                setSelectedMapId(event.target.value);
+                setUploadFailed(false);
+              }} value={map.id}>
+                {maps.map((item, index) => <option key={item.id} value={item.id}>{dungeonMapName(item, index)}</option>)}
+              </select>}
               {editing && <input accept="image/jpeg,image/png,image/webp,image/gif" aria-label="Upload map image" className="visually-hidden" onChange={async (event) => {
                 const file = event.currentTarget.files?.[0];
                 event.currentTarget.value = '';
                 if (!file) return;
+                const adding = uploadNewMap.current;
                 setUploading(true);
                 setUploadFailed(false);
                 try {
                   const imageSource = await onUploadImage(file);
-                  if (imageSource) changeMap(imageSource);
+                  if (imageSource) changeMap(imageSource, adding);
                   else setUploadFailed(true);
                 } finally { setUploading(false); }
               }} ref={uploadInput} tabIndex={-1} type="file" />}
               <div className="dungeon-map-stage">
-                <DungeonRoomMap activeRoom={activeRoom} area={area} asset={asset} editable={editing} empty={(unavailable) => (
+                <DungeonRoomMap activeRoom={activeRoom} area={map} asset={asset} editable={editing}
+                  label={maps.length > 1 ? dungeonMapName(map, maps.indexOf(map)) : 'Dungeon map'} empty={(unavailable) => (
                   <div className="dungeon-map-empty">
                     <span className="dungeon-map-emblem"><DungeonIcon name="map" /></span>
                     <h3>{unavailable ? 'Map unavailable' : 'No map yet'}</h3>
                     {editing && <div className="dungeon-map-empty-actions">
-                      <button className="dungeon-button is-secondary" disabled={uploading} onClick={() => uploadInput.current?.click()} type="button">
+                      <button className="dungeon-button is-secondary" disabled={uploading} onClick={() => openMapUpload()} type="button">
                         <DungeonIcon name="upload" /> {uploading ? 'Uploading…' : 'Upload map'}
                       </button>
-                      {(assets.length > 0 || area.imageSource) && <button aria-haspopup="dialog" className="dungeon-button is-quiet" onClick={() => setPopup('map')} type="button">{assets.length ? 'Saved images' : 'Map options'}</button>}
+                      {(assets.length > 0 || map.imageSource) && <button aria-haspopup="dialog" className="dungeon-button is-quiet" onClick={() => setPopup('map')} type="button">{assets.length ? 'Saved images' : 'Map options'}</button>}
                     </div>}
                   </div>
-                )} key={`${area.id}-${area.imageSource ?? ''}`} onMove={movePin} onPlace={(point) => {
+                )} key={`${map.id}-${map.imageSource ?? ''}`} onMove={movePin} onPlace={(point) => {
                   if (!placement) return;
                   if (pinRoom) {
                     movePin(pinRoom.id, point);
-                    selectRoom(pinRoom.id);
+                    selectRoom(map.id, pinRoom.id);
                   } else addRoom(point);
-                }} onSelect={selectRoom} placing={Boolean(placement)} />
+                }} onSelect={(roomId, trigger) => selectRoom(map.id, roomId, trigger)} placing={Boolean(placement)} />
               </div>
               {uploadFailed && <p className="dungeon-upload-error" role="alert">Could not upload the map. Try another image.</p>}
             </section>
@@ -397,18 +399,18 @@ export function DungeonPanel({
                 <h2>Rooms <span className="dungeon-count">{rooms.length}</span></h2>
                 {editing && <button aria-label="Add room" className="dungeon-button is-quiet" onClick={(event) => addRoom(undefined, event.currentTarget)} type="button"><DungeonIcon name="plus" /> Room</button>}
               </header>
-              {rooms.map((room) => {
+              {rooms.map(({ areaId, room }) => {
                 const status = dungeon.progress?.roomStatuses[room.id];
-                return <button aria-current={room.id === activeRoom?.id ? 'location' : undefined} className="dungeon-row dungeon-room-row" key={room.id} onClick={(event) => selectRoom(room.id, event.currentTarget)} type="button">
+                return <button aria-current={room.id === activeRoom?.id ? 'location' : undefined} className="dungeon-row dungeon-room-row" key={room.id} onClick={(event) => selectRoom(areaId, room.id, event.currentTarget)} type="button">
                   <span className="dungeon-number">{roomNumber(room)}</span>
                   <span><strong>{room.name.trim() || 'Untitled room'}</strong>{!editing && status && <small>{status}</small>}</span>
                   <DungeonIcon name="chevron" />
                 </button>;
               })}
-              {!rooms.length && <p className="dungeon-empty-note">{editing ? 'Add rooms with or without a map.' : 'No rooms in this area yet.'}</p>}
+              {!rooms.length && <p className="dungeon-empty-note">{editing ? 'Add rooms with or without a map.' : 'No rooms in this dungeon yet.'}</p>}
             </nav>
 
-            {activeRoom && showRoom ? (
+            {activeRoom && activeEntry && showRoom ? (
               <section aria-label={`Room ${roomNumber(activeRoom)}`} className="dungeon-room-panel dungeon-surface">
                 <button className="dungeon-button is-quiet dungeon-overview-back" onClick={() => setRoomOpen(false)} type="button"><DungeonIcon name="back" /> Map &amp; rooms</button>
                 <header className="dungeon-room-heading">
@@ -423,7 +425,7 @@ export function DungeonPanel({
                 {editing ? (
                   <>
                     {hasImage && <button className="dungeon-button is-quiet dungeon-place-pin" onClick={() => startPlacement(activeRoom.id)} type="button">
-                      <DungeonIcon name="pin" />{area.markers.some((marker) => marker.roomId === activeRoom.id) ? 'Move pin' : 'Place pin'}
+                      <DungeonIcon name="pin" />{map.markers.some((marker) => marker.roomId === activeRoom.id) ? 'Move pin' : 'Place pin'}
                     </button>}
                     <label className="dungeon-field">Read aloud<textarea onChange={(event) => updateRoom({ readAloud: event.target.value })} placeholder="What the players see and hear…" rows={7} value={activeRoom.readAloud} /></label>
                     <label className="dungeon-field">GM notes<textarea onChange={(event) => updateRoom({ notes: event.target.value })} placeholder="Secrets, checks and discoveries…" rows={9} value={activeRoom.notes} /></label>
@@ -431,19 +433,19 @@ export function DungeonPanel({
                 ) : (
                   <>
                     <div aria-label="Room status" className="dungeon-status" role="group">
-                      {(['unvisited', 'visited', 'cleared'] as const).map((status) => <button aria-pressed={roomStatus === status} className="dungeon-button" key={status} onClick={() => onPosition({ areaId: area.id, roomId: activeRoom.id }, status)} type="button">{status}</button>)}
+                      {(['unvisited', 'visited', 'cleared'] as const).map((status) => <button aria-pressed={roomStatus === status} className="dungeon-button" key={status} onClick={() => onPosition({ areaId: activeEntry.areaId, roomId: activeRoom.id }, status)} type="button">{status}</button>)}
                     </div>
                     <DungeonRoomText room={activeRoom} />
                   </>
                 )}
-                <RoomEncounters editing={editing} encounters={encounters} key={activeRoom.id} onCreate={() => onCreateEncounter({ dungeonId: dungeon.id, areaId: area.id, roomId: activeRoom.id })}
-                  onOpen={(encounter) => onOpenEncounter({ dungeonId: dungeon.id, areaId: area.id, roomId: activeRoom.id }, encounter)}
+                <RoomEncounters editing={editing} encounters={encounters} key={activeRoom.id} onCreate={() => onCreateEncounter({ dungeonId: dungeon.id, areaId: activeEntry.areaId, roomId: activeRoom.id })}
+                  onOpen={(encounter) => onOpenEncounter({ dungeonId: dungeon.id, areaId: activeEntry.areaId, roomId: activeRoom.id }, encounter)}
                   onUpdate={updateRoom} room={activeRoom} socialEncounters={socialEncounters} />
                 {editing && <button className="dungeon-button is-quiet is-destructive dungeon-remove-room" onClick={() => {
                   if (!window.confirm(`Remove room ${roomNumber(activeRoom)}?`)) return;
-                  updateArea((current) => ({ ...current, rooms: current.rooms.filter((room) => room.id !== activeRoom.id), markers: current.markers.filter((pin) => pin.roomId !== activeRoom.id) }));
+                  updateArea(activeEntry.areaId, (current) => ({ ...current, rooms: current.rooms.filter((room) => room.id !== activeRoom.id), markers: current.markers.filter((pin) => pin.roomId !== activeRoom.id) }));
                   setRoomOpen(false);
-                  onPosition({ areaId: area.id, roomId: null });
+                  onPosition({ areaId: map.id, roomId: null });
                 }} type="button">Remove room</button>}
               </section>
             ) : <p className="dungeon-room-idle dungeon-surface">{rooms.length ? 'Select a pin or a room to open it.' : 'Room details will appear here.'}</p>}
@@ -451,16 +453,8 @@ export function DungeonPanel({
 
           {popup === 'options' && <DungeonDialog onDismiss={dismiss} title="Dungeon options">
             <button className="dungeon-row" onClick={() => setPopup('dungeon-name')} type="button">Rename dungeon</button>
-            <button className="dungeon-row" onClick={() => setPopup('area-name')} type="button">Rename current area</button>
             <button className="dungeon-row" onClick={() => onInsert(dungeon)} type="button">Insert into brew</button>
             {legacyMoves.length > 0 && <button className="dungeon-row" onClick={() => setPopup('migration')} type="button">Move rooms into dungeon</button>}
-            {dungeon.areas.length > 1 && <button className="dungeon-row is-destructive" onClick={() => {
-              const remaining = dungeon.areas.filter((item) => item.id !== area.id);
-              if (!window.confirm(`Remove “${area.name || 'Untitled area'}” and its rooms?`)) return;
-              onUpdate(dungeon.id, (current) => ({ ...current, areas: current.areas.filter((item) => item.id !== area.id) }));
-              selectArea(remaining[0].id);
-              dismiss();
-            }} type="button">Remove current area</button>}
             <button className="dungeon-row is-destructive" onClick={() => { dismiss(); onDelete(dungeon.id); }} type="button">Delete dungeon</button>
           </DungeonDialog>}
           {popup === 'dungeon-name' && <DungeonDialog onDismiss={dismiss} title="Rename dungeon">
@@ -469,27 +463,22 @@ export function DungeonPanel({
               dismiss();
             }} />
           </DungeonDialog>}
-          {popup === 'area-name' && <DungeonDialog onDismiss={dismiss} title="Rename area">
-            <RenameForm label="Area name" name={area.name} onSave={(name) => {
-              updateArea((current) => ({ ...current, name }));
-              dismiss();
-            }} />
-          </DungeonDialog>}
           {popup === 'migration' && <DungeonDialog onDismiss={dismiss} title="Move rooms into dungeon">
             <MoveRoomsReview dungeon={dungeon} moves={legacyMoves} onMove={onMoveRooms} />
           </DungeonDialog>}
-          {popup === 'map' && <DungeonDialog onDismiss={dismiss} title="Map image">
+          {(popup === 'map' || popup === 'add-map') && <DungeonDialog key={popup} onDismiss={dismiss} title={popup === 'add-map' ? 'Add map' : 'Map image'}>
             <button className="dungeon-button is-primary" disabled={uploading} onClick={(event) => {
               event.currentTarget.closest('dialog')?.close();
               dismiss();
-              uploadInput.current?.click();
-            }} type="button"><DungeonIcon name="upload" /> {area.imageSource ? 'Upload replacement' : 'Upload map'}</button>
+              openMapUpload(popup === 'add-map');
+            }} type="button"><DungeonIcon name="upload" /> {popup === 'map' && map.imageSource ? 'Upload replacement' : 'Upload map'}</button>
             {assets.length > 0 && <h3 className="dungeon-kicker">Saved images</h3>}
-            {assets.map((item) => <button aria-pressed={item.id === asset?.id} className="dungeon-row" key={item.id} onClick={() => {
-              changeMap(`asset://${item.id}`);
+            {assets.map((item) => <button aria-pressed={popup === 'map' && item.id === asset?.id} className="dungeon-row" key={item.id} onClick={() => {
+              changeMap(`asset://${item.id}`, popup === 'add-map');
               dismiss();
             }} type="button">{item.alt || item.name}<DungeonIcon name="chevron" /></button>)}
-            {area.imageSource && <button className="dungeon-row is-destructive" onClick={() => { changeMap(); dismiss(); }} type="button">Remove map image</button>}
+            {popup === 'map' && map.imageSource && <button className="dungeon-row" onClick={() => setPopup('add-map')} type="button">Add map</button>}
+            {popup === 'map' && map.imageSource && <button className="dungeon-row is-destructive" onClick={() => { changeMap(); dismiss(); }} type="button">Remove map image</button>}
           </DungeonDialog>}
         </>}
 
@@ -498,7 +487,7 @@ export function DungeonPanel({
           {dungeons.map((item) => {
             const count = item.areas.reduce((sum, entry) => sum + entry.rooms.length, 0);
             return <button aria-pressed={item.id === dungeon?.id} className="dungeon-row" key={item.id} onClick={() => { dismiss(); if (item.id !== dungeon?.id) onSelect(item.id); }} type="button">
-              <span><strong>{item.name.trim() || 'Untitled dungeon'}</strong><small>{item.areas.length} {item.areas.length === 1 ? 'area' : 'areas'} · {count} {count === 1 ? 'room' : 'rooms'}</small></span>
+              <span><strong>{item.name.trim() || 'Untitled dungeon'}</strong><small>{dungeonRoomSummary(count)}</small></span>
               <DungeonIcon name="chevron" />
             </button>;
           })}

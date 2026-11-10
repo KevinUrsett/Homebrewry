@@ -4,9 +4,10 @@ import remarkGfm from 'remark-gfm';
 import { roomNumber } from '../lib/dungeons';
 import type { BrewAsset, CampaignMapRoom, DungeonArea } from '../types';
 
-export function DungeonRoomMap({ area, asset, activeRoom, editable = false, placing = false, empty, onPlace, onSelect, onMove }: {
+export function DungeonRoomMap({ area, asset, label, activeRoom, editable = false, placing = false, empty, onPlace, onSelect, onMove }: {
   area: DungeonArea;
   asset?: BrewAsset;
+  label?: string;
   activeRoom?: CampaignMapRoom;
   editable?: boolean;
   placing?: boolean;
@@ -51,7 +52,7 @@ export function DungeonRoomMap({ area, asset, activeRoom, editable = false, plac
       const point = pointAt(event);
       if (point) onPlace?.(point);
     }} ref={canvas}>
-      <img alt={area.name || 'Dungeon map'} draggable={false} onError={() => setFailedImage(imageSource)} ref={image} src={remoteUrl} />
+      <img alt={label || area.name || 'Dungeon map'} draggable={false} onError={() => setFailedImage(imageSource)} ref={image} src={remoteUrl} />
       {area.markers.map((pin) => {
         const room = roomsById.get(pin.roomId);
         if (!room) return null;

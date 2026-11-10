@@ -149,12 +149,15 @@ describe('MarkdownEditor encounter references', () => {
 it('opens the same dungeon inline in Edit and Preview, with independent room folds', async () => {
   const dungeon = createDungeon('Sunken vault');
   const area = dungeon.areas[0];
+  area.name = 'Area 1';
   area.imageSource = 'https://example.test/vault.png';
-  area.rooms = [
-    { id: 'gate', name: 'Gate', number: 1, notes: '**Silver latch**', readAloud: 'Cold air pours out.', encounterIds: [], updatedAt: dungeon.updatedAt },
-    { id: 'vault', name: 'Vault', number: 2, notes: '', readAloud: 'The ceiling glitters.', encounterIds: [], updatedAt: dungeon.updatedAt }
-  ];
+  area.rooms = [{ id: 'gate', name: 'Gate', number: 1, notes: '**Silver latch**', readAloud: 'Cold air pours out.', encounterIds: [], updatedAt: dungeon.updatedAt }];
   area.markers = [{ roomId: 'gate', x: 30, y: 40 }];
+  dungeon.areas.push({
+    id: 'lower', name: 'Area 2', imageSource: 'https://example.test/lower.png',
+    rooms: [{ id: 'vault', name: 'Vault', number: 2, notes: '', readAloud: 'The ceiling glitters.', encounterIds: [], updatedAt: dungeon.updatedAt }],
+    markers: [{ roomId: 'vault', x: 40, y: 50 }]
+  });
   const dungeons = new Map([[dungeon.id, dungeon]]);
   const reference = formatDungeonReference({ id: dungeon.id, name: 'Old vault name' });
   const missing = formatDungeonReference({ id: 'a001', name: 'Missing vault' });
@@ -182,17 +185,19 @@ it('opens the same dungeon inline in Edit and Preview, with independent room fol
     expect(editor.querySelector('.cm-inline-reference')).toBeNull();
     expect(editCard.textContent).toBe(previewCard.textContent);
     expect(editCard.getAttribute('aria-label')).toBe('Open Sunken vault');
-    expect(editCard.textContent).toContain('1 area · 2 rooms');
+    expect(editCard.querySelector('.brew-map-card-details > span')?.textContent).toBe('2 rooms');
     expect(editor.querySelector('.brew-dungeon-content')).toBeNull();
 
     await act(async () => {
       editCard.click();
       previewCard.click();
     });
-    const editRooms = [...editor.querySelectorAll<HTMLDetailsElement>('.brew-dungeon-room')];
-    const previewRooms = [...host.querySelectorAll<HTMLDetailsElement>('.brew-preview .brew-dungeon-room')];
+    const editRooms = [...editor.querySelectorAll<HTMLDetailsElement>('.brew-dungeon-content > .brew-dungeon-room')];
+    const previewRooms = [...host.querySelectorAll<HTMLDetailsElement>('.brew-preview .brew-dungeon-content > .brew-dungeon-room')];
     expect(editRooms.map((room) => room.open)).toEqual([true, true]);
     expect(previewRooms.map((room) => room.open)).toEqual([true, true]);
+    expect(editor.querySelector('.brew-dungeon-content')?.textContent).not.toMatch(/Area [12]/);
+    expect([...editor.querySelectorAll<HTMLImageElement>('.brew-dungeon-map img')].map((image) => image.alt)).toEqual(['Map 1', 'Map 2']);
     expect(editRooms[0].textContent).toContain('Cold air pours out.');
     expect(editRooms[0].querySelector('.dungeon-room-notes strong')?.textContent).toBe('Silver latch');
     expect(onOpenDungeon).not.toHaveBeenCalled();

@@ -17,13 +17,16 @@ export function legacyMapId(line: string): string | null {
   return line.match(legacyPattern)?.[1].toLowerCase() ?? null;
 }
 
+export function dungeonRoomSummary(count: number): string {
+  return `${count} room${count === 1 ? '' : 's'}`;
+}
+
 export function dungeonCardDetails(dungeon: DungeonRecord | undefined, label: string) {
   const name = dungeon?.name.trim() || label;
-  const areas = dungeon?.areas.length ?? 0;
   const rooms = dungeon?.areas.reduce((total, area) => total + area.rooms.length, 0) ?? 0;
   return {
     name,
-    summary: dungeon ? `${areas} area${areas === 1 ? '' : 's'} · ${rooms} room${rooms === 1 ? '' : 's'}` : 'Dungeon unavailable on this device',
+    summary: dungeon ? dungeonRoomSummary(rooms) : 'Dungeon unavailable on this device',
     action: dungeon ? 'Open dungeon' : 'Browse dungeons',
     actionLabel: dungeon ? `Open ${name}` : `Find ${name}`,
     missing: !dungeon

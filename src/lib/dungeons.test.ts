@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { parseRendererBlocks } from '../renderer/blocks';
 import type { Brew, CampaignMapRecord } from '../types';
 import { createCampaignDataSnapshot, parseCampaignDataSnapshot } from './campaignData';
-import { campaignDungeons, updateDungeonProgress } from './dungeons';
+import { campaignDungeons, dungeonRooms, placeDungeonPin, updateDungeonProgress } from './dungeons';
 import { dungeonRoomMoves, moveDungeonRooms, prepareInlineDungeonMove } from './dungeonBrewMigration';
 import { formatDungeonReference } from './dungeonReferences';
 import { getOutline, insertAtOutlineSectionEnd } from './outline';
@@ -43,6 +43,26 @@ describe('dungeons', () => {
       { type: 'dungeon-card', dungeonId: 'a001', label: 'The Crypt' }
     ]);
     expect(parseRendererBlocks(['```markdown', reference, '```'].join('\n'))[0].type).toBe('markdown');
+  });
+
+  it('keeps a flat room list and carries room data and progress when a pin moves to another map', () => {
+    const [dungeon] = campaignDungeons({ maps: [legacyMap] });
+    const original = createCampaignDataSnapshot([], [], [], now);
+    const lowerMap = {
+      id: 'lower', name: 'Lower map', imageSource: 'asset://a006',
+      rooms: [{ ...legacyMap.rooms[0], id: 'a007', name: 'Lower Gate', number: 2 }],
+      markers: []
+    };
+    const progressed = updateDungeonProgress({ ...dungeon, areas: [dungeon.areas[0], lowerMap] }, { areaId: legacyMap.id, roomId: 'a003' }, 'visited');
+    const pin = { roomId: 'a003', x: 15, y: 25 };
+    const moved = placeDungeonPin(progressed, lowerMap.id, pin);
+
+    expect(dungeonRooms(moved).map(({ room, areaId }) => [room.id, areaId])).toEqual([['a003', 'lower'], ['a007', 'lower']]);
+    expect(moved.areas[0]).toMatchObject({ imageSource: legacyMap.imageSource, rooms: [], markers: [] });
+    expect(moved.areas[1]).toMatchObject({ imageSource: lowerMap.imageSource, rooms: [lowerMap.rooms[0], legacyMap.rooms[0]], markers: [pin] });
+    expect(moved.progress).toEqual({ areaId: 'lower', roomId: 'a003', roomStatuses: { a003: 'visited' } });
+    const snapshot = createCampaignDataSnapshot([], [], [], now, [], [], [], [], { ...original, dungeons: [moved] });
+    expect(campaignDungeons(parseCampaignDataSnapshot(JSON.parse(JSON.stringify(snapshot))))).toEqual([moved]);
   });
 
   it('moves reviewed brew rooms and keeps the existing map card and encounter references connected', () => {

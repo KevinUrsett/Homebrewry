@@ -16,7 +16,7 @@ import {
 import { catalogueCategories, catalogueCategoryLabel, type CatalogueCategory, type CustomCatalogueCategory } from '../catalogue/types';
 import { normalizeWorldbuildingName, worldbuildingKindLabels, worldbuildingKinds } from '../lib/worldbuilding';
 import { dungeonReferenceLine, legacyMapId } from '../lib/dungeonReferences';
-import type { BrewAsset, DungeonRecord, WorldbuildingKind, WorldbuildingType } from '../types';
+import type { BrewAsset, DungeonRecord, DungeonRoomTextChange, WorldbuildingKind, WorldbuildingType } from '../types';
 import { BrewDungeonCard, type BrewDungeonCardState } from './BrewDungeonCard';
 
 export type MarkdownEditorHandle = {
@@ -47,6 +47,7 @@ type MarkdownEditorProps = {
   onOpenDungeonMap?: (title: string) => void;
   dungeons?: ReadonlyMap<string, DungeonRecord>;
   onOpenDungeon?: DungeonOpenHandler;
+  onDungeonRoomTextChange?: DungeonRoomTextChange;
   onOpenEncounter?: (encounterId: string) => void;
 };
 
@@ -313,7 +314,8 @@ class DungeonCardWidget extends WidgetType {
     const disclosure = (target: EventTarget | null) =>
       target instanceof Element ? target.closest<HTMLElement>('button.brew-dungeon-header, .brew-dungeon-room > summary') : null;
     const preventEditorFocus = (event: MouseEvent) => {
-      if (event.button === 0 && disclosure(event.target)) event.preventDefault();
+      if (event.button !== 0 || !(event.target instanceof Element)) return;
+      if (disclosure(event.target) || event.target.closest('.dungeon-room-edit-text')) event.preventDefault();
     };
     // Safari can place a caret in the surrounding editable text on pointer down.
     node.addEventListener('pointerdown', preventEditorFocus);
@@ -473,6 +475,7 @@ export function MarkdownEditor({
   onOpenDungeonMap,
   dungeons = emptyDungeons,
   onOpenDungeon,
+  onDungeonRoomTextChange,
   onOpenEncounter,
   ref
 }: MarkdownEditorProps & { ref?: Ref<MarkdownEditorHandle> }) {
@@ -686,7 +689,7 @@ export function MarkdownEditor({
         const dungeon = dungeons.get(widget.dungeonId);
         return createPortal(<BrewDungeonCard assets={assets} dungeon={dungeon} initialState={widget.viewState} label={widget.label}
           onBrowse={!dungeon && onOpenDungeon ? () => onOpenDungeon(widget.dungeonId, getPosition()) : undefined}
-          onStateChange={widget.rememberViewState} />, node, key);
+          onRoomTextChange={onDungeonRoomTextChange} onStateChange={widget.rememberViewState} />, node, key);
       })}
       {mobileReferenceSelection && !referenceMenu && (
         <button

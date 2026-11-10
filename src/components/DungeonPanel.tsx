@@ -1,5 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { createDungeonArea, dungeonMapName, dungeonRooms, placeDungeonPin, roomNumber, updateDungeonArea } from '../lib/dungeons';
+import { createDungeonArea, dungeonMapName, dungeonRooms, placeDungeonPin, roomNumber, updateDungeonArea, updateDungeonRoom } from '../lib/dungeons';
 import { dungeonRoomSummary } from '../lib/dungeonReferences';
 import { DungeonRoomMap, DungeonRoomText } from './DungeonRoomContent';
 import type { DungeonRoomMove } from '../lib/dungeonBrewMigration';
@@ -268,11 +268,8 @@ export function DungeonPanel({
     if (dungeon) onUpdateArea(dungeon.id, areaId, update);
   };
   const updateRoom = (changes: Partial<CampaignMapRoom>) => {
-    if (!activeEntry) return;
-    updateArea(activeEntry.areaId, (current) => ({
-      ...current,
-      rooms: current.rooms.map((room) => room.id === activeEntry.room.id ? { ...room, ...changes, updatedAt: new Date().toISOString() } : room)
-    }));
+    if (!dungeon || !activeEntry) return;
+    onUpdate(dungeon.id, (current) => updateDungeonRoom(current, activeEntry.areaId, activeEntry.room.id, changes));
   };
   const addRoom = (point?: { x: number; y: number }, trigger?: HTMLButtonElement) => {
     if (!dungeon || !map) return;

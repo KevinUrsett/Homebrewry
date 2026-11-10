@@ -8,7 +8,7 @@ import { remarkAutoReferences } from '../lib/autoReferences';
 import { getHeadingId } from '../lib/outline';
 import { parseRendererBlocks, splitRendererPages, type RendererBlock } from '../renderer/blocks';
 import { catalogueCategoryLabel, type CatalogueEntry, type CustomCatalogueCategory } from '../catalogue/types';
-import type { Brew, BrewAsset, DungeonRecord, Encounter, WorldbuildingEntry, WorldbuildingType } from '../types';
+import type { Brew, BrewAsset, DungeonRecord, DungeonRoomTextChange, Encounter, WorldbuildingEntry, WorldbuildingType } from '../types';
 import { BrewDungeonCard } from './BrewDungeonCard';
 import { CatalogueEntryDetails } from './CatalogueEntryDetails';
 import { WorldbuildingReferenceDetails } from './WorldbuildingReferenceDetails';
@@ -35,6 +35,7 @@ type BrewPreviewProps = {
   onRemoveDungeonRoom?: (title: string, number: string) => void;
   dungeons?: ReadonlyMap<string, DungeonRecord>;
   onDungeonOpen?: (dungeonId: string, anchor: string) => void;
+  onDungeonRoomTextChange?: DungeonRoomTextChange;
   onMoveInlineDungeon?: (block: Extract<RendererBlock, { type: 'dungeon' }>, anchor: string) => void;
 };
 
@@ -365,6 +366,7 @@ function renderBlock(
   onRemoveDungeonRoom: ((title: string, number: string) => void) | undefined,
   dungeons: BrewPreviewProps['dungeons'],
   onDungeonOpen: BrewPreviewProps['onDungeonOpen'],
+  onDungeonRoomTextChange: BrewPreviewProps['onDungeonRoomTextChange'],
   onMoveInlineDungeon: BrewPreviewProps['onMoveInlineDungeon'],
   key: string
 ) {
@@ -395,7 +397,8 @@ function renderBlock(
     const anchor = `dungeon-${key}`;
     const dungeon = dungeons?.get(dungeonId);
     return <BrewDungeonCard anchor={anchor} assets={assets} dungeon={dungeon} interactive={Boolean(onDungeonOpen)} key={`${key}-${dungeonId}`}
-      label={block.type === 'map' ? 'Dungeon' : block.label} onBrowse={!dungeon && onDungeonOpen ? () => onDungeonOpen(dungeonId, anchor) : undefined} />;
+      label={block.type === 'map' ? 'Dungeon' : block.label} onBrowse={!dungeon && onDungeonOpen ? () => onDungeonOpen(dungeonId, anchor) : undefined}
+      onRoomTextChange={onDungeonRoomTextChange} />;
   }
   if (block.type === 'callout') {
     return (
@@ -413,7 +416,7 @@ function renderBlock(
   return <CharacterBlock block={block} getId={getId} key={key} {...dependencies} />;
 }
 
-export const BrewPreview = memo(function BrewPreview({ brew, printing, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen, onOpenInWorldbuilding, onDeleteWorldbuildingReference, onAddWorldbuildingNote, onAddDungeonMarker, onMoveDungeonMarker, onRenameDungeonRoom, onRemoveDungeonRoom, dungeons, onDungeonOpen, onMoveInlineDungeon }: BrewPreviewProps) {
+export const BrewPreview = memo(function BrewPreview({ brew, printing, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen, onOpenInWorldbuilding, onDeleteWorldbuildingReference, onAddWorldbuildingNote, onAddDungeonMarker, onMoveDungeonMarker, onRenameDungeonRoom, onRemoveDungeonRoom, dungeons, onDungeonOpen, onDungeonRoomTextChange, onMoveInlineDungeon }: BrewPreviewProps) {
   const headingOccurrences = new Map<string, number>();
   const getId = (children: ReactNode) => {
     const text = String(children);
@@ -430,7 +433,7 @@ export const BrewPreview = memo(function BrewPreview({ brew, printing, assets, c
     >
       {pages.map((page, pageIndex) => (
         <article className="brew-preview brew-continuous" key={`page-${pageIndex}`}>
-          {page.map((block, blockIndex) => renderBlock(block, getId, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen, onOpenInWorldbuilding, onDeleteWorldbuildingReference, onAddWorldbuildingNote, onAddDungeonMarker, onMoveDungeonMarker, onRenameDungeonRoom, onRemoveDungeonRoom, dungeons, printing ? undefined : onDungeonOpen, onMoveInlineDungeon, `page-${pageIndex}-block-${blockIndex}`))}
+          {page.map((block, blockIndex) => renderBlock(block, getId, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen, onOpenInWorldbuilding, onDeleteWorldbuildingReference, onAddWorldbuildingNote, onAddDungeonMarker, onMoveDungeonMarker, onRenameDungeonRoom, onRemoveDungeonRoom, dungeons, printing ? undefined : onDungeonOpen, onDungeonRoomTextChange, onMoveInlineDungeon, `page-${pageIndex}-block-${blockIndex}`))}
           <span aria-hidden className="brew-page-number">{pageIndex + 1}</span>
         </article>
       ))}
@@ -446,4 +449,5 @@ export const BrewPreview = memo(function BrewPreview({ brew, printing, assets, c
   && previous.worldbuilding === next.worldbuilding
   && previous.worldbuildingTypes === next.worldbuildingTypes
   && previous.dungeons === next.dungeons
+  && previous.onDungeonRoomTextChange === next.onDungeonRoomTextChange
 );

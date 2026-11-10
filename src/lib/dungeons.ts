@@ -38,6 +38,16 @@ export function updateDungeonArea(dungeon: DungeonRecord, areaId: string, update
   return { ...dungeon, areas: dungeon.areas.map((area) => area.id === areaId ? update(area) : area) };
 }
 
+export function updateDungeonRoom(dungeon: DungeonRecord, areaId: string, roomId: string, changes: Partial<CampaignMapRoom>): DungeonRecord {
+  const area = dungeon.areas.find((item) => item.id === areaId);
+  if (!area?.rooms.some((room) => room.id === roomId)) return dungeon;
+  const updatedAt = new Date().toISOString();
+  return updateDungeonArea(dungeon, areaId, (current) => ({
+    ...current,
+    rooms: current.rooms.map((room) => room.id === roomId ? { ...room, ...changes, updatedAt } : room)
+  }));
+}
+
 export function placeDungeonPin(dungeon: DungeonRecord, mapId: string, pin: CampaignMapMarker): DungeonRecord {
   const source = dungeon.areas.find((area) => area.rooms.some((room) => room.id === pin.roomId));
   const room = source?.rooms.find((item) => item.id === pin.roomId);

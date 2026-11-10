@@ -76,7 +76,7 @@
   -webkit-user-select: none;
   user-select: none;
 }
-.brew-preview .dungeon-read-aloud > p { text-indent: 0; }
+.brew-preview .dungeon-read-aloud p { text-indent: 0; }
 .brew-dungeon-room-text .dungeon-room-notes > h4 {
   color: var(--dungeon-muted);
   font: 700 .68rem/1.4 Inter, sans-serif;
@@ -85,6 +85,33 @@
   text-transform: uppercase;
 }
 .brew-dungeon-room-text .dungeon-room-notes > p:last-child { margin-bottom: 0; }
+.dungeon-room-text-field { min-height: 28px; position: relative; }
+.dungeon-room-formatted-text > :first-child { margin-block-start: 0; }
+.dungeon-room-formatted-text > :last-child { margin-block-end: 0; }
+.dungeon-room-formatted-text a { position: relative; z-index: 2; }
+.dungeon-room-edit-text {
+  background: none;
+  border: 0;
+  cursor: text;
+  inset: 0;
+  position: absolute;
+  z-index: 1;
+}
+.dungeon-read-aloud .dungeon-room-edit-text { inset: -10px -12px; }
+.dungeon-room-text-field > textarea {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  display: block;
+  field-sizing: content;
+  font: inherit;
+  font-size: max(16px, 1em);
+  max-height: 50dvh;
+  min-height: 4.5em;
+  padding: 0;
+  resize: vertical;
+  width: 100%;
+}
 .brew-dungeon-content .dungeon-empty-note { margin: 0; padding: 0; }
 .brew-dungeon-content > .dungeon-empty-note { padding-inline: var(--dungeon-inset); }
 @media (hover: hover) {

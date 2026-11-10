@@ -1,7 +1,7 @@
 import { memo, useId, useLayoutEffect, useRef, useState } from 'react';
 import { dungeonCardDetails } from '../lib/dungeonReferences';
 import { dungeonMapName, dungeonRooms } from '../lib/dungeons';
-import type { BrewAsset, DungeonRecord } from '../types';
+import type { BrewAsset, DungeonRecord, DungeonRoomTextChange } from '../types';
 import { DungeonRoomMap, DungeonRoomText } from './DungeonRoomContent';
 import '../brew-dungeon.css';
 
@@ -12,12 +12,13 @@ export type BrewDungeonCardState = {
 
 const closedCard: BrewDungeonCardState = { expanded: false, foldedRooms: new Set() };
 
-function BrewDungeonContent({ dungeon, id, assets, foldedRooms, onFold }: {
+function BrewDungeonContent({ dungeon, id, assets, foldedRooms, onFold, onRoomTextChange }: {
   dungeon: DungeonRecord;
   id: string;
   assets?: ReadonlyMap<string, BrewAsset>;
   foldedRooms: ReadonlySet<string>;
   onFold: (key: string, folded: boolean) => void;
+  onRoomTextChange?: DungeonRoomTextChange;
 }) {
   const section = useRef<HTMLDivElement>(null);
   const rooms = dungeonRooms(dungeon);
@@ -40,11 +41,13 @@ function BrewDungeonContent({ dungeon, id, assets, foldedRooms, onFold }: {
             key={map.imageSource} onSelect={jumpToRoom} />
         </div>
       ))}
-      {rooms.map(({ room }) => (
+      {rooms.map(({ room, areaId }) => (
         <details className="brew-dungeon-room" data-room-id={room.id} key={room.id} open={!foldedRooms.has(room.id)}
           onToggle={(event) => onFold(room.id, !event.currentTarget.open)}>
           <summary><strong>{room.name.trim() || 'Untitled room'}</strong></summary>
-          <div className="brew-dungeon-room-text"><DungeonRoomText room={room} heading="h4" /></div>
+          <div className="brew-dungeon-room-text">
+            <DungeonRoomText room={room} heading="h4" onTextChange={onRoomTextChange && ((field, value) => onRoomTextChange(dungeon.id, areaId, room.id, field, value))} />
+          </div>
         </details>
       ))}
       {!rooms.length && <p className="dungeon-empty-note">No rooms in this dungeon yet.</p>}
@@ -52,7 +55,7 @@ function BrewDungeonContent({ dungeon, id, assets, foldedRooms, onFold }: {
   );
 }
 
-export const BrewDungeonCard = memo(function BrewDungeonCard({ dungeon, label, anchor, assets, interactive = true, initialState = closedCard, onStateChange, onBrowse }: {
+export const BrewDungeonCard = memo(function BrewDungeonCard({ dungeon, label, anchor, assets, interactive = true, initialState = closedCard, onStateChange, onBrowse, onRoomTextChange }: {
   dungeon?: DungeonRecord;
   label: string;
   anchor?: string;
@@ -61,6 +64,7 @@ export const BrewDungeonCard = memo(function BrewDungeonCard({ dungeon, label, a
   initialState?: BrewDungeonCardState;
   onStateChange?: (state: BrewDungeonCardState) => void;
   onBrowse?: () => void;
+  onRoomTextChange?: DungeonRoomTextChange;
 }) {
   const [state, setState] = useState(initialState);
   const bodyId = useId();
@@ -97,7 +101,7 @@ export const BrewDungeonCard = memo(function BrewDungeonCard({ dungeon, label, a
           {!dungeon && <span className="brew-dungeon-browse">Browse dungeons</span>}
         </button>
       ) : <div className="brew-dungeon-header">{details}</div>}
-      {expanded && dungeon && <BrewDungeonContent assets={assets} dungeon={dungeon} foldedRooms={state.foldedRooms} id={bodyId} onFold={foldRoom} />}
+      {expanded && dungeon && <BrewDungeonContent assets={assets} dungeon={dungeon} foldedRooms={state.foldedRooms} id={bodyId} onFold={foldRoom} onRoomTextChange={onRoomTextChange} />}
     </section>
   );
 });

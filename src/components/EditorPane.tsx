@@ -2,7 +2,7 @@ import { type RefObject, useRef } from 'react';
 import { MarkdownEditor, type MarkdownEditorHandle } from './MarkdownEditor';
 import { ReferenceMenu } from './ReferenceMenu';
 import type { CatalogueCategory, CustomCatalogueCategory } from '../catalogue/types';
-import type { BrewAsset, DungeonRecord, WorldbuildingKind, WorldbuildingType } from '../types';
+import type { BrewAsset, DungeonRecord, DungeonRoomTextChange, WorldbuildingKind, WorldbuildingType } from '../types';
 
 type EditorPaneProps = {
   title: string;
@@ -37,6 +37,7 @@ type EditorPaneProps = {
   onOpenDungeons: () => void;
   dungeons: ReadonlyMap<string, DungeonRecord>;
   onOpenDungeon: (dungeonId: string, position: number) => void;
+  onDungeonRoomTextChange: DungeonRoomTextChange;
   onToggleSpellcheck: () => void;
   onFindChange: (value: string) => void;
   onReplaceChange: (value: string) => void;
@@ -77,6 +78,7 @@ export function EditorPane({
   onOpenDungeons,
   dungeons,
   onOpenDungeon,
+  onDungeonRoomTextChange,
   onToggleSpellcheck,
   onFindChange,
   onReplaceChange,
@@ -144,6 +146,7 @@ export function EditorPane({
         assets={assets}
         dungeons={dungeons}
         onOpenDungeon={onOpenDungeon}
+        onDungeonRoomTextChange={onDungeonRoomTextChange}
         onOpenEncounter={onOpenEncounter}
         onRotateImage={onRotateImage}
         onDeleteImage={onDeleteImage}

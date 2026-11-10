@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CompendiumPanel } from './components/CompendiumPanel';
 import { CampaignPanel, type PlotBeatDraftSeed } from './components/CampaignPanel';
 import { BrewPreview } from './components/BrewPreview';
@@ -46,7 +46,7 @@ import { keepBothCampaignDataVersions, keepDriveCampaignData, overwriteDriveCamp
 import { keepBothVersions, resolveWithDriveVersion } from './lib/conflicts';
 import { isGoogleConfigured, requestDriveAccess } from './lib/googleIdentity';
 import { getOutline, getOutlineLocations, insertAtOutlineSectionEnd } from './lib/outline';
-import { campaignDungeons, cleanDungeonProgress, createDungeon, updateDungeonArea, updateDungeonProgress } from './lib/dungeons';
+import { campaignDungeons, cleanDungeonProgress, createDungeon, updateDungeonArea, updateDungeonProgress, updateDungeonRoom } from './lib/dungeons';
 import { dungeonRoomMoves, moveDungeonRooms, prepareInlineDungeonMove, type DungeonRoomMove } from './lib/dungeonBrewMigration';
 import { formatDungeonReference } from './lib/dungeonReferences';
 import { isLocalPreviewMode } from './lib/runtimeMode';
@@ -85,7 +85,7 @@ import { formatWorldbuildingReference } from './lib/worldbuildingReferences';
 import { mergeReferenceReviews, referenceNameKey } from './lib/brewReferenceScan';
 import type { GeneratedName } from './lib/nameGenerator';
 import { catalogueCategoryLabel, catalogueCategoryLabels, type CatalogueCategory, type CatalogueEntry, type CustomCatalogueCategory, type CustomCatalogueEntry } from './catalogue/types';
-import type { Brew, BrewAsset, BrewReferenceReview, CampaignDataSyncMetadata, CampaignMap, DungeonPosition, DungeonRecord, DungeonRoomStatus, Encounter, IdeaDraft, LivingWorldData, MobileSection, PartyMember, PlotBoard, PrivateMonsterSyncMetadata, SocialEncounter, ViewMode, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from './types';
+import type { Brew, BrewAsset, BrewReferenceReview, CampaignDataSyncMetadata, CampaignMap, DungeonPosition, DungeonRecord, DungeonRoomStatus, DungeonRoomTextChange, Encounter, IdeaDraft, LivingWorldData, MobileSection, PartyMember, PlotBoard, PrivateMonsterSyncMetadata, SocialEncounter, ViewMode, WorldbuildingEntry, WorldbuildingKind, WorldbuildingType } from './types';
 
 const mobileLabels: Record<MobileSection, string> = {
   library: 'Brews',
@@ -721,6 +721,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
 
   const persistDungeons = (world: LivingWorldData, records: DungeonRecord[]) => {
     const next = { ...world, maps: undefined, dungeons: records };
+    campaignMutationRef.current += 1;
     campaignRecordsRef.current.livingWorld = next;
     setLivingWorld(next);
     setSaveState('Saving dungeon…');
@@ -739,6 +740,15 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
     const next = cleanDungeonProgress({ ...updated, updatedAt: new Date().toISOString(), version: dungeon.version + 1 });
     persistDungeons(world, records.map((item) => item.id === id ? next : item));
   };
+
+  const roomTextChangeRef = useRef<DungeonRoomTextChange | null>(null);
+  // Keep the preview memoized while the brew source editor is typing.
+  useLayoutEffect(() => {
+    roomTextChangeRef.current = (dungeonId, areaId, roomId, field, value) => {
+      updateDungeon(dungeonId, (dungeon) => updateDungeonRoom(dungeon, areaId, roomId, { [field]: value }));
+    };
+  });
+  const updateDungeonRoomText = useCallback<DungeonRoomTextChange>((...args) => roomTextChangeRef.current?.(...args), []);
 
   const createDungeonRecord = () => {
     const world = campaignRecordsRef.current.livingWorld ?? livingWorld;
@@ -2452,6 +2462,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
               dungeons={dungeonRecords}
               onOpenDungeons={() => openDungeonFromBrew({ mode: 'editor' })}
               onOpenDungeon={(id, position) => openDungeonFromBrew({ mode: 'editor', position }, id)}
+              onDungeonRoomTextChange={updateDungeonRoomText}
               onToggleSpellcheck={() => setSpellcheckEnabled((current) => { const next = !current; localStorage.setItem('homebrewry-spellcheck', next ? 'on' : 'off'); return next; })}
               onUndo={undo}
               replaceValue={replaceValue}
@@ -2468,6 +2479,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
                   encounters={encounterMap}
                   dungeons={dungeonRecords}
                   onDungeonOpen={(id, anchor) => openDungeonFromBrew({ mode: 'preview', anchor }, id)}
+                  onDungeonRoomTextChange={updateDungeonRoomText}
                   onMoveInlineDungeon={(block, anchor) => { void moveInlineDungeon(block, anchor); }}
                   onEncounterOpen={openEncounters}
                   onReferenceOpen={openReferenceEntry}

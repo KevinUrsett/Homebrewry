@@ -1,8 +1,9 @@
 import { memo, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { flushSync } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { roomNumber } from '../lib/dungeons';
-import type { BrewAsset, CampaignMapRoom, DungeonArea } from '../types';
+import type { BrewAsset, CampaignMapRoom, DungeonArea, DungeonRoomTextField } from '../types';
 
 export function DungeonRoomMap({ area, asset, label, activeRoom, editable = false, placing = false, empty, onPlace, onSelect, onMove }: {
   area: DungeonArea;
@@ -88,15 +89,51 @@ export function DungeonRoomMap({ area, asset, label, activeRoom, editable = fals
   );
 }
 
-export const DungeonRoomText = memo(function DungeonRoomText({ room, heading: Heading = 'h3' }: {
+function RoomTextField({ label, value, placeholder, onChange }: {
+  label: string;
+  value: string;
+  placeholder: string;
+  onChange?: (value: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const input = useRef<HTMLTextAreaElement>(null);
+  const markdown = <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{value}</ReactMarkdown>;
+  if (!onChange) return markdown;
+
+  return <div className="dungeon-room-text-field">
+    {editing ? (
+      <textarea aria-label={label} onBlur={() => setEditing(false)} onChange={(event) => onChange(event.currentTarget.value)}
+        placeholder={placeholder} ref={input} rows={4} value={value} />
+    ) : (
+      <>
+        <button aria-label={`Edit ${label}`} className="dungeon-room-edit-text" onClick={() => {
+          // Focus within the tap so iOS opens the keyboard for this field.
+          flushSync(() => setEditing(true));
+          input.current?.focus();
+        }} onMouseDown={(event) => event.preventDefault()} title={`Edit ${label}`} type="button" />
+        <div className="dungeon-room-formatted-text">{value.trim() ? markdown : <p className="dungeon-empty-note">{placeholder}</p>}</div>
+      </>
+    )}
+  </div>;
+}
+
+export const DungeonRoomText = memo(function DungeonRoomText({ room, heading: Heading = 'h3', onTextChange }: {
   room: CampaignMapRoom;
   heading?: 'h3' | 'h4';
+  onTextChange?: (field: DungeonRoomTextField, value: string) => void;
 }) {
   return (
     <>
-      {room.readAloud && <div aria-label="Read aloud" className="dungeon-read-aloud" role="group"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{room.readAloud}</ReactMarkdown></div>}
-      {room.notes && <div className="dungeon-room-notes"><Heading>GM notes</Heading><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{room.notes}</ReactMarkdown></div>}
-      {!room.readAloud && !room.notes && <p className="dungeon-empty-note">No notes for this room yet.</p>}
+      {(room.readAloud || onTextChange) && <div aria-label="Read aloud" className="dungeon-read-aloud" role="group">
+        <RoomTextField label="Read aloud" onChange={onTextChange && ((value) => onTextChange('readAloud', value))}
+          placeholder="Add read-aloud text…" value={room.readAloud} />
+      </div>}
+      {(room.notes || onTextChange) && <div className="dungeon-room-notes">
+        <Heading>GM notes</Heading>
+        <RoomTextField label="GM notes" onChange={onTextChange && ((value) => onTextChange('notes', value))}
+          placeholder="Add GM notes…" value={room.notes} />
+      </div>}
+      {!onTextChange && !room.readAloud && !room.notes && <p className="dungeon-empty-note">No notes for this room yet.</p>}
     </>
   );
 });

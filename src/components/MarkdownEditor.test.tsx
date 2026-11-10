@@ -1,13 +1,13 @@
 /* @vitest-environment jsdom */
-import { act } from 'react';
+import { act, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { EditorView } from '@codemirror/view';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createDungeon } from '../lib/dungeons';
+import { createDungeon, updateDungeonRoom } from '../lib/dungeons';
 import { formatDungeonReference } from '../lib/dungeonReferences';
 import { BrewPreview } from './BrewPreview';
 import { MarkdownEditor } from './MarkdownEditor';
-import type { BrewAsset } from '../types';
+import type { BrewAsset, DungeonRoomTextChange } from '../types';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -158,7 +158,6 @@ it('opens the same dungeon inline in Edit and Preview, with independent room fol
     rooms: [{ id: 'vault', name: 'Vault', number: 2, notes: '', readAloud: 'The ceiling glitters.', encounterIds: [], updatedAt: dungeon.updatedAt }],
     markers: [{ roomId: 'vault', x: 40, y: 50 }]
   });
-  const dungeons = new Map([[dungeon.id, dungeon]]);
   const reference = formatDungeonReference({ id: dungeon.id, name: 'Old vault name' });
   const missing = formatDungeonReference({ id: 'a001', name: 'Missing vault' });
   const prefix = '# Session\n\n';
@@ -168,16 +167,23 @@ it('opens the same dungeon inline in Edit and Preview, with independent room fol
   document.body.append(host);
   const root = createRoot(host);
 
+  function BrewWithDungeon() {
+    const [record, setRecord] = useState(dungeon);
+    const dungeons = new Map([[record.id, record]]);
+    const changeRoomText: DungeonRoomTextChange = (id, areaId, roomId, field, value) => {
+      setRecord((current) => id === current.id ? updateDungeonRoom(current, areaId, roomId, { [field]: value }) : current);
+    };
+    return <>
+      <MarkdownEditor content={content} dungeons={dungeons} onChange={() => undefined} onOpenDungeon={onOpenDungeon} onDungeonRoomTextChange={changeRoomText} />
+      <BrewPreview brew={{
+        id: 'brew', title: 'Session', content, version: 1, createdAt: dungeon.createdAt, updatedAt: dungeon.updatedAt,
+        rendererSettings: { accentColor: '#6a2f26', parchmentTone: 'warm' }
+      }} dungeons={dungeons} onDungeonOpen={() => undefined} onDungeonRoomTextChange={changeRoomText} />
+    </>;
+  }
+
   try {
-    await act(async () => {
-      root.render(<>
-        <MarkdownEditor content={content} dungeons={dungeons} onChange={() => undefined} onOpenDungeon={onOpenDungeon} />
-        <BrewPreview brew={{
-          id: 'brew', title: 'Session', content, version: 1, createdAt: dungeon.createdAt, updatedAt: dungeon.updatedAt,
-          rendererSettings: { accentColor: '#6a2f26', parchmentTone: 'warm' }
-        }} dungeons={dungeons} onDungeonOpen={() => undefined} />
-      </>);
-    });
+    await act(async () => root.render(<BrewWithDungeon />));
 
     const editor = host.querySelector<HTMLElement>('.cm-editor')!;
     const view = EditorView.findFromDOM(editor)!;
@@ -216,6 +222,23 @@ it('opens the same dungeon inline in Edit and Preview, with independent room fol
     expect(editRooms[0].textContent).toContain('Cold air pours out.');
     expect(editRooms[0].querySelector('.dungeon-room-notes strong')?.textContent).toBe('Silver latch');
     expect(onOpenDungeon).not.toHaveBeenCalled();
+
+    const editRoomText = async (room: HTMLDetailsElement, label: string, value: string) => {
+      await act(async () => room.querySelector<HTMLButtonElement>(`[aria-label="Edit ${label}"]`)!.click());
+      const field = room.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${label}"]`)!;
+      expect(document.activeElement).toBe(field);
+      await act(async () => {
+        Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(field, value);
+        field.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      await act(async () => field.blur());
+    };
+    await editRoomText(editRooms[0], 'Read aloud', 'A **warm wind** rises.');
+    expect(previewRooms[0].querySelector('.dungeon-read-aloud strong')?.textContent).toBe('warm wind');
+    await editRoomText(previewRooms[1], 'GM notes', 'Watch for the **tripwire**.');
+    expect(editRooms[1].querySelector('.dungeon-room-notes strong')?.textContent).toBe('tripwire');
+    expect(editRooms[0].querySelector('.dungeon-room-notes strong')?.textContent).toBe('Silver latch');
+    expect(view.state.doc.toString()).toBe(content);
 
     await act(async () => editRooms[0].querySelector('summary')!.click());
     expect(editRooms.map((room) => room.open)).toEqual([false, true]);

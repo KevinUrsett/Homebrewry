@@ -380,6 +380,9 @@ export type DungeonRoomStatus = 'visited' | 'cleared';
 
 export type DungeonPosition = { areaId: string; roomId: string | null };
 
+export type DungeonRoomTextField = 'readAloud' | 'notes';
+export type DungeonRoomTextChange = (dungeonId: string, areaId: string, roomId: string, field: DungeonRoomTextField, value: string) => void;
+
 export type DungeonRecord = {
   id: string;
   name: string;

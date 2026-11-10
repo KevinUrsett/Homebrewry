@@ -57,7 +57,8 @@
 .brew-dungeon-map .maps-canvas > img { border-radius: 6px; height: auto; max-height: min(65dvh, 520px); max-width: 100%; width: auto; }
 .brew-dungeon-map .map-number-pin { height: 34px; touch-action: manipulation; width: 34px; }
 .brew-dungeon-map .map-number-pin::after { content: ''; inset: -5px; position: absolute; }
-.brew-dungeon-room { --room-indent: 1.75rem; scroll-margin-top: 12px; }
+.brew-dungeon-room { scroll-margin-top: 12px; }
+.brew-dungeon-room + .brew-dungeon-room { border-top: 1px solid #a65b4b; padding-top: 4px; }
 .brew-dungeon-room > summary {
   align-items: center;
   border-radius: 6px;
@@ -70,8 +71,11 @@
 .brew-dungeon-room > summary::-webkit-details-marker { display: none; }
 .brew-dungeon-room > summary > strong { margin-right: 12px; min-width: 0; }
 .brew-dungeon-room > summary:focus-visible { outline: 2px solid #8a6a30; outline-offset: 2px; }
-.brew-dungeon-room-number { color: var(--dungeon-muted); flex: none; font: 700 .78rem/1.2 Inter, sans-serif; font-variant-numeric: tabular-nums; min-width: var(--room-indent); padding-right: 6px; }
-.brew-dungeon-room-text { display: grid; gap: 12px; padding: 0 var(--dungeon-inset) 10px calc(var(--dungeon-inset) + var(--room-indent)); }
+.brew-dungeon-room-text { display: grid; gap: 12px; padding: 0 var(--dungeon-inset) 10px; }
+.cm-dungeon-card-widget :is(.brew-dungeon-header, .brew-dungeon-room > summary) {
+  -webkit-user-select: none;
+  user-select: none;
+}
 .brew-dungeon-room-text .dungeon-read-aloud { background: none; border: 0; padding: 0; }
 .brew-dungeon-room-text .dungeon-read-aloud > p { font-style: italic; }
 .brew-dungeon-room-text :is(.dungeon-read-aloud, .dungeon-room-notes) > h4 {

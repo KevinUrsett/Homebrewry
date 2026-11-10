@@ -180,6 +180,7 @@ it('opens the same dungeon inline in Edit and Preview, with independent room fol
     });
 
     const editor = host.querySelector<HTMLElement>('.cm-editor')!;
+    const view = EditorView.findFromDOM(editor)!;
     const editCard = editor.querySelector<HTMLButtonElement>('button.brew-dungeon-header')!;
     const previewCard = host.querySelector<HTMLButtonElement>('.brew-preview button.brew-dungeon-header')!;
     expect(editor.querySelector('.cm-inline-reference')).toBeNull();
@@ -188,14 +189,28 @@ it('opens the same dungeon inline in Edit and Preview, with independent room fol
     expect(editCard.querySelector('.brew-dungeon-caption')?.textContent).toBe('Dungeon · 2 rooms');
     expect(editor.querySelector('.brew-dungeon-content')).toBeNull();
 
+    act(() => {
+      view.dispatch({ selection: { anchor: 3 } });
+      view.focus();
+    });
+    expect(document.activeElement).toBe(view.contentDOM);
+    for (const type of ['pointerdown', 'mousedown']) {
+      const press = new MouseEvent(type, { bubbles: true, cancelable: true });
+      editCard.querySelector('strong')!.dispatchEvent(press);
+      expect(press.defaultPrevented).toBe(true);
+    }
     await act(async () => {
       editCard.click();
       previewCard.click();
     });
+    expect(document.activeElement).toBe(editCard);
+    expect(view.state.selection.main.head).toBe(3);
     const editRooms = [...editor.querySelectorAll<HTMLDetailsElement>('.brew-dungeon-content > .brew-dungeon-room')];
     const previewRooms = [...host.querySelectorAll<HTMLDetailsElement>('.brew-preview .brew-dungeon-content > .brew-dungeon-room')];
     expect(editRooms.map((room) => room.open)).toEqual([true, true]);
     expect(previewRooms.map((room) => room.open)).toEqual([true, true]);
+    expect(editRooms.map((room) => room.querySelector('summary')?.textContent)).toEqual(['Gate', 'Vault']);
+    expect(previewRooms.map((room) => room.querySelector('summary')?.textContent)).toEqual(['Gate', 'Vault']);
     expect(editor.querySelector('.brew-dungeon-content')?.textContent).not.toMatch(/Area [12]/);
     expect([...editor.querySelectorAll<HTMLImageElement>('.brew-dungeon-map img')].map((image) => image.alt)).toEqual(['Map 1', 'Map 2']);
     expect(editRooms[0].textContent).toContain('Cold air pours out.');
@@ -218,7 +233,6 @@ it('opens the same dungeon inline in Edit and Preview, with independent room fol
     expect([...editor.querySelectorAll<HTMLDetailsElement>('.brew-dungeon-room')].map((room) => room.open)).toEqual([true, true]);
 
     // A missing reference still opens Dungeons from the card's mapped position.
-    const view = EditorView.findFromDOM(editor)!;
     act(() => view.dispatch({ changes: { from: 0, insert: prefix } }));
     await act(async () => editor.querySelector<HTMLButtonElement>('[aria-label="Find Missing vault"]')!.click());
     expect(onOpenDungeon).toHaveBeenCalledWith('a001', prefix.length * 2 + reference.length + 2);

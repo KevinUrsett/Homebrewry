@@ -1,6 +1,6 @@
 import { memo, useId, useLayoutEffect, useRef, useState } from 'react';
 import { dungeonCardDetails } from '../lib/dungeonReferences';
-import { dungeonMapName, dungeonRooms, roomNumber } from '../lib/dungeons';
+import { dungeonMapName, dungeonRooms } from '../lib/dungeons';
 import type { BrewAsset, DungeonRecord } from '../types';
 import { DungeonRoomMap, DungeonRoomText } from './DungeonRoomContent';
 import '../brew-dungeon.css';
@@ -43,7 +43,7 @@ function BrewDungeonContent({ dungeon, id, assets, foldedRooms, onFold }: {
       {rooms.map(({ room }) => (
         <details className="brew-dungeon-room" data-room-id={room.id} key={room.id} open={!foldedRooms.has(room.id)}
           onToggle={(event) => onFold(room.id, !event.currentTarget.open)}>
-          <summary><span className="brew-dungeon-room-number">{roomNumber(room)}</span><strong>{room.name.trim() || 'Untitled room'}</strong></summary>
+          <summary><strong>{room.name.trim() || 'Untitled room'}</strong></summary>
           <div className="brew-dungeon-room-text"><DungeonRoomText room={room} heading="h4" /></div>
         </details>
       ))}

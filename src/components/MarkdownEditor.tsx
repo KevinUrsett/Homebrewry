@@ -310,6 +310,17 @@ class DungeonCardWidget extends WidgetType {
   toDOM(view: EditorView) {
     const node = view.dom.ownerDocument.createElement('div');
     node.className = 'cm-dungeon-card-widget';
+    const disclosure = (target: EventTarget | null) =>
+      target instanceof Element ? target.closest<HTMLElement>('button.brew-dungeon-header, .brew-dungeon-room > summary') : null;
+    const preventEditorFocus = (event: MouseEvent) => {
+      if (event.button === 0 && disclosure(event.target)) event.preventDefault();
+    };
+    // Safari can place a caret in the surrounding editable text on pointer down.
+    node.addEventListener('pointerdown', preventEditorFocus);
+    node.addEventListener('mousedown', preventEditorFocus);
+    node.addEventListener('click', (event) => {
+      disclosure(event.target)?.focus({ preventScroll: true });
+    }, { capture: true });
     this.mount({ widget: this, node, getPosition: () => view.posAtDOM(node) });
     if (typeof ResizeObserver === 'function') {
       const observer = new ResizeObserver(() => view.requestMeasure());

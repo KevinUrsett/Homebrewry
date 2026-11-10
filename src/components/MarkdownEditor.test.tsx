@@ -180,12 +180,12 @@ it('opens the same dungeon inline in Edit and Preview, with independent room fol
     });
 
     const editor = host.querySelector<HTMLElement>('.cm-editor')!;
-    const editCard = editor.querySelector<HTMLButtonElement>('button.brew-map-card')!;
-    const previewCard = host.querySelector<HTMLButtonElement>('.brew-preview button.brew-map-card')!;
+    const editCard = editor.querySelector<HTMLButtonElement>('button.brew-dungeon-header')!;
+    const previewCard = host.querySelector<HTMLButtonElement>('.brew-preview button.brew-dungeon-header')!;
     expect(editor.querySelector('.cm-inline-reference')).toBeNull();
     expect(editCard.textContent).toBe(previewCard.textContent);
     expect(editCard.getAttribute('aria-label')).toBe('Open Sunken vault');
-    expect(editCard.querySelector('.brew-map-card-details > span')?.textContent).toBe('2 rooms');
+    expect(editCard.querySelector('.brew-dungeon-caption')?.textContent).toBe('Dungeon · 2 rooms');
     expect(editor.querySelector('.brew-dungeon-content')).toBeNull();
 
     await act(async () => {

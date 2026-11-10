@@ -952,34 +952,6 @@ input, textarea, select, .markdown-editor { text-transform: none; }
 .map-brew-link > div { display: grid; gap: 2px; flex: 1; }
 .map-brew-link strong { font-size: .76rem; text-transform: uppercase; letter-spacing: .05em; }
 .map-brew-link small { color: #806f63; }
-.brew-map-card {
-  align-items: center;
-  background: #fbf2db;
-  border: 1px solid #b98c4e;
-  border-left: 6px solid #783626;
-  border-radius: 9px;
-  break-inside: avoid;
-  display: flex;
-  flex-wrap: wrap;
-  font: .9rem/1.4 "Bookinsanity", Georgia, serif;
-  gap: 10px;
-  justify-content: space-between;
-  margin: 1.4rem 0;
-  padding: 16px;
-  text-align: left;
-  white-space: normal;
-  width: 100%;
-}
-.markdown-editor .brew-map-card { display: inline-flex; vertical-align: middle; }
-.brew-map-card-details { display: grid; flex: 1 1 8rem; min-width: 0; overflow-wrap: anywhere; }
-.brew-map-card-details small { color: #8d672e; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
-.brew-map-card-details strong { color: #783626; font: 700 1.3rem/1.2 "Mr Eaves Small Caps", Georgia, serif; }
-.brew-map-card-details > span { color: #7a685a; font-size: .82rem; }
-.brew-map-card-action { font: 700 .85rem/1.25 Inter, sans-serif; white-space: nowrap; }
-.brew-map-card.is-missing { border-left-color: #9a5142; }
-@media (hover: hover) {
-  button.brew-map-card:hover { background: #fff6e1; }
-}
 .map-preview-dialog { max-width: min(940px, calc(100vw - 28px)); }
 .map-preview-room { padding: 14px; border-top: 1px solid #d6bf99; }
 .map-preview-room > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }

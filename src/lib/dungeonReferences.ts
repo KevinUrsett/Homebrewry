@@ -27,8 +27,6 @@ export function dungeonCardDetails(dungeon: DungeonRecord | undefined, label: st
   return {
     name,
     summary: dungeon ? dungeonRoomSummary(rooms) : 'Dungeon unavailable on this device',
-    action: dungeon ? 'Open dungeon' : 'Browse dungeons',
-    actionLabel: dungeon ? `Open ${name}` : `Find ${name}`,
-    missing: !dungeon
+    actionLabel: dungeon ? `Open ${name}` : `Find ${name}`
   };
 }

@@ -64,14 +64,13 @@ export const BrewDungeonCard = memo(function BrewDungeonCard({ dungeon, label, a
 }) {
   const [state, setState] = useState(initialState);
   const bodyId = useId();
-  const { name, summary, action, actionLabel, missing } = dungeonCardDetails(dungeon, label);
+  const summaryId = useId();
+  const { name, summary, actionLabel } = dungeonCardDetails(dungeon, label);
   const expanded = Boolean(interactive && dungeon && state.expanded);
-  const className = `brew-map-card${missing ? ' is-missing' : ''}`;
   const details = (
-    <span className="brew-map-card-details">
-      <small>Dungeon</small>
+    <span className="brew-dungeon-title">
       <strong>{name}</strong>
-      <span>{summary}</span>
+      <span className="brew-dungeon-caption" id={summaryId}>{dungeon ? `Dungeon · ${summary}` : summary}</span>
     </span>
   );
 
@@ -87,16 +86,17 @@ export const BrewDungeonCard = memo(function BrewDungeonCard({ dungeon, label, a
     });
   };
 
-  if (!interactive || (!dungeon && !onBrowse)) return <section className={className} id={anchor}>{details}</section>;
-
   return (
     <section className={`brew-dungeon-card-shell${expanded ? ' is-expanded' : ''}`} id={anchor}>
-      <button aria-controls={expanded ? bodyId : undefined} aria-expanded={dungeon ? expanded : undefined}
-        aria-label={expanded ? `Collapse ${name}` : actionLabel} className={className}
-        onClick={dungeon ? () => setState((current) => current.expanded ? closedCard : { ...closedCard, expanded: true }) : onBrowse} type="button">
-        {details}
-        <span className="primary-button brew-map-card-action">{expanded ? 'Collapse' : action}</span>
-      </button>
+      {interactive && (dungeon || onBrowse) ? (
+        <button aria-controls={expanded ? bodyId : undefined} aria-describedby={summaryId}
+          aria-expanded={dungeon ? expanded : undefined} aria-label={expanded ? `Collapse ${name}` : actionLabel}
+          className="brew-dungeon-header"
+          onClick={dungeon ? () => setState((current) => current.expanded ? closedCard : { ...closedCard, expanded: true }) : onBrowse} type="button">
+          {details}
+          {!dungeon && <span className="brew-dungeon-browse">Browse dungeons</span>}
+        </button>
+      ) : <div className="brew-dungeon-header">{details}</div>}
       {expanded && dungeon && <BrewDungeonContent assets={assets} dungeon={dungeon} foldedRooms={state.foldedRooms} id={bodyId} onFold={foldRoom} />}
     </section>
   );

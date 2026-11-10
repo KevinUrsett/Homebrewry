@@ -2,7 +2,6 @@ import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type Mo
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { catalogueReferenceFromUrl, entryFromReference, remarkCatalogueReferences } from '../catalogue/references';
-import { dungeonCardDetails } from '../lib/dungeonReferences';
 import { encounterReferenceFromUrl, remarkEncounterReferences } from '../lib/encounterReferences';
 import { worldbuildingReferenceFromUrl, remarkWorldbuildingReferences } from '../lib/worldbuildingReferences';
 import { remarkAutoReferences } from '../lib/autoReferences';
@@ -10,12 +9,14 @@ import { getHeadingId } from '../lib/outline';
 import { parseRendererBlocks, splitRendererPages, type RendererBlock } from '../renderer/blocks';
 import { catalogueCategoryLabel, type CatalogueEntry, type CustomCatalogueCategory } from '../catalogue/types';
 import type { Brew, BrewAsset, DungeonRecord, Encounter, WorldbuildingEntry, WorldbuildingType } from '../types';
+import { BrewDungeonCard } from './BrewDungeonCard';
 import { CatalogueEntryDetails } from './CatalogueEntryDetails';
 import { WorldbuildingReferenceDetails } from './WorldbuildingReferenceDetails';
 import '../homebrewery-theme.css';
 
 type BrewPreviewProps = {
   brew: Brew;
+  printing?: boolean;
   assets?: ReadonlyMap<string, BrewAsset>;
   catalogue?: ReadonlyMap<string, CatalogueEntry>;
   catalogueCategories?: readonly CustomCatalogueCategory[];
@@ -55,32 +56,6 @@ type MarkdownRendererProps = {
 };
 
 type RenderDependencies = Omit<MarkdownRendererProps, 'content' | 'getId'>;
-
-function DungeonReferenceCard({ dungeon, dungeonId, label, anchor, onOpen }: {
-  dungeon?: DungeonRecord;
-  dungeonId: string;
-  label: string;
-  anchor: string;
-  onOpen?: BrewPreviewProps['onDungeonOpen'];
-}) {
-  const { name, summary, action, actionLabel, missing } = dungeonCardDetails(dungeon, label);
-  const className = `brew-map-card${missing ? ' is-missing' : ''}`;
-  const details = (
-    <span className="brew-map-card-details">
-      <small>Dungeon</small>
-      <strong>{name}</strong>
-      <span>{summary}</span>
-    </span>
-  );
-  if (!onOpen) return <section className={className} id={anchor}>{details}</section>;
-
-  return (
-    <button aria-label={actionLabel} className={className} id={anchor} onClick={() => onOpen(dungeonId, anchor)} type="button">
-      {details}
-      <span className="primary-button brew-map-card-action">{action}</span>
-    </button>
-  );
-}
 
 type CharacterRendererBlock = {
   type: 'statblock' | 'item' | 'spell';
@@ -417,7 +392,10 @@ function renderBlock(
   if (block.type === 'dungeon') return <DungeonBlock assets={assets} block={block} key={key} onAddMarker={onAddDungeonMarker} onMoveMarker={onMoveDungeonMarker} onRemoveRoom={onRemoveDungeonRoom} onRenameRoom={onRenameDungeonRoom} onMoveInline={onMoveInlineDungeon ? () => onMoveInlineDungeon(block, `dungeon-${key}`) : undefined} />;
   if (block.type === 'map' || block.type === 'dungeon-card') {
     const dungeonId = block.type === 'map' ? block.mapId.toLowerCase() : block.dungeonId;
-    return <DungeonReferenceCard anchor={`dungeon-${key}`} dungeon={dungeons?.get(dungeonId)} dungeonId={dungeonId} key={key} label={block.type === 'map' ? 'Dungeon' : block.label} onOpen={onDungeonOpen} />;
+    const anchor = `dungeon-${key}`;
+    const dungeon = dungeons?.get(dungeonId);
+    return <BrewDungeonCard anchor={anchor} assets={assets} dungeon={dungeon} interactive={Boolean(onDungeonOpen)} key={`${key}-${dungeonId}`}
+      label={block.type === 'map' ? 'Dungeon' : block.label} onBrowse={!dungeon && onDungeonOpen ? () => onDungeonOpen(dungeonId, anchor) : undefined} />;
   }
   if (block.type === 'callout') {
     return (
@@ -435,7 +413,7 @@ function renderBlock(
   return <CharacterBlock block={block} getId={getId} key={key} {...dependencies} />;
 }
 
-export const BrewPreview = memo(function BrewPreview({ brew, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen, onOpenInWorldbuilding, onDeleteWorldbuildingReference, onAddWorldbuildingNote, onAddDungeonMarker, onMoveDungeonMarker, onRenameDungeonRoom, onRemoveDungeonRoom, dungeons, onDungeonOpen, onMoveInlineDungeon }: BrewPreviewProps) {
+export const BrewPreview = memo(function BrewPreview({ brew, printing, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen, onOpenInWorldbuilding, onDeleteWorldbuildingReference, onAddWorldbuildingNote, onAddDungeonMarker, onMoveDungeonMarker, onRenameDungeonRoom, onRemoveDungeonRoom, dungeons, onDungeonOpen, onMoveInlineDungeon }: BrewPreviewProps) {
   const headingOccurrences = new Map<string, number>();
   const getId = (children: ReactNode) => {
     const text = String(children);
@@ -452,7 +430,7 @@ export const BrewPreview = memo(function BrewPreview({ brew, assets, catalogue, 
     >
       {pages.map((page, pageIndex) => (
         <article className="brew-preview brew-continuous" key={`page-${pageIndex}`}>
-          {page.map((block, blockIndex) => renderBlock(block, getId, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen, onOpenInWorldbuilding, onDeleteWorldbuildingReference, onAddWorldbuildingNote, onAddDungeonMarker, onMoveDungeonMarker, onRenameDungeonRoom, onRemoveDungeonRoom, dungeons, onDungeonOpen, onMoveInlineDungeon, `page-${pageIndex}-block-${blockIndex}`))}
+          {page.map((block, blockIndex) => renderBlock(block, getId, assets, catalogue, catalogueCategories, onReferenceOpen, encounters, onEncounterOpen, worldbuilding, worldbuildingTypes, onWorldbuildingOpen, onOpenInWorldbuilding, onDeleteWorldbuildingReference, onAddWorldbuildingNote, onAddDungeonMarker, onMoveDungeonMarker, onRenameDungeonRoom, onRemoveDungeonRoom, dungeons, printing ? undefined : onDungeonOpen, onMoveInlineDungeon, `page-${pageIndex}-block-${blockIndex}`))}
           <span aria-hidden className="brew-page-number">{pageIndex + 1}</span>
         </article>
       ))}
@@ -460,6 +438,7 @@ export const BrewPreview = memo(function BrewPreview({ brew, assets, catalogue, 
   );
 }, (previous, next) =>
   previous.brew === next.brew
+  && previous.printing === next.printing
   && previous.assets === next.assets
   && previous.catalogue === next.catalogue
   && previous.catalogueCategories === next.catalogueCategories

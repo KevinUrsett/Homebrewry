@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
-import { Compartment, EditorState, Facet, StateEffect } from '@codemirror/state';
+import { createPortal } from 'react-dom';
+import { Compartment, EditorState, Facet, StateEffect, StateField } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
 import { HighlightStyle, syntaxHighlighting, syntaxTree } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
@@ -14,8 +15,9 @@ import {
 } from '@codemirror/view';
 import { catalogueCategories, catalogueCategoryLabel, type CatalogueCategory, type CustomCatalogueCategory } from '../catalogue/types';
 import { normalizeWorldbuildingName, worldbuildingKindLabels, worldbuildingKinds } from '../lib/worldbuilding';
-import { dungeonCardDetails, dungeonReferenceLine, legacyMapId } from '../lib/dungeonReferences';
+import { dungeonReferenceLine, legacyMapId } from '../lib/dungeonReferences';
 import type { BrewAsset, DungeonRecord, WorldbuildingKind, WorldbuildingType } from '../types';
+import { BrewDungeonCard, type BrewDungeonCardState } from './BrewDungeonCard';
 
 export type MarkdownEditorHandle = {
   getSelection: () => { start: number; end: number };
@@ -283,71 +285,87 @@ class MarkdownImageLabel extends WidgetType {
   }
 }
 
+type DungeonCardMount = {
+  widget: DungeonCardWidget;
+  node: HTMLElement;
+  getPosition: () => number;
+};
+
+type MountDungeonCard = (mount: DungeonCardMount) => void;
+type UnmountDungeonCard = (node: HTMLElement) => void;
+
 class DungeonCardWidget extends WidgetType {
+  viewState?: BrewDungeonCardState;
+  private readonly observers = new WeakMap<HTMLElement, ResizeObserver>();
+
   constructor(
-    private readonly dungeonId: string,
-    private readonly details: ReturnType<typeof dungeonCardDetails>,
-    private readonly onOpen: DungeonOpenHandler
+    readonly dungeonId: string,
+    readonly label: string,
+    private readonly mount: MountDungeonCard,
+    private readonly unmount: UnmountDungeonCard
   ) { super(); }
 
-  eq(other: DungeonCardWidget) {
-    return other.dungeonId === this.dungeonId && other.details.name === this.details.name
-      && other.details.summary === this.details.summary;
-  }
+  rememberViewState = (state: BrewDungeonCardState) => { this.viewState = state; };
 
   toDOM(view: EditorView) {
-    const card = document.createElement('button');
-    card.className = `brew-map-card${this.details.missing ? ' is-missing' : ''}`;
-    card.type = 'button';
-    card.setAttribute('aria-label', this.details.actionLabel);
-    const details = document.createElement('span');
-    details.className = 'brew-map-card-details';
-    const category = document.createElement('small');
-    category.textContent = 'Dungeon';
-    const name = document.createElement('strong');
-    name.textContent = this.details.name;
-    const summary = document.createElement('span');
-    summary.textContent = this.details.summary;
-    details.append(category, name, summary);
-    const action = document.createElement('span');
-    action.className = 'primary-button brew-map-card-action';
-    action.textContent = this.details.action;
-    card.append(details, action);
-    card.addEventListener('click', () => this.onOpen(this.dungeonId, view.posAtDOM(card)));
-    return card;
+    const node = view.dom.ownerDocument.createElement('div');
+    node.className = 'cm-dungeon-card-widget';
+    this.mount({ widget: this, node, getPosition: () => view.posAtDOM(node) });
+    if (typeof ResizeObserver === 'function') {
+      const observer = new ResizeObserver(() => view.requestMeasure());
+      observer.observe(node);
+      this.observers.set(node, observer);
+    }
+    return node;
+  }
+
+  destroy(node: HTMLElement) {
+    this.observers.get(node)?.disconnect();
+    this.observers.delete(node);
+    this.unmount(node);
   }
 }
 
-function dungeonCardDecorations(view: EditorView, dungeons: ReadonlyMap<string, DungeonRecord>, onOpen: DungeonOpenHandler): DecorationSet {
-  const decorations = [];
-  let position = 0;
-  for (const line of view.state.doc.iterLines()) {
-    const reference = dungeonReferenceLine(line);
-    const dungeonId = reference?.id ?? legacyMapId(line);
-    if (dungeonId) {
-      let node = syntaxTree(view.state).resolveInner(position + line.indexOf(line.trimStart()), 1);
-      while (node.parent && node.name !== 'FencedCode' && node.name !== 'CodeBlock') node = node.parent;
-      if (node.name !== 'FencedCode' && node.name !== 'CodeBlock') {
-        const details = dungeonCardDetails(dungeons.get(dungeonId), reference?.label ?? 'Dungeon');
-        decorations.push(Decoration.replace({ widget: new DungeonCardWidget(dungeonId, details, onOpen), inclusive: false }).range(position, position + line.length));
+function dungeonCardPreviews(mount: MountDungeonCard, unmount: UnmountDungeonCard) {
+  const decorationsFor = (state: EditorState, previous?: DecorationSet) => {
+    const placements = new Map<number, DungeonCardWidget>();
+    previous?.between(0, state.doc.length, (from, _to, decoration) => {
+      const widget: unknown = decoration.spec.widget;
+      if (widget instanceof DungeonCardWidget) placements.set(from, widget);
+    });
+    const tree = syntaxTree(state);
+    const decorations = [];
+    let position = 0;
+    for (const line of state.doc.iterLines()) {
+      const reference = dungeonReferenceLine(line);
+      const dungeonId = reference?.id ?? legacyMapId(line);
+      if (dungeonId) {
+        let node = tree.resolveInner(position + line.indexOf(line.trimStart()), 1);
+        while (node.parent && node.name !== 'FencedCode' && node.name !== 'CodeBlock') node = node.parent;
+        if (node.name !== 'FencedCode' && node.name !== 'CodeBlock') {
+          const label = reference?.label ?? 'Dungeon';
+          const oldWidget = placements.get(position);
+          // Keep presentation state with the card placement across editor viewport changes.
+          const widget = oldWidget?.dungeonId === dungeonId && oldWidget.label === label
+            ? oldWidget : new DungeonCardWidget(dungeonId, label, mount, unmount);
+          decorations.push(Decoration.replace({ block: true, widget, inclusive: false }).range(position, position + line.length));
+        }
       }
+      position += line.length + 1;
     }
-    position += line.length + 1;
-  }
-  return Decoration.set(decorations, true);
-}
+    return Decoration.set(decorations, true);
+  };
 
-function dungeonCardPreviews(getDungeons: () => ReadonlyMap<string, DungeonRecord>, onOpen: DungeonOpenHandler) {
-  return ViewPlugin.fromClass(class {
-    decorations: DecorationSet;
-    constructor(view: EditorView) { this.decorations = dungeonCardDecorations(view, getDungeons(), onOpen); }
-    update(update: ViewUpdate) {
-      if (update.docChanged) this.decorations = this.decorations.map(update.changes);
-      if (update.transactions.some((transaction) => transaction.reconfigured || transaction.effects.some((effect) => effect.is(refreshEmbeddedPreviews)))) {
-        this.decorations = dungeonCardDecorations(update.view, getDungeons(), onOpen);
-      }
-    }
-  }, { decorations: (value) => value.decorations });
+  // Block widgets affect line heights and must come from an editor state field.
+  return StateField.define<DecorationSet>({
+    create: (state) => decorationsFor(state),
+    update: (decorations, transaction) => {
+      const mapped = decorations.map(transaction.changes);
+      return transaction.effects.some((effect) => effect.is(refreshEmbeddedPreviews))
+        ? decorationsFor(transaction.state, mapped) : mapped;
+    },
+    provide: (field) => EditorView.decorations.from(field)
+  });
 }
 
 function dungeonImageAt(doc: string, position: number, source: string): DungeonImage | undefined {
@@ -457,9 +475,9 @@ export function MarkdownEditor({
   const imageRotationRef = useRef(onRotateImage);
   const imageDeletionRef = useRef(onDeleteImage);
   const dungeonOpenRef = useRef(onOpenDungeonMap);
-  const dungeonRecordsRef = useRef(dungeons);
-  const dungeonCardOpenRef = useRef(onOpenDungeon);
   const latestRef = useRef({ onChange, onSelectionChange, onKeyDown, onCreateWorldbuildingReference, onCreateCatalogueReference, onOpenEncounter });
+  const nextCardMount = useRef(0);
+  const [cardMounts, setCardMounts] = useState<Array<DungeonCardMount & { key: number }>>([]);
   const [referenceMenu, setReferenceMenu] = useState<ReferenceMenu | null>(null);
   const [mobileReferenceSelection, setMobileReferenceSelection] = useState<MobileReferenceSelection | null>(null);
   const [mobileReferenceBottom, setMobileReferenceBottom] = useState(84);
@@ -476,11 +494,6 @@ export function MarkdownEditor({
     imageDeletionRef.current = onDeleteImage;
   }, [onDeleteImage]);
   useEffect(() => { dungeonOpenRef.current = onOpenDungeonMap; }, [onOpenDungeonMap]);
-  useEffect(() => { dungeonCardOpenRef.current = onOpenDungeon; }, [onOpenDungeon]);
-  useEffect(() => {
-    dungeonRecordsRef.current = dungeons;
-    viewRef.current?.dispatch({ effects: refreshEmbeddedPreviews.of(null) });
-  }, [dungeons]);
 
   useEffect(() => {
     assetsRef.current = assets;
@@ -530,7 +543,10 @@ export function MarkdownEditor({
           imageAssetLookupCompartment.of(imageAssetLookup.of((source) => assetsRef.current.get(source.slice('asset://'.length)))),
           deferredEmbeddedPreviewRefresh,
           imagePreviews((asset) => imageRotationRef.current?.(asset), (asset) => imageDeletionRef.current?.(asset), (title) => dungeonOpenRef.current?.(title)),
-          dungeonCardPreviews(() => dungeonRecordsRef.current, (id, position) => dungeonCardOpenRef.current?.(id, position)),
+          dungeonCardPreviews((mount) => {
+            const key = nextCardMount.current++;
+            setCardMounts((current) => [...current, { ...mount, key }]);
+          }, (node) => setCardMounts((current) => current.filter((mount) => mount.node !== node))),
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
               const nextContent = update.state.doc.toString();
@@ -655,6 +671,12 @@ export function MarkdownEditor({
   return (
     <>
       <div className={`markdown-editor ${compact ? 'reference-source-editor' : ''}`} ref={parentRef} />
+      {cardMounts.map(({ widget, node, key, getPosition }) => {
+        const dungeon = dungeons.get(widget.dungeonId);
+        return createPortal(<BrewDungeonCard assets={assets} dungeon={dungeon} initialState={widget.viewState} label={widget.label}
+          onBrowse={!dungeon && onOpenDungeon ? () => onOpenDungeon(widget.dungeonId, getPosition()) : undefined}
+          onStateChange={widget.rememberViewState} />, node, key);
+      })}
       {mobileReferenceSelection && !referenceMenu && (
         <button
           className="mobile-reference-selection-action"

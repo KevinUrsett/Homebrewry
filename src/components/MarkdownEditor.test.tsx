@@ -146,12 +146,20 @@ describe('MarkdownEditor encounter references', () => {
   });
 });
 
-it('shows the Preview dungeon card in Edit and opens it at its current source position', async () => {
+it('opens the same dungeon inline in Edit and Preview, with independent room folds', async () => {
   const dungeon = createDungeon('Sunken vault');
+  const area = dungeon.areas[0];
+  area.imageSource = 'https://example.test/vault.png';
+  area.rooms = [
+    { id: 'gate', name: 'Gate', number: 1, notes: '**Silver latch**', readAloud: 'Cold air pours out.', encounterIds: [], updatedAt: dungeon.updatedAt },
+    { id: 'vault', name: 'Vault', number: 2, notes: '', readAloud: 'The ceiling glitters.', encounterIds: [], updatedAt: dungeon.updatedAt }
+  ];
+  area.markers = [{ roomId: 'gate', x: 30, y: 40 }];
   const dungeons = new Map([[dungeon.id, dungeon]]);
   const reference = formatDungeonReference({ id: dungeon.id, name: 'Old vault name' });
+  const missing = formatDungeonReference({ id: 'a001', name: 'Missing vault' });
   const prefix = '# Session\n\n';
-  const content = prefix + reference;
+  const content = prefix + reference + '\n\n' + missing;
   const onOpenDungeon = vi.fn();
   const host = document.createElement('div');
   document.body.append(host);
@@ -174,12 +182,41 @@ it('shows the Preview dungeon card in Edit and opens it at its current source po
     expect(editor.querySelector('.cm-inline-reference')).toBeNull();
     expect(editCard.textContent).toBe(previewCard.textContent);
     expect(editCard.getAttribute('aria-label')).toBe('Open Sunken vault');
-    expect(editCard.textContent).toContain('1 area · 0 rooms');
+    expect(editCard.textContent).toContain('1 area · 2 rooms');
+    expect(editor.querySelector('.brew-dungeon-content')).toBeNull();
 
+    await act(async () => {
+      editCard.click();
+      previewCard.click();
+    });
+    const editRooms = [...editor.querySelectorAll<HTMLDetailsElement>('.brew-dungeon-room')];
+    const previewRooms = [...host.querySelectorAll<HTMLDetailsElement>('.brew-preview .brew-dungeon-room')];
+    expect(editRooms.map((room) => room.open)).toEqual([true, true]);
+    expect(previewRooms.map((room) => room.open)).toEqual([true, true]);
+    expect(editRooms[0].textContent).toContain('Cold air pours out.');
+    expect(editRooms[0].querySelector('.dungeon-room-notes strong')?.textContent).toBe('Silver latch');
+    expect(onOpenDungeon).not.toHaveBeenCalled();
+
+    await act(async () => editRooms[0].querySelector('summary')!.click());
+    expect(editRooms.map((room) => room.open)).toEqual([false, true]);
+    expect(previewRooms[0].open).toBe(true);
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(editRooms[0], 'scrollIntoView', { value: scrollIntoView });
+    await act(async () => editor.querySelector<HTMLButtonElement>('.map-number-pin')!.click());
+    expect(editRooms[0].open).toBe(true);
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' });
+
+    await act(async () => editRooms[1].querySelector('summary')!.click());
+    await act(async () => editCard.click());
+    expect(editor.querySelector('.brew-dungeon-content')).toBeNull();
+    await act(async () => editCard.click());
+    expect([...editor.querySelectorAll<HTMLDetailsElement>('.brew-dungeon-room')].map((room) => room.open)).toEqual([true, true]);
+
+    // A missing reference still opens Dungeons from the card's mapped position.
     const view = EditorView.findFromDOM(editor)!;
     act(() => view.dispatch({ changes: { from: 0, insert: prefix } }));
-    await act(async () => editor.querySelector<HTMLElement>('.brew-map-card strong')?.click());
-    expect(onOpenDungeon).toHaveBeenCalledWith(dungeon.id, prefix.length * 2);
+    await act(async () => editor.querySelector<HTMLButtonElement>('[aria-label="Find Missing vault"]')!.click());
+    expect(onOpenDungeon).toHaveBeenCalledWith('a001', prefix.length * 2 + reference.length + 2);
     expect(view.state.doc.toString()).toBe(prefix + content);
   } finally {
     act(() => root.unmount());

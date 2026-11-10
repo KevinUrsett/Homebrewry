@@ -2475,6 +2475,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
                   onDeleteWorldbuildingReference={deleteWorldbuilding}
                   onWorldbuildingOpen={setWorldbuildingReferenceEntry}
                   onOpenInWorldbuilding={openWorldbuilding}
+                  printing={printing}
                   worldbuilding={worldbuildingMap}
                   worldbuildingTypes={worldbuildingTypes}
                 />

@@ -1,4 +1,8 @@
-import type { CampaignDataSnapshot, DungeonArea, DungeonPosition, DungeonRecord, DungeonRoomStatus } from '../types';
+import type { CampaignDataSnapshot, CampaignMapRoom, DungeonArea, DungeonPosition, DungeonRecord, DungeonRoomStatus } from '../types';
+
+export function roomNumber(room: CampaignMapRoom): string {
+  return room.numberLabel ?? String(room.number);
+}
 
 export function campaignDungeons(data: Pick<CampaignDataSnapshot, 'dungeons' | 'maps'>): DungeonRecord[] {
   return data.dungeons ?? (data.maps ?? []).map((map) => ({

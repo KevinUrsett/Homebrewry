@@ -55,7 +55,7 @@ function BrewDungeonContent({ dungeon, id, assets, foldedRooms, onFold, onRoomTe
   );
 }
 
-export const BrewDungeonCard = memo(function BrewDungeonCard({ dungeon, label, anchor, assets, interactive = true, initialState = closedCard, onStateChange, onBrowse, onRoomTextChange }: {
+export const BrewDungeonCard = memo(function BrewDungeonCard({ dungeon, label, anchor, assets, interactive = true, initialState = closedCard, onStateChange, onBrowse, onEdit, onRoomTextChange }: {
   dungeon?: DungeonRecord;
   label: string;
   anchor?: string;
@@ -64,6 +64,7 @@ export const BrewDungeonCard = memo(function BrewDungeonCard({ dungeon, label, a
   initialState?: BrewDungeonCardState;
   onStateChange?: (state: BrewDungeonCardState) => void;
   onBrowse?: () => void;
+  onEdit?: () => void;
   onRoomTextChange?: DungeonRoomTextChange;
 }) {
   const [state, setState] = useState(initialState);
@@ -92,15 +93,22 @@ export const BrewDungeonCard = memo(function BrewDungeonCard({ dungeon, label, a
 
   return (
     <section className={`brew-dungeon-card-shell${expanded ? ' is-expanded' : ''}`} id={anchor}>
-      {interactive && (dungeon || onBrowse) ? (
-        <button aria-controls={expanded ? bodyId : undefined} aria-describedby={summaryId}
-          aria-expanded={dungeon ? expanded : undefined} aria-label={expanded ? `Collapse ${name}` : actionLabel}
-          className="brew-dungeon-header"
-          onClick={dungeon ? () => setState((current) => current.expanded ? closedCard : { ...closedCard, expanded: true }) : onBrowse} type="button">
-          {details}
-          {!dungeon && <span className="brew-dungeon-browse">Browse dungeons</span>}
-        </button>
-      ) : <div className="brew-dungeon-header">{details}</div>}
+      <div className="brew-dungeon-heading">
+        {interactive && (dungeon || onBrowse) ? (
+          <button aria-controls={expanded ? bodyId : undefined} aria-describedby={summaryId}
+            aria-expanded={dungeon ? expanded : undefined} aria-label={expanded ? `Collapse ${name}` : actionLabel}
+            className="brew-dungeon-header"
+            onClick={dungeon ? () => setState((current) => current.expanded ? closedCard : { ...closedCard, expanded: true }) : onBrowse} type="button">
+            {details}
+            {!dungeon && <span className="brew-dungeon-browse">Browse dungeons</span>}
+          </button>
+        ) : <div className="brew-dungeon-header">{details}</div>}
+        {interactive && dungeon && onEdit && (
+          <button aria-label={`Edit dungeon ${name}`} className="brew-dungeon-edit" onClick={onEdit} title="Open dungeon editor" type="button">
+            <span aria-hidden="true">✎</span>
+          </button>
+        )}
+      </div>
       {expanded && dungeon && <BrewDungeonContent assets={assets} dungeon={dungeon} foldedRooms={state.foldedRooms} id={bodyId} onFold={foldRoom} onRoomTextChange={onRoomTextChange} />}
     </section>
   );

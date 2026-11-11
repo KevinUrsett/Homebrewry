@@ -311,17 +311,17 @@ class DungeonCardWidget extends WidgetType {
   toDOM(view: EditorView) {
     const node = view.dom.ownerDocument.createElement('div');
     node.className = 'cm-dungeon-card-widget';
-    const disclosure = (target: EventTarget | null) =>
-      target instanceof Element ? target.closest<HTMLElement>('button.brew-dungeon-header, .brew-dungeon-room > summary') : null;
+    const cardControl = (target: EventTarget | null) =>
+      target instanceof Element ? target.closest<HTMLElement>('button.brew-dungeon-header, .brew-dungeon-room > summary, .brew-dungeon-edit') : null;
     const preventEditorFocus = (event: MouseEvent) => {
       if (event.button !== 0 || !(event.target instanceof Element)) return;
-      if (disclosure(event.target) || event.target.closest('.dungeon-room-edit-text')) event.preventDefault();
+      if (cardControl(event.target) || event.target.closest('.dungeon-room-edit-text')) event.preventDefault();
     };
     // Safari can place a caret in the surrounding editable text on pointer down.
     node.addEventListener('pointerdown', preventEditorFocus);
     node.addEventListener('mousedown', preventEditorFocus);
     node.addEventListener('click', (event) => {
-      disclosure(event.target)?.focus({ preventScroll: true });
+      cardControl(event.target)?.focus({ preventScroll: true });
     }, { capture: true });
     this.mount({ widget: this, node, getPosition: () => view.posAtDOM(node) });
     if (typeof ResizeObserver === 'function') {
@@ -687,8 +687,9 @@ export function MarkdownEditor({
       <div className={`markdown-editor ${compact ? 'reference-source-editor' : ''}`} ref={parentRef} />
       {cardMounts.map(({ widget, node, key, getPosition }) => {
         const dungeon = dungeons.get(widget.dungeonId);
+        const openDungeon = onOpenDungeon && (() => onOpenDungeon(widget.dungeonId, getPosition()));
         return createPortal(<BrewDungeonCard assets={assets} dungeon={dungeon} initialState={widget.viewState} label={widget.label}
-          onBrowse={!dungeon && onOpenDungeon ? () => onOpenDungeon(widget.dungeonId, getPosition()) : undefined}
+          onBrowse={dungeon ? undefined : openDungeon} onEdit={openDungeon}
           onRoomTextChange={onDungeonRoomTextChange} onStateChange={widget.rememberViewState} />, node, key);
       })}
       {mobileReferenceSelection && !referenceMenu && (

@@ -195,6 +195,8 @@ it('opens the same dungeon inline in Edit and Preview, with independent room fol
     expect(editCard.querySelector('.brew-dungeon-caption')?.textContent).toBe('Dungeon · 2 rooms');
     expect(editor.querySelector('.brew-dungeon-content')).toBeNull();
 
+    const editDungeon = editor.querySelector<HTMLButtonElement>('[aria-label="Edit dungeon Sunken vault"]')!;
+    expect(host.querySelector('.brew-preview .brew-dungeon-edit')).toBeNull();
     act(() => {
       view.dispatch({ selection: { anchor: 3 } });
       view.focus();
@@ -205,6 +207,15 @@ it('opens the same dungeon inline in Edit and Preview, with independent room fol
       editCard.querySelector('strong')!.dispatchEvent(press);
       expect(press.defaultPrevented).toBe(true);
     }
+    const editPress = new MouseEvent('pointerdown', { bubbles: true, cancelable: true });
+    editDungeon.querySelector('span')!.dispatchEvent(editPress);
+    expect(editPress.defaultPrevented).toBe(true);
+    await act(async () => editDungeon.click());
+    expect(onOpenDungeon).toHaveBeenCalledWith(dungeon.id, prefix.length);
+    expect(editor.querySelector('.brew-dungeon-content')).toBeNull();
+    expect(view.state.selection.main.head).toBe(3);
+    onOpenDungeon.mockClear();
+
     await act(async () => {
       editCard.click();
       previewCard.click();

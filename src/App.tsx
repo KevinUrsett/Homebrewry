@@ -706,7 +706,7 @@ export default function App({ driveAccessToken = null, onDriveAccessTokenChange 
 
   const openDungeonFromBrew = (location: DungeonBrewLocation, dungeonId?: string) => {
     if (!activeBrew) return;
-    openDungeons(dungeonId, dungeonId && dungeonRecords.has(dungeonId) ? 'run' : 'prepare', { ...location, brewId: activeBrew.id });
+    openDungeons(dungeonId, 'prepare', { ...location, brewId: activeBrew.id });
   };
 
   const backToDungeonBrew = () => {

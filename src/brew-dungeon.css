@@ -11,6 +11,7 @@
   white-space: normal;
 }
 .brew-preview > .brew-dungeon-card-shell.is-expanded { column-span: all; }
+.brew-dungeon-heading { break-inside: avoid; position: relative; }
 .brew-dungeon-header {
   align-items: center;
   background: rgb(116 73 29 / 9%);
@@ -30,6 +31,23 @@
 .brew-dungeon-title > strong { color: var(--dungeon-accent); font: 700 1.25rem/1.25 "Mr Eaves Small Caps", Georgia, serif; }
 .brew-dungeon-caption, .brew-dungeon-browse { color: var(--dungeon-muted); font: 600 .73rem/1.4 Inter, sans-serif; }
 .brew-dungeon-browse { color: var(--dungeon-accent); flex: 0 1 auto; text-align: right; }
+.brew-dungeon-heading:has(> .brew-dungeon-edit) .brew-dungeon-title { margin-inline-end: 44px; }
+.brew-dungeon-edit {
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--dungeon-muted);
+  display: grid;
+  font: 1.05rem/1 system-ui, sans-serif;
+  height: 44px;
+  inset-inline-end: calc(var(--dungeon-inset) + 20px);
+  padding: 0;
+  place-items: center;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+}
 
 .brew-dungeon-header[aria-expanded]::after,
 .brew-dungeon-room > summary::after {
@@ -116,5 +134,6 @@
 .brew-dungeon-content > .dungeon-empty-note { padding-inline: var(--dungeon-inset); }
 @media (hover: hover) {
   button.brew-dungeon-header:hover { background: rgb(116 73 29 / 14%); }
+  .brew-dungeon-edit:hover { background: rgb(116 73 29 / 9%); color: var(--dungeon-accent); }
   .brew-dungeon-room > summary:hover { background: rgb(116 73 29 / 5%); }
 }

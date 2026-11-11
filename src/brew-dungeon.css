@@ -31,7 +31,7 @@
 .brew-dungeon-title > strong { color: var(--dungeon-accent); font: 700 1.25rem/1.25 "Mr Eaves Small Caps", Georgia, serif; }
 .brew-dungeon-caption, .brew-dungeon-browse { color: var(--dungeon-muted); font: 600 .73rem/1.4 Inter, sans-serif; }
 .brew-dungeon-browse { color: var(--dungeon-accent); flex: 0 1 auto; text-align: right; }
-.brew-dungeon-heading:has(> .brew-dungeon-edit) .brew-dungeon-title { margin-inline-end: 44px; }
+.brew-dungeon-heading:has(> .brew-dungeon-edit) .brew-dungeon-title { margin-inline-end: 52px; }
 .brew-dungeon-edit {
   background: transparent;
   border: 0;
@@ -40,7 +40,7 @@
   display: grid;
   font: 1.05rem/1 system-ui, sans-serif;
   height: 44px;
-  inset-inline-end: calc(var(--dungeon-inset) + 20px);
+  inset-inline-end: calc(var(--dungeon-inset) + 28px);
   padding: 0;
   place-items: center;
   position: absolute;

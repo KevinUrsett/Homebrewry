@@ -1,4 +1,4 @@
-import { memo, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -89,6 +89,8 @@ export function DungeonRoomMap({ area, asset, label, activeRoom, editable = fals
   );
 }
 
+const roomTextSaveDelay = 400;
+
 function RoomTextField({ label, value, placeholder, onChange }: {
   label: string;
   value: string;
@@ -97,13 +99,44 @@ function RoomTextField({ label, value, placeholder, onChange }: {
 }) {
   const [editing, setEditing] = useState(false);
   const input = useRef<HTMLTextAreaElement>(null);
-  const markdown = <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{value}</ReactMarkdown>;
+  const pendingSave = useRef<(() => void) | null>(null);
+  const saveTimer = useRef<number | undefined>(undefined);
+  const markdown = useMemo(() => <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{value}</ReactMarkdown>, [value]);
+  const saveDraft = useCallback(() => {
+    window.clearTimeout(saveTimer.current);
+    const save = pendingSave.current;
+    pendingSave.current = null;
+    save?.();
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!editing) return;
+    const saveWhenHidden = () => {
+      if (document.visibilityState === 'hidden') saveDraft();
+    };
+    document.addEventListener('visibilitychange', saveWhenHidden);
+    window.addEventListener('pagehide', saveDraft);
+    return () => {
+      document.removeEventListener('visibilitychange', saveWhenHidden);
+      window.removeEventListener('pagehide', saveDraft);
+      saveDraft();
+    };
+  }, [editing, saveDraft]);
+
   if (!onChange) return markdown;
 
   return <div className="dungeon-room-text-field">
     {editing ? (
-      <textarea aria-label={label} onBlur={() => setEditing(false)} onChange={(event) => onChange(event.currentTarget.value)}
-        placeholder={placeholder} ref={input} rows={4} value={value} />
+      <textarea aria-label={label} onBlur={() => {
+        saveDraft();
+        setEditing(false);
+      }} onChange={(event) => {
+        // Let the textarea handle typing without rendering the card on every keystroke.
+        const text = event.currentTarget.value;
+        pendingSave.current = () => onChange(text);
+        window.clearTimeout(saveTimer.current);
+        saveTimer.current = window.setTimeout(saveDraft, roomTextSaveDelay);
+      }} defaultValue={value} placeholder={placeholder} ref={input} rows={4} />
     ) : (
       <>
         <button aria-label={`Edit ${label}`} className="dungeon-room-edit-text" onClick={() => {

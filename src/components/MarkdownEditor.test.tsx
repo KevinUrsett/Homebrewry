@@ -163,6 +163,7 @@ it('opens the same dungeon inline in Edit and Preview, with independent room fol
   const prefix = '# Session\n\n';
   const content = prefix + reference + '\n\n' + missing;
   const onOpenDungeon = vi.fn();
+  const onRoomTextSaved = vi.fn();
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
@@ -171,6 +172,7 @@ it('opens the same dungeon inline in Edit and Preview, with independent room fol
     const [record, setRecord] = useState(dungeon);
     const dungeons = new Map([[record.id, record]]);
     const changeRoomText: DungeonRoomTextChange = (id, areaId, roomId, field, value) => {
+      onRoomTextSaved(field, value);
       setRecord((current) => id === current.id ? updateDungeonRoom(current, areaId, roomId, { [field]: value }) : current);
     };
     return <>
@@ -234,19 +236,42 @@ it('opens the same dungeon inline in Edit and Preview, with independent room fol
     expect(editRooms[0].querySelector('.dungeon-room-notes strong')?.textContent).toBe('Silver latch');
     expect(onOpenDungeon).not.toHaveBeenCalled();
 
-    const editRoomText = async (room: HTMLDetailsElement, label: string, value: string) => {
+    const openRoomText = async (room: HTMLDetailsElement, label: string) => {
       await act(async () => room.querySelector<HTMLButtonElement>(`[aria-label="Edit ${label}"]`)!.click());
       const field = room.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${label}"]`)!;
       expect(document.activeElement).toBe(field);
+      return field;
+    };
+    const typeRoomText = async (field: HTMLTextAreaElement, value: string) => {
       await act(async () => {
         Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(field, value);
         field.dispatchEvent(new Event('input', { bubbles: true }));
       });
-      await act(async () => field.blur());
+      expect(field.value).toBe(value);
     };
-    await editRoomText(editRooms[0], 'Read aloud', 'A **warm wind** rises.');
+
+    const readAloud = await openRoomText(editRooms[0], 'Read aloud');
+    vi.useFakeTimers();
+    try {
+      await typeRoomText(readAloud, 'A **warm');
+      await act(async () => vi.advanceTimersByTime(300));
+      await typeRoomText(readAloud, 'A **warm wind** rises.');
+      await act(async () => vi.advanceTimersByTime(300));
+      expect(onRoomTextSaved).not.toHaveBeenCalled();
+      expect(previewRooms[0].textContent).toContain('Cold air pours out.');
+      await act(async () => vi.advanceTimersByTime(100));
+      expect(onRoomTextSaved).toHaveBeenCalledExactlyOnceWith('readAloud', 'A **warm wind** rises.');
+    } finally {
+      vi.useRealTimers();
+    }
     expect(previewRooms[0].querySelector('.dungeon-read-aloud strong')?.textContent).toBe('warm wind');
-    await editRoomText(previewRooms[1], 'GM notes', 'Watch for the **tripwire**.');
+    await act(async () => readAloud.blur());
+    expect(onRoomTextSaved).toHaveBeenCalledTimes(1);
+
+    const gmNotes = await openRoomText(previewRooms[1], 'GM notes');
+    await typeRoomText(gmNotes, 'Watch for the **tripwire**.');
+    await act(async () => gmNotes.blur());
+    expect(onRoomTextSaved).toHaveBeenLastCalledWith('notes', 'Watch for the **tripwire**.');
     expect(editRooms[1].querySelector('.dungeon-room-notes strong')?.textContent).toBe('tripwire');
     expect(editRooms[0].querySelector('.dungeon-room-notes strong')?.textContent).toBe('Silver latch');
     expect(view.state.doc.toString()).toBe(content);
@@ -260,9 +285,11 @@ it('opens the same dungeon inline in Edit and Preview, with independent room fol
     expect(editRooms[0].open).toBe(true);
     expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' });
 
-    await act(async () => editRooms[1].querySelector('summary')!.click());
+    const closingNotes = await openRoomText(editRooms[1], 'GM notes');
+    await typeRoomText(closingNotes, 'Watch for the **loose tiles**.');
     await act(async () => editCard.click());
     expect(editor.querySelector('.brew-dungeon-content')).toBeNull();
+    expect(previewRooms[1].querySelector('.dungeon-room-notes strong')?.textContent).toBe('loose tiles');
     await act(async () => editCard.click());
     expect([...editor.querySelectorAll<HTMLDetailsElement>('.brew-dungeon-room')].map((room) => room.open)).toEqual([true, true]);
 

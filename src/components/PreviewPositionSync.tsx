@@ -81,6 +81,7 @@ export function PreviewPositionSync() {
     const handlePointer = (event: Event) => {
       const target = event.target;
       if (!(target instanceof Element) || !target.closest('.markdown-editor .cm-editor')) return;
+      if (target.closest('.cm-dungeon-card-widget')) return;
       const anchor = readEditorAnchor();
       if (anchor) lastAnchorRef.current = anchor;
     };

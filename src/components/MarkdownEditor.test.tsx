@@ -254,23 +254,23 @@ it('opens the same dungeon inline in Edit and Preview, with independent room fol
     vi.useFakeTimers();
     try {
       await typeRoomText(readAloud, 'A **warm');
-      await act(async () => vi.advanceTimersByTime(300));
+      await act(async () => vi.advanceTimersByTime(600));
       await typeRoomText(readAloud, 'A **warm wind** rises.');
-      await act(async () => vi.advanceTimersByTime(300));
+      await act(async () => vi.advanceTimersByTime(2000));
       expect(onRoomTextSaved).not.toHaveBeenCalled();
       expect(previewRooms[0].textContent).toContain('Cold air pours out.');
-      await act(async () => vi.advanceTimersByTime(100));
+      await act(async () => readAloud.blur());
       expect(onRoomTextSaved).toHaveBeenCalledExactlyOnceWith('readAloud', 'A **warm wind** rises.');
     } finally {
       vi.useRealTimers();
     }
     expect(previewRooms[0].querySelector('.dungeon-read-aloud strong')?.textContent).toBe('warm wind');
-    await act(async () => readAloud.blur());
-    expect(onRoomTextSaved).toHaveBeenCalledTimes(1);
 
     const gmNotes = await openRoomText(previewRooms[1], 'GM notes');
     await typeRoomText(gmNotes, 'Watch for the **tripwire**.');
+    await act(async () => window.dispatchEvent(new Event('pagehide')));
     await act(async () => gmNotes.blur());
+    expect(onRoomTextSaved).toHaveBeenCalledTimes(2);
     expect(onRoomTextSaved).toHaveBeenLastCalledWith('notes', 'Watch for the **tripwire**.');
     expect(editRooms[1].querySelector('.dungeon-room-notes strong')?.textContent).toBe('tripwire');
     expect(editRooms[0].querySelector('.dungeon-room-notes strong')?.textContent).toBe('Silver latch');

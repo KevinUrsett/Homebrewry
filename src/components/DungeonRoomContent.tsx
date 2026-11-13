@@ -89,8 +89,6 @@ export function DungeonRoomMap({ area, asset, label, activeRoom, editable = fals
   );
 }
 
-const roomTextSaveDelay = 400;
-
 function RoomTextField({ label, value, placeholder, onChange }: {
   label: string;
   value: string;
@@ -100,10 +98,8 @@ function RoomTextField({ label, value, placeholder, onChange }: {
   const [editing, setEditing] = useState(false);
   const input = useRef<HTMLTextAreaElement>(null);
   const pendingSave = useRef<(() => void) | null>(null);
-  const saveTimer = useRef<number | undefined>(undefined);
   const markdown = useMemo(() => <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{value}</ReactMarkdown>, [value]);
   const saveDraft = useCallback(() => {
-    window.clearTimeout(saveTimer.current);
     const save = pendingSave.current;
     pendingSave.current = null;
     save?.();
@@ -131,11 +127,9 @@ function RoomTextField({ label, value, placeholder, onChange }: {
         saveDraft();
         setEditing(false);
       }} onChange={(event) => {
-        // Let the textarea handle typing without rendering the card on every keystroke.
+        // Keep the draft in the textarea until the user leaves the field.
         const text = event.currentTarget.value;
         pendingSave.current = () => onChange(text);
-        window.clearTimeout(saveTimer.current);
-        saveTimer.current = window.setTimeout(saveDraft, roomTextSaveDelay);
       }} defaultValue={value} placeholder={placeholder} ref={input} rows={4} />
     ) : (
       <>

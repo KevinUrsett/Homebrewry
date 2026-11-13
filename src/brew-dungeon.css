@@ -121,7 +121,6 @@
   border: 0;
   color: inherit;
   display: block;
-  field-sizing: content;
   font: inherit;
   font-size: max(16px, 1em);
   max-height: 50dvh;

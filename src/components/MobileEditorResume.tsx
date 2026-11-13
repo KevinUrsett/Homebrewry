@@ -115,6 +115,7 @@ export function MobileEditorResume() {
     const handleEditorActivity = (event: Event) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
+      if (target.closest('.cm-dungeon-card-widget')) return;
       if (target.closest('.cm-editor') || target.closest('.cm-scroller')) saveCurrent();
     };
 

@@ -75,6 +75,7 @@ export function MobileRevisionHistory() {
     const scheduleIdleSnapshot = (event: Event) => {
       const element = event.target;
       if (!(element instanceof Element) || !element.closest('.cm-editor')) return;
+      if (element.closest('.cm-dungeon-card-widget')) return;
       if (idleTimer.current !== null) window.clearTimeout(idleTimer.current);
       idleTimer.current = window.setTimeout(() => {
         idleTimer.current = null;
